@@ -69,6 +69,8 @@ const (
 	ColSizeBytes         = "size_bytes"
 	ColChecksum          = "sha256"
 	ColData              = "data"
+	ColExtractedText     = "extracted_text"
+	ColOCRData           = "ocr_data"
 	ColSeverity          = "severity"
 	ColDescription       = "description"
 	ColDateNoticed       = "date_noticed"
@@ -276,6 +278,8 @@ type Document struct {
 	SizeBytes      int64
 	ChecksumSHA256 string `gorm:"column:sha256"`
 	Data           []byte
+	ExtractedText  string
+	OCRData        []byte
 	Notes          string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
