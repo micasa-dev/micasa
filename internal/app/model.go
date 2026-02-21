@@ -44,6 +44,9 @@ type Model struct {
 	configPath            string
 	llmClient             *llm.Client
 	llmExtraContext       string     // user-provided context appended to prompts
+	extractionModel       string     // model for extraction; empty = same as chat
+	extractionEnabled     bool       // LLM extraction on document upload
+	maxOCRPages           int        // page limit for OCR
 	chat                  *chatState // non-nil when chat overlay is open
 	styles                Styles
 	tabs                  []Tab
@@ -116,16 +119,19 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 	}
 
 	model := &Model{
-		store:           store,
-		dbPath:          options.DBPath,
-		configPath:      options.ConfigPath,
-		llmClient:       client,
-		llmExtraContext: extraContext,
-		styles:          styles,
-		tabs:            NewTabs(styles),
-		active:          0,
-		showHouse:       false,
-		mode:            modeNormal,
+		store:             store,
+		dbPath:            options.DBPath,
+		configPath:        options.ConfigPath,
+		llmClient:         client,
+		llmExtraContext:   extraContext,
+		extractionModel:   options.ExtractionConfig.Model,
+		extractionEnabled: options.ExtractionConfig.Enabled,
+		maxOCRPages:       options.ExtractionConfig.MaxOCRPages,
+		styles:            styles,
+		tabs:              NewTabs(styles),
+		active:            0,
+		showHouse:         false,
+		mode:              modeNormal,
 	}
 	if err := model.loadLookups(); err != nil {
 		return nil, err

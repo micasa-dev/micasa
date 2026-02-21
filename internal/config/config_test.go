@@ -104,6 +104,8 @@ func TestExampleTOML(t *testing.T) {
 	assert.Contains(t, example, "[documents]")
 	assert.Contains(t, example, "max_file_size")
 	assert.Contains(t, example, "cache_ttl")
+	assert.Contains(t, example, "[extraction]")
+	assert.Contains(t, example, "max_ocr_pages")
 }
 
 func TestMalformedConfigReturnsError(t *testing.T) {
@@ -319,4 +321,57 @@ func TestLLMTimeout(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "must be positive")
 	})
+}
+
+// --- Extraction ---
+
+func TestExtractionDefaults(t *testing.T) {
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, DefaultMaxOCRPages, cfg.Extraction.MaxOCRPages)
+	assert.True(t, cfg.Extraction.IsEnabled())
+	assert.Empty(t, cfg.Extraction.Model)
+}
+
+func TestExtractionFromFile(t *testing.T) {
+	path := writeConfig(t, `[extraction]
+model = "qwen2.5:7b"
+max_ocr_pages = 10
+enabled = false
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, "qwen2.5:7b", cfg.Extraction.Model)
+	assert.Equal(t, 10, cfg.Extraction.MaxOCRPages)
+	assert.False(t, cfg.Extraction.IsEnabled())
+}
+
+func TestExtractionResolvedModel(t *testing.T) {
+	t.Run("uses extraction model", func(t *testing.T) {
+		e := Extraction{Model: "qwen2.5:7b"}
+		assert.Equal(t, "qwen2.5:7b", e.ResolvedModel("qwen3"))
+	})
+	t.Run("falls back to chat model", func(t *testing.T) {
+		e := Extraction{}
+		assert.Equal(t, "qwen3", e.ResolvedModel("qwen3"))
+	})
+}
+
+func TestExtractionEnvOverrides(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_MODEL", "phi3")
+	t.Setenv("MICASA_MAX_OCR_PAGES", "5")
+	t.Setenv("MICASA_EXTRACTION_ENABLED", "false")
+
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, "phi3", cfg.Extraction.Model)
+	assert.Equal(t, 5, cfg.Extraction.MaxOCRPages)
+	assert.False(t, cfg.Extraction.IsEnabled())
+}
+
+func TestExtractionRejectsNegativePages(t *testing.T) {
+	path := writeConfig(t, "[extraction]\nmax_ocr_pages = -1\n")
+	_, err := LoadFromPath(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must be non-negative")
 }

@@ -135,6 +135,11 @@ func (cmd *runCmd) Run() error {
 		ConfigPath: config.Path(),
 	}
 	opts.SetLLM(cfg.LLM.BaseURL, cfg.LLM.Model, cfg.LLM.ExtraContext, cfg.LLM.TimeoutDuration())
+	opts.SetExtraction(
+		cfg.Extraction.ResolvedModel(cfg.LLM.Model),
+		cfg.Extraction.MaxOCRPages,
+		cfg.Extraction.IsEnabled(),
+	)
 
 	model, err := app.NewModel(store, opts)
 	if err != nil {

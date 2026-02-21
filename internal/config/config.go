@@ -19,8 +19,9 @@ import (
 
 // Config is the top-level application configuration, loaded from a TOML file.
 type Config struct {
-	LLM       LLM       `toml:"llm"`
-	Documents Documents `toml:"documents"`
+	LLM        LLM        `toml:"llm"`
+	Documents  Documents  `toml:"documents"`
+	Extraction Extraction `toml:"extraction"`
 
 	// Warnings collects non-fatal messages (e.g. deprecations) during load.
 	// Not serialized; the caller decides how to display them.
@@ -90,12 +91,50 @@ func (d Documents) CacheTTLDuration() time.Duration {
 	return DefaultCacheTTL
 }
 
+// Extraction holds settings for the document extraction pipeline
+// (LLM-powered structured pre-fill).
+type Extraction struct {
+	// Model overrides llm.model for extraction. Extraction wants a small,
+	// fast model optimized for structured JSON output. Defaults to the
+	// chat model if empty.
+	Model string `toml:"model"`
+
+	// MaxOCRPages is the maximum number of pages to OCR for scanned
+	// documents. Front-loaded info (specs, warranty) is typically in the
+	// first pages. Default: 20.
+	MaxOCRPages int `toml:"max_ocr_pages"`
+
+	// Enabled controls whether LLM-powered extraction runs when a document
+	// is uploaded. Text extraction and OCR are independent and always
+	// available. Default: true.
+	Enabled *bool `toml:"enabled,omitempty"`
+}
+
+// IsEnabled returns whether LLM extraction is enabled. Defaults to true
+// when the field is unset.
+func (e Extraction) IsEnabled() bool {
+	if e.Enabled != nil {
+		return *e.Enabled
+	}
+	return true
+}
+
+// ResolvedModel returns the extraction model, falling back to the given
+// chat model if no extraction-specific model is configured.
+func (e Extraction) ResolvedModel(chatModel string) string {
+	if e.Model != "" {
+		return e.Model
+	}
+	return chatModel
+}
+
 const (
-	DefaultBaseURL    = "http://localhost:11434/v1"
-	DefaultModel      = "qwen3"
-	DefaultLLMTimeout = 5 * time.Second
-	DefaultCacheTTL   = 30 * 24 * time.Hour // 30 days
-	configRelPath     = "micasa/config.toml"
+	DefaultBaseURL     = "http://localhost:11434/v1"
+	DefaultModel       = "qwen3"
+	DefaultLLMTimeout  = 5 * time.Second
+	DefaultCacheTTL    = 30 * 24 * time.Hour // 30 days
+	DefaultMaxOCRPages = 20
+	configRelPath      = "micasa/config.toml"
 )
 
 // defaults returns a Config with all default values populated.
@@ -108,6 +147,9 @@ func defaults() Config {
 		},
 		Documents: Documents{
 			MaxFileSize: ByteSize(data.MaxDocumentSize),
+		},
+		Extraction: Extraction{
+			MaxOCRPages: DefaultMaxOCRPages,
 		},
 	}
 }
@@ -191,6 +233,16 @@ func LoadFromPath(path string) (Config, error) {
 		)
 	}
 
+	if cfg.Extraction.MaxOCRPages < 0 {
+		return cfg, fmt.Errorf(
+			"extraction.max_ocr_pages must be non-negative, got %d",
+			cfg.Extraction.MaxOCRPages,
+		)
+	}
+	if cfg.Extraction.MaxOCRPages == 0 {
+		cfg.Extraction.MaxOCRPages = DefaultMaxOCRPages
+	}
+
 	return cfg, nil
 }
 
@@ -226,6 +278,18 @@ func applyEnvOverrides(cfg *Config) {
 		if n, err := strconv.Atoi(ttl); err == nil {
 			cfg.Documents.CacheTTLDays = &n
 		}
+	}
+	if model := os.Getenv("MICASA_EXTRACTION_MODEL"); model != "" {
+		cfg.Extraction.Model = model
+	}
+	if pages := os.Getenv("MICASA_MAX_OCR_PAGES"); pages != "" {
+		if n, err := strconv.Atoi(pages); err == nil {
+			cfg.Extraction.MaxOCRPages = n
+		}
+	}
+	if enabled := os.Getenv("MICASA_EXTRACTION_ENABLED"); enabled != "" {
+		val := enabled == "true" || enabled == "1"
+		cfg.Extraction.Enabled = &val
 	}
 }
 
@@ -263,5 +327,17 @@ model = "` + DefaultModel + `"
 # Accepts "30d", "720h", or bare integers (seconds). Set to "0s" to disable.
 # Default: 30d.
 # cache_ttl = "30d"
+
+[extraction]
+# Model for document extraction. Defaults to llm.model. Extraction wants a
+# small, fast model optimized for structured JSON output.
+# model = "qwen2.5:7b"
+
+# Maximum pages to OCR for scanned documents. Default: 20.
+# max_ocr_pages = 20
+
+# Set to false to disable LLM-powered extraction even when LLM is configured.
+# Text extraction and OCR still work independently.
+# enabled = true
 `
 }

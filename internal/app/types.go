@@ -163,9 +163,10 @@ type detailContext struct {
 }
 
 type Options struct {
-	DBPath     string
-	ConfigPath string
-	LLMConfig  *llmConfig // nil if LLM is not configured
+	DBPath           string
+	ConfigPath       string
+	LLMConfig        *llmConfig // nil if LLM is not configured
+	ExtractionConfig extractionConfig
 }
 
 // llmConfig holds resolved LLM settings passed from main after loading the
@@ -176,6 +177,22 @@ type llmConfig struct {
 	Model        string
 	ExtraContext string
 	Timeout      time.Duration
+}
+
+// extractionConfig holds resolved extraction pipeline settings.
+type extractionConfig struct {
+	Model       string // overrides LLM model; empty = use chat model
+	MaxOCRPages int
+	Enabled     bool // LLM extraction enabled
+}
+
+// SetExtraction configures the extraction pipeline on the Options.
+func (o *Options) SetExtraction(model string, maxOCRPages int, enabled bool) {
+	o.ExtractionConfig = extractionConfig{
+		Model:       model,
+		MaxOCRPages: maxOCRPages,
+		Enabled:     enabled,
+	}
 }
 
 // SetLLM configures the LLM backend on the Options. Pass empty strings to
