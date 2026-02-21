@@ -4,6 +4,7 @@
 package app
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -18,6 +19,8 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/extract"
+	"github.com/cpcloud/micasa/internal/llm"
 )
 
 type houseFormData struct {
@@ -118,6 +121,16 @@ type documentFormData struct {
 	FilePath  string // local file path; read on submit for new documents
 	EntityRef entityRef
 	Notes     string
+}
+
+// documentParseResult holds the parsed document, extraction hints from the
+// LLM (if available), and any non-fatal extraction error. The document is
+// always valid when err is nil; extractErr captures extraction failures
+// that should not block the upload.
+type documentParseResult struct {
+	Doc        data.Document
+	Hints      *extract.ExtractionHints // nil when LLM unavailable or failed
+	ExtractErr error
 }
 
 type incidentFormData struct {
@@ -2346,46 +2359,60 @@ func (m *Model) openEditDocumentForm(values *documentFormData, scoped bool) erro
 }
 
 func (m *Model) submitDocumentForm() error {
-	doc, err := m.parseDocumentFormData()
+	result, err := m.parseDocumentFormData()
 	if err != nil {
 		return err
 	}
+	doc := result.Doc
 	if m.editID != nil {
 		doc.ID = *m.editID
-		return m.store.UpdateDocument(doc)
+		if err := m.store.UpdateDocument(doc); err != nil {
+			return err
+		}
+	} else {
+		if err := m.store.CreateDocument(&doc); err != nil {
+			return err
+		}
+		id := doc.ID
+		m.editID = &id
 	}
-	if err := m.store.CreateDocument(&doc); err != nil {
-		return err
+	if result.ExtractErr != nil {
+		m.setStatusInfo(fmt.Sprintf("extraction incomplete: %s", result.ExtractErr))
 	}
-	id := doc.ID
-	m.editID = &id
 	return nil
 }
 
 // submitScopedDocumentForm creates a document with the given entity scope.
 func (m *Model) submitScopedDocumentForm(entityKind string, entityID uint) error {
-	doc, err := m.parseDocumentFormData()
+	result, err := m.parseDocumentFormData()
 	if err != nil {
 		return err
 	}
+	doc := result.Doc
 	doc.EntityKind = entityKind
 	doc.EntityID = entityID
 	if m.editID != nil {
 		doc.ID = *m.editID
-		return m.store.UpdateDocument(doc)
+		if err := m.store.UpdateDocument(doc); err != nil {
+			return err
+		}
+	} else {
+		if err := m.store.CreateDocument(&doc); err != nil {
+			return err
+		}
+		id := doc.ID
+		m.editID = &id
 	}
-	if err := m.store.CreateDocument(&doc); err != nil {
-		return err
+	if result.ExtractErr != nil {
+		m.setStatusInfo(fmt.Sprintf("extraction incomplete: %s", result.ExtractErr))
 	}
-	id := doc.ID
-	m.editID = &id
 	return nil
 }
 
-func (m *Model) parseDocumentFormData() (data.Document, error) {
+func (m *Model) parseDocumentFormData() (documentParseResult, error) {
 	values, ok := m.formData.(*documentFormData)
 	if !ok {
-		return data.Document{}, fmt.Errorf("unexpected document form data")
+		return documentParseResult{}, fmt.Errorf("unexpected document form data")
 	}
 	doc := data.Document{
 		Title:      strings.TrimSpace(values.Title),
@@ -2398,15 +2425,15 @@ func (m *Model) parseDocumentFormData() (data.Document, error) {
 	if path != "" && path != "." {
 		info, err := os.Stat(path)
 		if err != nil {
-			return data.Document{}, fmt.Errorf("stat file: %w", err)
+			return documentParseResult{}, fmt.Errorf("stat file: %w", err)
 		}
 		maxSize := m.store.MaxDocumentSize()
 		fileSize := info.Size()
 		if fileSize < 0 {
-			return data.Document{}, fmt.Errorf("file has invalid size %d", fileSize)
+			return documentParseResult{}, fmt.Errorf("file has invalid size %d", fileSize)
 		}
 		if uint64(fileSize) > maxSize { //nolint:gosec // negative ruled out above
-			return data.Document{}, fmt.Errorf(
+			return documentParseResult{}, fmt.Errorf(
 				"file is too large (%s) -- maximum allowed is %s",
 				formatFileSize(
 					uint64(fileSize),
@@ -2416,19 +2443,94 @@ func (m *Model) parseDocumentFormData() (data.Document, error) {
 		}
 		fileData, err := os.ReadFile(path)
 		if err != nil {
-			return data.Document{}, fmt.Errorf("read file: %w", err)
+			return documentParseResult{}, fmt.Errorf("read file: %w", err)
 		}
 		doc.FileName = filepath.Base(path)
 		doc.Data = fileData
 		doc.SizeBytes = int64(len(fileData))
 		doc.MIMEType = detectMIMEType(path, fileData)
 		doc.ChecksumSHA256 = fmt.Sprintf("%x", sha256.Sum256(fileData))
-		// Auto-fill title from filename when the user left it blank.
+
+		// Run the extraction pipeline.
+		pipeline := m.buildExtractionPipeline()
+		result := pipeline.Run(context.Background(), fileData, doc.FileName, doc.MIMEType)
+		doc.ExtractedText = result.ExtractedText
+		doc.OCRData = result.OCRData
+
+		// Show one-time tesseract hint if OCR was needed but unavailable.
+		if extract.IsScanned(doc.ExtractedText) && !result.OCRUsed {
+			if extract.IsImageMIME(doc.MIMEType) || doc.MIMEType == "application/pdf" {
+				m.showTesseractHint()
+			}
+		}
+
+		// Auto-fill title: prefer LLM suggestion, fall back to filename.
 		if doc.Title == "" {
-			doc.Title = data.TitleFromFilename(doc.FileName)
+			if result.Hints != nil && result.Hints.TitleSugg != "" {
+				doc.Title = result.Hints.TitleSugg
+			} else {
+				doc.Title = data.TitleFromFilename(doc.FileName)
+			}
+		}
+
+		// Pre-fill notes from LLM summary if user left notes blank.
+		if doc.Notes == "" && result.Hints != nil && result.Hints.Summary != "" {
+			doc.Notes = result.Hints.Summary
+		}
+
+		return documentParseResult{
+			Doc:        doc,
+			Hints:      result.Hints,
+			ExtractErr: result.Err,
+		}, nil
+	}
+	return documentParseResult{Doc: doc}, nil
+}
+
+// buildExtractionPipeline creates an extraction pipeline configured from
+// the current app state.
+func (m *Model) buildExtractionPipeline() *extract.Pipeline {
+	p := &extract.Pipeline{
+		MaxOCRPages: m.maxOCRPages,
+	}
+
+	// Only wire LLM if extraction is enabled and a client exists.
+	if m.extractionEnabled && m.llmClient != nil {
+		// Use the extraction-specific model if configured, otherwise the
+		// chat client is used as-is.
+		if m.extractionModel != "" && m.extractionModel != m.llmClient.Model() {
+			p.LLMClient = llm.NewClient(
+				m.llmClient.BaseURL(),
+				m.extractionModel,
+				m.llmClient.Timeout(),
+			)
+		} else {
+			p.LLMClient = m.llmClient
 		}
 	}
-	return doc, nil
+
+	// Load entity context for LLM matching (best-effort).
+	vendors, projects, appliances, err := m.store.EntityNames()
+	if err == nil {
+		p.EntityContext = extract.EntityContext{
+			Vendors:    vendors,
+			Projects:   projects,
+			Appliances: appliances,
+		}
+	}
+
+	return p
+}
+
+// showTesseractHint displays a one-time status bar hint suggesting the
+// user install tesseract for better document extraction. The hint is
+// persisted in the DB so it's never shown again.
+func (m *Model) showTesseractHint() {
+	if m.store.TesseractHintSeen() {
+		return
+	}
+	m.setStatusInfo("install tesseract for text extraction from scanned docs")
+	_ = m.store.MarkTesseractHintSeen()
 }
 
 func (m *Model) inlineEditDocument(id uint, col documentCol) error {
