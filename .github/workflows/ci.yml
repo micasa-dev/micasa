@@ -50,14 +50,7 @@ jobs:
 
       - name: Install extraction tools (Windows)
         if: runner.os == 'Windows'
-        run: choco install poppler tesseract imagemagick --no-progress -y
-
-      - name: Add poppler to PATH (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          find /c/ProgramData/chocolatey/lib/poppler -type f -name '*.exe' 2>/dev/null || true
-          find /c/ProgramData/chocolatey/lib/poppler/tools -maxdepth 4 -type d 2>/dev/null || true
+        run: choco install tesseract imagemagick --no-progress -y
 
       - name: Download dependencies
         run: go mod download
