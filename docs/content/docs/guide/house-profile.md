@@ -51,5 +51,5 @@ Financial). Save with `ctrl+s`, cancel with `esc`.
 | Financial | `Insurance carrier` | text | Company name |
 | Financial | `Insurance policy` | text | Policy number |
 | Financial | `Insurance renewal` | date | Shows on dashboard when due |
-| Financial | `Property tax` | money | Annual amount in dollars (e.g., 4200.00) |
-| Financial | `HOA name` / `fee` | text / money | Name and monthly fee |
+| Financial | `Property tax` | money | Annual amount (e.g., 4200.00). Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) |
+| Financial | `HOA name` / `fee` | text / money | Name and monthly fee. Formatted in your configured currency |

@@ -57,6 +57,27 @@ func TestLastModelRoundTrip(t *testing.T) {
 	assert.Equal(t, "llama3.3", model)
 }
 
+func TestCurrencyDefaultEmpty(t *testing.T) {
+	store := newTestStore(t)
+	code, err := store.GetCurrency()
+	require.NoError(t, err)
+	assert.Equal(t, "", code)
+}
+
+func TestCurrencyRoundTrip(t *testing.T) {
+	store := newTestStore(t)
+
+	require.NoError(t, store.PutCurrency("EUR"))
+	code, err := store.GetCurrency()
+	require.NoError(t, err)
+	assert.Equal(t, "EUR", code)
+
+	require.NoError(t, store.PutCurrency("GBP"))
+	code, err = store.GetCurrency()
+	require.NoError(t, err)
+	assert.Equal(t, "GBP", code)
+}
+
 func TestAppendChatInputAndLoad(t *testing.T) {
 	store := newTestStore(t)
 

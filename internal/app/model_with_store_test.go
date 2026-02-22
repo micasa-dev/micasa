@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,6 +28,7 @@ func newTestModelWithStore(t *testing.T) *Model {
 
 	require.NoError(t, store.AutoMigrate())
 	require.NoError(t, store.SeedDefaults())
+	store.SetCurrency(locale.DefaultCurrency())
 
 	require.NoError(t, store.CreateHouseProfile(data.HouseProfile{
 		Nickname: "Test House",

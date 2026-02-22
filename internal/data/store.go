@@ -18,6 +18,7 @@ import (
 
 	"github.com/cpcloud/micasa/internal/data/sqlite"
 	"github.com/cpcloud/micasa/internal/fake"
+	"github.com/cpcloud/micasa/internal/locale"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -25,6 +26,7 @@ import (
 type Store struct {
 	db              *gorm.DB
 	maxDocumentSize uint64
+	currency        locale.Currency
 }
 
 func Open(path string) (*Store, error) {
@@ -60,6 +62,47 @@ func (s *Store) SetMaxDocumentSize(n uint64) error {
 		return fmt.Errorf("max document size must be positive, got 0")
 	}
 	s.maxDocumentSize = n
+	return nil
+}
+
+// Currency returns the resolved currency for this store.
+func (s *Store) Currency() locale.Currency {
+	return s.currency
+}
+
+// SetCurrency directly sets the cached currency without touching the database.
+// Intended for tests that need a currency but don't require full resolution.
+func (s *Store) SetCurrency(cur locale.Currency) {
+	s.currency = cur
+}
+
+// ResolveCurrency determines the currency to use. The database value is
+// authoritative for the currency CODE; if unset, resolves from
+// configured/env/locale and persists the code for portability. The
+// formatting locale is always detected from the environment (never
+// persisted) -- like displaying a UTC timestamp in the local timezone.
+func (s *Store) ResolveCurrency(configured string) error {
+	tag := locale.DetectLocale()
+	code, err := s.GetCurrency()
+	if err != nil {
+		return fmt.Errorf("read currency from database: %w", err)
+	}
+	if code != "" {
+		cur, err := locale.Resolve(code, tag)
+		if err != nil {
+			return err
+		}
+		s.currency = cur
+		return nil
+	}
+	cur, err := locale.ResolveDefault(configured)
+	if err != nil {
+		return err
+	}
+	if err := s.PutCurrency(cur.Code()); err != nil {
+		return fmt.Errorf("persist currency to database: %w", err)
+	}
+	s.currency = cur
 	return nil
 }
 

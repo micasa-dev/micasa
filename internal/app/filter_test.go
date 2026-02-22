@@ -381,8 +381,8 @@ func TestMatchesAllPinsSingleColumn(t *testing.T) {
 	row1 := []cell{{Value: "1"}, {Value: "Plan"}, {Value: "Alice"}}
 	row2 := []cell{{Value: "4"}, {Value: "Done"}, {Value: "Alice"}}
 
-	assert.True(t, matchesAllPins(row1, pins, false), "Plan should match")
-	assert.False(t, matchesAllPins(row2, pins, false), "Done should not match")
+	assert.True(t, matchesAllPins(row1, pins, false, "$"), "Plan should match")
+	assert.False(t, matchesAllPins(row2, pins, false, "$"), "Done should not match")
 }
 
 func TestMatchesAllPinsCrossColumn(t *testing.T) {
@@ -395,8 +395,8 @@ func TestMatchesAllPinsCrossColumn(t *testing.T) {
 	// Row 1: Plan + Alice => no match (fails vendor pin)
 	row1 := []cell{{Value: "1"}, {Value: "Plan"}, {Value: "Alice"}}
 
-	assert.True(t, matchesAllPins(row3, pins, false))
-	assert.False(t, matchesAllPins(row1, pins, false))
+	assert.True(t, matchesAllPins(row3, pins, false, "$"))
+	assert.False(t, matchesAllPins(row1, pins, false, "$"))
 }
 
 func TestPinSummary(t *testing.T) {
@@ -422,12 +422,12 @@ func TestMatchesAllPinsMagMode(t *testing.T) {
 	// Pin on magnitude "2" (covers $50 and $200, both round to mag 2).
 	pins := []filterPin{{Col: 0, Values: map[string]bool{magArrow + "2": true}}}
 
-	assert.True(t, matchesAllPins(row50, pins, true), "$50 is mag 2")
-	assert.True(t, matchesAllPins(row200, pins, true), "$200 is mag 2")
-	assert.False(t, matchesAllPins(row1k, pins, true), "$1000 is mag 3, not 2")
+	assert.True(t, matchesAllPins(row50, pins, true, "$"), "$50 is mag 2")
+	assert.True(t, matchesAllPins(row200, pins, true, "$"), "$200 is mag 2")
+	assert.False(t, matchesAllPins(row1k, pins, true, "$"), "$1000 is mag 3, not 2")
 
 	// Without mag mode, magnitude pins don't match raw values.
-	assert.False(t, matchesAllPins(row50, pins, false), "mag pin shouldn't match raw value")
+	assert.False(t, matchesAllPins(row50, pins, false, "$"), "mag pin shouldn't match raw value")
 }
 
 func TestTranslatePinsToMag(t *testing.T) {
@@ -441,7 +441,7 @@ func TestTranslatePinsToMag(t *testing.T) {
 		},
 	}
 	togglePin(tab, 0, "$50.00")
-	translatePins(tab, true) // switching TO mag
+	translatePins(tab, true, "$") // switching TO mag
 
 	require.True(t, hasPins(tab))
 	// $50 -> mag 2
@@ -460,7 +460,7 @@ func TestTranslatePinsFromMag(t *testing.T) {
 		},
 	}
 	togglePin(tab, 0, magArrow+"3")
-	translatePins(tab, false) // switching FROM mag
+	translatePins(tab, false, "$") // switching FROM mag
 
 	require.True(t, hasPins(tab))
 	// Both $1,000 and $2,000 are mag 3.
@@ -471,13 +471,13 @@ func TestTranslatePinsFromMag(t *testing.T) {
 
 func TestCellDisplayValueNull(t *testing.T) {
 	c := cell{Kind: cellText, Null: true}
-	assert.Equal(t, nullPinKey, cellDisplayValue(c, false))
-	assert.Equal(t, nullPinKey, cellDisplayValue(c, true))
+	assert.Equal(t, nullPinKey, cellDisplayValue(c, false, "$"))
+	assert.Equal(t, nullPinKey, cellDisplayValue(c, true, "$"))
 }
 
 func TestCellDisplayValueNonNull(t *testing.T) {
 	c := cell{Value: "Hello", Kind: cellText}
-	assert.Equal(t, "hello", cellDisplayValue(c, false))
+	assert.Equal(t, "hello", cellDisplayValue(c, false, "$"))
 }
 
 func TestCellDisplayValueEntityPinsByKind(t *testing.T) {
@@ -485,9 +485,9 @@ func TestCellDisplayValueEntityPinsByKind(t *testing.T) {
 	vendor := cell{Value: "V Bob's Plumbing", Kind: cellEntity}
 	empty := cell{Value: "", Kind: cellEntity}
 
-	assert.Equal(t, "project", cellDisplayValue(project, false))
-	assert.Equal(t, "vendor", cellDisplayValue(vendor, false))
-	assert.Equal(t, "", cellDisplayValue(empty, false), "empty entity returns empty")
+	assert.Equal(t, "project", cellDisplayValue(project, false, "$"))
+	assert.Equal(t, "vendor", cellDisplayValue(vendor, false, "$"))
+	assert.Equal(t, "", cellDisplayValue(empty, false, "$"), "empty entity returns empty")
 }
 
 func TestMatchesAllPinsNullCell(t *testing.T) {
@@ -496,13 +496,17 @@ func TestMatchesAllPinsNullCell(t *testing.T) {
 	emptyRow := []cell{{Value: "1"}, {Value: "", Kind: cellText}}
 	filledRow := []cell{{Value: "1"}, {Value: "Alice", Kind: cellText}}
 
-	assert.True(t, matchesAllPins(nullRow, pins, false), "null cell should match null pin")
+	assert.True(t, matchesAllPins(nullRow, pins, false, "$"), "null cell should match null pin")
 	assert.False(
 		t,
-		matchesAllPins(emptyRow, pins, false),
+		matchesAllPins(emptyRow, pins, false, "$"),
 		"empty non-null should not match null pin",
 	)
-	assert.False(t, matchesAllPins(filledRow, pins, false), "filled cell should not match null pin")
+	assert.False(
+		t,
+		matchesAllPins(filledRow, pins, false, "$"),
+		"filled cell should not match null pin",
+	)
 }
 
 func TestPinSummaryNull(t *testing.T) {
@@ -536,7 +540,7 @@ func TestTranslatePinsPreservesNull(t *testing.T) {
 		},
 	}
 	togglePin(tab, 0, nullPinKey)
-	translatePins(tab, true)
+	translatePins(tab, true, "$")
 	assert.True(t, tab.Pins[0].Values[nullPinKey], "null pin should survive mag translation")
 }
 
@@ -554,12 +558,12 @@ func TestTranslatePinsRoundTrip(t *testing.T) {
 	togglePin(tab, 0, "$1,000.00")
 
 	// To mag: $1,000 -> 🠡3
-	translatePins(tab, true)
+	translatePins(tab, true, "$")
 	require.Len(t, tab.Pins[0].Values, 1)
 	assert.True(t, tab.Pins[0].Values[magArrow+"3"])
 
 	// Back to raw: 🠡3 -> $1,000 and $2,000
-	translatePins(tab, false)
+	translatePins(tab, false, "$")
 	assert.True(t, tab.Pins[0].Values["$1,000.00"])
 	assert.True(t, tab.Pins[0].Values["$2,000.00"])
 	assert.Len(t, tab.Pins[0].Values, 2)
@@ -646,8 +650,8 @@ func TestInvertedPinHighlightsNonMatchingCells(t *testing.T) {
 	doneRow := []cell{{Value: "4"}, {Value: "Done"}, {Value: "Alice"}}
 
 	// Normal: Plan matches, Done doesn't.
-	assert.True(t, cellMatchesPin(pins, 1, planRow[1], false))
-	assert.False(t, cellMatchesPin(pins, 1, doneRow[1], false))
+	assert.True(t, cellMatchesPin(pins, 1, planRow[1], false, "$"))
+	assert.False(t, cellMatchesPin(pins, 1, doneRow[1], false, "$"))
 
 	// Inverted: flip for pinned column only.
 	assert.True(t, columnHasPin(pins, 1), "col 1 has a pin")

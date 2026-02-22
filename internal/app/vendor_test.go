@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -147,7 +148,7 @@ func TestVendorJobsRowsSetsItemLinkID(t *testing.T) {
 			ServicedAt:        time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
-	_, _, cells := vendorJobsRows(entries)
+	_, _, cells := vendorJobsRows(entries, locale.DefaultCurrency())
 	require.Len(t, cells, 1)
 	assert.Equal(t, "HVAC Filter", cells[0][1].Value)
 	assert.Equal(t, uint(7), cells[0][1].LinkID)

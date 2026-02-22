@@ -6,6 +6,7 @@ package app
 import (
 	"testing"
 
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -85,6 +86,7 @@ func TestStatusStylesExistForAll(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCompactMoneyValue(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	tests := []struct {
 		name  string
 		input string
@@ -100,12 +102,13 @@ func TestCompactMoneyValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, compactMoneyValue(tt.input))
+			assert.Equal(t, tt.want, compactMoneyValue(tt.input, cur))
 		})
 	}
 }
 
 func TestCompactMoneyCells(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	rows := [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -120,7 +123,7 @@ func TestCompactMoneyCells(t *testing.T) {
 			{Value: "", Kind: cellMoney},
 		},
 	}
-	out := compactMoneyCells(rows)
+	out := compactMoneyCells(rows, cur)
 
 	// Non-money cells unchanged.
 	assert.Equal(t, "1", out[0][0].Value)
@@ -139,25 +142,27 @@ func TestCompactMoneyCells(t *testing.T) {
 }
 
 func TestCompactMoneyCellsPreservesNull(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	rows := [][]cell{
 		{
 			{Value: "", Kind: cellMoney, Null: true},
 			{Value: "Kitchen", Kind: cellText},
 		},
 	}
-	out := compactMoneyCells(rows)
+	out := compactMoneyCells(rows, cur)
 	assert.True(t, out[0][0].Null, "Null flag should be preserved through compact transform")
 	assert.Equal(t, cellMoney, out[0][0].Kind)
 }
 
 func TestAnnotateMoneyHeaders(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	specs := []columnSpec{
 		{Title: "Name", Kind: cellText},
 		{Title: "Budget", Kind: cellMoney},
 		{Title: "Actual", Kind: cellMoney},
 		{Title: "ID", Kind: cellReadonly},
 	}
-	out := annotateMoneyHeaders(specs)
+	out := annotateMoneyHeaders(specs, cur)
 
 	// Non-money columns unchanged.
 	assert.Equal(t, "Name", out[0].Title)

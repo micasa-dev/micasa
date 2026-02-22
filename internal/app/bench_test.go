@@ -24,6 +24,7 @@ func benchModel(b *testing.B) *Model {
 	require.NoError(b, store.AutoMigrate())
 	require.NoError(b, store.SeedDefaults())
 	require.NoError(b, store.SeedDemoDataFrom(fake.New(42)))
+	require.NoError(b, store.ResolveCurrency(""))
 	m, err := NewModel(store, Options{DBPath: path})
 	require.NoError(b, err)
 	m.width = 120
@@ -111,7 +112,7 @@ func BenchmarkNaturalWidths(b *testing.B) {
 	visSpecs, visCells, _, _, _ := visibleProjection(tab)
 	b.ResetTimer()
 	for b.Loop() {
-		_ = naturalWidths(visSpecs, visCells)
+		_ = naturalWidths(visSpecs, visCells, "$")
 	}
 }
 
@@ -130,7 +131,7 @@ func BenchmarkComputeTableViewport(b *testing.B) {
 	sep := m.styles.TableSeparator().Render(" │ ")
 	b.ResetTimer()
 	for b.Loop() {
-		_ = computeTableViewport(tab, 120, sep)
+		_ = computeTableViewport(tab, 120, sep, "$")
 	}
 }
 
@@ -144,7 +145,7 @@ func BenchmarkComputeTableViewportPins(b *testing.B) {
 	sep := m.styles.TableSeparator().Render(" │ ")
 	b.ResetTimer()
 	for b.Loop() {
-		_ = computeTableViewport(tab, 120, sep)
+		_ = computeTableViewport(tab, 120, sep, "$")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -149,7 +150,7 @@ func TestProjectTabStatusFiltersRows(t *testing.T) {
 	// Pin only "planned" → filter shows only planned rows.
 	togglePin(tab, col, data.ProjectStatusPlanned)
 	tab.FilterActive = true
-	applyRowFilter(tab, false)
+	applyRowFilter(tab, false, locale.DefaultCurrency().Symbol())
 	assert.Len(t, tab.Rows, 1, "rows with only planned pinned")
 
 	// Clear and pin active statuses (what 't' does) → hides settled.
@@ -158,7 +159,7 @@ func TestProjectTabStatusFiltersRows(t *testing.T) {
 		togglePin(tab, col, s)
 	}
 	tab.FilterActive = true
-	applyRowFilter(tab, false)
+	applyRowFilter(tab, false, locale.DefaultCurrency().Symbol())
 	assert.Len(t, tab.Rows, 2, "rows with settled hidden")
 	for i, cells := range tab.CellRows {
 		if len(cells) > col {
@@ -170,7 +171,7 @@ func TestProjectTabStatusFiltersRows(t *testing.T) {
 
 	// Clear all pins → shows everything.
 	clearPins(tab)
-	applyRowFilter(tab, false)
+	applyRowFilter(tab, false, locale.DefaultCurrency().Symbol())
 	assert.Len(t, tab.Rows, 4, "rows after clearing all pins")
 }
 

@@ -26,7 +26,7 @@ The `Title` field is required. Everything else is optional or has a default.
 | `Type` | select | Project category | Pre-seeded types (Renovation, Repair, etc.) |
 | `Title` | text | Project name | Required |
 | `Status` | select | Lifecycle stage | See [status lifecycle](#status-lifecycle) below |
-| `Budget` | money | Planned cost | Dollar amount (e.g., 1250.00) |
+| `Budget` | money | Planned cost | Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) (e.g., 1250.00) |
 | `Actual` | money | Real cost | Over-budget is highlighted on the dashboard |
 | `Start` | date | Start date | [Date input]({{< ref "/docs/using/date-input" >}}) |
 | `End` | date | End date | [Date input]({{< ref "/docs/using/date-input" >}}) |

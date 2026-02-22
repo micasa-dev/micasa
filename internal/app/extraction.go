@@ -20,6 +20,7 @@ import (
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
+	"github.com/cpcloud/micasa/internal/locale"
 )
 
 // --- Extraction step types ---
@@ -968,7 +969,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		}
 	case keyX:
 		if ex.Done && len(ex.operations) > 0 {
-			ex.enterExploreMode()
+			ex.enterExploreMode(m.cur)
 		}
 	default:
 		vp, cmd := ex.Viewport.Update(msg)
@@ -1040,9 +1041,9 @@ func (m *Model) handleExtractionExploreKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 // enterExploreMode switches to table explore mode, caching operation groups.
-func (ex *extractionLogState) enterExploreMode() {
+func (ex *extractionLogState) enterExploreMode(cur locale.Currency) {
 	if len(ex.previewGroups) == 0 {
-		ex.previewGroups = groupOperationsByTable(ex.operations)
+		ex.previewGroups = groupOperationsByTable(ex.operations, cur)
 	}
 	if len(ex.previewGroups) == 0 {
 		return
@@ -1090,10 +1091,10 @@ func (m *Model) buildExtractionOverlay() string {
 
 // previewNaturalWidth returns the minimum inner width needed to display
 // all preview tables without wrapping. Returns 0 if there are no groups.
-func previewNaturalWidth(groups []previewTableGroup, sepW int) int {
+func previewNaturalWidth(groups []previewTableGroup, sepW int, currencySymbol string) int {
 	var maxW int
 	for _, g := range groups {
-		nw := naturalWidths(g.specs, g.cells)
+		nw := naturalWidths(g.specs, g.cells, currencySymbol)
 		w := 0
 		for _, cw := range nw {
 			w += cw
@@ -1278,7 +1279,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 func (m *Model) renderOperationPreviewSection(innerW int, interactive bool) string {
 	ex := m.extraction
 	if len(ex.previewGroups) == 0 {
-		ex.previewGroups = groupOperationsByTable(ex.operations)
+		ex.previewGroups = groupOperationsByTable(ex.operations, m.cur)
 	}
 	groups := ex.previewGroups
 	if len(groups) == 0 {
@@ -1540,7 +1541,13 @@ type previewColDef struct {
 // previewColumns returns the column definitions for rendering an operation
 // preview for the given table. Specs are pulled from the same functions that
 // define the main tab columns, so the preview matches the real UI.
-func previewColumns(tableName string) []previewColDef {
+func previewColumns(tableName string, cur locale.Currency) []previewColDef {
+	fmtAnyCents := func(v any) string {
+		if val, ok := v.(float64); ok {
+			return cur.FormatCents(int64(val))
+		}
+		return fmtAnyText(v)
+	}
 	switch tableName {
 	case "vendors":
 		s := vendorColumnSpecs()
@@ -1615,13 +1622,13 @@ type previewTableGroup struct {
 
 // groupOperationsByTable groups operations into per-table sections, collecting
 // all data keys across operations within a table and building cell rows.
-func groupOperationsByTable(ops []extract.Operation) []previewTableGroup {
+func groupOperationsByTable(ops []extract.Operation, cur locale.Currency) []previewTableGroup {
 	// Preserve first-seen order.
 	var order []string
 	groups := make(map[string]*previewTableGroup)
 
 	for _, op := range ops {
-		allDefs := previewColumns(op.Table)
+		allDefs := previewColumns(op.Table, cur)
 		if allDefs == nil || len(op.Data) == 0 {
 			continue
 		}
@@ -1663,7 +1670,7 @@ func groupOperationsByTable(ops []extract.Operation) []previewTableGroup {
 		if g == nil {
 			continue
 		}
-		allDefs := previewColumns(op.Table)
+		allDefs := previewColumns(op.Table, cur)
 		if allDefs == nil {
 			continue
 		}
@@ -1714,13 +1721,6 @@ func fmtAnyText(v any) string {
 	}
 }
 
-func fmtAnyCents(v any) string {
-	if val, ok := v.(float64); ok {
-		return data.FormatCents(int64(val))
-	}
-	return fmtAnyText(v)
-}
-
 func fmtAnyFK(v any) string {
 	s := fmtAnyText(v)
 	if s != "" && s != "0" {
@@ -1748,11 +1748,15 @@ func (m *Model) extractionOverlayWidth() int {
 	ex := m.extraction
 	if ex != nil && len(ex.operations) > 0 {
 		if len(ex.previewGroups) == 0 {
-			ex.previewGroups = groupOperationsByTable(ex.operations)
+			ex.previewGroups = groupOperationsByTable(ex.operations, m.cur)
 		}
 		sep := m.styles.TableSeparator().Render(" " + symVLine + " ")
 		sepW := lipgloss.Width(sep)
-		needed := previewNaturalWidth(ex.previewGroups, sepW) + 4 // +4 for padding
+		needed := previewNaturalWidth(
+			ex.previewGroups,
+			sepW,
+			m.cur.Symbol(),
+		) + 4 // +4 for padding
 		if needed > w {
 			w = needed
 		}

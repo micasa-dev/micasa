@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 )
 
 // baseTableKeyMap returns the default table KeyMap with b/f removed from
@@ -261,6 +262,7 @@ func incidentColumnSpecs() []columnSpec {
 func incidentRows(
 	items []data.Incident,
 	docCounts map[uint]int,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(inc data.Incident) rowSpec {
 		var appCell cell
@@ -292,7 +294,7 @@ func incidentRows(
 				vendorCell,
 				{Value: inc.DateNoticed.Format(data.DateLayout), Kind: cellDate},
 				dateCell(inc.DateResolved, cellDate),
-				centsCell(inc.CostCents),
+				centsCell(inc.CostCents, cur),
 				{Value: docCount, Kind: cellDrilldown},
 			},
 		}
@@ -412,6 +414,7 @@ func serviceLogColumnSpecs() []columnSpec {
 func serviceLogRows(
 	entries []data.ServiceLogEntry,
 	docCounts map[uint]int,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(entries, func(e data.ServiceLogEntry) rowSpec {
 		performedBy := "Self"
@@ -431,7 +434,7 @@ func serviceLogRows(
 				{Value: fmt.Sprintf("%d", e.ID), Kind: cellReadonly},
 				{Value: e.ServicedAt.Format(data.DateLayout), Kind: cellDate},
 				{Value: performedBy, Kind: cellText, LinkID: vendorLinkID},
-				centsCell(e.CostCents),
+				centsCell(e.CostCents, cur),
 				{Value: e.Notes, Kind: cellNotes},
 				{Value: docCount, Kind: cellDrilldown},
 			},
@@ -444,6 +447,7 @@ func applianceRows(
 	maintCounts map[uint]int,
 	docCounts map[uint]int,
 	now time.Time,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(a data.Appliance) rowSpec {
 		maintCount := "0"
@@ -471,7 +475,7 @@ func applianceRows(
 				dateCell(a.PurchaseDate, cellDate),
 				ageCell,
 				dateCell(a.WarrantyExpiry, cellWarranty),
-				centsCell(a.CostCents),
+				centsCell(a.CostCents, cur),
 				{Value: maintCount, Kind: cellDrilldown},
 				{Value: docCount, Kind: cellDrilldown},
 			},
@@ -628,6 +632,7 @@ func projectRows(
 	projects []data.Project,
 	quoteCounts map[uint]int,
 	docCounts map[uint]int,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(projects, func(p data.Project) rowSpec {
 		quoteCount := "0"
@@ -646,8 +651,8 @@ func projectRows(
 				{Value: p.ProjectType.Name, Kind: cellText},
 				{Value: p.Title, Kind: cellText},
 				{Value: p.Status, Kind: cellStatus},
-				centsCell(p.BudgetCents),
-				centsCell(p.ActualCents),
+				centsCell(p.BudgetCents, cur),
+				centsCell(p.ActualCents, cur),
 				dateCell(p.StartDate, cellDate),
 				dateCell(p.EndDate, cellDate),
 				{Value: quoteCount, Kind: cellDrilldown},
@@ -660,6 +665,7 @@ func projectRows(
 func quoteRows(
 	quotes []data.Quote,
 	docCounts map[uint]int,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(quotes, func(q data.Quote) rowSpec {
 		projectName := q.Project.Title
@@ -677,10 +683,10 @@ func quoteRows(
 				{Value: fmt.Sprintf("%d", q.ID), Kind: cellReadonly},
 				{Value: projectName, Kind: cellText, LinkID: q.ProjectID},
 				{Value: q.Vendor.Name, Kind: cellText, LinkID: q.VendorID},
-				{Value: data.FormatCents(q.TotalCents), Kind: cellMoney},
-				centsCell(q.LaborCents),
-				centsCell(q.MaterialsCents),
-				centsCell(q.OtherCents),
+				{Value: cur.FormatCents(q.TotalCents), Kind: cellMoney},
+				centsCell(q.LaborCents, cur),
+				centsCell(q.MaterialsCents, cur),
+				centsCell(q.OtherCents, cur),
 				dateCell(q.ReceivedDate, cellDate),
 				{Value: docCount, Kind: cellDrilldown},
 			},
@@ -777,6 +783,7 @@ func vendorQuoteColumnSpecs() []columnSpec {
 func vendorQuoteRows(
 	quotes []data.Quote,
 	docCounts map[uint]int,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(quotes, func(q data.Quote) rowSpec {
 		projectName := q.Project.Title
@@ -793,10 +800,10 @@ func vendorQuoteRows(
 			Cells: []cell{
 				{Value: fmt.Sprintf("%d", q.ID), Kind: cellReadonly},
 				{Value: projectName, Kind: cellText, LinkID: q.ProjectID},
-				{Value: data.FormatCents(q.TotalCents), Kind: cellMoney},
-				centsCell(q.LaborCents),
-				centsCell(q.MaterialsCents),
-				centsCell(q.OtherCents),
+				{Value: cur.FormatCents(q.TotalCents), Kind: cellMoney},
+				centsCell(q.LaborCents, cur),
+				centsCell(q.MaterialsCents, cur),
+				centsCell(q.OtherCents, cur),
 				dateCell(q.ReceivedDate, cellDate),
 				{Value: docCount, Kind: cellDrilldown},
 			},
@@ -834,6 +841,7 @@ func vendorJobsColumnSpecs() []columnSpec {
 
 func vendorJobsRows(
 	entries []data.ServiceLogEntry,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(entries, func(e data.ServiceLogEntry) rowSpec {
 		itemName := e.MaintenanceItem.Name
@@ -844,7 +852,7 @@ func vendorJobsRows(
 				{Value: fmt.Sprintf("%d", e.ID), Kind: cellReadonly},
 				{Value: itemName, Kind: cellText, LinkID: e.MaintenanceItemID},
 				{Value: e.ServicedAt.Format(data.DateLayout), Kind: cellDate},
-				centsCell(e.CostCents),
+				centsCell(e.CostCents, cur),
 				{Value: e.Notes, Kind: cellNotes},
 			},
 		}
@@ -858,6 +866,7 @@ func projectQuoteColumnSpecs() []columnSpec {
 func projectQuoteRows(
 	quotes []data.Quote,
 	docCounts map[uint]int,
+	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(quotes, func(q data.Quote) rowSpec {
 		docCount := "0"
@@ -870,10 +879,10 @@ func projectQuoteRows(
 			Cells: []cell{
 				{Value: fmt.Sprintf("%d", q.ID), Kind: cellReadonly},
 				{Value: q.Vendor.Name, Kind: cellText, LinkID: q.VendorID},
-				{Value: data.FormatCents(q.TotalCents), Kind: cellMoney},
-				centsCell(q.LaborCents),
-				centsCell(q.MaterialsCents),
-				centsCell(q.OtherCents),
+				{Value: cur.FormatCents(q.TotalCents), Kind: cellMoney},
+				centsCell(q.LaborCents, cur),
+				centsCell(q.MaterialsCents, cur),
+				centsCell(q.OtherCents, cur),
 				dateCell(q.ReceivedDate, cellDate),
 				{Value: docCount, Kind: cellDrilldown},
 			},
@@ -881,11 +890,11 @@ func projectQuoteRows(
 	})
 }
 
-func centsValue(cents *int64) string {
+func centsValue(cents *int64, cur locale.Currency) string {
 	if cents == nil {
 		return ""
 	}
-	return data.FormatCents(*cents)
+	return cur.FormatCents(*cents)
 }
 
 func dateValue(value *time.Time) string {
@@ -897,11 +906,11 @@ func dateValue(value *time.Time) string {
 
 // centsCell returns a cell for an optional money value. NULL pointer produces
 // a null cell; non-nil produces a formatted money cell.
-func centsCell(cents *int64) cell {
+func centsCell(cents *int64, cur locale.Currency) cell {
 	if cents == nil {
 		return cell{Kind: cellMoney, Null: true}
 	}
-	return cell{Value: data.FormatCents(*cents), Kind: cellMoney}
+	return cell{Value: cur.FormatCents(*cents), Kind: cellMoney}
 }
 
 // dateCell returns a cell for an optional date value. NULL pointer produces

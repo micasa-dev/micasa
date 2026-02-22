@@ -30,7 +30,7 @@ Only the `Name` is required.
 | `Purchased` | date | Purchase date | [Date input]({{< ref "/docs/using/date-input" >}}) |
 | `Age` | computed | Time since purchase | Read-only. E.g., "3y 2m", "8m", "<1m" |
 | `Warranty` | warranty | Warranty expiry | Green when active, red when expired. Shows on dashboard when expiring |
-| `Cost` | money | Purchase price | Dollar amount |
+| `Cost` | money | Purchase price | Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) |
 | `Maint` | drill | Maintenance count | Press `enter` to view linked maintenance |
 | `Docs` | drill | Document count | Press `enter` to view linked documents |
 

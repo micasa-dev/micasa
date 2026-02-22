@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -162,7 +163,7 @@ func TestIncidentFormValuesRoundTrip(t *testing.T) {
 		VendorID:     &vendorID,
 		Notes:        "notes",
 	}
-	fd := incidentFormValues(item)
+	fd := incidentFormValues(item, locale.DefaultCurrency())
 	assert.Equal(t, "Test", fd.Title)
 	assert.Equal(t, "desc", fd.Description)
 	assert.Equal(t, data.IncidentStatusInProgress, fd.Status)
@@ -183,9 +184,63 @@ func TestIncidentFormValuesNilOptionals(t *testing.T) {
 		Severity:    data.IncidentSeverityWhenever,
 		DateNoticed: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
-	fd := incidentFormValues(item)
+	fd := incidentFormValues(item, locale.DefaultCurrency())
 	assert.Equal(t, uint(0), fd.ApplianceID)
 	assert.Equal(t, uint(0), fd.VendorID)
 	assert.Equal(t, "", fd.Cost)
 	assert.Equal(t, "", fd.DateResolved)
+}
+
+// ---------------------------------------------------------------------------
+// serviceLogFormValues round-trip
+// ---------------------------------------------------------------------------
+
+func TestServiceLogFormValuesRoundTrip(t *testing.T) {
+	vendorID := uint(7)
+	cost := int64(5000)
+	entry := data.ServiceLogEntry{
+		MaintenanceItemID: 10,
+		ServicedAt:        time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
+		VendorID:          &vendorID,
+		CostCents:         &cost,
+		Notes:             "service notes",
+	}
+	fd := serviceLogFormValues(entry, locale.DefaultCurrency())
+	assert.Equal(t, uint(10), fd.MaintenanceItemID)
+	assert.Equal(t, "2026-01-15", fd.ServicedAt)
+	assert.Equal(t, vendorID, fd.VendorID)
+	assert.Equal(t, "$50.00", fd.Cost)
+	assert.Equal(t, "service notes", fd.Notes)
+}
+
+func TestServiceLogFormValuesNilOptionals(t *testing.T) {
+	entry := data.ServiceLogEntry{
+		MaintenanceItemID: 1,
+		ServicedAt:        time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	fd := serviceLogFormValues(entry, locale.DefaultCurrency())
+	assert.Equal(t, uint(0), fd.VendorID)
+	assert.Equal(t, "", fd.Cost)
+}
+
+// ---------------------------------------------------------------------------
+// vendorFormValues round-trip
+// ---------------------------------------------------------------------------
+
+func TestVendorFormValuesRoundTrip(t *testing.T) {
+	vendor := data.Vendor{
+		Name:        "Acme",
+		ContactName: "Bob",
+		Email:       "bob@acme.com",
+		Phone:       "555-1234",
+		Website:     "https://acme.com",
+		Notes:       "vendor notes",
+	}
+	fd := vendorFormValues(vendor)
+	assert.Equal(t, "Acme", fd.Name)
+	assert.Equal(t, "Bob", fd.ContactName)
+	assert.Equal(t, "bob@acme.com", fd.Email)
+	assert.Equal(t, "555-1234", fd.Phone)
+	assert.Equal(t, "https://acme.com", fd.Website)
+	assert.Equal(t, "vendor notes", fd.Notes)
 }

@@ -30,7 +30,7 @@ Only `Title`, `Status`, and `Severity` are required.
 | `Vendor` | link | Assigned vendor | Optional. Press `enter` to jump to the vendor |
 | `Noticed` | date | When discovered | [Date input]({{< ref "/docs/using/date-input" >}}) |
 | `Resolved` | date | When fixed | [Date input]({{< ref "/docs/using/date-input" >}}). Only shown on the edit form |
-| `Cost` | money | Repair cost | Dollar amount |
+| `Cost` | money | Repair cost | Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) |
 | `Docs` | drill | Document count | Press `enter` to view linked documents |
 
 ## Resolving incidents

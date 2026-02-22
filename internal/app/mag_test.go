@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func TestMagFormatMoneyWithUnit(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := cell{Value: tt.value, Kind: cellMoney}
-			assert.Equal(t, tt.want, magFormat(c, true))
+			assert.Equal(t, tt.want, magFormat(c, true, "$"))
 		})
 	}
 }
@@ -55,7 +56,7 @@ func TestMagFormatBareMoney(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := cell{Value: tt.value, Kind: cellMoney}
-			assert.Equal(t, tt.want, magFormat(c, false))
+			assert.Equal(t, tt.want, magFormat(c, false, "$"))
 		})
 	}
 }
@@ -73,14 +74,14 @@ func TestMagFormatDrilldown(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := cell{Value: tt.value, Kind: cellDrilldown}
-			assert.Equal(t, tt.want, magFormat(c, false))
+			assert.Equal(t, tt.want, magFormat(c, false, "$"))
 		})
 	}
 }
 
 func TestMagFormatSkipsReadonly(t *testing.T) {
 	c := cell{Value: "42", Kind: cellReadonly}
-	assert.Equal(t, "42", magFormat(c, false))
+	assert.Equal(t, "42", magFormat(c, false, "$"))
 }
 
 func TestMagFormatSkipsNonNumericKinds(t *testing.T) {
@@ -111,7 +112,7 @@ func TestMagFormatSkipsNonNumericKinds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := cell{Value: tt.value, Kind: tt.kind}
-			assert.Equal(t, tt.value, magFormat(c, false), "value should be unchanged")
+			assert.Equal(t, tt.value, magFormat(c, false, "$"), "value should be unchanged")
 		})
 	}
 }
@@ -131,7 +132,7 @@ func TestMagTransformCells(t *testing.T) {
 			{Value: "0", Kind: cellDrilldown},
 		},
 	}
-	out := magTransformCells(rows)
+	out := magTransformCells(rows, "$")
 
 	// ID cells unchanged.
 	assert.Equal(t, "1", out[0][0].Value)
@@ -160,7 +161,7 @@ func TestMagTransformCellsPreservesNull(t *testing.T) {
 			{Value: "Kitchen", Kind: cellText},
 		},
 	}
-	out := magTransformCells(rows)
+	out := magTransformCells(rows, "$")
 	assert.True(t, out[0][0].Null, "Null flag should be preserved through mag transform")
 	assert.Equal(t, cellMoney, out[0][0].Kind)
 }
@@ -219,7 +220,7 @@ func TestMagTransformText(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, magTransformText(tt.input))
+			assert.Equal(t, tt.want, magTransformText(tt.input, "$"))
 		})
 	}
 }
@@ -382,16 +383,19 @@ func seedMoneyCells(m *Model) {
 }
 
 func TestMagCentsIncludesUnit(t *testing.T) {
-	assert.Equal(t, "$ \U0001F8214", magCents(523423))
-	assert.Equal(t, "$ \U0001F8213", magCents(50000))
-	assert.Equal(t, "$ \U0001F8210", magCents(100))
+	cur := locale.DefaultCurrency()
+	assert.Equal(t, "$ \U0001F8214", magCents(523423, cur))
+	assert.Equal(t, "$ \U0001F8213", magCents(50000, cur))
+	assert.Equal(t, "$ \U0001F8210", magCents(100, cur))
 }
 
 func TestMagOptionalCentsNil(t *testing.T) {
-	assert.Equal(t, "", magOptionalCents(nil))
+	cur := locale.DefaultCurrency()
+	assert.Equal(t, "", magOptionalCents(nil, cur))
 }
 
 func TestMagOptionalCentsPresent(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	cents := int64(100000)
-	assert.Equal(t, "$ \U0001F8213", magOptionalCents(&cents))
+	assert.Equal(t, "$ \U0001F8213", magOptionalCents(&cents, cur))
 }

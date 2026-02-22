@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -21,12 +22,14 @@ func TestDateValue(t *testing.T) {
 }
 
 func TestCentsValue(t *testing.T) {
-	assert.Empty(t, centsValue(nil))
+	cur := locale.DefaultCurrency()
+	assert.Empty(t, centsValue(nil, cur))
 	c := int64(123456)
-	assert.Equal(t, "$1,234.56", centsValue(&c))
+	assert.Equal(t, "$1,234.56", centsValue(&c, cur))
 }
 
 func TestProjectRows(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	budget := int64(100000)
 	start := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 	projects := []data.Project{
@@ -40,7 +43,7 @@ func TestProjectRows(t *testing.T) {
 			StartDate:     &start,
 		},
 	}
-	rows, meta, cells := projectRows(projects, nil, nil)
+	rows, meta, cells := projectRows(projects, nil, nil, cur)
 	require.Len(t, rows, 1)
 	assert.Equal(t, uint(1), meta[0].ID)
 	assert.False(t, meta[0].Deleted)
@@ -51,6 +54,7 @@ func TestProjectRows(t *testing.T) {
 }
 
 func TestProjectRowsDeleted(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	projects := []data.Project{
 		{
 			ID:        1,
@@ -58,11 +62,12 @@ func TestProjectRowsDeleted(t *testing.T) {
 			DeletedAt: gorm.DeletedAt{Time: time.Now(), Valid: true},
 		},
 	}
-	_, meta, _ := projectRows(projects, nil, nil)
+	_, meta, _ := projectRows(projects, nil, nil, cur)
 	assert.True(t, meta[0].Deleted)
 }
 
 func TestQuoteRows(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	labor := int64(20000)
 	quotes := []data.Quote{
 		{
@@ -75,7 +80,7 @@ func TestQuoteRows(t *testing.T) {
 			LaborCents: &labor,
 		},
 	}
-	rows, meta, cells := quoteRows(quotes, nil)
+	rows, meta, cells := quoteRows(quotes, nil, cur)
 	require.Len(t, rows, 1)
 	assert.Equal(t, uint(1), meta[0].ID)
 	assert.Equal(t, "Kitchen", cells[0][1].Value)
@@ -85,6 +90,7 @@ func TestQuoteRows(t *testing.T) {
 }
 
 func TestQuoteRowsFallbackProjectName(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	quotes := []data.Quote{
 		{
 			ID:         1,
@@ -92,17 +98,18 @@ func TestQuoteRowsFallbackProjectName(t *testing.T) {
 			TotalCents: 100,
 		},
 	}
-	_, _, cells := quoteRows(quotes, nil)
+	_, _, cells := quoteRows(quotes, nil, cur)
 	assert.Equal(t, "Project 42", cells[0][1].Value)
 }
 
 func TestQuoteRowsDocCount(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	quotes := []data.Quote{
 		{ID: 1, ProjectID: 1, Project: data.Project{Title: "Kitchen"}, TotalCents: 100},
 		{ID: 2, ProjectID: 1, Project: data.Project{Title: "Kitchen"}, TotalCents: 200},
 	}
 	docCounts := map[uint]int{2: 5}
-	_, _, cells := quoteRows(quotes, docCounts)
+	_, _, cells := quoteRows(quotes, docCounts, cur)
 	require.Len(t, cells, 2)
 	assert.Equal(t, "0", cells[0][int(quoteColDocs)].Value)
 	assert.Equal(t, cellDrilldown, cells[0][int(quoteColDocs)].Kind)
@@ -183,6 +190,7 @@ func TestMaintenanceRowsDueDateUrgencyCell(t *testing.T) {
 }
 
 func TestApplianceRows(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	cost := int64(89900)
 	purchase := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
@@ -197,7 +205,7 @@ func TestApplianceRows(t *testing.T) {
 		},
 	}
 	maintCounts := map[uint]int{1: 2}
-	rows, meta, cells := applianceRows(items, maintCounts, nil, now)
+	rows, meta, cells := applianceRows(items, maintCounts, nil, now, cur)
 	require.Len(t, rows, 1)
 	assert.Equal(t, uint(1), meta[0].ID)
 	assert.Equal(t, "Fridge", cells[0][1].Value)
@@ -209,11 +217,12 @@ func TestApplianceRows(t *testing.T) {
 }
 
 func TestApplianceRowsNoOptionalFields(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	now := time.Now()
 	items := []data.Appliance{
 		{ID: 1, Name: "Lamp"},
 	}
-	_, _, cells := applianceRows(items, nil, nil, now)
+	_, _, cells := applianceRows(items, nil, nil, now, cur)
 	assert.Empty(t, cells[0][6].Value, "expected empty purchase date")
 	assert.True(t, cells[0][6].Null, "nil purchase date should be null")
 	assert.Empty(t, cells[0][7].Value, "expected empty age")
@@ -224,7 +233,8 @@ func TestApplianceRowsNoOptionalFields(t *testing.T) {
 }
 
 func TestBuildRowsEmpty(t *testing.T) {
-	rows, meta, cells := projectRows(nil, nil, nil)
+	cur := locale.DefaultCurrency()
+	rows, meta, cells := projectRows(nil, nil, nil, cur)
 	assert.Empty(t, rows)
 	assert.Empty(t, meta)
 	assert.Empty(t, cells)
@@ -313,15 +323,17 @@ func TestDocumentEntityLabel(t *testing.T) {
 }
 
 func TestCentsCellNil(t *testing.T) {
-	c := centsCell(nil)
+	cur := locale.DefaultCurrency()
+	c := centsCell(nil, cur)
 	assert.True(t, c.Null, "nil cents should produce a null cell")
 	assert.Empty(t, c.Value)
 	assert.Equal(t, cellMoney, c.Kind)
 }
 
 func TestCentsCellPresent(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	v := int64(123456)
-	c := centsCell(&v)
+	c := centsCell(&v, cur)
 	assert.False(t, c.Null)
 	assert.Equal(t, "$1,234.56", c.Value)
 }
@@ -359,10 +371,11 @@ func TestNullTextCellEmptyWithLink(t *testing.T) {
 }
 
 func TestProjectRowsNullOptionalFields(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	projects := []data.Project{
 		{ID: 1, Title: "Minimal", Status: data.ProjectStatusPlanned},
 	}
-	_, _, cells := projectRows(projects, nil, nil)
+	_, _, cells := projectRows(projects, nil, nil, cur)
 	require.Len(t, cells, 1)
 	// Budget (col 4), Actual (col 5), Start (col 6), End (col 7) are all nil.
 	assert.True(t, cells[0][4].Null, "nil budget should be null")

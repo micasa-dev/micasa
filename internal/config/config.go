@@ -24,10 +24,19 @@ type Config struct {
 	LLM        LLM        `toml:"llm"`
 	Documents  Documents  `toml:"documents"`
 	Extraction Extraction `toml:"extraction"`
+	Locale     Locale     `toml:"locale"`
 
 	// Warnings collects non-fatal messages (e.g. deprecations) during load.
 	// Not serialized; the caller decides how to display them.
 	Warnings []string `toml:"-"`
+}
+
+// Locale holds locale-related settings.
+type Locale struct {
+	// Currency is the ISO 4217 code (e.g. "USD", "EUR", "GBP").
+	// Used as the default when the database has no currency set yet.
+	// Override with MICASA_CURRENCY env var.
+	Currency string `toml:"currency"`
 }
 
 // LLM holds settings for the local LLM inference backend.
@@ -42,8 +51,8 @@ type LLM struct {
 	Model string `toml:"model" env:"MICASA_LLM_MODEL"`
 
 	// ExtraContext is custom text appended to all system prompts.
-	// Useful for domain-specific details: house style, currency, location, etc.
-	// Optional; defaults to empty.
+	// Useful for domain-specific details: house style, location, etc.
+	// Currency is handled by [locale] section. Optional; defaults to empty.
 	ExtraContext string `toml:"extra_context"`
 
 	// Timeout is the maximum time to wait for quick LLM server operations
@@ -301,6 +310,10 @@ func LoadFromPath(path string) (Config, error) {
 	}
 	if cfg.Extraction.MaxExtractPages == 0 {
 		cfg.Extraction.MaxExtractPages = DefaultMaxExtractPages
+	}
+
+	if cur := os.Getenv("MICASA_CURRENCY"); cur != "" {
+		cfg.Locale.Currency = cur
 	}
 
 	return cfg, nil
@@ -623,8 +636,8 @@ base_url = "` + DefaultBaseURL + `"
 model = "` + DefaultModel + `"
 
 # Optional: custom context appended to all system prompts.
-# Use this to inject domain-specific details about your house, currency, etc.
-# extra_context = "My house is a 1920s craftsman in Portland, OR. All budgets are in CAD."
+# Use this to inject domain-specific details about your house, region, etc.
+# extra_context = "My house is a 1920s craftsman in Portland, OR."
 
 # Timeout for quick LLM server operations (ping, model listing).
 # Go duration syntax: "5s", "10s", "500ms", etc. Default: "5s".
@@ -665,5 +678,11 @@ model = "` + DefaultModel + `"
 # Disable for faster responses when structured output is all you need.
 # Default: false.
 # thinking = false
+
+[locale]
+# ISO 4217 currency code. Stored in the database on first run; after that the
+# database value is authoritative. Override: MICASA_CURRENCY env var.
+# Auto-detected from system locale if not set. Default: USD.
+# currency = "USD"
 `
 }

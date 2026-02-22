@@ -6,6 +6,8 @@ package data
 import (
 	"errors"
 	"fmt"
+
+	"github.com/cpcloud/micasa/internal/locale"
 )
 
 // hintError wraps an error with a user-facing hint message.
@@ -43,9 +45,9 @@ func Hint(err error) string {
 // user-friendly message. The sentinel is preserved in the error chain.
 func FieldError(label string, err error) error {
 	switch {
-	case errors.Is(err, ErrNegativeMoney):
+	case errors.Is(err, locale.ErrNegativeMoney):
 		return WithHint(err, fmt.Sprintf("%s must be a positive amount", label))
-	case errors.Is(err, ErrInvalidMoney):
+	case errors.Is(err, locale.ErrInvalidMoney):
 		return WithHint(err, fmt.Sprintf("%s should look like 1250.00", label))
 	case errors.Is(err, ErrInvalidDate):
 		return WithHint(err, fmt.Sprintf(

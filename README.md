@@ -26,7 +26,7 @@ Your house is quietly plotting to break while you sleep -- and you're dreaming a
 
 - **When did I last change the furnace filter?** Maintenance schedules, auto-computed due dates, full service history.
 - **What if we finally did the backyard?** Projects from napkin sketch to completion -- or graceful abandonment.
-- **How much would it actually cost to...** Quotes side by side, vendor history, and the math you need to actually decide.
+- **How much would it actually cost to...** Quotes side by side, vendor history, and the math you need to actually decide -- all in your local currency with locale-correct formatting.
 - **Is the dishwasher still under warranty?** Appliance tracking with purchase dates, warranty status, and maintenance history tied to each one.
 - **The basement is leaking again.** Log incidents with severity and location, link them to appliances and vendors, and resolve them when fixed.
 - **Who did we use last time?** A vendor directory with contact info, quote history, and every job they've done for you.
@@ -43,7 +43,7 @@ See the full [keybinding reference](https://micasa.dev/docs/reference/keybinding
 
 Ask questions about your home data in plain English. micasa connects to a local [Ollama](https://ollama.com) server (or any OpenAI-compatible API) and translates your question into SQL, executes it, and summarizes the results.
 
-The model has access to your schema and actual database values, so it can handle fuzzy references like "plumbing stuff" or "planned projects." Toggle `ctrl+s` to see the generated SQL, or `ctrl+o` for [mag mode](https://magworld.pw) that replaces dollar amounts with their order of magnitude.
+The model has access to your schema and actual database values, so it can handle fuzzy references like "plumbing stuff" or "planned projects." Toggle `ctrl+s` to see the generated SQL, or `ctrl+o` for [mag mode](https://magworld.pw) that replaces money amounts with their order of magnitude.
 
 See the [LLM chat guide](https://micasa.dev/docs/guide/llm-chat/) and [configuration reference](https://micasa.dev/docs/reference/configuration/) for setup.
 

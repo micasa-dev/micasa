@@ -9,6 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -153,7 +154,7 @@ func TestUserCreatesMaintenanceWithDurationInterval(t *testing.T) {
 	assert.Equal(t, 12, items[0].IntervalMonths)
 
 	// Verify round-trip: editing shows compact format "1y", not "12".
-	got := maintenanceFormValues(items[0])
+	got := maintenanceFormValues(items[0], locale.DefaultCurrency())
 	assert.Equal(t, "1y", got.IntervalMonths)
 }
 
@@ -174,7 +175,11 @@ func TestUserCreatesMaintenanceWithCombinedInterval(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, 30, items[0].IntervalMonths)
-	assert.Equal(t, "2y 6m", maintenanceFormValues(items[0]).IntervalMonths)
+	assert.Equal(
+		t,
+		"2y 6m",
+		maintenanceFormValues(items[0], locale.DefaultCurrency()).IntervalMonths,
+	)
 }
 
 // Step 1: Create maintenance with interval -- existing behavior unchanged.

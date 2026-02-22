@@ -97,6 +97,7 @@ micasa backup --source /path/to/micasa.db ~/backups/snapshot.db
 | `MICASA_TEXT_TIMEOUT` | `30s` | `extraction.text_timeout` | pdftotext timeout |
 | `MICASA_MAX_EXTRACT_PAGES` | `20` | `extraction.max_extract_pages` | Max pages to OCR per document |
 | `MICASA_LLM_THINKING` | (unset) | `llm.thinking` | Enable model thinking for chat |
+| `MICASA_CURRENCY` | (auto-detect) | `locale.currency` | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
 
 ### `MICASA_DB_PATH`
 
@@ -219,8 +220,8 @@ base_url = "http://localhost:11434/v1"
 model = "qwen3"
 
 # Optional: custom context appended to all system prompts.
-# Use this to inject domain-specific details about your house, currency, etc.
-# extra_context = "My house is a 1920s craftsman in Portland, OR. All budgets are in CAD."
+# Use this to inject domain-specific details about your house, region, etc.
+# extra_context = "My house is a 1920s craftsman in Portland, OR."
 
 # Timeout for quick LLM server operations (ping, model listing).
 # Go duration syntax: "5s", "10s", "500ms", etc. Default: "5s".
@@ -259,6 +260,14 @@ model = "qwen3"
 
 # Enable model thinking for extraction. Default: false (faster, no <think>).
 # thinking = false
+
+[locale]
+# ISO 4217 currency code for all money fields. Stored in the database on first
+# run; after that the database value is authoritative (portable DB files keep
+# their currency even when opened on a machine with different locale settings).
+# Auto-detected from LC_MONETARY/LANG if not set. Default: USD.
+# Override with MICASA_CURRENCY env var.
+# currency = "USD"
 ```
 
 ### `[llm]` section
@@ -267,7 +276,7 @@ model = "qwen3"
 |-----|------|---------|-------------|
 | `base_url` | string | `http://localhost:11434/v1` | Root URL of an OpenAI-compatible API. micasa appends `/chat/completions`, `/models`, etc. |
 | `model` | string | `qwen3` | Model identifier sent in chat requests. Must be available on the server. |
-| `extra_context` | string | (empty) | Free-form text appended to all LLM system prompts. Useful for telling the model about your house, preferred currency, or regional conventions. |
+| `extra_context` | string | (empty) | Free-form text appended to all LLM system prompts. Useful for telling the model about your house or regional conventions. Currency is handled automatically via `[locale]`. |
 | `timeout` | string | `"5s"` | Max wait time for quick LLM operations (ping, model listing). Go duration syntax, e.g. `"10s"`, `"500ms"`. Increase for slow servers. |
 | `thinking` | bool | (unset) | Enable model thinking mode (e.g. qwen3 `<think>` blocks). Unset = don't send the option (server default). |
 
@@ -292,6 +301,26 @@ adds structured data extraction (document type, costs, dates, vendor matching).
 | `max_extract_pages` | int | `20` | Maximum pages to OCR per scanned document. Front-loaded info is typically in the first pages. |
 | `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. Text extraction and OCR still run. |
 | `thinking` | bool | `false` | Enable model thinking mode for extraction. Disable for faster structured output. |
+
+### `[locale]` section
+
+Controls currency formatting across all money fields in the application.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `currency` | string | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`, `JPY`). Auto-detected from `LC_MONETARY`/`LANG` if not set, falls back to `USD`. Persisted to the database on first run -- after that the DB value is authoritative. |
+
+Currency resolution order (highest to lowest):
+
+1. Database value (authoritative once set -- makes the DB file portable)
+2. `MICASA_CURRENCY` environment variable
+3. `[locale] currency` config value
+4. Auto-detect from `LC_MONETARY` or `LANG` locale
+5. `USD` fallback
+
+Formatting is locale-correct: EUR uses comma decimals and period grouping
+(`1.234,56`), GBP uses the pound sign (`£750.00`), JPY uses yen with no
+decimal places, etc.
 
 ### Supported LLM backends
 
@@ -323,13 +352,15 @@ LLM, giving it persistent knowledge about your situation:
 [llm]
 extra_context = """
 My house is a 1920s craftsman bungalow in Portland, OR.
-All costs are in USD. Property tax is assessed annually in November.
+Property tax is assessed annually in November.
 The HVAC system is a heat pump (Mitsubishi hyper-heat) -- no gas furnace.
 """
 ```
 
 This helps the model give more relevant answers without you repeating context
-in every question.
+in every question. Currency is configured separately via `[locale] currency`
+and is automatically available to the LLM -- no need to mention it in
+`extra_context`.
 
 ## Persistent preferences
 
@@ -340,3 +371,4 @@ restarts. These are controlled through the UI rather than config files:
 |------------|---------|---------------|
 | Dashboard on startup | Shown | Press `D` to toggle; your choice is remembered |
 | LLM model | From config | Changed automatically when you switch models in the chat interface |
+| Currency | USD | Set via `[locale] currency` in config, `MICASA_CURRENCY` env var, or auto-detected from system locale. Persisted to the database on first use |

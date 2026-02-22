@@ -27,6 +27,7 @@ func TestNotePreviewOpensOnEnter(t *testing.T) {
 			{"1", "2026-01-15", "Self", "$50.00", "Changed the filter and checked pressure"},
 		},
 	)
+	tab.Table.SetCursor(0)
 	tab.Rows = []rowMeta{{ID: 1}}
 	tab.CellRows = [][]cell{
 		{
@@ -266,7 +267,7 @@ func TestNaturalWidthsMultilineNotesFirstLine(t *testing.T) {
 	rows := [][]cell{
 		{{Value: "short\nvery long second line here", Kind: cellNotes}},
 	}
-	widths := naturalWidths(specs, rows)
+	widths := naturalWidths(specs, rows, "$")
 	// Width: first line ("short" = 5) + "…" (1) + gap (1) + "+1" (2) = 9.
 	// Not the longer second line (26).
 	require.Len(t, widths, 1)
@@ -401,6 +402,7 @@ func TestNotePreviewStillWorksAfterNotesEditChanges(t *testing.T) {
 	require.NotNil(t, tab)
 
 	tab.Table.SetRows([]table.Row{{"1", "2026-01-15", "Self", "", "read-only preview"}})
+	tab.Table.SetCursor(0)
 	tab.Rows = []rowMeta{{ID: 1}}
 	tab.CellRows = [][]cell{
 		{

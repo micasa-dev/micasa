@@ -136,6 +136,10 @@ func (cmd *runCmd) Run() error {
 		return fmt.Errorf("evict stale cache: %w", err)
 	}
 
+	if err := store.ResolveCurrency(cfg.Locale.Currency); err != nil {
+		return fmt.Errorf("resolve currency: %w", err)
+	}
+
 	opts := app.Options{
 		DBPath:     dbPath,
 		ConfigPath: config.Path(),

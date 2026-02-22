@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -235,7 +236,7 @@ func TestRenderOperationPreview_TabbedInterface(t *testing.T) {
 
 	// Interactive: switch to second tab to see documents.
 	m.extraction.exploring = true
-	m.extraction.enterExploreMode()
+	m.extraction.enterExploreMode(m.cur)
 	m.extraction.previewTab = 1
 	out = m.renderOperationPreviewSection(60, true)
 	assert.Contains(t, out, "Title")
@@ -307,7 +308,7 @@ func TestGroupOperationsByTable(t *testing.T) {
 		{Action: "update", Table: "documents", Data: map[string]any{"title": "B"}},
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "C", "email": "c@x.com"}},
 	}
-	groups := groupOperationsByTable(ops)
+	groups := groupOperationsByTable(ops, locale.DefaultCurrency())
 
 	require.Len(t, groups, 2)
 	// First-seen order: vendors, documents.

@@ -839,11 +839,11 @@ func (m *Model) tableView(tab *Tab) string {
 	normalDiv := m.styles.TableSeparator().Render("─┼─")
 	sepW := lipgloss.Width(normalSep)
 
-	vp := computeTableViewport(tab, width, normalSep)
+	vp := computeTableViewport(tab, width, normalSep, m.cur.Symbol())
 	if len(vp.Specs) == 0 {
 		return ""
 	}
-	headerSpecs := annotateMoneyHeaders(vp.Specs)
+	headerSpecs := annotateMoneyHeaders(vp.Specs, m.cur)
 	header := renderHeaderRow(
 		headerSpecs,
 		vp.Widths,
@@ -878,9 +878,9 @@ func (m *Model) tableView(tab *Tab) string {
 	// Both strip the $ prefix since the header carries the unit.
 	var displayCells [][]cell
 	if m.magMode {
-		displayCells = magTransformCells(vp.Cells)
+		displayCells = magTransformCells(vp.Cells, m.cur.Symbol())
 	} else {
-		displayCells = compactMoneyCells(vp.Cells)
+		displayCells = compactMoneyCells(vp.Cells, m.cur)
 	}
 	// Translate pin column indices from tab-space to viewport-space.
 	pinCtx := m.viewportPinContext(tab, vp)
@@ -960,10 +960,11 @@ func (m *Model) viewportPinContext(tab *Tab, vp tableViewport) pinRenderContext 
 		}
 	}
 	return pinRenderContext{
-		Pins:     translated,
-		RawCells: vp.Cells,
-		MagMode:  m.magMode,
-		Inverted: tab.FilterInverted,
+		Pins:           translated,
+		RawCells:       vp.Cells,
+		MagMode:        m.magMode,
+		Inverted:       tab.FilterInverted,
+		CurrencySymbol: m.cur.Symbol(),
 	}
 }
 

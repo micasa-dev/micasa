@@ -6,7 +6,7 @@ package app
 import (
 	"strings"
 
-	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 )
 
 // statusLabels maps full status names to short display labels.
@@ -36,32 +36,32 @@ func statusLabel(status string) string {
 	return status
 }
 
-// annotateMoneyHeaders returns a copy of specs with a styled green "$"
+// annotateMoneyHeaders returns a copy of specs with the currency symbol
 // appended to money column titles. The unit lives in the header so cell
 // values can be bare numbers.
-func annotateMoneyHeaders(specs []columnSpec) []columnSpec {
+func annotateMoneyHeaders(specs []columnSpec, cur locale.Currency) []columnSpec {
 	out := make([]columnSpec, len(specs))
 	copy(out, specs)
 	for i, spec := range out {
 		if spec.Kind == cellMoney {
-			out[i].Title = spec.Title + " " + appStyles.Money().Render("$")
+			out[i].Title = spec.Title + " " + appStyles.Money().Render(cur.Symbol())
 		}
 	}
 	return out
 }
 
 // compactMoneyCells returns a copy of the cell grid with money values
-// replaced by their compact representation (e.g. "1.2k") without the $
-// prefix (the $ lives in the column header). The original cells are not
-// modified so sorting continues to work on full-precision values.
-func compactMoneyCells(rows [][]cell) [][]cell {
+// replaced by their compact representation (e.g. "1.2k") without the
+// currency symbol (which lives in the column header). The original cells
+// are not modified so sorting continues to work on full-precision values.
+func compactMoneyCells(rows [][]cell, cur locale.Currency) [][]cell {
 	out := make([][]cell, len(rows))
 	for i, row := range rows {
 		transformed := make([]cell, len(row))
 		for j, c := range row {
 			if c.Kind == cellMoney {
 				transformed[j] = cell{
-					Value:  compactMoneyValue(c.Value),
+					Value:  compactMoneyValue(c.Value, cur),
 					Kind:   c.Kind,
 					Null:   c.Null,
 					LinkID: c.LinkID,
@@ -75,18 +75,22 @@ func compactMoneyCells(rows [][]cell) [][]cell {
 	return out
 }
 
-// compactMoneyValue converts a full-precision money string like "$1,234.56"
-// to compact form without the $ prefix (e.g. "5.2k", "100.00"). The $
-// prefix is handled by the column header annotation instead.
-func compactMoneyValue(v string) string {
+// compactMoneyValue converts a full-precision money string to compact form
+// without the currency symbol (e.g. "5.2k", "100.00"). The symbol is
+// handled by the column header annotation instead.
+func compactMoneyValue(v string, cur locale.Currency) string {
 	v = strings.TrimSpace(v)
 	if v == "" || v == "—" {
 		return v
 	}
-	cents, err := data.ParseRequiredCents(v)
+	cents, err := cur.ParseRequiredCents(v)
 	if err != nil {
 		return v
 	}
-	compact := data.FormatCompactCents(cents)
-	return strings.TrimPrefix(compact, "$")
+	compact := cur.FormatCompactCents(cents)
+	compact = strings.TrimPrefix(compact, cur.Symbol())
+	compact = strings.TrimSuffix(compact, cur.Symbol())
+	compact = strings.TrimSpace(compact)
+	compact = strings.Trim(compact, "\u00a0")
+	return compact
 }

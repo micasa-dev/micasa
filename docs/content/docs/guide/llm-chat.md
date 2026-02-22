@@ -125,8 +125,9 @@ A progress bar shows download progress. Press `ctrl+c` to cancel a pull.
 ## Mag mode
 
 Press `ctrl+o` to toggle [mag mode](https://magworld.pw) -- an easter egg that
-replaces numeric values with their order of magnitude (`$1,250` becomes `$ 🠡3`).
-Applies everywhere including LLM responses. Live toggle, instant update.
+replaces money values with their order of magnitude (`$1,250` becomes `$ 🠡3`).
+Works with any configured currency. Applies everywhere including LLM responses.
+Live toggle, instant update.
 
 ## Output quality
 
@@ -219,4 +220,5 @@ a sample configuration.
 
 See [Configuration]({{< ref "/docs/reference/configuration" >}}) for the full
 reference, including how to set `extra_context` to give the model persistent
-knowledge about your house.
+knowledge about your house. Currency is configured separately via
+`[locale] currency` and is automatically available to the LLM.

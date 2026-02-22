@@ -69,7 +69,7 @@ func clearPinsForColumn(tab *Tab, col int) {
 // return a sentinel key so they can be pinned independently of empty strings.
 // Entity cells return the kind name ("project", "vendor") so pinning groups
 // by entity type rather than specific entity.
-func cellDisplayValue(c cell, magMode bool) string {
+func cellDisplayValue(c cell, magMode bool, currencySymbol string) string {
 	if c.Null {
 		return nullPinKey
 	}
@@ -79,7 +79,7 @@ func cellDisplayValue(c cell, magMode bool) string {
 		}
 	}
 	if magMode {
-		return strings.ToLower(strings.TrimSpace(magFormat(c, false)))
+		return strings.ToLower(strings.TrimSpace(magFormat(c, false, currencySymbol)))
 	}
 	return strings.ToLower(strings.TrimSpace(c.Value))
 }
@@ -87,12 +87,12 @@ func cellDisplayValue(c cell, magMode bool) string {
 // matchesAllPins checks whether a cell row satisfies all pin constraints.
 // AND across columns, OR (IN) within each column. When magMode is true,
 // numeric cells are compared by their magnitude value.
-func matchesAllPins(cellRow []cell, pins []filterPin, magMode bool) bool {
+func matchesAllPins(cellRow []cell, pins []filterPin, magMode bool, currencySymbol string) bool {
 	for _, pin := range pins {
 		if pin.Col >= len(cellRow) {
 			return false
 		}
-		cellVal := cellDisplayValue(cellRow[pin.Col], magMode)
+		cellVal := cellDisplayValue(cellRow[pin.Col], magMode, currencySymbol)
 		if !pin.Values[cellVal] {
 			return false
 		}
@@ -105,7 +105,7 @@ func matchesAllPins(cellRow []cell, pins []filterPin, magMode bool) bool {
 // FilterActive is false (preview), all rows remain but non-matching rows are
 // marked as dimmed in rowMeta. When no pins exist, displayed data mirrors Full*.
 // magMode controls whether numeric cells are compared by magnitude.
-func applyRowFilter(tab *Tab, magMode bool) {
+func applyRowFilter(tab *Tab, magMode bool, currencySymbol string) {
 	if len(tab.Pins) == 0 {
 		tab.Rows = copyMeta(tab.FullMeta)
 		tab.CellRows = tab.FullCellRows
@@ -120,7 +120,12 @@ func applyRowFilter(tab *Tab, magMode bool) {
 		var filteredCells [][]cell
 		for i := range tab.FullCellRows {
 			// XOR: when inverted, keep non-matching rows instead.
-			if matchesAllPins(tab.FullCellRows[i], tab.Pins, magMode) != tab.FilterInverted {
+			if matchesAllPins(
+				tab.FullCellRows[i],
+				tab.Pins,
+				magMode,
+				currencySymbol,
+			) != tab.FilterInverted {
 				filteredRows = append(filteredRows, tab.FullRows[i])
 				filteredMeta = append(filteredMeta, tab.FullMeta[i])
 				filteredCells = append(filteredCells, tab.FullCellRows[i])
@@ -136,7 +141,12 @@ func applyRowFilter(tab *Tab, magMode bool) {
 	meta := copyMeta(tab.FullMeta)
 	for i := range tab.FullCellRows {
 		// XOR: when inverted, matching rows are dimmed instead.
-		if matchesAllPins(tab.FullCellRows[i], tab.Pins, magMode) == tab.FilterInverted {
+		if matchesAllPins(
+			tab.FullCellRows[i],
+			tab.Pins,
+			magMode,
+			currencySymbol,
+		) == tab.FilterInverted {
 			meta[i].Dimmed = true
 		}
 	}
@@ -168,7 +178,7 @@ func isPinned(tab *Tab, col int, value string) bool {
 // When magMode is true (just switched TO mag), raw value pins are collapsed to
 // their magnitude equivalents. When false (just switched FROM mag), mag pins
 // are expanded to the raw cell values that match them in the full data set.
-func translatePins(tab *Tab, nowMagMode bool) {
+func translatePins(tab *Tab, nowMagMode bool, currencySymbol string) {
 	for i := range tab.Pins {
 		pin := &tab.Pins[i]
 		newValues := make(map[string]bool)
@@ -179,11 +189,11 @@ func translatePins(tab *Tab, nowMagMode bool) {
 					continue
 				}
 				c := row[pin.Col]
-				rawKey := cellDisplayValue(c, false)
+				rawKey := cellDisplayValue(c, false, currencySymbol)
 				if !pin.Values[rawKey] {
 					continue
 				}
-				magKey := cellDisplayValue(c, true)
+				magKey := cellDisplayValue(c, true, currencySymbol)
 				newValues[magKey] = true
 			}
 		} else {
@@ -193,11 +203,11 @@ func translatePins(tab *Tab, nowMagMode bool) {
 					continue
 				}
 				c := row[pin.Col]
-				magKey := cellDisplayValue(c, true)
+				magKey := cellDisplayValue(c, true, currencySymbol)
 				if !pin.Values[magKey] {
 					continue
 				}
-				rawKey := cellDisplayValue(c, false)
+				rawKey := cellDisplayValue(c, false, currencySymbol)
 				newValues[rawKey] = true
 			}
 		}

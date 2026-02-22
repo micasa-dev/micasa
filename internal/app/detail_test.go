@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -173,6 +174,7 @@ func TestServiceLogColumnSpecs(t *testing.T) {
 }
 
 func TestServiceLogRowsSelfPerformed(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{
 			ID:         1,
@@ -180,13 +182,14 @@ func TestServiceLogRowsSelfPerformed(t *testing.T) {
 			Notes:      "test note",
 		},
 	}
-	_, meta, cellRows := serviceLogRows(entries, nil)
+	_, meta, cellRows := serviceLogRows(entries, nil, cur)
 	require.Len(t, cellRows, 1)
 	assert.Equal(t, "Self", cellRows[0][2].Value)
 	assert.Equal(t, uint(1), meta[0].ID)
 }
 
 func TestServiceLogRowsVendorPerformed(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	vendorID := uint(5)
 	entries := []data.ServiceLogEntry{
 		{
@@ -196,29 +199,31 @@ func TestServiceLogRowsVendorPerformed(t *testing.T) {
 			Vendor:     data.Vendor{Name: "Acme Plumbing"},
 		},
 	}
-	_, _, cellRows := serviceLogRows(entries, nil)
+	_, _, cellRows := serviceLogRows(entries, nil, cur)
 	assert.Equal(t, "Acme Plumbing", cellRows[0][2].Value)
 	assert.Equal(t, uint(5), cellRows[0][2].LinkID)
 }
 
 func TestServiceLogRowsSelfHasNoLink(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{
 			ID:         1,
 			ServicedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
-	_, _, cellRows := serviceLogRows(entries, nil)
+	_, _, cellRows := serviceLogRows(entries, nil, cur)
 	assert.Zero(t, cellRows[0][2].LinkID)
 }
 
 func TestServiceLogRowsDocCount(t *testing.T) {
+	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{ID: 1, ServicedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
 		{ID: 2, ServicedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	docCounts := map[uint]int{1: 3}
-	_, _, cellRows := serviceLogRows(entries, docCounts)
+	_, _, cellRows := serviceLogRows(entries, docCounts, cur)
 	require.Len(t, cellRows, 2)
 	assert.Equal(t, "3", cellRows[0][int(serviceLogColDocs)].Value)
 	assert.Equal(t, cellDrilldown, cellRows[0][int(serviceLogColDocs)].Kind)
@@ -267,6 +272,7 @@ func newTestModelWithDetailRows() *Model {
 		{"1", "2026-01-15", "Self", "", "first"},
 		{"2", "2026-02-01", "Acme", "$150.00", "second"},
 	})
+	tab.Table.SetCursor(0)
 	tab.Rows = []rowMeta{{ID: 1}, {ID: 2}}
 	tab.CellRows = [][]cell{
 		{

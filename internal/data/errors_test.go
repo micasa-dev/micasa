@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,8 +51,18 @@ func TestFieldErrorMappings(t *testing.T) {
 		wantMsg string
 		wantIs  error
 	}{
-		{"Budget", ErrInvalidMoney, "Budget should look like 1250.00", ErrInvalidMoney},
-		{"Budget", ErrNegativeMoney, "Budget must be a positive amount", ErrNegativeMoney},
+		{
+			"Budget",
+			locale.ErrInvalidMoney,
+			"Budget should look like 1250.00",
+			locale.ErrInvalidMoney,
+		},
+		{
+			"Budget",
+			locale.ErrNegativeMoney,
+			"Budget must be a positive amount",
+			locale.ErrNegativeMoney,
+		},
 		{
 			"Start Date", ErrInvalidDate,
 			"Start Date should be YYYY-MM-DD or a relative date like 'yesterday'", ErrInvalidDate,

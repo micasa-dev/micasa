@@ -23,6 +23,7 @@ import (
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
+	"github.com/cpcloud/micasa/internal/locale"
 	"gorm.io/gorm"
 )
 
@@ -219,6 +220,7 @@ type Model struct {
 	undoStack              []undoEntry
 	redoStack              []undoEntry
 	magMode                bool // easter egg: display numbers as order-of-magnitude
+	cur                    locale.Currency
 	status                 statusMsg
 	projectTypes           []data.ProjectType
 	maintenanceCategories  []data.MaintenanceCategory
@@ -271,6 +273,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		active:             0,
 		showHouse:          false,
 		mode:               modeNormal,
+		cur:                store.Currency(),
 	}
 	// Best-effort: fall back to locale detection if setting unreadable.
 	model.unitSystem, _ = store.GetUnitSystem()
@@ -641,14 +644,14 @@ func (m *Model) handleCommonKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			if !hasPins(tab) {
 				continue
 			}
-			translatePins(tab, m.magMode)
-			applyRowFilter(tab, m.magMode)
+			translatePins(tab, m.magMode, m.cur.Symbol())
+			applyRowFilter(tab, m.magMode, m.cur.Symbol())
 			applySorts(tab)
 		}
 		for _, dc := range m.detailStack {
 			if hasPins(&dc.Tab) {
-				translatePins(&dc.Tab, m.magMode)
-				applyRowFilter(&dc.Tab, m.magMode)
+				translatePins(&dc.Tab, m.magMode, m.cur.Symbol())
+				applyRowFilter(&dc.Tab, m.magMode, m.cur.Symbol())
 				applySorts(&dc.Tab)
 			}
 		}
@@ -2518,7 +2521,7 @@ func (m *Model) togglePinAtCursor() {
 	}
 	// Pin what the user sees: null cells use the sentinel key; in mag mode,
 	// pin the magnitude representation; otherwise pin the raw value.
-	pinValue := cellDisplayValue(c, m.magMode)
+	pinValue := cellDisplayValue(c, m.magMode, m.cur.Symbol())
 	pinned := togglePin(tab, col, pinValue)
 	m.refreshTable(tab)
 	if pinned {
@@ -2582,7 +2585,7 @@ func (m *Model) hideCurrentColumn() {
 	// Clear any pins on the hidden column.
 	clearPinsForColumn(tab, col)
 	if hasPins(tab) {
-		applyRowFilter(tab, m.magMode)
+		applyRowFilter(tab, m.magMode, m.cur.Symbol())
 	}
 	// Try forward first; if at the right edge fall back to backward.
 	next := nextVisibleCol(tab.Specs, col, true)
@@ -2626,8 +2629,11 @@ func (m *Model) updateAllViewports() {
 // refreshTable reapplies row filters, sorts, and viewport layout for a tab.
 // Use this after any change to pins, filter state, or row data.
 func (m *Model) refreshTable(tab *Tab) {
-	applyRowFilter(tab, m.magMode)
+	applyRowFilter(tab, m.magMode, m.cur.Symbol())
 	applySorts(tab)
+	if tab.Table.Cursor() < 0 && len(tab.Rows) > 0 {
+		tab.Table.SetCursor(0)
+	}
 	m.updateTabViewport(tab)
 }
 

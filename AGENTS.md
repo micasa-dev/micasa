@@ -184,6 +184,9 @@ details; do not duplicate that detail here.
 - **Read deps locally**: To read a dependency's source, look in the local
   Go module cache (`go env GOMODCACHE`) instead of making web requests to
   GitHub, curl, or other alternatives.
+- **Never `cd` out of the worktree**: Your cwd is the worktree root. Run
+  all commands there. Never `cd` into the parent checkout or any other
+  directory.
 
 ### Nix
 

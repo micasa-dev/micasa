@@ -56,7 +56,7 @@ To view the service log, navigate to the `Log` column in Nav mode and press
 | `ID` | auto | Auto-assigned |
 | `Date` | date | When the work was done (required) |
 | `Performed By` | link | "Self" or a vendor name. Press `enter` to jump to vendor |
-| `Cost` | money | Dollar amount |
+| `Cost` | money | Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) |
 | `Notes` | notes | Free text. Press `enter` to preview |
 
 The detail view supports all the same operations as a regular tab: add, edit,
@@ -84,7 +84,7 @@ The edit form includes fields that don't appear as table columns:
 |------:|------|-------------|
 | `Manual URL` | text | Link to the product or service manual |
 | `Manual notes` | text | Free-text manual excerpts or reminders |
-| `Cost` | money | Estimated or typical cost per service |
+| `Cost` | money | Estimated or typical cost per service. Configured currency |
 | `Notes` | text | General notes about this maintenance item |
 
 These fields are accessible when editing a maintenance item (press `E` from any

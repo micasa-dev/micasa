@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -124,24 +125,28 @@ func TestEndDateAfterStart(t *testing.T) {
 }
 
 func TestOptionalMoneyAcceptsValid(t *testing.T) {
-	validate := optionalMoney("budget")
+	cur := locale.DefaultCurrency()
+	validate := optionalMoney("budget", cur)
 	for _, input := range []string{"", "100", "1250.00", "$5,000.50"} {
 		assert.NoErrorf(t, validate(input), "optionalMoney(%q)", input)
 	}
 }
 
 func TestOptionalMoneyRejectsInvalid(t *testing.T) {
-	validate := optionalMoney("budget")
+	cur := locale.DefaultCurrency()
+	validate := optionalMoney("budget", cur)
 	assert.Error(t, validate("abc"))
 }
 
 func TestRequiredMoneyAcceptsValid(t *testing.T) {
-	validate := requiredMoney("total")
+	cur := locale.DefaultCurrency()
+	validate := requiredMoney("total", cur)
 	assert.NoError(t, validate("1250.00"))
 }
 
 func TestRequiredMoneyRejectsEmpty(t *testing.T) {
-	validate := requiredMoney("total")
+	cur := locale.DefaultCurrency()
+	validate := requiredMoney("total", cur)
 	assert.Error(t, validate(""))
 }
 
@@ -161,7 +166,7 @@ func TestProjectFormValues(t *testing.T) {
 		StartDate:     &start,
 		Description:   "Full gut renovation",
 	}
-	got := projectFormValues(project)
+	got := projectFormValues(project, locale.DefaultCurrency())
 	assert.Equal(t, "Kitchen Remodel", got.Title)
 	assert.Equal(t, "$5,000.00", got.Budget)
 	assert.Equal(t, "2025-03-01", got.StartDate)
@@ -194,7 +199,7 @@ func TestQuoteFormValues(t *testing.T) {
 		LaborCents: &labor,
 		Vendor:     data.Vendor{Name: "ContractorCo"},
 	}
-	got := quoteFormValues(quote)
+	got := quoteFormValues(quote, locale.DefaultCurrency())
 	assert.Equal(t, "$500.00", got.Total)
 	assert.Equal(t, "$100.00", got.Labor)
 	assert.Empty(t, got.Materials)
@@ -209,7 +214,7 @@ func TestMaintenanceFormValues(t *testing.T) {
 		ApplianceID:    &appID,
 		IntervalMonths: 3,
 	}
-	got := maintenanceFormValues(item)
+	got := maintenanceFormValues(item, locale.DefaultCurrency())
 	assert.Equal(t, "HVAC Filter", got.Name)
 	assert.Equal(t, uint(3), got.ApplianceID)
 	assert.Equal(t, "3m", got.IntervalMonths)
@@ -220,7 +225,7 @@ func TestMaintenanceFormValuesNoAppliance(t *testing.T) {
 		Name:       "Smoke Detectors",
 		CategoryID: 1,
 	}
-	got := maintenanceFormValues(item)
+	got := maintenanceFormValues(item, locale.DefaultCurrency())
 	assert.Zero(t, got.ApplianceID)
 }
 
@@ -231,7 +236,7 @@ func TestMaintenanceFormValuesDueDate(t *testing.T) {
 		CategoryID: 1,
 		DueDate:    &due,
 	}
-	got := maintenanceFormValues(item)
+	got := maintenanceFormValues(item, locale.DefaultCurrency())
 	assert.Equal(t, "2025-11-01", got.DueDate)
 	assert.Empty(t, got.IntervalMonths)
 }
@@ -246,7 +251,7 @@ func TestApplianceFormValues(t *testing.T) {
 		PurchaseDate: &purchase,
 		CostCents:    &cost,
 	}
-	got := applianceFormValues(appliance)
+	got := applianceFormValues(appliance, locale.DefaultCurrency())
 	assert.Equal(t, "Fridge", got.Name)
 	assert.Equal(t, "Samsung", got.Brand)
 	assert.Equal(t, "2023-06-15", got.PurchaseDate)
@@ -277,7 +282,7 @@ func TestServiceLogFormValues(t *testing.T) {
 		CostCents:  &cost,
 		Notes:      "replaced filter",
 	}
-	got := serviceLogFormValues(entry)
+	got := serviceLogFormValues(entry, locale.DefaultCurrency())
 	assert.Equal(t, "2025-01-15", got.ServicedAt)
 	assert.Equal(t, "$150.00", got.Cost)
 	assert.Equal(t, uint(1), got.VendorID)
@@ -287,7 +292,7 @@ func TestServiceLogFormValuesNoVendor(t *testing.T) {
 	entry := data.ServiceLogEntry{
 		ServicedAt: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
 	}
-	got := serviceLogFormValues(entry)
+	got := serviceLogFormValues(entry, locale.DefaultCurrency())
 	assert.Zero(t, got.VendorID)
 	assert.Empty(t, got.Cost)
 }
