@@ -38,6 +38,25 @@ func (m *Model) buildView() string {
 		{m.chat != nil && m.chat.Visible, m.buildChatOverlay},
 		{m.helpViewport != nil, m.buildHelpOverlay},
 	}
+
+	hasOverlay := false
+	for _, o := range overlays {
+		if o.active {
+			hasOverlay = true
+			break
+		}
+	}
+
+	// When the base view overflows the terminal (e.g. a tall form), clamp
+	// it to the terminal height so overlay.Composite centers correctly.
+	if hasOverlay {
+		if h := m.effectiveHeight(); h > 0 {
+			if lines := strings.Split(base, "\n"); len(lines) > h {
+				base = strings.Join(lines[len(lines)-h:], "\n")
+			}
+		}
+	}
+
 	for _, o := range overlays {
 		if o.active {
 			fg := cancelFaint(o.render())

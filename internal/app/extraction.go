@@ -596,11 +596,15 @@ func (m *Model) buildExtractionOverlay() string {
 		if w := len(info.Metric); w > maxMetricW {
 			maxMetricW = w
 		}
-		if info.Elapsed > 0 {
-			e := fmt.Sprintf("%.2fs", info.Elapsed.Seconds())
-			if w := len(e); w > maxElapsedW {
-				maxElapsedW = w
-			}
+		var e string
+		switch {
+		case info.Elapsed > 0:
+			e = fmt.Sprintf("%.2fs", info.Elapsed.Seconds())
+		case info.Status == stepRunning && !info.Started.IsZero():
+			e = fmt.Sprintf("%.1fs", time.Since(info.Started).Seconds())
+		}
+		if w := len(e); w > maxElapsedW {
+			maxElapsedW = w
 		}
 	}
 	colWidths := extractionColWidths{
@@ -618,13 +622,28 @@ func (m *Model) buildExtractionOverlay() string {
 		info := ex.Steps[si]
 		focused := i == ex.cursor
 		part := m.renderExtractionStep(si, info, innerW, focused, colWidths)
+		// Blank line between steps when the previous step had expanded content.
+		if i > 0 && strings.Contains(stepParts[i-1], "\n") {
+			lineCount++ // account for the blank separator
+		}
 		if i == ex.cursor {
 			cursorLine = lineCount
 		}
 		lineCount += strings.Count(part, "\n") + 1
 		stepParts = append(stepParts, part)
 	}
-	stepContent := strings.Join(stepParts, "\n")
+	// Join: insert a blank line after multi-line (expanded) parts.
+	var stepBuf strings.Builder
+	for i, part := range stepParts {
+		if i > 0 {
+			stepBuf.WriteByte('\n')
+			if strings.Contains(stepParts[i-1], "\n") {
+				stepBuf.WriteByte('\n')
+			}
+		}
+		stepBuf.WriteString(part)
+	}
+	stepContent := stepBuf.String()
 
 	// Size the viewport.
 	maxH := m.effectiveHeight()*2/3 - 6 // border + padding + title + rule + hints
@@ -681,6 +700,8 @@ func (m *Model) buildExtractionOverlay() string {
 			hints = append(hints, m.helpItem("a", "accept"))
 		}
 		hints = append(hints, m.helpItem("esc", "discard"))
+	} else {
+		hints = append(hints, m.helpItem("esc", "hide"))
 	}
 	hintStr := joinWithSeparator(m.helpSeparator(), hints...)
 
@@ -736,10 +757,22 @@ func (m *Model) renderExtractionStep(
 		nameStyle = lipgloss.NewStyle().Foreground(danger)
 	}
 
-	// Cursor indicator.
+	// Determine if expanded: auto-expand running/failed, and keep LLM expanded
+	// after streaming completes so the result doesn't flash and collapse.
+	expanded := info.Status == stepRunning || info.Status == stepFailed ||
+		(si == stepLLM && info.Status == stepDone)
+	if toggled, ok := ex.expanded[si]; ok {
+		expanded = toggled
+	}
+
+	// Cursor indicator: right triangle when collapsed, down when expanded.
 	cursor := "  "
 	if focused && ex.Done {
-		cursor = lipgloss.NewStyle().Foreground(accent).Render("\u25b8 ")
+		if expanded {
+			cursor = lipgloss.NewStyle().Foreground(accent).Render("\u25be ")
+		} else {
+			cursor = lipgloss.NewStyle().Foreground(accent).Render("\u25b8 ")
+		}
 	}
 
 	// Columnar header: icon | name | detail | metric | elapsed [| rerun hint].
@@ -752,8 +785,11 @@ func (m *Model) renderExtractionStep(
 	}
 	if cols.Elapsed > 0 {
 		var e string
-		if info.Elapsed > 0 {
+		switch {
+		case info.Elapsed > 0:
 			e = fmt.Sprintf("%.2fs", info.Elapsed.Seconds())
+		case info.Status == stepRunning && !info.Started.IsZero():
+			e = fmt.Sprintf("%.1fs", time.Since(info.Started).Seconds())
 		}
 		header += "  " + hint.Render(fmt.Sprintf("%*s", cols.Elapsed, e))
 	}
@@ -761,32 +797,23 @@ func (m *Model) renderExtractionStep(
 		header += "  " + lipgloss.NewStyle().Foreground(textDim).Render("r to rerun")
 	}
 
-	// Determine if expanded: auto-expand running/failed, and keep LLM expanded
-	// after streaming completes so the result doesn't flash and collapse.
-	expanded := info.Status == stepRunning || info.Status == stepFailed ||
-		(si == stepLLM && info.Status == stepDone)
-	if toggled, ok := ex.expanded[si]; ok {
-		expanded = toggled
-	}
-
 	if !expanded || len(info.Logs) == 0 {
 		return header
 	}
 
-	// Expanded: header + rendered log content.
-	logW := innerW - 2
+	// Expanded: header + rendered log content with left border pipe.
+	pipeIndent := "     " // align pipe under step name
+	pipe := lipgloss.NewStyle().Foreground(border).Render("\u2502") + " "
+	logW := innerW - len(pipeIndent) - 2 // pipe + space
 	raw := strings.Join(info.Logs, "\n")
 
-	// Render content through glamour for syntax highlighting, including
-	// during LLM streaming so tokens appear formatted as they arrive.
+	// Render log content: JSON gets syntax highlighting via glamour,
+	// everything else is plain dim text.
 	var rendered string
 	switch {
 	case si == stepLLM && (info.Status == stepDone || info.Status == stepRunning):
-		// Strip code fences the model may have emitted before wrapping in ours.
-		json := extract.StripCodeFences(raw)
-		rendered = ex.renderMarkdown("```json\n"+json+"\n```", logW)
-	case (si == stepText || si == stepOCR) && info.Status == stepDone:
-		rendered = ex.renderMarkdown("```\n"+raw+"\n```", logW)
+		json := strings.TrimSpace(extract.StripCodeFences(raw))
+		rendered = strings.TrimSpace(ex.renderMarkdown("```json\n"+json+"\n```", logW))
 	default:
 		rendered = m.styles.HeaderHint.Render(wordWrap(raw, logW))
 	}
@@ -795,6 +822,8 @@ func (m *Model) renderExtractionStep(
 	b.WriteString(header)
 	for _, line := range strings.Split(rendered, "\n") {
 		b.WriteByte('\n')
+		b.WriteString(pipeIndent)
+		b.WriteString(pipe)
 		b.WriteString(line)
 	}
 	return b.String()
