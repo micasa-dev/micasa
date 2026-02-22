@@ -111,6 +111,36 @@ func TestPipeline_OCRIntegration(t *testing.T) {
 	assert.Contains(t, r.ExtractedText, "Invoice")
 }
 
+func TestPipeline_MixedPDF(t *testing.T) {
+	if !OCRAvailable() {
+		t.Skip("tesseract and/or pdftoppm not available")
+	}
+	if !HasPDFToText() {
+		t.Skip("pdftotext not available")
+	}
+
+	pdfPath := filepath.Join("testdata", "mixed-inspection.pdf")
+	data, err := os.ReadFile(pdfPath) //nolint:gosec // test fixture path
+	if err != nil {
+		t.Skipf("test fixture not found: %s", pdfPath)
+	}
+
+	p := &Pipeline{MaxOCRPages: 5}
+	r := p.Run(context.Background(), data, "mixed-inspection.pdf", "application/pdf")
+	require.NoError(t, r.Err)
+
+	// Page 1 is digital text -- pdftotext should extract it.
+	assert.NotEmpty(t, r.PdfText, "pdftotext should extract digital text pages")
+	assert.Contains(t, r.PdfText, "Invoice")
+
+	// Pages 2-3 are scanned -- OCR should run and find text.
+	assert.True(t, r.OCRUsed, "OCR should run for mixed PDFs")
+	assert.NotEmpty(t, r.OCRText, "OCR should extract text from scanned pages")
+
+	// ExtractedText should have the pdftotext content (it takes priority).
+	assert.Contains(t, r.ExtractedText, "Invoice")
+}
+
 func TestPipeline_MaxOCRPagesDefault(t *testing.T) {
 	p := &Pipeline{MaxOCRPages: 0}
 	// Just verify the default is applied (no panic on zero).
