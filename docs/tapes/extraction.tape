@@ -6,7 +6,7 @@ Set Shell bash
 Set FontFamily "Hack Nerd Font"
 Set FontSize 32
 Set Width 2400
-Set Height 1200
+Set Height 1600
 Set Padding 20
 Set Theme "Dracula"
 Set CursorBlink false
@@ -30,25 +30,14 @@ Sleep 5s
 # Dismiss dashboard.
 Type "D"
 Sleep 2s
+# Jump to Docs tab (backward from first tab wraps to last).
+Type "F"
+Sleep 1s
 Show
 
-# Navigate to Docs tab (6th tab).
-Type "f"
-Sleep 0.5s
-Type "f"
-Sleep 0.5s
-Type "f"
-Sleep 0.5s
-Type "f"
-Sleep 0.5s
-Type "f"
-Sleep 0.5s
-Type "f"
 Sleep 1s
 
-# Enter Edit mode and add a new document.
-Type "i"
-Sleep 0.5s
+# Add a new document.
 Type "a"
 Sleep 2s
 
