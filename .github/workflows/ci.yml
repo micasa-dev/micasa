@@ -24,6 +24,7 @@ jobs:
       group: ci-test-${{ matrix.os }}-${{ matrix.go-version }}-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         go-version: ["1.25"]
@@ -50,7 +51,14 @@ jobs:
 
       - name: Install extraction tools (Windows)
         if: runner.os == 'Windows'
-        run: choco install tesseract imagemagick --no-progress -y
+        shell: pwsh
+        run: |
+          foreach ($attempt in 1..3) {
+            choco install tesseract imagemagick --no-progress -y
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "choco install attempt $attempt failed, retrying..."
+            Start-Sleep -Seconds 10
+          }
 
       - name: Download dependencies
         run: go mod download
