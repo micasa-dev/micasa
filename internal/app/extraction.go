@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -687,7 +688,7 @@ func (m *Model) dispatchCreateMaintenance(op extract.Operation) error {
 		}
 	}
 	if v, ok := op.Data["interval_months"]; ok {
-		item.IntervalMonths = int(parseInt64FromData(v))
+		item.IntervalMonths = parseIntFromData(v)
 	}
 	applyStringField(op.Data, "notes", &item.Notes)
 	if v, ok := op.Data["cost_cents"]; ok {
@@ -724,13 +725,36 @@ func applyStringField(data map[string]any, key string, dst *string) {
 // parseUintFromData extracts a uint from a JSON value (float64 or string).
 func parseUintFromData(v any) uint {
 	switch val := v.(type) {
+	case json.Number:
+		if n, err := strconv.ParseUint(val.String(), 10, strconv.IntSize); err == nil {
+			return uint(n)
+		}
 	case float64:
-		if val > 0 {
+		if val > 0 && val <= math.MaxUint {
 			return uint(val)
 		}
 	case string:
-		if n, err := strconv.ParseUint(strings.TrimSpace(val), 10, 64); err == nil {
+		if n, err := strconv.ParseUint(strings.TrimSpace(val), 10, strconv.IntSize); err == nil {
 			return uint(n)
+		}
+	}
+	return 0
+}
+
+// parseIntFromData extracts an int from a JSON value.
+func parseIntFromData(v any) int {
+	switch val := v.(type) {
+	case json.Number:
+		if n, err := strconv.ParseInt(val.String(), 10, strconv.IntSize); err == nil {
+			return int(n)
+		}
+	case float64:
+		if val >= math.MinInt && val <= math.MaxInt {
+			return int(val)
+		}
+	case string:
+		if n, err := strconv.ParseInt(strings.TrimSpace(val), 10, strconv.IntSize); err == nil {
+			return int(n)
 		}
 	}
 	return 0
@@ -739,6 +763,10 @@ func parseUintFromData(v any) uint {
 // parseInt64FromData extracts an int64 from a JSON value.
 func parseInt64FromData(v any) int64 {
 	switch val := v.(type) {
+	case json.Number:
+		if n, err := strconv.ParseInt(val.String(), 10, 64); err == nil {
+			return n
+		}
 	case float64:
 		return int64(val)
 	case string:

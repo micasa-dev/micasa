@@ -6,6 +6,7 @@ package extract
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -43,8 +44,13 @@ func ParseOperations(raw string) ([]Operation, error) {
 		return nil, fmt.Errorf("empty LLM output")
 	}
 
+	// UseNumber preserves JSON numbers as json.Number strings instead of
+	// float64, avoiding precision loss on large integers (IDs, cents).
+	dec := json.NewDecoder(strings.NewReader(cleaned))
+	dec.UseNumber()
+
 	var ops []Operation
-	if err := json.Unmarshal([]byte(cleaned), &ops); err != nil {
+	if err := dec.Decode(&ops); err != nil {
 		return nil, fmt.Errorf("parse operations json: %w", err)
 	}
 
@@ -130,15 +136,19 @@ func OperationPreview(op Operation) *OperationPreviewRow {
 	return row
 }
 
-// parseUintFromAny extracts a uint from a JSON value (float64 or string).
+// parseUintFromAny extracts a uint from a JSON value (json.Number or string).
 func parseUintFromAny(v any) uint {
 	switch val := v.(type) {
+	case json.Number:
+		if n, err := strconv.ParseUint(val.String(), 10, strconv.IntSize); err == nil {
+			return uint(n)
+		}
 	case float64:
-		if val > 0 {
+		if val > 0 && val <= math.MaxUint {
 			return uint(val)
 		}
 	case string:
-		if n, err := strconv.ParseUint(val, 10, 64); err == nil {
+		if n, err := strconv.ParseUint(val, 10, strconv.IntSize); err == nil {
 			return uint(n)
 		}
 	}
@@ -150,6 +160,8 @@ func formatValue(v any) string {
 	switch val := v.(type) {
 	case string:
 		return val
+	case json.Number:
+		return val.String()
 	case float64:
 		if val == float64(int64(val)) {
 			return strconv.FormatInt(int64(val), 10)
