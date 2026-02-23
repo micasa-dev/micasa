@@ -32,6 +32,7 @@ internal/
     column_finder.go Fuzzy column jump overlay
     extraction.go    Extraction pipeline overlay (OCR + LLM progress)
   extract/           Document extraction pipeline
+    extractor.go     Extractor interface and concrete implementations
     text.go          PDF text extraction (pdftotext from poppler-utils)
     ocr.go           OCR via tesseract + pdftoppm
     ocr_progress.go  Channel-based OCR progress for async overlay

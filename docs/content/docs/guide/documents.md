@@ -18,6 +18,12 @@ Attach files to your home records -- warranties, manuals, invoices, photos.
 If you provide a file path, micasa reads the file into the database as a BLOB
 (up to 50 MB). The title auto-fills from the filename when left blank.
 
+### Quick add with extraction
+
+Press `A` (shift+a) on the Docs tab to open a streamlined add form that
+picks a file and immediately runs the extraction pipeline. This is the
+fastest way to import a document when you want OCR and LLM hints.
+
 You can also add documents from within a project or appliance detail view --
 drill into the `Docs` column and press `a`. Documents added this way are
 automatically linked to that record.
@@ -119,17 +125,35 @@ reference.
 
 ### Requirements
 
-| Tool | Used for | Install |
-|------|----------|---------|
-| `pdftotext` | PDF text extraction | Part of `poppler-utils` |
-| `pdftoppm` | PDF rasterization for OCR | Part of `poppler-utils` |
-| `tesseract` | OCR on rasterized pages and images | `tesseract-ocr` package |
-| Ollama (or compatible) | LLM-powered structured extraction | [ollama.com](https://ollama.com) |
+Each pipeline layer depends on external tools. All are optional -- the
+document always saves regardless of which tools are installed.
 
-All external tools are optional. Without `pdftotext`, PDFs still save but
-without extracted text. Without `tesseract`, scanned documents and images skip
-OCR. Without an LLM, no structured hints are generated. The document always
-saves regardless.
+| Pipeline step | File types | Tools needed | Without it |
+|---------------|------------|--------------|------------|
+| Text extraction | PDF | `pdftotext` | No digital text extracted |
+| Text extraction | `text/*` | _(none)_ | _(always available)_ |
+| OCR | Scanned PDF | `pdftoppm` + `tesseract` | OCR skipped |
+| OCR | Images (PNG, JPEG, TIFF, ...) | `tesseract` | OCR skipped |
+| LLM extraction | Any with extracted text | Ollama (or compatible) | No structured hints |
+
+`pdftotext` and `pdftoppm` ship together in the **poppler** utilities package.
+
+#### Installing dependencies
+
+| Platform | Command |
+|----------|---------|
+| Ubuntu / Debian | `sudo apt install poppler-utils tesseract-ocr` |
+| Fedora / RHEL | `sudo dnf install poppler-utils tesseract` |
+| Arch | `sudo pacman -S poppler tesseract` |
+| macOS (Homebrew) | `brew install poppler tesseract` |
+| Nix | `nix shell 'nixpkgs#poppler-utils' 'nixpkgs#tesseract'` |
+
+The micasa dev shell (`nix develop`) includes both tools automatically.
+
+For the LLM step, install [Ollama](https://ollama.com) and pull a model
+(a small model like `qwen2.5:7b` works well). See
+[Configuration]({{< ref "/docs/reference/configuration" >}}) for the
+`[extraction]` section.
 
 ## Inline editing
 
