@@ -208,10 +208,14 @@ func LoadFromPath(path string) (Config, error) {
 	cfg := defaults()
 
 	if _, err := os.Stat(path); err == nil {
-		if _, err := toml.DecodeFile(path, &cfg); err != nil {
+		md, err := toml.DecodeFile(path, &cfg)
+		if err != nil {
 			return cfg, fmt.Errorf("parse %s: %w", path, err)
 		}
+		migrateRenamedKeys(&cfg, md, path)
 	}
+
+	migrateRenamedEnvVars(&cfg)
 
 	if err := applyEnvOverrides(&cfg); err != nil {
 		return cfg, err
@@ -563,6 +567,43 @@ func collectKeys(t reflect.Type, prefix string) []string {
 		}
 	}
 	return keys
+}
+
+// migrateRenamedKeys checks for deprecated TOML keys and migrates their
+// values to the new field names, appending deprecation warnings.
+func migrateRenamedKeys(cfg *Config, md toml.MetaData, path string) {
+	// extraction.max_ocr_pages -> extraction.max_extract_pages (v1.47)
+	if md.IsDefined("extraction", "max_ocr_pages") {
+		var raw struct {
+			Extraction struct {
+				MaxOCRPages int `toml:"max_ocr_pages"`
+			} `toml:"extraction"`
+		}
+		if _, err := toml.DecodeFile(path, &raw); err == nil && raw.Extraction.MaxOCRPages > 0 {
+			cfg.Extraction.MaxExtractPages = raw.Extraction.MaxOCRPages
+		}
+		cfg.Warnings = append(cfg.Warnings,
+			"extraction.max_ocr_pages is deprecated -- use extraction.max_extract_pages instead",
+		)
+	}
+}
+
+// migrateRenamedEnvVars checks for deprecated environment variables and
+// migrates their values directly into the config struct, appending deprecation
+// warnings. Does not modify the process environment.
+func migrateRenamedEnvVars(cfg *Config) {
+	// MICASA_MAX_OCR_PAGES -> MICASA_MAX_EXTRACT_PAGES (v1.47)
+	if val := os.Getenv("MICASA_MAX_OCR_PAGES"); val != "" {
+		if os.Getenv("MICASA_MAX_EXTRACT_PAGES") == "" {
+			n, err := strconv.Atoi(val)
+			if err == nil && n > 0 {
+				cfg.Extraction.MaxExtractPages = n
+			}
+			cfg.Warnings = append(cfg.Warnings,
+				"MICASA_MAX_OCR_PAGES is deprecated -- use MICASA_MAX_EXTRACT_PAGES instead",
+			)
+		}
+	}
 }
 
 // ExampleTOML returns a commented config file suitable for writing as a

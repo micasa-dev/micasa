@@ -151,7 +151,7 @@ func (m *Model) startExtractionOverlay(
 	mime string,
 	extractedText string,
 ) tea.Cmd {
-	needsExtract := extract.HasMatchingExtractor(m.extractors, "tesseract", mime)
+	needsExtract := extract.NeedsOCR(m.extractors, mime)
 	needsLLM := m.extractionLLMClient() != nil
 
 	if !needsExtract && !needsLLM {
@@ -264,7 +264,7 @@ func (m *Model) cancelExtraction() {
 // first progress message via waitForExtractProgress.
 func asyncExtractCmd(ctx context.Context, state *extractionLogState) tea.Cmd {
 	ch := extract.ExtractWithProgress(
-		ctx, state.fileData, state.mime, extract.ExtractorMaxPages(state.extractors),
+		ctx, state.fileData, state.mime, state.extractors,
 	)
 	state.extractCh = ch
 	return waitForExtractProgress(ch)
@@ -557,6 +557,7 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 
 	// Move cursor to the nearest earlier settled step so it stays visible
 	// while LLM re-runs (running steps hide the triangle indicator).
+	ex.cursor = 0
 	active := ex.activeSteps()
 	for i := len(active) - 1; i >= 0; i-- {
 		s := ex.Steps[active[i]].Status
@@ -579,12 +580,21 @@ func (m *Model) handleExtractionKey(msg tea.KeyMsg) tea.Cmd {
 		m.cancelExtraction()
 	case "j", keyDown:
 		active := ex.activeSteps()
-		if ex.cursor < len(active)-1 {
-			ex.cursor++
+		for next := ex.cursor + 1; next < len(active); next++ {
+			s := ex.Steps[active[next]].Status
+			if ex.Done || s == stepDone || s == stepFailed {
+				ex.cursor = next
+				break
+			}
 		}
 	case "k", "up":
-		if ex.cursor > 0 {
-			ex.cursor--
+		active := ex.activeSteps()
+		for prev := ex.cursor - 1; prev >= 0; prev-- {
+			s := ex.Steps[active[prev]].Status
+			if ex.Done || s == stepDone || s == stepFailed {
+				ex.cursor = prev
+				break
+			}
 		}
 	case keyEnter:
 		si := ex.cursorStep()
@@ -592,7 +602,7 @@ func (m *Model) handleExtractionKey(msg tea.KeyMsg) tea.Cmd {
 		if status == stepDone || status == stepFailed {
 			// Toggle relative to effective state (auto-expand + override),
 			// not just the override map, to avoid a no-op first press.
-			effective := status == stepRunning || status == stepFailed ||
+			effective := status == stepFailed ||
 				(si == stepLLM && status == stepDone)
 			if toggled, ok := ex.expanded[si]; ok {
 				effective = toggled
@@ -740,10 +750,14 @@ func (m *Model) buildExtractionOverlay() string {
 		rule = ruleStyle.Render(strings.Repeat("\u2500", innerW))
 	}
 
-	// Hint line: always show navigate/expand since completed steps are
-	// immediately inspectable even while later steps are still running.
+	// Hint line: navigate is always available; expand only when the cursor
+	// is on a settled (done/failed) step that can actually be toggled.
 	var hints []string
-	hints = append(hints, m.helpItem("j/k", "navigate"), m.helpItem("\u21b5", "expand"))
+	hints = append(hints, m.helpItem("j/k", "navigate"))
+	cursorStatus := ex.Steps[ex.cursorStep()].Status
+	if ex.Done || cursorStatus == stepDone || cursorStatus == stepFailed {
+		hints = append(hints, m.helpItem("\u21b5", "expand"))
+	}
 	if ex.Done {
 		if !ex.HasError {
 			hints = append(hints, m.helpItem("a", "accept"))

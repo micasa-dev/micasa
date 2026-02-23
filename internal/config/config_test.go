@@ -472,7 +472,7 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_CACHE_TTL":           "documents.cache_ttl",
 		"MICASA_CACHE_TTL_DAYS":      "documents.cache_ttl_days",
 		"MICASA_EXTRACTION_MODEL":    "extraction.model",
-		"MICASA_MAX_EXTRACT_PAGES":       "extraction.max_extract_pages",
+		"MICASA_MAX_EXTRACT_PAGES":   "extraction.max_extract_pages",
 		"MICASA_EXTRACTION_ENABLED":  "extraction.enabled",
 		"MICASA_TEXT_TIMEOUT":        "extraction.text_timeout",
 		"MICASA_EXTRACTION_THINKING": "extraction.thinking",
@@ -491,4 +491,34 @@ func TestEnvVarsCoverAllKeys(t *testing.T) {
 		assert.True(t, keySet[configKey],
 			"env var %s maps to %q which is not a valid config key", envVar, configKey)
 	}
+}
+
+// --- Deprecated key migration ---
+
+func TestMaxOCRPagesTOMLMigration(t *testing.T) {
+	path := writeConfig(t, "[extraction]\nmax_ocr_pages = 10\n")
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, 10, cfg.Extraction.MaxExtractPages)
+	require.Len(t, cfg.Warnings, 1)
+	assert.Contains(t, cfg.Warnings[0], "max_ocr_pages")
+	assert.Contains(t, cfg.Warnings[0], "max_extract_pages")
+}
+
+func TestMaxOCRPagesEnvMigration(t *testing.T) {
+	t.Setenv("MICASA_MAX_OCR_PAGES", "15")
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, 15, cfg.Extraction.MaxExtractPages)
+	require.Len(t, cfg.Warnings, 1)
+	assert.Contains(t, cfg.Warnings[0], "MICASA_MAX_OCR_PAGES")
+}
+
+func TestMaxOCRPagesEnvIgnoredWhenNewEnvSet(t *testing.T) {
+	t.Setenv("MICASA_MAX_OCR_PAGES", "15")
+	t.Setenv("MICASA_MAX_EXTRACT_PAGES", "25")
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, 25, cfg.Extraction.MaxExtractPages)
+	assert.Empty(t, cfg.Warnings)
 }

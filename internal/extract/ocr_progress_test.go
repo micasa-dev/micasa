@@ -17,7 +17,12 @@ import (
 // a single Done message with no text -- the same path hit when a user
 // somehow saves a zero-byte document.
 func TestExtractWithProgress_EmptyData(t *testing.T) {
-	ch := ExtractWithProgress(context.Background(), nil, "application/pdf", 20)
+	ch := ExtractWithProgress(
+		context.Background(),
+		nil,
+		"application/pdf",
+		DefaultExtractors(20, 0),
+	)
 	msg := <-ch
 	assert.True(t, msg.Done)
 	assert.Empty(t, msg.Text)
@@ -30,7 +35,7 @@ func TestExtractWithProgress_EmptyData(t *testing.T) {
 
 // TestExtractWithProgress_EmptyImage verifies the image path with empty data.
 func TestExtractWithProgress_EmptyImage(t *testing.T) {
-	ch := ExtractWithProgress(context.Background(), nil, "image/png", 20)
+	ch := ExtractWithProgress(context.Background(), nil, "image/png", DefaultExtractors(20, 0))
 	msg := <-ch
 	assert.True(t, msg.Done)
 	assert.Empty(t, msg.Text)
@@ -44,7 +49,7 @@ func TestExtractWithProgress_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
 
-	ch := ExtractWithProgress(ctx, []byte("fake image data"), "image/png", 20)
+	ch := ExtractWithProgress(ctx, []byte("fake image data"), "image/png", DefaultExtractors(20, 0))
 
 	var gotErr bool
 	for msg := range ch {
@@ -69,7 +74,7 @@ func TestExtractWithProgress_Image_Integration(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: "+imgPath)
 	}
 
-	ch := ExtractWithProgress(context.Background(), data, "image/png", 20)
+	ch := ExtractWithProgress(context.Background(), data, "image/png", DefaultExtractors(20, 0))
 
 	var progressCount int
 	var finalText string
@@ -103,7 +108,12 @@ func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: "+pdfPath)
 	}
 
-	ch := ExtractWithProgress(context.Background(), data, "application/pdf", 5)
+	ch := ExtractWithProgress(
+		context.Background(),
+		data,
+		"application/pdf",
+		DefaultExtractors(5, 0),
+	)
 
 	var phases []string
 	var finalText string

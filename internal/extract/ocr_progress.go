@@ -29,21 +29,21 @@ type ExtractProgress struct {
 
 // ExtractWithProgress runs async extraction with per-page progress updates
 // sent on the returned channel. The channel closes when processing completes.
-// Only PDF and image MIME types are supported; unsupported types produce
-// a single Done message with empty text.
+// The extractors list is consulted to determine whether to run image or PDF
+// OCR. Unsupported types produce a single Done message with empty text.
 func ExtractWithProgress(
 	ctx context.Context,
 	data []byte,
 	mime string,
-	maxPages int,
+	extractors []Extractor,
 ) <-chan ExtractProgress {
 	ch := make(chan ExtractProgress, 8)
 	go func() {
 		defer close(ch)
-		if IsImageMIME(mime) {
+		if HasMatchingExtractor(extractors, "tesseract", "image/png") && IsImageMIME(mime) {
 			ocrImageWithProgress(ctx, data, ch)
 		} else {
-			ocrPDFWithProgress(ctx, data, maxPages, ch)
+			ocrPDFWithProgress(ctx, data, ExtractorMaxPages(extractors), ch)
 		}
 	}()
 	return ch

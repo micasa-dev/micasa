@@ -1898,7 +1898,7 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 	llmReady := m.extractionEnabled && m.extractionLLMClient() != nil && m.extractionReady
 
 	// Determine if async extraction is needed.
-	needsExtract := extract.HasMatchingExtractor(m.extractors, "tesseract", doc.MIMEType)
+	needsExtract := extract.NeedsOCR(m.extractors, doc.MIMEType)
 
 	// If nothing async is needed, bail early.
 	if !needsExtract && !llmReady {

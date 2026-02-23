@@ -50,7 +50,8 @@ func ExtractText(data []byte, mime string, timeout time.Duration) (string, error
 
 // extractPDF shells out to pdftotext for text extraction. pdftotext
 // preserves reading order and table layout better than pure-Go readers.
-func extractPDF(data []byte, timeout time.Duration) (string, error) {
+// The caller is responsible for setting any timeout on ctx.
+func extractPDF(ctx context.Context, data []byte) (string, error) {
 	tmpDir, err := os.MkdirTemp("", "micasa-text-*")
 	if err != nil {
 		return "", fmt.Errorf("create temp dir: %w", err)
@@ -61,9 +62,6 @@ func extractPDF(data []byte, timeout time.Duration) (string, error) {
 	if err := os.WriteFile(pdfPath, data, 0o600); err != nil {
 		return "", fmt.Errorf("write temp pdf: %w", err)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 
 	cmd := exec.CommandContext( //nolint:gosec // args are constructed internally
 		ctx,

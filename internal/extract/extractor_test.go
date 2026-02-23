@@ -61,6 +61,38 @@ func TestPlainTextExtractor_Extract(t *testing.T) {
 	assert.NotEmpty(t, src.Desc)
 }
 
+func TestPDFTextExtractor_Extract_EmptyData(t *testing.T) {
+	ext := &PDFTextExtractor{}
+	src, err := ext.Extract(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, src.Tool)
+	assert.Empty(t, src.Text)
+}
+
+func TestPlainTextExtractor_Extract_EmptyData(t *testing.T) {
+	ext := &PlainTextExtractor{}
+	src, err := ext.Extract(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, src.Tool)
+	assert.Empty(t, src.Text)
+}
+
+func TestImageOCRExtractor_Extract_EmptyData(t *testing.T) {
+	ext := &ImageOCRExtractor{}
+	src, err := ext.Extract(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, src.Tool)
+	assert.Empty(t, src.Text)
+}
+
+func TestPDFOCRExtractor_Extract_EmptyData(t *testing.T) {
+	ext := &PDFOCRExtractor{}
+	src, err := ext.Extract(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, src.Tool)
+	assert.Empty(t, src.Text)
+}
+
 func TestPDFOCRExtractor_Tool(t *testing.T) {
 	ext := &PDFOCRExtractor{}
 	assert.Equal(t, "tesseract", ext.Tool())
@@ -150,6 +182,31 @@ func TestHasMatchingExtractor_NoMatch(t *testing.T) {
 	assert.False(t, HasMatchingExtractor(extractors, "tesseract", "text/plain"))
 	assert.False(t, HasMatchingExtractor(extractors, "pdftotext", "image/png"))
 	assert.False(t, HasMatchingExtractor(extractors, "nonexistent", "application/pdf"))
+}
+
+// --- NeedsOCR ---
+
+func TestNeedsOCR_PDF(t *testing.T) {
+	extractors := DefaultExtractors(0, 0)
+	got := NeedsOCR(extractors, "application/pdf")
+	assert.Equal(t, OCRAvailable(), got)
+}
+
+func TestNeedsOCR_Image(t *testing.T) {
+	extractors := DefaultExtractors(0, 0)
+	got := NeedsOCR(extractors, "image/png")
+	assert.Equal(t, ImageOCRAvailable(), got)
+}
+
+func TestNeedsOCR_PlainText(t *testing.T) {
+	extractors := DefaultExtractors(0, 0)
+	assert.False(t, NeedsOCR(extractors, "text/plain"))
+}
+
+func TestNeedsOCR_NoOCRExtractors(t *testing.T) {
+	extractors := []Extractor{&PlainTextExtractor{}, &PDFTextExtractor{}}
+	assert.False(t, NeedsOCR(extractors, "application/pdf"))
+	assert.False(t, NeedsOCR(extractors, "image/png"))
 }
 
 // --- ExtractorTimeout / ExtractorMaxPages ---

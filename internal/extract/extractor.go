@@ -73,6 +73,22 @@ func ExtractorMaxPages(extractors []Extractor) int {
 	return 0
 }
 
+// NeedsOCR reports whether any OCR-capable extractor in the list matches
+// the MIME type and is available. Use this instead of checking tool names
+// directly so callers don't couple to extractor internals.
+func NeedsOCR(extractors []Extractor, mime string) bool {
+	for _, ext := range extractors {
+		if !ext.Matches(mime) || !ext.Available() {
+			continue
+		}
+		switch ext.(type) {
+		case *PDFOCRExtractor, *ImageOCRExtractor:
+			return true
+		}
+	}
+	return false
+}
+
 // --- Concrete extractors ---
 
 // PDFTextExtractor wraps pdftotext for digital PDF text extraction.
@@ -84,7 +100,7 @@ func (e *PDFTextExtractor) Tool() string             { return "pdftotext" }
 func (e *PDFTextExtractor) Matches(mime string) bool { return mime == MIMEApplicationPDF }
 func (e *PDFTextExtractor) Available() bool          { return HasPDFToText() }
 
-func (e *PDFTextExtractor) Extract(_ context.Context, data []byte) (TextSource, error) {
+func (e *PDFTextExtractor) Extract(ctx context.Context, data []byte) (TextSource, error) {
 	if len(data) == 0 {
 		return TextSource{}, nil
 	}
@@ -92,7 +108,9 @@ func (e *PDFTextExtractor) Extract(_ context.Context, data []byte) (TextSource, 
 	if timeout <= 0 {
 		timeout = DefaultTextTimeout
 	}
-	text, err := extractPDF(data, timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	text, err := extractPDF(ctx, data)
 	if err != nil {
 		return TextSource{}, err
 	}
