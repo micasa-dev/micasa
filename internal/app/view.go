@@ -426,13 +426,12 @@ func (m *Model) editModeStatusHelp(modeBadge string) string {
 	hints := []statusHint{
 		{id: "mode", full: modeBadge, priority: 0, required: true},
 	}
+	addKey := "a"
 	if m.effectiveTab().isDocumentTab() {
-		hints = append(hints, statusHint{
-			id: "magicadd", full: m.helpItem("A", "\U0001FA84 add"), priority: 3,
-		})
+		addKey = "a/A"
 	}
 	hints = append(hints,
-		statusHint{id: "add", full: m.helpItem("a", "add"), priority: 1},
+		statusHint{id: "add", full: m.helpItem(addKey, "add"), priority: 1},
 		statusHint{id: "edit", full: m.helpItem("e", m.editHint()), priority: 1},
 		statusHint{
 			id:       "del",
