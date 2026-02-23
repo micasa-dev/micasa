@@ -78,7 +78,7 @@ in
     # inside a Match block and the global default (no) already applies.
     services.openssh.extraConfig = lib.mkAfter ''
       Match User ${cfg.user}
-        ForceCommand umask 0077; exec ${cfg.package}/bin/micasa ${cfg.dataDir}/micasa.db
+        ForceCommand umask 0077; exec ${lib.getExe cfg.package} ${cfg.dataDir}/micasa.db
         AllowTcpForwarding no
         AllowAgentForwarding no
         AllowStreamLocalForwarding no
