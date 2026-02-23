@@ -130,19 +130,41 @@ document.addEventListener('click', function(e) {
   var ids = [];
   links.forEach(function(a) { ids.push(a.getAttribute('href').slice(1)); });
 
+  var visible = new Set();
+
+  function highlight() {
+    var active = null;
+    for (var i = 0; i < ids.length; i++) {
+      if (visible.has(ids[i])) { active = ids[i]; break; }
+    }
+    links.forEach(function(a) {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + active);
+    });
+  }
+
   var observer = new IntersectionObserver(function(entries) {
     entries.forEach(function(entry) {
       if (entry.isIntersecting) {
-        links.forEach(function(a) { a.classList.remove('active'); });
-        var hit = toc.querySelector('a[href="#' + entry.target.id + '"]');
-        if (hit) hit.classList.add('active');
+        visible.add(entry.target.id);
+      } else {
+        visible.delete(entry.target.id);
       }
     });
+    highlight();
   }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
 
   ids.forEach(function(id) {
     var el = document.getElementById(id);
     if (el) observer.observe(el);
+  });
+
+  links.forEach(function(a) {
+    a.addEventListener('click', function() {
+      var id = a.getAttribute('href').slice(1);
+      visible.clear();
+      visible.add(id);
+      highlight();
+    });
   });
 })();
 </script>
