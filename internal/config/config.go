@@ -24,6 +24,7 @@ type Config struct {
 	LLM        LLM        `toml:"llm"`
 	Documents  Documents  `toml:"documents"`
 	Extraction Extraction `toml:"extraction"`
+	Backup     Backup     `toml:"backup"`
 
 	// Warnings collects non-fatal messages (e.g. deprecations) during load.
 	// Not serialized; the caller decides how to display them.
@@ -160,6 +161,26 @@ func (e Extraction) ResolvedModel(chatModel string) string {
 		return e.Model
 	}
 	return chatModel
+}
+
+// Backup holds settings for the database backup command.
+type Backup struct {
+	// Dest is the default destination path for backups. Accepts ~ for the
+	// home directory. If the path is a directory, the backup file is placed
+	// inside it. When empty, backups default to <source>.backup.
+	Dest string `toml:"dest" env:"MICASA_BACKUP_DEST"`
+
+	// Timestamp controls whether a UTC timestamp is automatically inserted
+	// into the backup filename. The timestamp appears before the file
+	// extension: backup.db -> backup-20060102T150405.db
+	// Default: false.
+	Timestamp *bool `toml:"timestamp,omitempty" env:"MICASA_BACKUP_TIMESTAMP"`
+}
+
+// TimestampEnabled returns whether automatic timestamping is enabled.
+// Defaults to false when the field is unset.
+func (b Backup) TimestampEnabled() bool {
+	return b.Timestamp != nil && *b.Timestamp
 }
 
 const (
@@ -624,5 +645,16 @@ model = "` + DefaultModel + `"
 # Disable for faster responses when structured output is all you need.
 # Default: false.
 # thinking = false
+
+[backup]
+# Default destination path for backups. Accepts ~ for home directory.
+# If the path is a directory, the backup file is placed inside it.
+# When unset, backups go to <source>.backup in the source directory.
+# dest = "~/backups/micasa"
+
+# Automatically insert a UTC timestamp into the backup filename.
+# Produces filenames like: micasa-20260223T103045.backup
+# Default: false.
+# timestamp = false
 `
 }

@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
@@ -290,4 +291,129 @@ func TestBackupCmd(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, string(out), "not a micasa database")
 	})
+
+	t.Run("ConfigDest", func(t *testing.T) {
+		src := createTestDB(t)
+		destDir := t.TempDir()
+		destFile := filepath.Join(destDir, "configured.db")
+		cfgPath := writeTestConfig(t, `[backup]
+dest = "`+destFile+`"
+`)
+		cmd := exec.Command(bin, "backup", "--source", src) //nolint:gosec // test binary
+		cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Dir(filepath.Dir(cfgPath)))
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "backup with config dest failed: %s", out)
+
+		_, statErr := os.Stat(destFile)
+		assert.NoError(t, statErr, "configured destination should exist")
+	})
+
+	t.Run("ConfigDestDirectory", func(t *testing.T) {
+		src := createTestDB(t)
+		destDir := t.TempDir()
+		cfgPath := writeTestConfig(t, `[backup]
+dest = "`+destDir+`"
+`)
+		cmd := exec.Command(bin, "backup", "--source", src) //nolint:gosec // test binary
+		cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Dir(filepath.Dir(cfgPath)))
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "backup with config dir dest failed: %s", out)
+
+		expected := filepath.Join(destDir, filepath.Base(src)+".backup")
+		_, statErr := os.Stat(expected)
+		assert.NoError(t, statErr, "backup in configured directory should exist")
+	})
+
+	t.Run("CLIArgOverridesConfigDest", func(t *testing.T) {
+		src := createTestDB(t)
+		configDest := filepath.Join(t.TempDir(), "config-dest.db")
+		cliDest := filepath.Join(t.TempDir(), "cli-dest.db")
+		cfgPath := writeTestConfig(t, `[backup]
+dest = "`+configDest+`"
+`)
+		cmd := exec.Command(bin, "backup", "--source", src, cliDest) //nolint:gosec // test binary
+		cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Dir(filepath.Dir(cfgPath)))
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "backup with CLI dest override failed: %s", out)
+
+		_, statErr := os.Stat(cliDest)
+		assert.NoError(t, statErr, "CLI destination should exist")
+
+		_, statErr = os.Stat(configDest)
+		assert.Error(t, statErr, "config destination should not exist")
+	})
+
+	t.Run("TimestampFlag", func(t *testing.T) {
+		src := createTestDB(t)
+		destDir := t.TempDir()
+		destFile := filepath.Join(destDir, "backup.db")
+		cmd := exec.Command( //nolint:gosec // test binary
+			bin,
+			"backup",
+			"--source",
+			src,
+			"-t",
+			destFile,
+		)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "backup with --timestamp failed: %s", out)
+
+		got := strings.TrimSpace(string(out))
+		assert.Contains(
+			t,
+			got,
+			"backup-",
+			"timestamped filename should contain dash-separated stamp",
+		)
+		assert.Regexp(t, `backup-\d{8}T\d{6}\.db$`, got)
+	})
+
+	t.Run("TimestampFromConfig", func(t *testing.T) {
+		src := createTestDB(t)
+		destDir := t.TempDir()
+		destFile := filepath.Join(destDir, "ts-backup.db")
+		cfgPath := writeTestConfig(t, `[backup]
+dest = "`+destFile+`"
+timestamp = true
+`)
+		cmd := exec.Command(bin, "backup", "--source", src) //nolint:gosec // test binary
+		cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Dir(filepath.Dir(cfgPath)))
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "backup with config timestamp failed: %s", out)
+
+		got := strings.TrimSpace(string(out))
+		assert.Regexp(t, `ts-backup-\d{8}T\d{6}\.db$`, got)
+	})
+}
+
+// writeTestConfig writes a config file at the XDG-expected path inside a temp
+// directory and returns the config file path. The caller should set
+// XDG_CONFIG_HOME to filepath.Dir(filepath.Dir(result)).
+func writeTestConfig(t *testing.T, content string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "micasa")
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	path := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	return path
+}
+
+func TestInsertTimestamp(t *testing.T) {
+	ts := time.Date(2026, 2, 23, 10, 30, 45, 0, time.UTC)
+
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{"with extension", "/tmp/backup.db", "/tmp/backup-20260223T103045.db"},
+		{"no extension", "/tmp/backup", "/tmp/backup-20260223T103045"},
+		{"double extension", "/tmp/micasa.db.backup", "/tmp/micasa.db-20260223T103045.backup"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := insertTimestamp(tt.path, ts)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

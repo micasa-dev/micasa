@@ -106,6 +106,9 @@ func TestExampleTOML(t *testing.T) {
 	assert.Contains(t, example, "cache_ttl")
 	assert.Contains(t, example, "[extraction]")
 	assert.Contains(t, example, "max_ocr_pages")
+	assert.Contains(t, example, "[backup]")
+	assert.Contains(t, example, "# dest")
+	assert.Contains(t, example, "# timestamp")
 }
 
 func TestMalformedConfigReturnsError(t *testing.T) {
@@ -449,6 +452,8 @@ func TestKeys(t *testing.T) {
 	assert.Contains(t, keys, "llm.base_url")
 	assert.Contains(t, keys, "documents.max_file_size")
 	assert.Contains(t, keys, "extraction.max_ocr_pages")
+	assert.Contains(t, keys, "backup.dest")
+	assert.Contains(t, keys, "backup.timestamp")
 	// Verify every key is resolvable against defaults.
 	cfg := defaults()
 	for _, k := range keys {
@@ -476,6 +481,8 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_EXTRACTION_ENABLED":  "extraction.enabled",
 		"MICASA_TEXT_TIMEOUT":        "extraction.text_timeout",
 		"MICASA_EXTRACTION_THINKING": "extraction.thinking",
+		"MICASA_BACKUP_DEST":         "backup.dest",
+		"MICASA_BACKUP_TIMESTAMP":    "backup.timestamp",
 	}
 	assert.Equal(t, want, m)
 }
@@ -491,4 +498,68 @@ func TestEnvVarsCoverAllKeys(t *testing.T) {
 		assert.True(t, keySet[configKey],
 			"env var %s maps to %q which is not a valid config key", envVar, configKey)
 	}
+}
+
+// --- Backup ---
+
+func TestBackupDefaults(t *testing.T) {
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Empty(t, cfg.Backup.Dest)
+	assert.False(t, cfg.Backup.TimestampEnabled())
+}
+
+func TestBackupFromFile(t *testing.T) {
+	path := writeConfig(t, `[backup]
+dest = "/tmp/backups"
+timestamp = true
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, "/tmp/backups", cfg.Backup.Dest)
+	assert.True(t, cfg.Backup.TimestampEnabled())
+}
+
+func TestBackupTimestampFalse(t *testing.T) {
+	path := writeConfig(t, `[backup]
+timestamp = false
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Backup.TimestampEnabled())
+}
+
+func TestBackupEnvOverrides(t *testing.T) {
+	t.Setenv("MICASA_BACKUP_DEST", "/env/backups")
+	t.Setenv("MICASA_BACKUP_TIMESTAMP", "true")
+
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, "/env/backups", cfg.Backup.Dest)
+	assert.True(t, cfg.Backup.TimestampEnabled())
+}
+
+func TestBackupEnvOverridesBadTimestamp(t *testing.T) {
+	t.Setenv("MICASA_BACKUP_TIMESTAMP", "maybe")
+	_, err := LoadFromPath(noConfig(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "expected true or false")
+}
+
+func TestBackupGet(t *testing.T) {
+	bTrue := true
+	cfg := Config{
+		Backup: Backup{
+			Dest:      "/my/backups",
+			Timestamp: &bTrue,
+		},
+	}
+
+	got, err := cfg.Get("backup.dest")
+	require.NoError(t, err)
+	assert.Equal(t, "/my/backups", got)
+
+	got, err = cfg.Get("backup.timestamp")
+	require.NoError(t, err)
+	assert.Equal(t, "true", got)
 }

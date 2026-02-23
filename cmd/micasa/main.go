@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
+	"time"
 
 	"github.com/alecthomas/kong"
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,8 +39,9 @@ type runCmd struct {
 }
 
 type backupCmd struct {
-	Dest   string `arg:"" optional:"" help:"Destination file path. Defaults to <source>.backup."`
-	Source string `                   help:"Source database path. Defaults to the standard location." default:"" env:"MICASA_DB_PATH"`
+	Dest      string `arg:"" optional:"" help:"Destination file path. Defaults to backup.dest config, then <source>.backup."`
+	Source    string `                   help:"Source database path. Defaults to the standard location."                     default:"" env:"MICASA_DB_PATH"`
+	Timestamp bool   `                   help:"Insert a UTC timestamp into the backup filename."                                                             short:"t"`
 }
 
 type configCmd struct {
@@ -206,16 +209,22 @@ func (cmd *backupCmd) Run() error {
 		)
 	}
 
-	destPath := cmd.Dest
-	if destPath == "" {
-		destPath = sourcePath + ".backup"
-	} else {
-		destPath = data.ExpandHome(destPath)
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
 	}
+
+	destPath := cmd.resolveDest(sourcePath, cfg.Backup)
 
 	if err := data.ValidateDBPath(destPath); err != nil {
 		return fmt.Errorf("invalid destination: %w", err)
 	}
+
+	useTimestamp := cmd.Timestamp || cfg.Backup.TimestampEnabled()
+	if useTimestamp {
+		destPath = insertTimestamp(destPath, time.Now().UTC())
+	}
+
 	if _, err := os.Stat(destPath); err == nil {
 		return fmt.Errorf(
 			"destination %q already exists -- remove it first or choose a different path",
@@ -250,6 +259,36 @@ func (cmd *backupCmd) Run() error {
 	}
 	fmt.Println(absPath)
 	return nil
+}
+
+// resolveDest determines the backup destination path using the priority:
+// CLI arg > config backup.dest > <source>.backup.
+// If the resolved path is a directory, the backup is placed inside it.
+func (cmd *backupCmd) resolveDest(sourcePath string, backup config.Backup) string {
+	destPath := cmd.Dest
+	if destPath == "" && backup.Dest != "" {
+		destPath = data.ExpandHome(backup.Dest)
+	}
+	if destPath == "" {
+		return sourcePath + ".backup"
+	}
+	destPath = data.ExpandHome(destPath)
+	info, err := os.Stat(destPath)
+	if err == nil && info.IsDir() {
+		base := filepath.Base(sourcePath) + ".backup"
+		return filepath.Join(destPath, base)
+	}
+	return destPath
+}
+
+// insertTimestamp inserts a UTC timestamp before the file extension.
+// "backup.db" -> "backup-20060102T150405.db"
+// "backup" -> "backup-20060102T150405"
+func insertTimestamp(path string, t time.Time) string {
+	stamp := t.Format("20060102T150405")
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+	return base + "-" + stamp + ext
 }
 
 // versionString returns the version for display. Release builds return
