@@ -12,5 +12,10 @@ unsafe = true
 style = "manni"
 noClasses = false
 
+[markup.tableOfContents]
+startLevel = 2
+endLevel = 2
+ordered = false
+
 [params]
 description = "A terminal UI for tracking everything about your home. Single SQLite file. No cloud. No account. No subscriptions."

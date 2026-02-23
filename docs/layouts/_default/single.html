@@ -1,6 +1,17 @@
 {{- /* Copyright 2026 Phillip Cloud */ -}}
 {{- /* Licensed under the Apache License, Version 2.0 */ -}}
 
+{{ define "toc" }}
+  {{ with .TableOfContents }}
+    {{ if ne . "<nav id=\"TableOfContents\"></nav>" }}
+      <nav class="toc" aria-label="Table of contents">
+        <div class="toc-label">On this page</div>
+        {{ . }}
+      </nav>
+    {{ end }}
+  {{ end }}
+{{ end }}
+
 {{ define "main" }}
   <article data-pagefind-body>
     <h1>{{ .Title }}</h1>
