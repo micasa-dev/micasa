@@ -23,25 +23,29 @@ const DefaultTextTimeout = 30 * time.Second
 // PDF extraction uses pdftotext (poppler-utils) when available,
 // returning empty for PDFs when the tool is missing. The timeout
 // parameter caps how long pdftotext can run (0 = DefaultTextTimeout).
+//
+// This is a convenience wrapper that delegates to PDFTextExtractor and
+// PlainTextExtractor. For full pipeline extraction, use Pipeline.Run.
 func ExtractText(data []byte, mime string, timeout time.Duration) (string, error) {
 	if len(data) == 0 {
 		return "", nil
 	}
-	if timeout <= 0 {
-		timeout = DefaultTextTimeout
-	}
 
-	switch {
-	case mime == "application/pdf":
-		if !HasPDFToText() {
-			return "", nil
-		}
-		return extractPDF(data, timeout)
-	case strings.HasPrefix(mime, "text/"):
-		return normalizeWhitespace(string(data)), nil
-	default:
-		return "", nil
+	textExtractors := []Extractor{
+		&PDFTextExtractor{Timeout: timeout},
+		&PlainTextExtractor{},
 	}
+	for _, ext := range textExtractors {
+		if !ext.Matches(mime) || !ext.Available() {
+			continue
+		}
+		src, err := ext.Extract(context.Background(), data)
+		if err != nil {
+			return "", err
+		}
+		return src.Text, nil
+	}
+	return "", nil
 }
 
 // extractPDF shells out to pdftotext for text extraction. pdftotext

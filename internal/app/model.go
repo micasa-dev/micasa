@@ -50,8 +50,7 @@ type Model struct {
 	extractionEnabled      bool                // LLM extraction on document upload
 	extractionThinking     bool                // enable model thinking mode
 	extractionClient       *llm.Client         // cached extraction LLM client
-	maxOCRPages            int                 // page limit for OCR
-	textTimeout            time.Duration       // pdftotext timeout; 0 = default
+	extractors             []extract.Extractor // configured extractors
 	extractionReady        bool                // true once extraction model confirmed available
 	pendingExtractionDocID *uint               // doc saved without LLM; extract after pull
 	pulling                bool                // true while a model pull is in progress
@@ -150,8 +149,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		extractionModel:    options.ExtractionConfig.Model,
 		extractionEnabled:  options.ExtractionConfig.Enabled,
 		extractionThinking: options.ExtractionConfig.Thinking,
-		maxOCRPages:        options.ExtractionConfig.MaxOCRPages,
-		textTimeout:        options.ExtractionConfig.TextTimeout,
+		extractors:         options.ExtractionConfig.Extractors,
 		pullProgress:       pprog,
 		styles:             styles,
 		tabs:               NewTabs(styles),
@@ -232,8 +230,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case pullProgressMsg:
 		return m, m.handlePullProgress(typed)
-	case extractionOCRProgressMsg:
-		return m, m.handleExtractionOCRProgress(typed)
+	case extractionProgressMsg:
+		return m, m.handleExtractionProgress(typed)
 	case extractionLLMStartedMsg:
 		return m, m.handleExtractionLLMStarted(typed)
 	case extractionLLMChunkMsg:
@@ -1880,7 +1878,7 @@ func (m *Model) extractionLLMClient() *llm.Client {
 	return c
 }
 
-// afterDocumentSave returns a tea.Cmd to run async extraction (OCR and/or
+// afterDocumentSave returns a tea.Cmd to run async extraction (text and/or
 // LLM) on the just-saved document. Opens the extraction overlay if any async
 // steps are needed. If the LLM model isn't ready yet, it queues the doc for
 // extraction after the model pull completes.
@@ -1899,12 +1897,11 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 	// Check if LLM extraction is configured and ready.
 	llmReady := m.extractionEnabled && m.extractionLLMClient() != nil && m.extractionReady
 
-	// Determine if OCR is needed (PDFs always, images always).
-	needsOCR := (isPDF(doc.MIMEType) && extract.OCRAvailable()) ||
-		(extract.IsImageMIME(doc.MIMEType) && extract.ImageOCRAvailable())
+	// Determine if async extraction is needed.
+	needsExtract := extract.HasMatchingExtractor(m.extractors, "tesseract", doc.MIMEType)
 
 	// If nothing async is needed, bail early.
-	if !needsOCR && !llmReady {
+	if !needsExtract && !llmReady {
 		// If LLM is configured but model not ready, queue for after pull.
 		if m.extractionEnabled && m.llmClient != nil && !m.extractionReady {
 			m.pendingExtractionDocID = &docID

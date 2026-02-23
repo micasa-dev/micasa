@@ -17,6 +17,7 @@ import (
 	"github.com/cpcloud/micasa/internal/app"
 	"github.com/cpcloud/micasa/internal/config"
 	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/extract"
 )
 
 // version is set at build time via -ldflags "-X main.version=...".
@@ -146,10 +147,13 @@ func (cmd *runCmd) Run() error {
 		cfg.LLM.TimeoutDuration(),
 		cfg.LLM.Thinking,
 	)
+	extractors := extract.DefaultExtractors(
+		cfg.Extraction.MaxExtractPages,
+		cfg.Extraction.TextTimeoutDuration(),
+	)
 	opts.SetExtraction(
 		cfg.Extraction.ResolvedModel(cfg.LLM.Model),
-		cfg.Extraction.MaxOCRPages,
-		cfg.Extraction.TextTimeoutDuration(),
+		extractors,
 		cfg.Extraction.IsEnabled(),
 		cfg.Extraction.ThinkingEnabled(),
 	)

@@ -21,17 +21,12 @@ type ExtractionPromptInput struct {
 	MIME      string
 	SizeBytes int64
 	Entities  EntityContext
-	PdfText   string // pdftotext output (PDFs only)
-	OCRText   string // tesseract output (scanned PDFs and images)
-	Text      string // fallback for non-PDF/non-image files (e.g. text/plain)
+	Sources   []TextSource
 }
 
 // BuildExtractionPrompt creates the system and user messages for document
 // extraction. The system prompt defines the JSON schema and rules; the user
 // message contains the document metadata and extracted text from all sources.
-//
-// For PDFs, both PdfText and OCRText may be present. The LLM receives both
-// with source labels so it can reconcile differences.
 func BuildExtractionPrompt(in ExtractionPromptInput) []llm.Message {
 	return []llm.Message{
 		{Role: "system", Content: extractionSystemPrompt(in.Entities)},
@@ -76,27 +71,15 @@ func extractionUserMessage(in ExtractionPromptInput) string {
 	b.WriteString(fmt.Sprintf("MIME: %s\n", in.MIME))
 	b.WriteString(fmt.Sprintf("Size: %d bytes\n", in.SizeBytes))
 
-	hasPDF := strings.TrimSpace(in.PdfText) != ""
-	hasOCR := strings.TrimSpace(in.OCRText) != ""
-
-	if hasPDF && hasOCR {
-		b.WriteString("\n---\n\n## Source: pdftotext\n")
-		b.WriteString(
-			"Digital text extracted directly from the PDF. Accurate for pages with selectable text.\n\n",
-		)
-		b.WriteString(in.PdfText)
-		b.WriteString("\n\n## Source: tesseract OCR\n")
-		b.WriteString(
-			"Text recognized from rasterized page images. Covers scanned pages that pdftotext misses, but may contain OCR errors.\n\n",
-		)
-		b.WriteString(in.OCRText)
-	} else if hasOCR {
-		b.WriteString("\n---\n\n## Source: tesseract OCR\n")
-		b.WriteString("Text recognized from rasterized page images. May contain OCR errors.\n\n")
-		b.WriteString(in.OCRText)
-	} else {
-		b.WriteString("\n---\n\n")
-		b.WriteString(in.Text)
+	for _, src := range in.Sources {
+		if strings.TrimSpace(src.Text) == "" {
+			continue
+		}
+		b.WriteString(fmt.Sprintf("\n---\n\n## Source: %s\n", src.Tool))
+		if src.Desc != "" {
+			b.WriteString(src.Desc + "\n\n")
+		}
+		b.WriteString(src.Text)
 	}
 
 	return b.String()
@@ -104,7 +87,7 @@ func extractionUserMessage(in ExtractionPromptInput) string {
 
 const extractionPreamble = `You are a document extraction assistant for a home management application. Given a document's metadata and extracted text, return a JSON object with structured fields. Fill only the fields you can confidently extract. Omit or null fields you cannot determine.
 
-For PDFs, you may receive text from two sources: pdftotext (accurate digital text) and tesseract OCR (covers scanned pages but may have errors). When both are present, prefer pdftotext for pages with clean digital text, and use OCR output for scanned pages. Reconcile any conflicts by trusting the more plausible reading.`
+You may receive text from multiple extraction sources. Each source is labeled with its tool and a description. When multiple sources are present, prefer digital text extraction for clean output, and use OCR output for scanned content. Reconcile any conflicts by trusting the more plausible reading.`
 
 const extractionSchema = `## Output schema
 

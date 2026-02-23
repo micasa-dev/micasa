@@ -84,21 +84,24 @@ func TestIsImageMIME(t *testing.T) {
 	assert.False(t, IsImageMIME("text/plain"))
 }
 
-func TestOCR_UnsupportedMIME(t *testing.T) {
-	text, tsv, err := OCR(context.Background(), []byte("data"), "application/json", 20)
-	require.NoError(t, err)
-	assert.Empty(t, text)
-	assert.Empty(t, tsv)
+func TestPDFOCRExtractor_UnsupportedMIME(t *testing.T) {
+	ext := &PDFOCRExtractor{}
+	assert.False(t, ext.Matches("application/json"))
 }
 
-func TestOCR_EmptyData(t *testing.T) {
-	text, tsv, err := OCR(context.Background(), nil, "application/pdf", 20)
-	require.NoError(t, err)
-	assert.Empty(t, text)
-	assert.Empty(t, tsv)
+func TestImageOCRExtractor_UnsupportedMIME(t *testing.T) {
+	ext := &ImageOCRExtractor{}
+	assert.False(t, ext.Matches("application/json"))
 }
 
-func TestOCR_PDF_Integration(t *testing.T) {
+func TestOCRExtractor_EmptyData(t *testing.T) {
+	ext := &PDFOCRExtractor{}
+	src, err := ext.Extract(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, src.Text)
+}
+
+func TestPDFOCR_Integration(t *testing.T) {
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -109,15 +112,16 @@ func TestOCR_PDF_Integration(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: "+pdfPath)
 	}
 
-	text, tsv, err := OCR(context.Background(), data, "application/pdf", 20)
+	ext := &PDFOCRExtractor{MaxPages: 20}
+	src, err := ext.Extract(context.Background(), data)
 	require.NoError(t, err)
 	// The sample PDF has digital text, so tesseract should find something.
-	assert.NotEmpty(t, text)
-	assert.NotEmpty(t, tsv)
-	assert.Contains(t, text, "Invoice")
+	assert.NotEmpty(t, src.Text)
+	assert.NotEmpty(t, src.Data)
+	assert.Contains(t, src.Text, "Invoice")
 }
 
-func TestOCR_Image_Integration(t *testing.T) {
+func TestImageOCR_Integration(t *testing.T) {
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -130,8 +134,9 @@ func TestOCR_Image_Integration(t *testing.T) {
 	data, err := os.ReadFile(imgPath) //nolint:gosec // test fixture path
 	require.NoError(t, err)
 
-	text, tsv, err := OCR(context.Background(), data, "image/png", 20)
+	ext := &ImageOCRExtractor{}
+	src, err := ext.Extract(context.Background(), data)
 	require.NoError(t, err)
-	assert.NotEmpty(t, text)
-	assert.NotEmpty(t, tsv)
+	assert.NotEmpty(t, src.Text)
+	assert.NotEmpty(t, src.Data)
 }

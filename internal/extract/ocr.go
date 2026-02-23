@@ -14,40 +14,9 @@ import (
 	"strings"
 )
 
-// DefaultMaxOCRPages is the default page limit for OCR. Front-loaded info
+// DefaultMaxExtractPages is the default page limit for extraction. Front-loaded info
 // (specs, warranty, maintenance) is typically in the first pages.
-const DefaultMaxOCRPages = 20
-
-// OCR runs optical character recognition on the given document data.
-// For PDFs, it rasterizes pages with pdftoppm then runs tesseract.
-// For images, it runs tesseract directly.
-//
-// Returns the extracted plain text, the raw TSV data (for future use with
-// confidence scores and bounding boxes), and any error.
-//
-// Callers should check OCRAvailable/ImageOCRAvailable before calling.
-func OCR(
-	ctx context.Context,
-	data []byte,
-	mime string,
-	maxPages int,
-) (text string, tsv []byte, err error) {
-	if len(data) == 0 {
-		return "", nil, nil
-	}
-	if maxPages <= 0 {
-		maxPages = DefaultMaxOCRPages
-	}
-
-	switch {
-	case mime == "application/pdf":
-		return ocrPDF(ctx, data, maxPages)
-	case IsImageMIME(mime):
-		return ocrImage(ctx, data)
-	default:
-		return "", nil, nil
-	}
-}
+const DefaultMaxExtractPages = 20
 
 // ocrPDF rasterizes a PDF with pdftoppm, then OCRs each page image.
 func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, error) {

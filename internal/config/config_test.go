@@ -105,7 +105,7 @@ func TestExampleTOML(t *testing.T) {
 	assert.Contains(t, example, "max_file_size")
 	assert.Contains(t, example, "cache_ttl")
 	assert.Contains(t, example, "[extraction]")
-	assert.Contains(t, example, "max_ocr_pages")
+	assert.Contains(t, example, "max_extract_pages")
 }
 
 func TestMalformedConfigReturnsError(t *testing.T) {
@@ -328,7 +328,7 @@ func TestLLMTimeout(t *testing.T) {
 func TestExtractionDefaults(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
-	assert.Equal(t, DefaultMaxOCRPages, cfg.Extraction.MaxOCRPages)
+	assert.Equal(t, DefaultMaxExtractPages, cfg.Extraction.MaxExtractPages)
 	assert.True(t, cfg.Extraction.IsEnabled())
 	assert.Empty(t, cfg.Extraction.Model)
 }
@@ -336,13 +336,13 @@ func TestExtractionDefaults(t *testing.T) {
 func TestExtractionFromFile(t *testing.T) {
 	path := writeConfig(t, `[extraction]
 model = "qwen2.5:7b"
-max_ocr_pages = 10
+max_extract_pages = 10
 enabled = false
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
 	assert.Equal(t, "qwen2.5:7b", cfg.Extraction.Model)
-	assert.Equal(t, 10, cfg.Extraction.MaxOCRPages)
+	assert.Equal(t, 10, cfg.Extraction.MaxExtractPages)
 	assert.False(t, cfg.Extraction.IsEnabled())
 }
 
@@ -359,18 +359,18 @@ func TestExtractionResolvedModel(t *testing.T) {
 
 func TestExtractionEnvOverrides(t *testing.T) {
 	t.Setenv("MICASA_EXTRACTION_MODEL", "phi3")
-	t.Setenv("MICASA_MAX_OCR_PAGES", "5")
+	t.Setenv("MICASA_MAX_EXTRACT_PAGES", "5")
 	t.Setenv("MICASA_EXTRACTION_ENABLED", "false")
 
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 	assert.Equal(t, "phi3", cfg.Extraction.Model)
-	assert.Equal(t, 5, cfg.Extraction.MaxOCRPages)
+	assert.Equal(t, 5, cfg.Extraction.MaxExtractPages)
 	assert.False(t, cfg.Extraction.IsEnabled())
 }
 
 func TestExtractionRejectsNegativePages(t *testing.T) {
-	path := writeConfig(t, "[extraction]\nmax_ocr_pages = -1\n")
+	path := writeConfig(t, "[extraction]\nmax_extract_pages = -1\n")
 	_, err := LoadFromPath(path)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "must be non-negative")
@@ -384,7 +384,7 @@ func TestInvalidEnvVarReturnsError(t *testing.T) {
 		value   string
 		wantMsg string
 	}{
-		{"MICASA_MAX_OCR_PAGES", "not-a-number", "expected integer"},
+		{"MICASA_MAX_EXTRACT_PAGES", "not-a-number", "expected integer"},
 		{"MICASA_EXTRACTION_ENABLED", "maybe", "expected true or false"},
 		{"MICASA_LLM_THINKING", "dunno", "expected true or false"},
 		{"MICASA_MAX_DOCUMENT_SIZE", "lots", "expected byte size"},
@@ -448,7 +448,7 @@ func TestKeys(t *testing.T) {
 	assert.Contains(t, keys, "llm.model")
 	assert.Contains(t, keys, "llm.base_url")
 	assert.Contains(t, keys, "documents.max_file_size")
-	assert.Contains(t, keys, "extraction.max_ocr_pages")
+	assert.Contains(t, keys, "extraction.max_extract_pages")
 	// Verify every key is resolvable against defaults.
 	cfg := defaults()
 	for _, k := range keys {
@@ -472,7 +472,7 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_CACHE_TTL":           "documents.cache_ttl",
 		"MICASA_CACHE_TTL_DAYS":      "documents.cache_ttl_days",
 		"MICASA_EXTRACTION_MODEL":    "extraction.model",
-		"MICASA_MAX_OCR_PAGES":       "extraction.max_ocr_pages",
+		"MICASA_MAX_EXTRACT_PAGES":       "extraction.max_extract_pages",
 		"MICASA_EXTRACTION_ENABLED":  "extraction.enabled",
 		"MICASA_TEXT_TIMEOUT":        "extraction.text_timeout",
 		"MICASA_EXTRACTION_THINKING": "extraction.thinking",

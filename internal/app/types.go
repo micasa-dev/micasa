@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/cpcloud/micasa/internal/extract"
 )
 
 type Mode int
@@ -182,26 +183,23 @@ type llmConfig struct {
 
 // extractionConfig holds resolved extraction pipeline settings.
 type extractionConfig struct {
-	Model       string // overrides LLM model; empty = use chat model
-	MaxOCRPages int
-	TextTimeout time.Duration // pdftotext timeout; 0 = DefaultTextTimeout
-	Enabled     bool          // LLM extraction enabled
-	Thinking    bool          // enable model thinking mode (e.g. qwen3 <think>)
+	Model      string              // overrides LLM model; empty = use chat model
+	Extractors []extract.Extractor // configured extractors; nil = defaults
+	Enabled    bool                // LLM extraction enabled
+	Thinking   bool                // enable model thinking mode (e.g. qwen3 <think>)
 }
 
 // SetExtraction configures the extraction pipeline on the Options.
 func (o *Options) SetExtraction(
 	model string,
-	maxOCRPages int,
-	textTimeout time.Duration,
+	extractors []extract.Extractor,
 	enabled, thinking bool,
 ) {
 	o.ExtractionConfig = extractionConfig{
-		Model:       model,
-		MaxOCRPages: maxOCRPages,
-		TextTimeout: textTimeout,
-		Enabled:     enabled,
-		Thinking:    thinking,
+		Model:      model,
+		Extractors: extractors,
+		Enabled:    enabled,
+		Thinking:   thinking,
 	}
 }
 

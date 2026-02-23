@@ -70,7 +70,7 @@ const (
 	ColChecksum          = "sha256"
 	ColData              = "data"
 	ColExtractedText     = "extracted_text"
-	ColOCRData           = "ocr_data"
+	ColExtractData       = "ocr_data" // DB column name kept for migration compat
 	ColSeverity          = "severity"
 	ColDescription       = "description"
 	ColDateNoticed       = "date_noticed"
@@ -279,7 +279,7 @@ type Document struct {
 	ChecksumSHA256 string `gorm:"column:sha256"`
 	Data           []byte
 	ExtractedText  string
-	OCRData        []byte
+	ExtractData    []byte `gorm:"column:ocr_data"`
 	Notes          string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time

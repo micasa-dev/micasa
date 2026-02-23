@@ -14,28 +14,30 @@ import (
 	"strings"
 )
 
-// OCRProgress reports incremental progress from OCRWithProgress.
-type OCRProgress struct {
-	Phase string // "rasterize" or "ocr"
+// ExtractProgress reports incremental progress from ExtractWithProgress.
+type ExtractProgress struct {
+	Tool  string // extractor tool name (set on Done)
+	Desc  string // human description (set on Done)
+	Phase string // e.g. "rasterize", "extract"
 	Page  int    // current page (1-indexed)
 	Total int    // total pages (0 until known)
 	Done  bool   // all phases finished
 	Text  string // accumulated text (set on Done)
-	TSV   []byte // accumulated TSV (set on Done)
+	Data  []byte // structured data (set on Done)
 	Err   error  // set on failure
 }
 
-// OCRWithProgress runs OCR with per-page progress updates sent on the
-// returned channel. The channel closes when processing completes.
+// ExtractWithProgress runs async extraction with per-page progress updates
+// sent on the returned channel. The channel closes when processing completes.
 // Only PDF and image MIME types are supported; unsupported types produce
 // a single Done message with empty text.
-func OCRWithProgress(
+func ExtractWithProgress(
 	ctx context.Context,
 	data []byte,
 	mime string,
 	maxPages int,
-) <-chan OCRProgress {
-	ch := make(chan OCRProgress, 8)
+) <-chan ExtractProgress {
+	ch := make(chan ExtractProgress, 8)
 	go func() {
 		defer close(ch)
 		if IsImageMIME(mime) {
@@ -48,42 +50,44 @@ func OCRWithProgress(
 }
 
 // ocrImageWithProgress runs tesseract directly on an image file.
-func ocrImageWithProgress(ctx context.Context, data []byte, ch chan<- OCRProgress) {
+func ocrImageWithProgress(ctx context.Context, data []byte, ch chan<- ExtractProgress) {
 	if len(data) == 0 {
-		ch <- OCRProgress{Done: true}
+		ch <- ExtractProgress{Done: true}
 		return
 	}
 
 	tmpDir, err := os.MkdirTemp("", "micasa-ocr-*")
 	if err != nil {
-		ch <- OCRProgress{Err: fmt.Errorf("create temp dir: %w", err), Done: true}
+		ch <- ExtractProgress{Err: fmt.Errorf("create temp dir: %w", err), Done: true}
 		return
 	}
 	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
 	imgPath := filepath.Join(tmpDir, "input.png")
 	if err := os.WriteFile(imgPath, data, 0o600); err != nil {
-		ch <- OCRProgress{Err: fmt.Errorf("write temp image: %w", err), Done: true}
+		ch <- ExtractProgress{Err: fmt.Errorf("write temp image: %w", err), Done: true}
 		return
 	}
 
 	select {
-	case ch <- OCRProgress{Phase: "ocr", Page: 1, Total: 1}:
+	case ch <- ExtractProgress{Phase: "extract", Page: 1, Total: 1}:
 	case <-ctx.Done():
-		ch <- OCRProgress{Err: ctx.Err(), Done: true}
+		ch <- ExtractProgress{Err: ctx.Err(), Done: true}
 		return
 	}
 
 	text, tsv, err := ocrImageFile(ctx, imgPath)
 	if err != nil {
-		ch <- OCRProgress{Err: fmt.Errorf("tesseract: %w", err), Done: true}
+		ch <- ExtractProgress{Err: fmt.Errorf("tesseract: %w", err), Done: true}
 		return
 	}
 
-	ch <- OCRProgress{
+	ch <- ExtractProgress{
+		Tool: "tesseract",
+		Desc: "Text recognized from the image.",
 		Done: true,
 		Text: normalizeWhitespace(text),
-		TSV:  tsv,
+		Data: tsv,
 	}
 }
 
@@ -91,45 +95,45 @@ func ocrPDFWithProgress(
 	ctx context.Context,
 	data []byte,
 	maxPages int,
-	ch chan<- OCRProgress,
+	ch chan<- ExtractProgress,
 ) {
 	if len(data) == 0 {
-		ch <- OCRProgress{Done: true}
+		ch <- ExtractProgress{Done: true}
 		return
 	}
 	if maxPages <= 0 {
-		maxPages = DefaultMaxOCRPages
+		maxPages = DefaultMaxExtractPages
 	}
 
 	tmpDir, err := os.MkdirTemp("", "micasa-ocr-*")
 	if err != nil {
-		ch <- OCRProgress{Err: fmt.Errorf("create temp dir: %w", err), Done: true}
+		ch <- ExtractProgress{Err: fmt.Errorf("create temp dir: %w", err), Done: true}
 		return
 	}
 	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
 	if err := os.WriteFile(pdfPath, data, 0o600); err != nil {
-		ch <- OCRProgress{Err: fmt.Errorf("write temp pdf: %w", err), Done: true}
+		ch <- ExtractProgress{Err: fmt.Errorf("write temp pdf: %w", err), Done: true}
 		return
 	}
 
 	// Rasterize.
 	outputPrefix := filepath.Join(tmpDir, "page")
 	if err := rasterize(ctx, pdfPath, outputPrefix, maxPages); err != nil {
-		ch <- OCRProgress{Err: fmt.Errorf("pdftoppm: %w", err), Done: true}
+		ch <- ExtractProgress{Err: fmt.Errorf("pdftoppm: %w", err), Done: true}
 		return
 	}
 
 	images, err := filepath.Glob(outputPrefix + "*.png")
 	if err != nil {
-		ch <- OCRProgress{Err: fmt.Errorf("glob page images: %w", err), Done: true}
+		ch <- ExtractProgress{Err: fmt.Errorf("glob page images: %w", err), Done: true}
 		return
 	}
 	sort.Strings(images)
 
 	if len(images) == 0 {
-		ch <- OCRProgress{Done: true}
+		ch <- ExtractProgress{Done: true}
 		return
 	}
 
@@ -137,9 +141,9 @@ func ocrPDFWithProgress(
 
 	// Send rasterize complete.
 	select {
-	case ch <- OCRProgress{Phase: "rasterize", Page: total, Total: total}:
+	case ch <- ExtractProgress{Phase: "rasterize", Page: total, Total: total}:
 	case <-ctx.Done():
-		ch <- OCRProgress{Err: ctx.Err(), Done: true}
+		ch <- ExtractProgress{Err: ctx.Err(), Done: true}
 		return
 	}
 
@@ -150,14 +154,14 @@ func ocrPDFWithProgress(
 
 	for i, img := range images {
 		if ctx.Err() != nil {
-			ch <- OCRProgress{Err: ctx.Err(), Done: true}
+			ch <- ExtractProgress{Err: ctx.Err(), Done: true}
 			return
 		}
 
 		select {
-		case ch <- OCRProgress{Phase: "ocr", Page: i + 1, Total: total}:
+		case ch <- ExtractProgress{Phase: "extract", Page: i + 1, Total: total}:
 		case <-ctx.Done():
-			ch <- OCRProgress{Err: ctx.Err(), Done: true}
+			ch <- ExtractProgress{Err: ctx.Err(), Done: true}
 			return
 		}
 
@@ -182,10 +186,12 @@ func ocrPDFWithProgress(
 		}
 	}
 
-	ch <- OCRProgress{
+	ch <- ExtractProgress{
+		Tool: "tesseract",
+		Desc: "Text recognized from rasterized page images.",
 		Done: true,
 		Text: normalizeWhitespace(allText.String()),
-		TSV:  allTSV.Bytes(),
+		Data: allTSV.Bytes(),
 	}
 }
 

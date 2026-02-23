@@ -105,13 +105,13 @@ type Extraction struct {
 	// chat model if empty.
 	Model string `toml:"model" env:"MICASA_EXTRACTION_MODEL"`
 
-	// MaxOCRPages is the maximum number of pages to OCR for scanned
+	// MaxExtractPages is the maximum number of pages for async extraction of scanned
 	// documents. Front-loaded info (specs, warranty) is typically in the
 	// first pages. Default: 20.
-	MaxOCRPages int `toml:"max_ocr_pages" env:"MICASA_MAX_OCR_PAGES"`
+	MaxExtractPages int `toml:"max_extract_pages" env:"MICASA_MAX_EXTRACT_PAGES"`
 
 	// Enabled controls whether LLM-powered extraction runs when a document
-	// is uploaded. Text extraction and OCR are independent and always
+	// is uploaded. Text and image extraction are independent and always
 	// available. Default: true.
 	Enabled *bool `toml:"enabled,omitempty" env:"MICASA_EXTRACTION_ENABLED"`
 
@@ -163,13 +163,13 @@ func (e Extraction) ResolvedModel(chatModel string) string {
 }
 
 const (
-	DefaultBaseURL     = "http://localhost:11434/v1"
-	DefaultModel       = "qwen3"
-	DefaultLLMTimeout  = 5 * time.Second
-	DefaultCacheTTL    = 30 * 24 * time.Hour // 30 days
-	DefaultMaxOCRPages = 20
-	DefaultTextTimeout = 30 * time.Second
-	configRelPath      = "micasa/config.toml"
+	DefaultBaseURL         = "http://localhost:11434/v1"
+	DefaultModel           = "qwen3"
+	DefaultLLMTimeout      = 5 * time.Second
+	DefaultCacheTTL        = 30 * 24 * time.Hour // 30 days
+	DefaultMaxExtractPages = 20
+	DefaultTextTimeout     = 30 * time.Second
+	configRelPath          = "micasa/config.toml"
 )
 
 // defaults returns a Config with all default values populated.
@@ -184,7 +184,7 @@ func defaults() Config {
 			MaxFileSize: ByteSize(data.MaxDocumentSize),
 		},
 		Extraction: Extraction{
-			MaxOCRPages: DefaultMaxOCRPages,
+			MaxExtractPages: DefaultMaxExtractPages,
 		},
 	}
 }
@@ -289,14 +289,14 @@ func LoadFromPath(path string) (Config, error) {
 		}
 	}
 
-	if cfg.Extraction.MaxOCRPages < 0 {
+	if cfg.Extraction.MaxExtractPages < 0 {
 		return cfg, fmt.Errorf(
-			"extraction.max_ocr_pages must be non-negative, got %d",
-			cfg.Extraction.MaxOCRPages,
+			"extraction.max_extract_pages must be non-negative, got %d",
+			cfg.Extraction.MaxExtractPages,
 		)
 	}
-	if cfg.Extraction.MaxOCRPages == 0 {
-		cfg.Extraction.MaxOCRPages = DefaultMaxOCRPages
+	if cfg.Extraction.MaxExtractPages == 0 {
+		cfg.Extraction.MaxExtractPages = DefaultMaxExtractPages
 	}
 
 	return cfg, nil
@@ -613,11 +613,11 @@ model = "` + DefaultModel + `"
 # Increase if you routinely process very large PDFs.
 # text_timeout = "30s"
 
-# Maximum pages to OCR for scanned documents. Default: 20.
-# max_ocr_pages = 20
+# Maximum pages for async extraction of scanned documents. Default: 20.
+# max_extract_pages = 20
 
 # Set to false to disable LLM-powered extraction even when LLM is configured.
-# Text extraction and OCR still work independently.
+# Text and image extraction still work independently.
 # enabled = true
 
 # Enable model thinking mode for extraction (e.g. qwen3 <think> blocks).

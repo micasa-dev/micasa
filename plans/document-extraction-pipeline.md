@@ -228,7 +228,7 @@ internal/
 # model = "qwen2.5:7b"
 
 # Maximum pages to OCR for scanned documents. Default: 20.
-# max_ocr_pages = 20
+# max_extract_pages = 20
 
 # Set to false to disable LLM-powered extraction even when LLM is configured.
 # Text extraction and OCR still work independently.

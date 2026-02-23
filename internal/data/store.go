@@ -1050,12 +1050,12 @@ func (s *Store) UpdateDocument(doc Document) error {
 		Updates(doc).Error
 }
 
-// UpdateDocumentOCR persists OCR results on a document without touching
-// other fields. This is called from the async extraction overlay after
-// OCR completes.
-func (s *Store) UpdateDocumentOCR(id uint, text string, ocrData []byte) error {
+// UpdateDocumentExtraction persists async extraction results on a document
+// without touching other fields. Called from the extraction overlay after
+// async extraction completes.
+func (s *Store) UpdateDocumentExtraction(id uint, text string, data []byte) error {
 	updates := map[string]any{
-		ColOCRData: ocrData,
+		ColExtractData: data,
 	}
 	if text != "" {
 		updates[ColExtractedText] = text

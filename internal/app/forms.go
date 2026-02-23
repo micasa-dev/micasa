@@ -2472,16 +2472,20 @@ func (m *Model) parseDocumentFormData() (documentParseResult, error) {
 		doc.MIMEType = detectMIMEType(path, fileData)
 		doc.ChecksumSHA256 = fmt.Sprintf("%x", sha256.Sum256(fileData))
 
-		// Run text extraction synchronously (instant, pure Go). OCR and
-		// LLM run asynchronously in the extraction overlay after save.
+		// Run text extraction synchronously (instant, pure Go). Async
+		// extraction and LLM run in the extraction overlay after save.
 		var extractErr error
-		text, err := extract.ExtractText(fileData, doc.MIMEType, m.textTimeout)
+		text, err := extract.ExtractText(
+			fileData,
+			doc.MIMEType,
+			extract.ExtractorTimeout(m.extractors),
+		)
 		if err != nil {
 			extractErr = err
 		}
 		doc.ExtractedText = text
 
-		// Show one-time tesseract hint if OCR might help but isn't available.
+		// Show one-time tesseract hint if extraction tools aren't available.
 		if extract.IsScanned(doc.ExtractedText) && !extract.OCRAvailable() {
 			if extract.IsImageMIME(doc.MIMEType) || doc.MIMEType == "application/pdf" {
 				m.showTesseractHint()

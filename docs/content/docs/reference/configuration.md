@@ -95,7 +95,7 @@ micasa backup --source /path/to/micasa.db ~/backups/snapshot.db
 | `MICASA_EXTRACTION_ENABLED` | `true` | `extraction.enabled` | Enable/disable LLM extraction |
 | `MICASA_EXTRACTION_THINKING` | `false` | `extraction.thinking` | Enable model thinking for extraction |
 | `MICASA_TEXT_TIMEOUT` | `30s` | `extraction.text_timeout` | pdftotext timeout |
-| `MICASA_MAX_OCR_PAGES` | `20` | `extraction.max_ocr_pages` | Max pages to OCR per document |
+| `MICASA_MAX_EXTRACT_PAGES` | `20` | `extraction.max_extract_pages` | Max pages to OCR per document |
 | `MICASA_LLM_THINKING` | (unset) | `llm.thinking` | Enable model thinking for chat |
 
 ### `MICASA_DB_PATH`
@@ -251,7 +251,7 @@ model = "qwen3"
 # text_timeout = "30s"
 
 # Maximum pages to OCR for scanned documents. Default: 20.
-# max_ocr_pages = 20
+# max_extract_pages = 20
 
 # Set to false to disable LLM-powered extraction. Text extraction and OCR
 # still run independently.
@@ -289,7 +289,7 @@ adds structured data extraction (document type, costs, dates, vendor matching).
 |-----|------|---------|-------------|
 | `model` | string | (chat model) | Model for document extraction. Falls back to `llm.model` if empty. A small, fast model (e.g. `qwen2.5:7b`) works well. |
 | `text_timeout` | string | `"30s"` | Max time for `pdftotext` to run. Go duration syntax, e.g. `"1m"`. Increase for very large PDFs. |
-| `max_ocr_pages` | int | `20` | Maximum pages to OCR per scanned document. Front-loaded info is typically in the first pages. |
+| `max_extract_pages` | int | `20` | Maximum pages to OCR per scanned document. Front-loaded info is typically in the first pages. |
 | `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. Text extraction and OCR still run. |
 | `thinking` | bool | `false` | Enable model thinking mode for extraction. Disable for faster structured output. |
 

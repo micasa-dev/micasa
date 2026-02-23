@@ -24,7 +24,7 @@ type extractionStep int
 
 const (
 	stepText extractionStep = iota
-	stepOCR
+	stepExtract
 	stepLLM
 	numExtractionSteps
 )
@@ -61,32 +61,34 @@ type extractionLogState struct {
 	ctx      context.Context
 	CancelFn context.CancelFunc
 
-	// Text sources -- kept separate so the LLM receives both with provenance.
-	pdfText       string // pdftotext output (PDFs only)
-	extractedText string // best available text for DB storage
+	// Text sources accumulated during extraction, passed to LLM prompt.
+	sources       []extract.TextSource
+	extractedText string // best available text for DB storage/display
+
+	// Async extraction results pending persistence (nil until produced).
+	pendingText string // text from async extraction
+	pendingData []byte // structured data from async extraction
 
 	// LLM token accumulator for JSON parsing on completion.
 	llmAccum strings.Builder
 
 	// Carried between steps.
-	fileData    []byte
-	mime        string
-	maxOCRPages int
+	fileData   []byte
+	mime       string
+	extractors []extract.Extractor
 
 	// Channel references for the waitFor loop pattern.
-	ocrCh <-chan extract.OCRProgress
-	llmCh <-chan llm.StreamChunk
+	extractCh <-chan extract.ExtractProgress
+	llmCh     <-chan llm.StreamChunk
 
 	markdownRenderer
 
 	// Which steps are active (skipped steps are simply not shown).
-	hasText bool
-	hasOCR  bool
-	hasLLM  bool
+	hasText    bool
+	hasExtract bool
+	hasLLM     bool
 
 	// Pending results held until user accepts.
-	ocrText  string                   // OCR extracted text (not yet persisted)
-	ocrTSV   []byte                   // OCR TSV data (not yet persisted)
 	hints    *extract.ExtractionHints // parsed LLM hints (not yet persisted)
 	accepted bool                     // true once user accepted results
 
@@ -101,8 +103,8 @@ func (ex *extractionLogState) activeSteps() []extractionStep {
 	if ex.hasText {
 		steps = append(steps, stepText)
 	}
-	if ex.hasOCR {
-		steps = append(steps, stepOCR)
+	if ex.hasExtract {
+		steps = append(steps, stepExtract)
 	}
 	if ex.hasLLM {
 		steps = append(steps, stepLLM)
@@ -121,9 +123,9 @@ func (ex *extractionLogState) cursorStep() extractionStep {
 
 // --- Messages ---
 
-// extractionOCRProgressMsg delivers a single OCR progress update.
-type extractionOCRProgressMsg struct {
-	Progress extract.OCRProgress
+// extractionProgressMsg delivers a single async extraction progress update.
+type extractionProgressMsg struct {
+	Progress extract.ExtractProgress
 }
 
 // extractionLLMStartedMsg delivers the LLM stream channel.
@@ -149,11 +151,10 @@ func (m *Model) startExtractionOverlay(
 	mime string,
 	extractedText string,
 ) tea.Cmd {
-	needsOCR := (isPDF(mime) && extract.OCRAvailable()) ||
-		(extract.IsImageMIME(mime) && extract.ImageOCRAvailable())
+	needsExtract := extract.HasMatchingExtractor(m.extractors, "tesseract", mime)
 	needsLLM := m.extractionLLMClient() != nil
 
-	if !needsOCR && !needsLLM {
+	if !needsExtract && !needsLLM {
 		return nil
 	}
 
@@ -165,9 +166,25 @@ func (m *Model) startExtractionOverlay(
 	// Text extraction only applies to PDFs and text files; skip for images.
 	hasText := !extract.IsImageMIME(mime)
 
-	var pdfText string
-	if isPDF(mime) {
-		pdfText = extractedText
+	// Build initial text source from already-extracted text.
+	var sources []extract.TextSource
+	if hasText && strings.TrimSpace(extractedText) != "" {
+		var tool, desc string
+		switch {
+		case mime == extract.MIMEApplicationPDF:
+			tool = "pdftotext"
+			desc = "Digital text extracted directly from the PDF."
+		case strings.HasPrefix(mime, "text/"):
+			tool = "plaintext"
+			desc = "Plain text content."
+		default:
+			tool = mime
+		}
+		sources = append(sources, extract.TextSource{
+			Tool: tool,
+			Desc: desc,
+			Text: extractedText,
+		})
 	}
 
 	state := &extractionLogState{
@@ -177,13 +194,13 @@ func (m *Model) startExtractionOverlay(
 		Visible:       true,
 		ctx:           ctx,
 		CancelFn:      cancel,
-		pdfText:       pdfText,
+		sources:       sources,
 		extractedText: extractedText,
 		fileData:      fileData,
 		mime:          mime,
-		maxOCRPages:   m.maxOCRPages,
+		extractors:    m.extractors,
 		hasText:       hasText,
-		hasOCR:        needsOCR,
+		hasExtract:    needsExtract,
 		hasLLM:        needsLLM,
 		expanded:      make(map[extractionStep]bool),
 	}
@@ -191,7 +208,7 @@ func (m *Model) startExtractionOverlay(
 		nChars := len(strings.TrimSpace(extractedText))
 		var textTool string
 		switch {
-		case isPDF(mime):
+		case mime == extract.MIMEApplicationPDF:
 			textTool = "pdf"
 		case strings.HasPrefix(mime, "text/"):
 			textTool = "plaintext"
@@ -216,10 +233,10 @@ func (m *Model) startExtractionOverlay(
 	m.extraction = state
 
 	var cmd tea.Cmd
-	if needsOCR {
-		state.Steps[stepOCR].Status = stepRunning
-		state.Steps[stepOCR].Started = time.Now()
-		cmd = ocrExtractCmd(ctx, state)
+	if needsExtract {
+		state.Steps[stepExtract].Status = stepRunning
+		state.Steps[stepExtract].Started = time.Now()
+		cmd = asyncExtractCmd(ctx, state)
 	} else if needsLLM {
 		state.Steps[stepLLM].Status = stepRunning
 		state.Steps[stepLLM].Started = time.Now()
@@ -243,24 +260,26 @@ func (m *Model) cancelExtraction() {
 
 // --- Async commands ---
 
-// ocrExtractCmd starts the OCR pipeline in a goroutine and returns the
-// first progress message via waitForOCRProgress.
-func ocrExtractCmd(ctx context.Context, state *extractionLogState) tea.Cmd {
-	ch := extract.OCRWithProgress(ctx, state.fileData, state.mime, state.maxOCRPages)
-	state.ocrCh = ch
-	return waitForOCRProgress(ch)
+// asyncExtractCmd starts the async extraction pipeline and returns the
+// first progress message via waitForExtractProgress.
+func asyncExtractCmd(ctx context.Context, state *extractionLogState) tea.Cmd {
+	ch := extract.ExtractWithProgress(
+		ctx, state.fileData, state.mime, extract.ExtractorMaxPages(state.extractors),
+	)
+	state.extractCh = ch
+	return waitForExtractProgress(ch)
 }
 
-// waitForOCRProgress blocks until the next OCR progress update.
-func waitForOCRProgress(ch <-chan extract.OCRProgress) tea.Cmd {
+// waitForExtractProgress blocks until the next extraction progress update.
+func waitForExtractProgress(ch <-chan extract.ExtractProgress) tea.Cmd {
 	return func() tea.Msg {
 		p, ok := <-ch
 		if !ok {
-			return extractionOCRProgressMsg{
-				Progress: extract.OCRProgress{Done: true},
+			return extractionProgressMsg{
+				Progress: extract.ExtractProgress{Done: true},
 			}
 		}
-		return extractionOCRProgressMsg{Progress: p}
+		return extractionProgressMsg{Progress: p}
 	}
 }
 
@@ -289,9 +308,7 @@ func (m *Model) llmExtractCmd(ctx context.Context) tea.Cmd {
 			MIME:      ex.mime,
 			SizeBytes: int64(len(ex.fileData)),
 			Entities:  ec,
-			PdfText:   ex.pdfText,
-			OCRText:   ex.ocrText,
-			Text:      ex.extractedText,
+			Sources:   ex.sources,
 		})
 		ch, err := client.ChatStream(ctx, messages)
 		if err != nil {
@@ -318,22 +335,22 @@ func waitForLLMChunk(ch <-chan llm.StreamChunk) tea.Cmd {
 
 // --- Message handlers ---
 
-// handleExtractionOCRProgress processes an OCR progress update.
-func (m *Model) handleExtractionOCRProgress(msg extractionOCRProgressMsg) tea.Cmd {
+// handleExtractionProgress processes an async extraction progress update.
+func (m *Model) handleExtractionProgress(msg extractionProgressMsg) tea.Cmd {
 	ex := m.extraction
 	if ex == nil {
 		return nil
 	}
 
 	p := msg.Progress
-	step := &ex.Steps[stepOCR]
+	step := &ex.Steps[stepExtract]
 
 	if p.Err != nil {
 		step.Status = stepFailed
 		step.Elapsed = time.Since(step.Started)
 		step.Logs = append(step.Logs, p.Err.Error())
 		ex.HasError = true
-		// OCR failed but LLM can still run on whatever text was extracted.
+		// Extraction failed but LLM can still run on whatever text exists.
 		if ex.hasLLM {
 			client := m.extractionLLMClient()
 			if client != nil {
@@ -351,29 +368,37 @@ func (m *Model) handleExtractionOCRProgress(msg extractionOCRProgressMsg) tea.Cm
 		switch p.Phase {
 		case "rasterize":
 			step.Detail = fmt.Sprintf("rasterizing %d/%d", p.Page, p.Total)
-		case "ocr":
+		case "extract":
 			step.Detail = fmt.Sprintf("page %d/%d", p.Page, p.Total)
 		}
-		return waitForOCRProgress(ex.ocrCh)
+		return waitForExtractProgress(ex.extractCh)
 	}
 
-	// OCR done.
+	// Extraction done.
 	step.Status = stepDone
 	step.Elapsed = time.Since(step.Started)
 	nChars := len(strings.TrimSpace(p.Text))
-	step.Detail = "tesseract"
+	step.Detail = p.Tool
 	step.Metric = fmt.Sprintf("%d chars", nChars)
 
-	// Store OCR output as explorable logs.
+	// Store output as explorable logs.
 	if nChars > 0 {
 		step.Logs = strings.Split(p.Text, "\n")
 	}
 
-	// Hold OCR results for accept.
-	ex.ocrText = p.Text
-	ex.ocrTSV = p.TSV
+	// Add to LLM sources (prompt builder skips empty text).
+	ex.sources = append(ex.sources, extract.TextSource{
+		Tool: p.Tool,
+		Desc: p.Desc,
+		Text: p.Text,
+		Data: p.Data,
+	})
 
-	// For images (no pdftotext), OCR is the primary text source.
+	// Hold for persistence at accept time.
+	ex.pendingText = p.Text
+	ex.pendingData = p.Data
+
+	// If no text was extracted synchronously, use async result.
 	if nChars > 0 && ex.extractedText == "" {
 		ex.extractedText = p.Text
 	}
@@ -480,11 +505,13 @@ func (m *Model) acceptExtraction() {
 		return
 	}
 
-	// Persist OCR results.
-	if ex.ocrText != "" || len(ex.ocrTSV) > 0 {
+	// Persist async extraction results.
+	if ex.pendingText != "" || len(ex.pendingData) > 0 {
 		if m.store != nil {
-			if err := m.store.UpdateDocumentOCR(ex.DocID, ex.ocrText, ex.ocrTSV); err != nil {
-				m.setStatusError(fmt.Sprintf("save ocr: %s", err))
+			if err := m.store.UpdateDocumentExtraction(
+				ex.DocID, ex.pendingText, ex.pendingData,
+			); err != nil {
+				m.setStatusError(fmt.Sprintf("save extraction: %s", err))
 				return
 			}
 		}
@@ -833,18 +860,14 @@ func stepName(si extractionStep) string {
 	switch si {
 	case stepText:
 		return "text"
-	case stepOCR:
-		return "ocr"
+	case stepExtract:
+		return "ext"
 	case stepLLM:
 		return "llm"
 	case numExtractionSteps:
 		return "?"
 	}
 	return "?"
-}
-
-func isPDF(mime string) bool {
-	return mime == "application/pdf"
 }
 
 // extractionModelLabel returns the model name used for extraction.

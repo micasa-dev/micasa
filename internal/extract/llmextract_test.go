@@ -22,8 +22,9 @@ func TestBuildExtractionPrompt(t *testing.T) {
 		MIME:      "application/pdf",
 		SizeBytes: 12345,
 		Entities:  entities,
-		PdfText:   "Invoice text here",
-		Text:      "Invoice text here",
+		Sources: []TextSource{
+			{Tool: "pdftotext", Desc: "Digital text.", Text: "Invoice text here"},
+		},
 	})
 
 	require.Len(t, msgs, 2)
@@ -46,14 +47,16 @@ func TestBuildExtractionPrompt_DualSources(t *testing.T) {
 		Filename:  "mixed.pdf",
 		MIME:      "application/pdf",
 		SizeBytes: 50000,
-		PdfText:   "Digital text from pages 1-2",
-		OCRText:   "OCR text from page 3",
+		Sources: []TextSource{
+			{Tool: "pdftotext", Desc: "Digital text.", Text: "Digital text from pages 1-2"},
+			{Tool: "tesseract", Desc: "OCR text.", Text: "OCR text from page 3"},
+		},
 	})
 
 	require.Len(t, msgs, 2)
 	user := msgs[1].Content
 	assert.Contains(t, user, "Source: pdftotext")
-	assert.Contains(t, user, "Source: tesseract OCR")
+	assert.Contains(t, user, "Source: tesseract")
 	assert.Contains(t, user, "Digital text from pages 1-2")
 	assert.Contains(t, user, "OCR text from page 3")
 }
@@ -63,13 +66,14 @@ func TestBuildExtractionPrompt_OCROnly(t *testing.T) {
 		Filename:  "scan.pdf",
 		MIME:      "application/pdf",
 		SizeBytes: 30000,
-		OCRText:   "OCR text from all pages",
-		Text:      "OCR text from all pages",
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR text.", Text: "OCR text from all pages"},
+		},
 	})
 
 	require.Len(t, msgs, 2)
 	user := msgs[1].Content
-	assert.Contains(t, user, "Source: tesseract OCR")
+	assert.Contains(t, user, "Source: tesseract")
 	assert.NotContains(t, user, "Source: pdftotext")
 }
 
@@ -78,7 +82,9 @@ func TestBuildExtractionPrompt_NoEntities(t *testing.T) {
 		Filename:  "doc.txt",
 		MIME:      "text/plain",
 		SizeBytes: 100,
-		Text:      "Some text",
+		Sources: []TextSource{
+			{Tool: "plaintext", Text: "Some text"},
+		},
 	})
 	require.Len(t, msgs, 2)
 	assert.NotContains(t, msgs[0].Content, "Existing entities")

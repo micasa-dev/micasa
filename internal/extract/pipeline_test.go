@@ -16,9 +16,9 @@ import (
 func TestPipeline_EmptyData(t *testing.T) {
 	p := &Pipeline{}
 	r := p.Run(context.Background(), nil, "empty.pdf", "application/pdf")
-	assert.Empty(t, r.ExtractedText)
+	assert.Empty(t, r.Text())
 	assert.Nil(t, r.Hints)
-	assert.False(t, r.OCRUsed)
+	assert.False(t, r.HasSource("tesseract"))
 	assert.False(t, r.LLMUsed)
 	assert.NoError(t, r.Err)
 }
@@ -26,9 +26,10 @@ func TestPipeline_EmptyData(t *testing.T) {
 func TestPipeline_PlainText(t *testing.T) {
 	p := &Pipeline{}
 	r := p.Run(context.Background(), []byte("Hello, world!"), "readme.txt", "text/plain")
-	assert.Equal(t, "Hello, world!", r.ExtractedText)
+	assert.Equal(t, "Hello, world!", r.Text())
+	assert.True(t, r.HasSource("plaintext"))
 	assert.Nil(t, r.Hints)
-	assert.False(t, r.OCRUsed)
+	assert.False(t, r.HasSource("tesseract"))
 	assert.False(t, r.LLMUsed)
 	assert.NoError(t, r.Err)
 }
@@ -37,7 +38,7 @@ func TestPipeline_UnsupportedMIME(t *testing.T) {
 	p := &Pipeline{}
 	// application/octet-stream: no text extraction, no OCR, no LLM.
 	r := p.Run(context.Background(), []byte{0xFF, 0xD8}, "blob.bin", "application/octet-stream")
-	assert.Empty(t, r.ExtractedText)
+	assert.Empty(t, r.Text())
 	assert.NoError(t, r.Err)
 }
 
@@ -55,8 +56,8 @@ func TestPipeline_ImageOCR(t *testing.T) {
 	p := &Pipeline{}
 	r := p.Run(context.Background(), data, "invoice.png", "image/png")
 	require.NoError(t, r.Err)
-	assert.True(t, r.OCRUsed, "image should trigger OCR")
-	assert.NotEmpty(t, r.ExtractedText)
+	assert.True(t, r.HasSource("tesseract"), "image should trigger OCR")
+	assert.NotEmpty(t, r.Text())
 }
 
 func TestPipeline_PDFTextExtraction(t *testing.T) {
@@ -73,8 +74,10 @@ func TestPipeline_PDFTextExtraction(t *testing.T) {
 	p := &Pipeline{}
 	r := p.Run(context.Background(), data, "sample.pdf", "application/pdf")
 	require.NoError(t, r.Err)
-	assert.Contains(t, r.PdfText, "Invoice", "pdftotext should extract text")
-	assert.Contains(t, r.ExtractedText, "Invoice")
+	pdfSrc := r.SourceByTool("pdftotext")
+	require.NotNil(t, pdfSrc, "pdftotext should extract text")
+	assert.Contains(t, pdfSrc.Text, "Invoice")
+	assert.Contains(t, r.Text(), "Invoice")
 	assert.False(t, r.LLMUsed, "no LLM client configured")
 	assert.Nil(t, r.Hints)
 }
@@ -82,7 +85,7 @@ func TestPipeline_PDFTextExtraction(t *testing.T) {
 func TestPipeline_NoLLMClient(t *testing.T) {
 	p := &Pipeline{LLMClient: nil}
 	r := p.Run(context.Background(), []byte("some extracted text"), "doc.txt", "text/plain")
-	assert.Equal(t, "some extracted text", r.ExtractedText)
+	assert.Equal(t, "some extracted text", r.Text())
 	assert.False(t, r.LLMUsed)
 	assert.Nil(t, r.Hints)
 }
@@ -102,13 +105,17 @@ func TestPipeline_OCRIntegration(t *testing.T) {
 	}
 
 	// Both pdftotext and OCR should run for PDFs.
-	p := &Pipeline{MaxOCRPages: 5}
+	p := &Pipeline{Extractors: DefaultExtractors(5, 0)}
 	r := p.Run(context.Background(), data, "sample.pdf", "application/pdf")
 	require.NoError(t, r.Err)
-	assert.True(t, r.OCRUsed, "OCR always runs for PDFs")
-	assert.NotEmpty(t, r.PdfText, "pdftotext should extract text")
-	assert.NotEmpty(t, r.OCRText, "OCR should also extract text")
-	assert.Contains(t, r.ExtractedText, "Invoice")
+	assert.True(t, r.HasSource("tesseract"), "OCR always runs for PDFs")
+	pdfSrc := r.SourceByTool("pdftotext")
+	require.NotNil(t, pdfSrc, "pdftotext should extract text")
+	assert.NotEmpty(t, pdfSrc.Text)
+	ocrSrc := r.SourceByTool("tesseract")
+	require.NotNil(t, ocrSrc, "OCR should also extract text")
+	assert.NotEmpty(t, ocrSrc.Text)
+	assert.Contains(t, r.Text(), "Invoice")
 }
 
 func TestPipeline_MixedPDF(t *testing.T) {
@@ -126,27 +133,31 @@ func TestPipeline_MixedPDF(t *testing.T) {
 		t.Skipf("test fixture not found (pdfunite unavailable?): %s", pdfPath)
 	}
 
-	p := &Pipeline{MaxOCRPages: 5}
+	p := &Pipeline{Extractors: DefaultExtractors(5, 0)}
 	r := p.Run(context.Background(), data, "mixed-inspection.pdf", "application/pdf")
 	require.NoError(t, r.Err)
 
 	// Page 1 is digital text -- pdftotext should extract it.
-	assert.NotEmpty(t, r.PdfText, "pdftotext should extract digital text pages")
-	assert.Contains(t, r.PdfText, "Invoice")
+	pdfSrc := r.SourceByTool("pdftotext")
+	require.NotNil(t, pdfSrc, "pdftotext should extract digital text pages")
+	assert.Contains(t, pdfSrc.Text, "Invoice")
 
 	// Pages 2-3 are scanned -- OCR should run and find text.
-	assert.True(t, r.OCRUsed, "OCR should run for mixed PDFs")
-	assert.NotEmpty(t, r.OCRText, "OCR should extract text from scanned pages")
+	assert.True(t, r.HasSource("tesseract"), "OCR should run for mixed PDFs")
+	ocrSrc := r.SourceByTool("tesseract")
+	require.NotNil(t, ocrSrc, "OCR should extract text from scanned pages")
+	assert.NotEmpty(t, ocrSrc.Text)
 
-	// ExtractedText should have the pdftotext content (it takes priority).
-	assert.Contains(t, r.ExtractedText, "Invoice")
+	// Text() should return the pdftotext content (first in priority order).
+	assert.Contains(t, r.Text(), "Invoice")
 }
 
-func TestPipeline_MaxOCRPagesDefault(t *testing.T) {
-	p := &Pipeline{MaxOCRPages: 0}
-	// Just verify the default is applied (no panic on zero).
+func TestPipeline_NilExtractorsDefault(t *testing.T) {
+	p := &Pipeline{}
+	// Nil extractors falls back to DefaultExtractors(0, 0).
 	r := p.Run(context.Background(), []byte("text"), "doc.txt", "text/plain")
 	assert.NoError(t, r.Err)
+	assert.True(t, r.HasSource("plaintext"))
 }
 
 func TestPipeline_EntityContext(t *testing.T) {
@@ -159,6 +170,52 @@ func TestPipeline_EntityContext(t *testing.T) {
 	}
 	// Without LLM client, entity context is loaded but not used.
 	r := p.Run(context.Background(), []byte("invoice text"), "inv.txt", "text/plain")
-	assert.Equal(t, "invoice text", r.ExtractedText)
+	assert.Equal(t, "invoice text", r.Text())
 	assert.Nil(t, r.Hints)
+}
+
+func TestResult_Text_EmptySources(t *testing.T) {
+	r := &Result{}
+	assert.Empty(t, r.Text())
+}
+
+func TestResult_Text_FirstNonEmpty(t *testing.T) {
+	r := &Result{
+		Sources: []TextSource{
+			{Tool: "pdftotext", Text: "pdf text"},
+			{Tool: "tesseract", Text: "ocr text"},
+		},
+	}
+	assert.Equal(t, "pdf text", r.Text())
+}
+
+func TestResult_Text_SkipsWhitespace(t *testing.T) {
+	r := &Result{
+		Sources: []TextSource{
+			{Tool: "pdftotext", Text: "   "},
+			{Tool: "tesseract", Text: "ocr text"},
+		},
+	}
+	assert.Equal(t, "ocr text", r.Text())
+}
+
+func TestResult_SourceByTool(t *testing.T) {
+	r := &Result{
+		Sources: []TextSource{
+			{Tool: "pdftotext", Text: "pdf"},
+			{Tool: "tesseract", Text: "ocr"},
+		},
+	}
+	src := r.SourceByTool("tesseract")
+	require.NotNil(t, src)
+	assert.Equal(t, "ocr", src.Text)
+	assert.Nil(t, r.SourceByTool("nonexistent"))
+}
+
+func TestResult_HasSource(t *testing.T) {
+	r := &Result{
+		Sources: []TextSource{{Tool: "plaintext", Text: "hello"}},
+	}
+	assert.True(t, r.HasSource("plaintext"))
+	assert.False(t, r.HasSource("tesseract"))
 }

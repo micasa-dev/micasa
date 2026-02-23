@@ -60,8 +60,8 @@ func TestPipeline_LLMExtractsHintsFromText(t *testing.T) {
 	r := p.Run(context.Background(), []byte(docText), "invoice.txt", "text/plain")
 
 	require.NoError(t, r.Err)
-	assert.Equal(t, docText, r.ExtractedText)
-	assert.False(t, r.OCRUsed)
+	assert.Equal(t, docText, r.Text())
+	assert.False(t, r.HasSource("tesseract"))
 	assert.True(t, r.LLMUsed)
 
 	require.NotNil(t, r.Hints)
@@ -86,7 +86,7 @@ func TestPipeline_LLMServerDown(t *testing.T) {
 	r := p.Run(context.Background(), []byte("Some invoice text"), "invoice.txt", "text/plain")
 
 	// Text extraction succeeded.
-	assert.Equal(t, "Some invoice text", r.ExtractedText)
+	assert.Equal(t, "Some invoice text", r.Text())
 	// LLM failed gracefully.
 	assert.False(t, r.LLMUsed)
 	assert.Nil(t, r.Hints)
@@ -108,7 +108,7 @@ func TestPipeline_LLMGarbageResponse(t *testing.T) {
 	p := &Pipeline{LLMClient: client}
 	r := p.Run(context.Background(), []byte("invoice text"), "doc.txt", "text/plain")
 
-	assert.Equal(t, "invoice text", r.ExtractedText)
+	assert.Equal(t, "invoice text", r.Text())
 	assert.False(t, r.LLMUsed)
 	assert.Nil(t, r.Hints)
 	assert.Error(t, r.Err)
@@ -130,7 +130,7 @@ func TestPipeline_LLMSkippedWithoutText(t *testing.T) {
 	r := p.Run(context.Background(), []byte{0xFF, 0xD8}, "photo.bin", "application/octet-stream")
 
 	assert.NoError(t, r.Err)
-	assert.Empty(t, r.ExtractedText)
+	assert.Empty(t, r.Text())
 	assert.False(t, r.LLMUsed)
 	assert.False(t, called, "LLM should not be called when there's no text to analyze")
 }
