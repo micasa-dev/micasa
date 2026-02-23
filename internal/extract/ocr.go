@@ -10,15 +10,25 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // DefaultMaxExtractPages is the default page limit for extraction. Front-loaded info
 // (specs, warranty, maintenance) is typically in the first pages.
 const DefaultMaxExtractPages = 20
 
-// ocrPDF rasterizes a PDF with pdftoppm, then OCRs each page image.
+// ocrPageResult holds the OCR output for a single page.
+type ocrPageResult struct {
+	text string
+	tsv  []byte
+	err  error
+}
+
+// ocrPDF rasterizes a PDF with pdftoppm, then OCRs each page image in
+// parallel (bounded by runtime.NumCPU).
 func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, error) {
 	tmpDir, err := os.MkdirTemp("", "micasa-ocr-*")
 	if err != nil {
@@ -47,36 +57,89 @@ func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, err
 		return "", nil, nil
 	}
 
-	// OCR each page and collect TSV output.
+	results := ocrPagesParallel(ctx, images, nil)
+	text, tsv := collectOCRResults(results)
+	return text, tsv, nil
+}
+
+// ocrPagesParallel runs tesseract on multiple page images concurrently,
+// capping parallelism at runtime.NumCPU(). Results are returned in page
+// order. If pageDone is non-nil, a value is sent after each page completes
+// (for progress reporting).
+func ocrPagesParallel(
+	ctx context.Context,
+	images []string,
+	pageDone chan<- struct{},
+) []ocrPageResult {
+	n := len(images)
+	results := make([]ocrPageResult, n)
+
+	workers := runtime.NumCPU()
+	if workers > n {
+		workers = n
+	}
+
+	sem := make(chan struct{}, workers)
+	var wg sync.WaitGroup
+
+	for i, img := range images {
+		wg.Add(1)
+		go func(idx int, imgPath string) {
+			defer wg.Done()
+
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				results[idx] = ocrPageResult{err: ctx.Err()}
+				return
+			}
+
+			text, tsv, err := ocrImageFile(ctx, imgPath)
+			results[idx] = ocrPageResult{text: text, tsv: tsv, err: err}
+
+			if pageDone != nil {
+				select {
+				case pageDone <- struct{}{}:
+				case <-ctx.Done():
+				}
+			}
+		}(i, img)
+	}
+
+	wg.Wait()
+	return results
+}
+
+// collectOCRResults concatenates page results in order into combined text
+// and TSV output. Pages that failed are silently skipped.
+func collectOCRResults(results []ocrPageResult) (string, []byte) {
 	var allText strings.Builder
 	var allTSV bytes.Buffer
 	headerWritten := false
 
-	for _, img := range images {
-		pageText, pageTSV, err := ocrImageFile(ctx, img)
-		if err != nil {
-			continue // skip pages that fail
+	for _, r := range results {
+		if r.err != nil {
+			continue
 		}
-		if pageText != "" {
+		if r.text != "" {
 			if allText.Len() > 0 {
 				allText.WriteString("\n\n")
 			}
-			allText.WriteString(pageText)
+			allText.WriteString(r.text)
 		}
-		// Concatenate TSV: write header once, skip header on subsequent pages.
-		if len(pageTSV) > 0 {
-			lines := bytes.SplitN(pageTSV, []byte("\n"), 2)
+		if len(r.tsv) > 0 {
+			lines := bytes.SplitN(r.tsv, []byte("\n"), 2)
 			if !headerWritten {
-				allTSV.Write(pageTSV)
+				allTSV.Write(r.tsv)
 				headerWritten = true
 			} else if len(lines) > 1 {
-				// Skip TSV header line, append data lines only.
 				allTSV.Write(lines[1])
 			}
 		}
 	}
 
-	return normalizeWhitespace(allText.String()), allTSV.Bytes(), nil
+	return normalizeWhitespace(allText.String()), allTSV.Bytes()
 }
 
 // ocrImage runs tesseract on raw image bytes.
