@@ -95,11 +95,11 @@ func TestExtractWithProgress_Image_Integration(t *testing.T) {
 }
 
 // TestExtractWithProgress_PDF_Integration exercises the real path a user
-// hits when uploading a scanned PDF: pdftoppm rasterizes pages, then
-// tesseract extracts text from each page image, with progress on both phases.
+// hits when uploading a scanned PDF: pdfimages extracts embedded images (or
+// pdftoppm rasterizes as fallback), then tesseract OCRs them in parallel.
 func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 	if !OCRAvailable() {
-		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
+		skipOrFatalCI(t, "tesseract and/or image extraction tools not available")
 	}
 
 	pdfPath := filepath.Join("testdata", "scanned-invoice.pdf")
@@ -126,8 +126,16 @@ func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 		}
 	}
 
-	// Should see at least a rasterize phase and an extract phase.
-	assert.Contains(t, phases, "rasterize")
+	// Should see an image acquisition phase and an extract phase.
+	// The acquisition phase is "images" (pdfimages) or "rasterize" (pdftoppm fallback).
+	hasAcquire := false
+	for _, p := range phases {
+		if p == "images" || p == "rasterize" {
+			hasAcquire = true
+			break
+		}
+	}
+	assert.True(t, hasAcquire, "should see an images or rasterize phase, got: %v", phases)
 	assert.Contains(t, phases, "extract")
 	assert.NotEmpty(t, finalText, "should extract text from the scanned PDF")
 }

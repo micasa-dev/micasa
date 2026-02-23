@@ -27,8 +27,15 @@ type ocrPageResult struct {
 	err  error
 }
 
-// ocrPDF rasterizes a PDF with pdftoppm, then OCRs each page image in
-// parallel (bounded by runtime.NumCPU).
+// minOCRImageBytes is the minimum file size for an extracted image to be
+// worth OCR-ing. Full-page scans are typically >10KB even at low DPI;
+// logos and icons are <5KB.
+const minOCRImageBytes = 10 * 1024
+
+// ocrPDF extracts images from a PDF and OCRs them in parallel. It prefers
+// pdfimages (extracts embedded image blobs, near-instant) and falls back to
+// pdftoppm rasterization when pdfimages is unavailable or produces no
+// usable images.
 func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, error) {
 	tmpDir, err := os.MkdirTemp("", "micasa-ocr-*")
 	if err != nil {
@@ -41,18 +48,10 @@ func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, err
 		return "", nil, fmt.Errorf("write temp pdf: %w", err)
 	}
 
-	outputPrefix := filepath.Join(tmpDir, "page")
-	if err := rasterize(ctx, pdfPath, outputPrefix, maxPages); err != nil {
-		return "", nil, fmt.Errorf("pdftoppm: %w", err)
-	}
-
-	// Collect page images in sorted order.
-	images, err := filepath.Glob(outputPrefix + "*.png")
+	images, err := acquireImages(ctx, pdfPath, tmpDir, maxPages)
 	if err != nil {
-		return "", nil, fmt.Errorf("glob page images: %w", err)
+		return "", nil, err
 	}
-	sort.Strings(images)
-
 	if len(images) == 0 {
 		return "", nil, nil
 	}
@@ -60,6 +59,96 @@ func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, err
 	results := ocrPagesParallel(ctx, images, nil)
 	text, tsv := collectOCRResults(results)
 	return text, tsv, nil
+}
+
+// acquireImages tries pdfimages first (fast path), falling back to pdftoppm
+// rasterization if no usable images are found.
+func acquireImages(
+	ctx context.Context,
+	pdfPath string,
+	tmpDir string,
+	maxPages int,
+) ([]string, error) {
+	if HasPDFImages() {
+		images, err := extractPDFImages(ctx, pdfPath, tmpDir, maxPages)
+		if err == nil && len(images) > 0 {
+			return images, nil
+		}
+		// Fall through to pdftoppm if pdfimages found nothing.
+	}
+
+	if !HasPDFToPPM() {
+		return nil, fmt.Errorf("no PDF image extraction tool available")
+	}
+
+	outputPrefix := filepath.Join(tmpDir, "page")
+	if err := rasterize(ctx, pdfPath, outputPrefix, maxPages); err != nil {
+		return nil, fmt.Errorf("pdftoppm: %w", err)
+	}
+
+	images, err := filepath.Glob(outputPrefix + "*.png")
+	if err != nil {
+		return nil, fmt.Errorf("glob page images: %w", err)
+	}
+	sort.Strings(images)
+	return images, nil
+}
+
+// extractPDFImages uses pdfimages to extract embedded images from a PDF,
+// filtering out images smaller than minOCRImageDim in either dimension.
+func extractPDFImages(
+	ctx context.Context,
+	pdfPath string,
+	tmpDir string,
+	maxPages int,
+) ([]string, error) {
+	outputPrefix := filepath.Join(tmpDir, "img")
+	args := []string{"-all", "-p"}
+	if maxPages > 0 {
+		args = append(args, "-l", fmt.Sprintf("%d", maxPages))
+	}
+	args = append(args, pdfPath, outputPrefix)
+
+	cmd := exec.CommandContext( //nolint:gosec // args are constructed internally
+		ctx,
+		"pdfimages",
+		args...,
+	)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf(
+			"pdfimages: %s: %w",
+			strings.TrimSpace(stderr.String()),
+			err,
+		)
+	}
+
+	// Collect all extracted image files, filtering out tiny images.
+	pattern := outputPrefix + "*"
+	candidates, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("glob extracted images: %w", err)
+	}
+	sort.Strings(candidates)
+
+	var images []string
+	for _, path := range candidates {
+		if isOCRWorthy(path) {
+			images = append(images, path)
+		}
+	}
+	return images, nil
+}
+
+// isOCRWorthy checks whether an image file is large enough to contain
+// meaningful text, using file size as a proxy for image dimensions.
+func isOCRWorthy(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return info.Size() >= minOCRImageBytes
 }
 
 // ocrPagesParallel runs tesseract on multiple page images concurrently,
@@ -162,9 +251,12 @@ func ocrImage(ctx context.Context, data []byte) (string, []byte, error) {
 // and raw TSV output.
 func ocrImageFile(ctx context.Context, imgPath string) (string, []byte, error) {
 	// Run tesseract with TSV output to capture confidence/coordinates.
+	// OMP_THREAD_LIMIT=1 forces single-threaded mode per process so our
+	// worker pool controls parallelism without OpenMP oversubscription.
 	var tsvBuf bytes.Buffer
 	var stderr bytes.Buffer
 	tsvCmd := exec.CommandContext(ctx, "tesseract", imgPath, "stdout", "tsv")
+	tsvCmd.Env = append(os.Environ(), "OMP_THREAD_LIMIT=1")
 	tsvCmd.Stdout = &tsvBuf
 	tsvCmd.Stderr = &stderr
 	if err := tsvCmd.Run(); err != nil {

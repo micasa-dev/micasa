@@ -15,6 +15,8 @@ var (
 	pdftoppmFound  bool
 	pdftotextOnce  sync.Once
 	pdftotextFound bool
+	pdfimagesOnce  sync.Once
+	pdfimagesFound bool
 )
 
 // HasTesseract reports whether the tesseract binary is on PATH.
@@ -47,10 +49,20 @@ func HasPDFToText() bool {
 	return pdftotextFound
 }
 
-// OCRAvailable reports whether both tesseract and pdftoppm are available,
-// which is the minimum needed to OCR scanned PDFs.
+// HasPDFImages reports whether the pdfimages binary (from poppler-utils)
+// is on PATH. The result is cached for the process lifetime.
+func HasPDFImages() bool {
+	pdfimagesOnce.Do(func() {
+		_, err := exec.LookPath("pdfimages")
+		pdfimagesFound = err == nil
+	})
+	return pdfimagesFound
+}
+
+// OCRAvailable reports whether tesseract and at least one PDF image
+// extraction tool (pdfimages or pdftoppm) are available.
 func OCRAvailable() bool {
-	return HasTesseract() && HasPDFToPPM()
+	return HasTesseract() && (HasPDFImages() || HasPDFToPPM())
 }
 
 // ImageOCRAvailable reports whether tesseract is available for direct

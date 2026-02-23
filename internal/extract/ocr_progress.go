@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -118,19 +117,12 @@ func ocrPDFWithProgress(
 		return
 	}
 
-	// Rasterize.
-	outputPrefix := filepath.Join(tmpDir, "page")
-	if err := rasterize(ctx, pdfPath, outputPrefix, maxPages); err != nil {
-		ch <- ExtractProgress{Err: fmt.Errorf("pdftoppm: %w", err), Done: true}
-		return
-	}
-
-	images, err := filepath.Glob(outputPrefix + "*.png")
+	// Acquire images: pdfimages (fast) with pdftoppm fallback.
+	images, err := acquireImages(ctx, pdfPath, tmpDir, maxPages)
 	if err != nil {
-		ch <- ExtractProgress{Err: fmt.Errorf("glob page images: %w", err), Done: true}
+		ch <- ExtractProgress{Err: err, Done: true}
 		return
 	}
-	sort.Strings(images)
 
 	if len(images) == 0 {
 		ch <- ExtractProgress{Done: true}
@@ -139,9 +131,9 @@ func ocrPDFWithProgress(
 
 	total := len(images)
 
-	// Send rasterize complete.
+	// Send image acquisition complete.
 	select {
-	case ch <- ExtractProgress{Phase: "rasterize", Page: total, Total: total}:
+	case ch <- ExtractProgress{Phase: "images", Page: total, Total: total}:
 	case <-ctx.Done():
 		ch <- ExtractProgress{Err: ctx.Err(), Done: true}
 		return

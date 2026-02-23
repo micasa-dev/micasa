@@ -431,6 +431,8 @@ func (m *Model) handleExtractionProgress(msg extractionProgressMsg) tea.Cmd {
 		switch p.Phase {
 		case "rasterize":
 			step.Detail = fmt.Sprintf("rasterizing %d/%d", p.Page, p.Total)
+		case "images":
+			step.Detail = fmt.Sprintf("%d images", p.Total)
 		case "extract":
 			step.Detail = fmt.Sprintf("page %d/%d", p.Page, p.Total)
 		}
@@ -1185,11 +1187,24 @@ func (m *Model) buildExtractionPipelineOverlay(
 	ex.Viewport.SetContent(stepContent)
 
 	if vpH < contentLines && !ex.exploring {
-		yOff := ex.Viewport.YOffset
-		if cursorLine < yOff {
-			ex.Viewport.SetYOffset(cursorLine)
-		} else if cursorLine >= yOff+vpH {
-			ex.Viewport.SetYOffset(cursorLine - vpH + 1)
+		si := ex.cursorStep()
+		streaming := ex.Steps[si].Status == stepRunning
+
+		switch {
+		case streaming:
+			// Follow the growing output so the user sees new tokens.
+			ex.Viewport.GotoBottom()
+		case ex.cursorExpanded():
+			// Step is expanded and overflows: user may be scrolling with
+			// j/k, so don't reposition to the header.
+		default:
+			// Keep the cursor step header in view.
+			yOff := ex.Viewport.YOffset
+			if cursorLine < yOff {
+				ex.Viewport.SetYOffset(cursorLine)
+			} else if cursorLine >= yOff+vpH {
+				ex.Viewport.SetYOffset(cursorLine - vpH + 1)
+			}
 		}
 	}
 
