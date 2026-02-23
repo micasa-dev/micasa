@@ -129,7 +129,7 @@ func (p *Pipeline) extractWithLLM(
 		Sources:   sources,
 	})
 
-	raw, err := p.LLMClient.ChatComplete(ctx, messages)
+	raw, err := p.LLMClient.ChatComplete(ctx, messages, llm.WithJSON())
 	if err != nil {
 		return nil, "", fmt.Errorf("llm chat: %w", err)
 	}

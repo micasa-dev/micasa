@@ -33,10 +33,11 @@ type OperationPreviewRow struct {
 	Values  []string
 }
 
-// ParseOperations strips code fences and unmarshals a JSON array of operations.
+// ParseOperations unmarshals a JSON array of operations from the LLM response.
+// The caller should use llm.WithJSON() to constrain the model output to valid
+// JSON, making code-fence stripping unnecessary.
 func ParseOperations(raw string) ([]Operation, error) {
-	cleaned := StripCodeFences(raw)
-	cleaned = strings.TrimSpace(cleaned)
+	cleaned := strings.TrimSpace(raw)
 
 	if cleaned == "" {
 		return nil, fmt.Errorf("empty LLM output")

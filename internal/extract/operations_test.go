@@ -30,12 +30,10 @@ func TestParseOperations_Valid(t *testing.T) {
 	assert.Equal(t, "Invoice", ops[1].Data["title"])
 }
 
-func TestParseOperations_WithCodeFences(t *testing.T) {
+func TestParseOperations_RejectsCodeFences(t *testing.T) {
 	raw := "```json\n" + `[{"action": "create", "table": "vendors", "data": {"name": "Test"}}]` + "\n```"
-	ops, err := ParseOperations(raw)
-	require.NoError(t, err)
-	require.Len(t, ops, 1)
-	assert.Equal(t, "Test", ops[0].Data["name"])
+	_, err := ParseOperations(raw)
+	assert.Error(t, err, "code fences should be rejected; use llm.WithJSON() to constrain output")
 }
 
 func TestParseOperations_Empty(t *testing.T) {

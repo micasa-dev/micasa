@@ -339,7 +339,7 @@ func (m *Model) llmExtractCmd(ctx context.Context) tea.Cmd {
 			Schema:    schemaCtx,
 			Sources:   ex.sources,
 		})
-		ch, err := client.ChatStream(ctx, messages)
+		ch, err := client.ChatStream(ctx, messages, llm.WithJSON())
 		if err != nil {
 			return extractionLLMChunkMsg{Err: err, Done: true}
 		}
