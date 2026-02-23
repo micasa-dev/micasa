@@ -66,11 +66,13 @@ The `Docs` column appears on the **Projects** and **Appliances** tabs, showing
 how many documents are linked to each record. In Nav mode, press `enter` to
 drill into a scoped document list for that record.
 
-## Extraction pipeline
+## Extraction pipeline <span class="badge-experimental" title="Experimental feature"><span class="badge-pot"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle class="bubble-1" cx="5" cy="4" r="1" fill="currentColor"/><circle class="bubble-2" cx="8" cy="3" r="0.8" fill="currentColor"/><circle class="bubble-3" cx="11" cy="4.5" r="0.9" fill="currentColor"/><path d="M3 8h10v4a3 3 0 01-3 3H6a3 3 0 01-3-3V8z" fill="currentColor" opacity="0.25"/><path d="M3 8h10v4a3 3 0 01-3 3H6a3 3 0 01-3-3V8z" stroke="currentColor" stroke-width="1.2" fill="none"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span></span>
 
 When you save a document with file data, micasa runs a three-layer extraction
-pipeline to pull structured information out of the file. Each layer is
-independent and degrades gracefully when its tools are unavailable.
+pipeline to pull structured information out of the file. **This pipeline is
+under active development** -- results vary by document type, quality, and
+available tools. Each layer is independent and degrades gracefully when its
+tools are unavailable.
 
 ### Layer 1: text extraction
 
@@ -82,27 +84,42 @@ layout. Plain-text files are read directly. Images skip this layer entirely.
 
 Triggers automatically when text extraction returns little or no text (scanned
 PDFs) or when the file is an image (PNG, JPEG, TIFF, etc.). Requires
-`pdftoppm` (for PDF rasterization) and `tesseract` to be installed. If these
+`tesseract` and at least one image acquisition tool to be installed. If these
 tools are missing, OCR is silently skipped.
 
-The OCR phase shows live progress in an overlay: rasterization page count, then
-per-page OCR status.
+For PDFs, micasa tries three image acquisition strategies in order:
+
+1. **`pdfimages`** -- extracts embedded image blobs directly (fastest, best quality for scanned PDFs)
+2. **`pdftohtml`** -- renders pages to PNG (catches vector-drawn content that `pdfimages` misses)
+3. **`pdftoppm`** -- full 300 DPI rasterization (slowest, always works)
+
+Each fallback only runs if the previous tool is missing or produced no usable
+images (filtered by a 10 KB minimum size). The overlay shows which tool was
+used and how many images it produced, followed by per-page OCR progress.
 
 ### Layer 3: LLM extraction
 
 When an LLM is configured, micasa sends the extracted text to a local model
-that returns a JSON array of database operations (creates and updates) for
-vendors, quotes, maintenance items, appliances, and the document itself. The
-operations are validated against a strict allowlist before display.
+with a JSON Schema constraint that produces structured database operations
+(creates and updates) for vendors, quotes, maintenance items, appliances, and
+the document itself. The operations are validated against a strict allowlist
+before display.
+
+**This feature is early-stage.** Results vary significantly by model, document
+type, and text quality. Invoices and quotes with clear line items tend to work
+best; complex multi-page documents or poor OCR output often produce incomplete
+or incorrect operations. Always review the proposed changes in the preview
+before accepting.
 
 The results appear as a **tabbed table preview** below the pipeline steps --
 one tab per affected table, using the same column layout as the main UI. The
 user reviews proposed changes and explicitly accepts before anything touches
-the database. The LLM never writes directly.
+the database. The LLM never writes directly. Press `r` to rerun the LLM step
+if the first result is poor.
 
-The extraction model can be configured separately from the chat model (a small,
-fast model works well here). See [Configuration]({{< ref
-"/docs/reference/configuration" >}}) for the `[extraction]` section.
+The extraction model can be configured separately from the chat model. See
+[Configuration]({{< ref "/docs/reference/configuration" >}}) for the
+`[extraction]` section.
 
 ### Extraction overlay
 
@@ -144,9 +161,9 @@ document always saves regardless of which tools are installed.
 |---------------|------------|--------------|------------|
 | Text extraction | PDF | `pdftotext` | No digital text extracted |
 | Text extraction | `text/*` | _(none)_ | _(always available)_ |
-| OCR | Scanned PDF | `pdftoppm` + `tesseract` | OCR skipped |
+| OCR | Scanned PDF | `tesseract` + (`pdfimages`, `pdftohtml`, or `pdftoppm`) | OCR skipped |
 | OCR | Images (PNG, JPEG, TIFF, ...) | `tesseract` | OCR skipped |
-| LLM extraction | Any with extracted text | Ollama (or compatible) | No structured hints |
+| LLM extraction | Any with extracted text | Ollama (or compatible) | No structured extraction attempted |
 
 `pdftotext` and `pdftoppm` ship together in the **poppler** utilities package.
 

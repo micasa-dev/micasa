@@ -30,7 +30,7 @@ No cloud. No account. No subscriptions.
 - **[Document attachments]({{< ref "/docs/guide/documents" >}})** -- attach files (manuals, invoices,
   photos) to any record, stored as BLOBs in the same SQLite file. PDFs and
   images are automatically processed: text extraction, OCR for scanned
-  documents, and optional LLM-powered structured data extraction
+  documents, and optional [LLM-powered structured data extraction]({{< ref "/docs/guide/documents#extraction-pipeline" >}})
 - **[LLM chat]({{< ref "/docs/guide/llm-chat" >}})** -- ask questions about your home data,
   powered by a local LLM ([Ollama](https://ollama.com) or any OpenAI-compatible API)
 

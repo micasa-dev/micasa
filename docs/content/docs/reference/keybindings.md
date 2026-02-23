@@ -174,7 +174,7 @@ overlay showing the full text. Any key dismisses it.
 When a document extraction is in progress or complete, an overlay shows
 per-step progress (text, OCR, LLM) with a tabbed operation preview. The
 overlay has two modes. See the
-[Documents guide]({{< ref "/docs/guide/documents" >}}) for details.
+[extraction pipeline]({{< ref "/docs/guide/documents#extraction-pipeline" >}}) guide for details.
 
 ### Pipeline mode
 
