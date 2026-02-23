@@ -446,6 +446,62 @@ body {
   margin: 1.5rem 0 0.5rem;
 }
 
+/* ── Table of contents (right rail) ────────────────────────── */
+
+.toc-rail {
+  width: 200px;
+  flex-shrink: 0;
+  padding: 2.5rem 1rem 2rem 0;
+}
+
+.toc {
+  position: sticky;
+  top: 2rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.toc-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--warm-gray);
+  margin-bottom: 0.6rem;
+}
+
+.toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toc li {
+  margin: 0;
+  padding: 0.2rem 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.toc li:has(> a.active) {
+  border-left-color: var(--terracotta);
+}
+
+.toc a {
+  color: var(--warm-gray);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.toc a:hover {
+  color: var(--charcoal-soft);
+}
+
+.toc a.active {
+  color: var(--terracotta);
+}
+
 .docs-main p {
   margin-bottom: 1rem;
 }
@@ -694,6 +750,10 @@ pre {
   .docs-pager .next {
     text-align: left;
     margin-left: 0;
+  }
+
+  .toc-rail {
+    display: none;
   }
 
 }

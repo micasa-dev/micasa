@@ -59,6 +59,10 @@
       <a href="https://github.com/cpcloud/micasa/blob/main/LICENSE">Apache-2.0</a>
     </div>
   </main>
+
+  <aside class="toc-rail">
+    {{ block "toc" . }}{{ end }}
+  </aside>
 </div>
 
 <script>
@@ -112,6 +116,33 @@ document.addEventListener('click', function(e) {
 
   overlay.addEventListener('click', function(e) {
     if (!modal.contains(e.target)) close();
+  });
+})();
+</script>
+
+<script>
+(function() {
+  var toc = document.querySelector('.toc');
+  if (!toc) return;
+  var links = toc.querySelectorAll('a[href^="#"]');
+  if (!links.length) return;
+
+  var ids = [];
+  links.forEach(function(a) { ids.push(a.getAttribute('href').slice(1)); });
+
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        links.forEach(function(a) { a.classList.remove('active'); });
+        var hit = toc.querySelector('a[href="#' + entry.target.id + '"]');
+        if (hit) hit.classList.add('active');
+      }
+    });
+  }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) observer.observe(el);
   });
 })();
 </script>
