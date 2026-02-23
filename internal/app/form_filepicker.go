@@ -33,6 +33,20 @@ func filePickerCurrentDir(field huh.Field) string {
 	return dir.String()
 }
 
+// filePickerTitle reads the huh FilePicker's title field via reflection.
+// Returns "" if the field is not a FilePicker.
+func filePickerTitle(field huh.Field) string {
+	v := reflect.ValueOf(field)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	t := v.FieldByName("title")
+	if !t.IsValid() {
+		return ""
+	}
+	return t.String()
+}
+
 // syncFilePickerTitle updates the focused FilePicker's title to show the
 // current directory (dimmed, ~ abbreviated) next to the base label. The base
 // label is stored in the field's Key. No-op if the focused field is not a
