@@ -1,9 +1,9 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
-# Extract: Replace pdftoppm rasterization with pdfimages
+# Extract: Fast image acquisition from PDFs
 
-## Status: In Progress
+## Status: Implemented
 
 ## Motivation
 
@@ -12,42 +12,35 @@ before feeding them to tesseract. For a 20-page document this takes ~20s and
 dominates the extraction time. But scanned PDFs already contain the page images
 as embedded blobs -- rasterization just re-renders pixels that already exist.
 
+Some PDFs (e.g. home inspection reports) have no embedded image XObjects at all;
+their content is drawn via vector operations. `pdfimages` returns nothing for
+these, so we need a middle tier before falling all the way back to `pdftoppm`.
+
 ## Design
 
-Replace `pdftoppm` rasterization with `pdfimages` extraction:
+Three-tier fallback for image acquisition, in order of cost:
 
-1. **pdftotext** (existing, unchanged) -- digital text
-2. **pdfimages** -- extract embedded images from the PDF
-3. **tesseract** (parallel) -- OCR only the extracted images
-4. **Fallback** -- if pdfimages finds no images AND pdftotext found
-   little/no text, fall back to pdftoppm rasterization for vector-path PDFs
+1. **pdfimages** -- extracts embedded image blobs directly (near-instant)
+2. **pdftohtml** -- renders pages to PNG (faster than pdftoppm, catches
+   vector-drawn content that pdfimages misses)
+3. **pdftoppm** -- full 300 DPI rasterization (slowest, last resort)
 
-### Image filtering
-
-`pdfimages` extracts ALL embedded images including logos, icons, etc. Filter by
-minimum dimensions (e.g., 100x100 pixels) to skip images too small for
-meaningful OCR.
+After acquisition, all images are filtered by `isOCRWorthy` (>= 10KB) to skip
+logos and icons, then OCR'd in parallel with tesseract.
 
 ### Changes
 
-- `tools.go` -- add `HasPDFImages()` check (poppler-utils, same package as
-  pdftotext and pdftoppm)
-- `ocr.go` -- add `extractPDFImages()` function using `pdfimages -all -p`
-- `ocr.go` -- update `ocrPDF` to use pdfimages path with pdftoppm fallback
-- `ocr_progress.go` -- update `ocrPDFWithProgress` similarly; change "rasterize"
-  phase to "images" phase
-- `extractor.go` -- update `PDFOCRExtractor.Available()` to prefer pdfimages
-  but accept pdftoppm as fallback
-- `tools.go` -- update `OCRAvailable()` to accept either pdfimages or pdftoppm
+- `tools.go` -- `HasPDFImages()`, `HasPDFToHTML()` checks; `OCRAvailable()`
+  accepts any of the three tools
+- `ocr.go` -- `acquireImages()` implements the three-tier chain;
+  `extractPDFImages()` for tier 1; `extractPDFToHTMLImages()` for tier 2
+- `ocr_progress.go` -- `ocrPDFWithProgress` calls `acquireImages`; phase is
+  `"images"` regardless of which tier succeeded
+- `ocr.go` -- `OMP_THREAD_LIMIT=1` on tesseract subprocesses to prevent
+  OpenMP oversubscription with our worker pool
 
 ### Progress reporting
 
-- Phase "images": extracting embedded images (fast, near-instant)
-- Phase "extract": parallel OCR of extracted images (same as today)
-- Fallback shows "rasterize" phase if pdftoppm fallback triggers
-
-### Fallback heuristic
-
-If `pdfimages` produces zero images above the size threshold AND the caller
-signals that pdftotext produced little text (< 50 chars), fall back to the
-pdftoppm rasterization path. This handles the rare vector-path PDF case.
+- Phase `"images"`: image acquisition complete (any tier)
+- Phase `"extract"`: parallel OCR progress (page N/M)
+- Phase `"rasterize"`: only if pdftoppm fallback is the sole available tool

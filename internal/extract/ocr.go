@@ -61,8 +61,9 @@ func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, err
 	return text, tsv, nil
 }
 
-// acquireImages tries pdfimages first (fast path), falling back to pdftoppm
-// rasterization if no usable images are found.
+// acquireImages tries increasingly expensive strategies to get page images:
+// pdfimages (extracts embedded blobs), pdftohtml (renders to images), then
+// pdftoppm (full rasterization at 300 DPI).
 func acquireImages(
 	ctx context.Context,
 	pdfPath string,
@@ -74,7 +75,13 @@ func acquireImages(
 		if err == nil && len(images) > 0 {
 			return images, nil
 		}
-		// Fall through to pdftoppm if pdfimages found nothing.
+	}
+
+	if HasPDFToHTML() {
+		images, err := extractPDFToHTMLImages(ctx, pdfPath, tmpDir, maxPages)
+		if err == nil && len(images) > 0 {
+			return images, nil
+		}
 	}
 
 	if !HasPDFToPPM() {
@@ -129,6 +136,61 @@ func extractPDFImages(
 	candidates, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("glob extracted images: %w", err)
+	}
+	sort.Strings(candidates)
+
+	var images []string
+	for _, path := range candidates {
+		if isOCRWorthy(path) {
+			images = append(images, path)
+		}
+	}
+	return images, nil
+}
+
+// extractPDFToHTMLImages uses pdftohtml to render PDF pages to PNG images.
+// This catches PDFs whose content is drawn with vector operations rather
+// than embedded image XObjects (which pdfimages would miss).
+func extractPDFToHTMLImages(
+	ctx context.Context,
+	pdfPath string,
+	tmpDir string,
+	maxPages int,
+) ([]string, error) {
+	htmlDir := filepath.Join(tmpDir, "html")
+	if err := os.MkdirAll(htmlDir, 0o700); err != nil {
+		return nil, fmt.Errorf("create html dir: %w", err)
+	}
+
+	outputPrefix := filepath.Join(htmlDir, "page")
+	args := []string{
+		"-noframes",
+		"-fmt", "png",
+		"-q",
+	}
+	if maxPages > 0 {
+		args = append(args, "-l", fmt.Sprintf("%d", maxPages))
+	}
+	args = append(args, pdfPath, outputPrefix+".html")
+
+	cmd := exec.CommandContext( //nolint:gosec // args are constructed internally
+		ctx,
+		"pdftohtml",
+		args...,
+	)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf(
+			"pdftohtml: %s: %w",
+			strings.TrimSpace(stderr.String()),
+			err,
+		)
+	}
+
+	candidates, err := filepath.Glob(filepath.Join(htmlDir, "*.png"))
+	if err != nil {
+		return nil, fmt.Errorf("glob html images: %w", err)
 	}
 	sort.Strings(candidates)
 
