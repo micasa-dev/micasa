@@ -1940,6 +1940,11 @@ func (m *Model) clearPullState() {
 }
 
 func (m *Model) saveForm() tea.Cmd {
+	// Deferred document creation: hold doc in memory, open extraction overlay.
+	if fd, ok := m.formData.(*documentFormData); ok && fd.DeferCreate {
+		return m.saveDeferredDocumentForm()
+	}
+
 	isFirstHouse := m.formKind == formHouse && !m.hasHouse
 	m.snapshotForUndo()
 	kind := m.formKind
@@ -1962,6 +1967,10 @@ func (m *Model) saveForm() tea.Cmd {
 // saveFormInPlace persists the form data without closing the form,
 // so the user can continue editing after a Ctrl+S save.
 func (m *Model) saveFormInPlace() tea.Cmd {
+	// Deferred creation: Ctrl+S acts the same as Enter for quick-add.
+	if fd, ok := m.formData.(*documentFormData); ok && fd.DeferCreate {
+		return m.saveDeferredDocumentForm()
+	}
 	m.snapshotForUndo()
 	kind := m.formKind
 	isCreate := m.editID == nil
@@ -1988,6 +1997,41 @@ func (m *Model) afterDocumentSaveIfNeeded(kind FormKind) tea.Cmd {
 		return nil
 	}
 	return m.afterDocumentSave()
+}
+
+// saveDeferredDocumentForm parses the quick-add form, holds the document in
+// memory, and opens the extraction overlay. The document is not created in the
+// database until the user accepts the extraction results.
+func (m *Model) saveDeferredDocumentForm() tea.Cmd {
+	result, err := m.parseDocumentFormData()
+	if err != nil {
+		m.setStatusError(err.Error())
+		return nil
+	}
+	doc := result.Doc
+	m.exitForm()
+
+	cmd := m.startExtractionOverlay(
+		0, // no DB ID yet
+		doc.FileName,
+		doc.Data,
+		doc.MIMEType,
+		doc.ExtractedText,
+	)
+	if cmd == nil {
+		// No extraction steps needed. Create the document immediately.
+		if err := m.store.CreateDocument(&doc); err != nil {
+			m.setStatusError(err.Error())
+			return nil
+		}
+		m.reloadAfterMutation()
+		return nil
+	}
+	m.extraction.pendingDoc = &doc
+	if result.ExtractErr != nil {
+		m.setStatusInfo(fmt.Sprintf("extraction incomplete: %s", result.ExtractErr))
+	}
+	return cmd
 }
 
 // reloadAfterFormSave picks the minimal reload strategy based on which

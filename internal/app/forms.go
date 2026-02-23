@@ -115,10 +115,11 @@ type entityRef struct {
 }
 
 type documentFormData struct {
-	Title     string
-	FilePath  string // local file path; read on submit for new documents
-	EntityRef entityRef
-	Notes     string
+	Title       string
+	FilePath    string // local file path; read on submit for new documents
+	EntityRef   entityRef
+	Notes       string
+	DeferCreate bool // true for magic-add: hold document in memory until accept
 }
 
 // documentParseResult holds the parsed document and any non-fatal extraction
@@ -2310,7 +2311,7 @@ func (m *Model) startDocumentForm(entityKind string) error {
 // file path. Title and notes are auto-filled by the extraction pipeline on
 // submit, making this the fast path for ingesting files.
 func (m *Model) startQuickDocumentForm() error {
-	values := &documentFormData{}
+	values := &documentFormData{DeferCreate: true}
 	form := huh.NewForm(
 		huh.NewGroup(
 			m.newDocumentFilePicker("File to attach").

@@ -15,17 +15,19 @@ import (
 // OCR, and LLM-powered structured extraction. Each layer is independent
 // and gracefully degrades when its dependencies are unavailable.
 type Pipeline struct {
-	LLMClient     *llm.Client   // nil = skip LLM extraction
-	Extractors    []Extractor   // nil = DefaultExtractors(0, 0)
-	EntityContext EntityContext // existing entities for LLM matching
+	LLMClient  *llm.Client   // nil = skip LLM extraction
+	Extractors []Extractor   // nil = DefaultExtractors(0, 0)
+	Schema     SchemaContext // DDL + entity rows for prompt
+	DocID      uint          // document ID for UPDATE operations
 }
 
 // Result holds the output of a pipeline run.
 type Result struct {
-	Sources []TextSource     // text from each extraction method
-	Hints   *ExtractionHints // nil if LLM unavailable or failed
-	LLMUsed bool
-	Err     error // non-fatal extraction error; document still saves
+	Sources    []TextSource // text from each extraction method
+	Operations []Operation  // nil if LLM unavailable or failed
+	LLMRaw     string       // raw LLM output (for display)
+	LLMUsed    bool
+	Err        error // non-fatal extraction error; document still saves
 }
 
 // Text returns the first non-empty text from the extraction sources.
@@ -90,7 +92,7 @@ func (p *Pipeline) Run(
 
 	// LLM extraction if client configured and any text available.
 	if p.LLMClient != nil && r.Text() != "" {
-		hints, llmErr := p.extractWithLLM(
+		ops, raw, llmErr := p.extractWithLLM(
 			ctx,
 			r.Sources,
 			filename,
@@ -99,8 +101,9 @@ func (p *Pipeline) Run(
 		)
 		if llmErr != nil {
 			r.Err = fmt.Errorf("llm extraction: %w", llmErr)
-		} else if hints != nil {
-			r.Hints = hints
+		} else if len(ops) > 0 {
+			r.Operations = ops
+			r.LLMRaw = raw
 			r.LLMUsed = true
 		}
 	}
@@ -108,31 +111,37 @@ func (p *Pipeline) Run(
 	return r
 }
 
-// extractWithLLM runs the LLM extraction model on the text sources.
+// extractWithLLM runs the LLM extraction model on the text sources and
+// validates the resulting operations.
 func (p *Pipeline) extractWithLLM(
 	ctx context.Context,
 	sources []TextSource,
 	filename string,
 	mime string,
 	sizeBytes int64,
-) (*ExtractionHints, error) {
+) ([]Operation, string, error) {
 	messages := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:     p.DocID,
 		Filename:  filename,
 		MIME:      mime,
 		SizeBytes: sizeBytes,
-		Entities:  p.EntityContext,
+		Schema:    p.Schema,
 		Sources:   sources,
 	})
 
 	raw, err := p.LLMClient.ChatComplete(ctx, messages)
 	if err != nil {
-		return nil, fmt.Errorf("llm chat: %w", err)
+		return nil, "", fmt.Errorf("llm chat: %w", err)
 	}
 
-	hints, err := ParseExtractionResponse(raw)
+	ops, err := ParseOperations(raw)
 	if err != nil {
-		return nil, fmt.Errorf("parse llm response: %w", err)
+		return nil, raw, fmt.Errorf("parse llm operations: %w", err)
 	}
 
-	return &hints, nil
+	if err := ValidateOperations(ops, ExtractionAllowedOps); err != nil {
+		return nil, raw, fmt.Errorf("validate llm operations: %w", err)
+	}
+
+	return ops, raw, nil
 }

@@ -172,16 +172,33 @@ overlay showing the full text. Any key dismisses it.
 ## Extraction overlay
 
 When a document extraction is in progress or complete, an overlay shows
-per-step progress (text, OCR, LLM). See the
+per-step progress (text, OCR, LLM) with a tabbed operation preview. The
+overlay has two modes. See the
 [Documents guide]({{< ref "/docs/guide/documents" >}}) for details.
+
+### Pipeline mode
 
 | Key       | Action |
 |-----------|--------|
 | `j` / `k` | Navigate between extraction steps |
 | `enter`   | Expand/collapse current step logs |
+| `x`       | Enter explore mode (when operations are available) |
 | `a`       | Accept results (when extraction is done with no errors) |
 | `r`       | Rerun LLM step (when LLM step is complete) |
 | `esc`     | Cancel extraction and close overlay |
+
+### Explore mode
+
+| Key       | Action |
+|-----------|--------|
+| `j` / `k` | Navigate rows in the active table |
+| `h` / `l` | Navigate columns |
+| `b` / `f` | Switch between table tabs |
+| `g` / `G` | Jump to first/last row |
+| `^` / `$` | Jump to first/last column |
+| `a`       | Accept results |
+| `x`       | Return to pipeline mode |
+| `esc`     | Return to pipeline mode |
 
 ## Help overlay
 

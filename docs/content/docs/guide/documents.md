@@ -91,12 +91,14 @@ per-page OCR status.
 ### Layer 3: LLM extraction
 
 When an LLM is configured, micasa sends the extracted text to a local model
-that returns structured JSON: document type, suggested title, vendor name, cost
-breakdowns, dates, warranty expiry, entity links, and maintenance schedules
-extracted from manuals.
+that returns a JSON array of database operations (creates and updates) for
+vendors, quotes, maintenance items, appliances, and the document itself. The
+operations are validated against a strict allowlist before display.
 
-These hints **pre-fill form fields** -- the user always reviews and confirms
-before anything is saved. The LLM never writes to the database directly.
+The results appear as a **tabbed table preview** below the pipeline steps --
+one tab per affected table, using the same column layout as the main UI. The
+user reviews proposed changes and explicitly accepts before anything touches
+the database. The LLM never writes directly.
 
 The extraction model can be configured separately from the chat model (a small,
 fast model works well here). See [Configuration]({{< ref
@@ -106,19 +108,29 @@ fast model works well here). See [Configuration]({{< ref
 
 An overlay shows real-time progress during OCR and LLM extraction. Each step
 displays a status icon, elapsed time, and detail (page count, character count,
-model name).
+model name). The overlay has two modes:
+
+**Pipeline mode** (default): navigate steps, expand logs, review the dimmed
+operation preview below.
+
+**Explore mode** (press `x`): full table navigation of the proposed operations.
+Pipeline steps dim and the table preview becomes interactive with row/column
+cursors and tab switching. Press `x` or `esc` to return to pipeline mode.
 
 When extraction completes successfully, press `a` to accept the results and
-apply them to the document. On error the overlay stays open showing which step
-failed. Press `esc` at any time to cancel extraction and close the overlay.
+apply them. On error the overlay stays open showing which step failed. Press
+`esc` at any time to cancel and close.
 
 | Key | Action |
 |-----|--------|
 | `a` | Accept results (when done, no errors) |
-| `esc` | Cancel and close |
-| `j`/`k` | Navigate steps |
+| `esc` | Cancel / exit explore mode |
+| `j`/`k` | Navigate steps (pipeline) or rows (explore) |
+| `h`/`l` | Navigate columns (explore) |
+| `b`/`f` | Switch tabs (explore) |
 | `enter` | Expand/collapse step logs |
 | `r` | Rerun LLM step |
+| `x` | Toggle explore mode |
 
 See [Keybindings]({{< ref "/docs/reference/keybindings" >}}) for the full
 reference.

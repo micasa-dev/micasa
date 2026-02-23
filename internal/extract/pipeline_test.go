@@ -17,7 +17,7 @@ func TestPipeline_EmptyData(t *testing.T) {
 	p := &Pipeline{}
 	r := p.Run(context.Background(), nil, "empty.pdf", "application/pdf")
 	assert.Empty(t, r.Text())
-	assert.Nil(t, r.Hints)
+	assert.Empty(t, r.Operations)
 	assert.False(t, r.HasSource("tesseract"))
 	assert.False(t, r.LLMUsed)
 	assert.NoError(t, r.Err)
@@ -28,7 +28,7 @@ func TestPipeline_PlainText(t *testing.T) {
 	r := p.Run(context.Background(), []byte("Hello, world!"), "readme.txt", "text/plain")
 	assert.Equal(t, "Hello, world!", r.Text())
 	assert.True(t, r.HasSource("plaintext"))
-	assert.Nil(t, r.Hints)
+	assert.Empty(t, r.Operations)
 	assert.False(t, r.HasSource("tesseract"))
 	assert.False(t, r.LLMUsed)
 	assert.NoError(t, r.Err)
@@ -79,7 +79,7 @@ func TestPipeline_PDFTextExtraction(t *testing.T) {
 	assert.Contains(t, pdfSrc.Text, "Invoice")
 	assert.Contains(t, r.Text(), "Invoice")
 	assert.False(t, r.LLMUsed, "no LLM client configured")
-	assert.Nil(t, r.Hints)
+	assert.Empty(t, r.Operations)
 }
 
 func TestPipeline_NoLLMClient(t *testing.T) {
@@ -87,7 +87,7 @@ func TestPipeline_NoLLMClient(t *testing.T) {
 	r := p.Run(context.Background(), []byte("some extracted text"), "doc.txt", "text/plain")
 	assert.Equal(t, "some extracted text", r.Text())
 	assert.False(t, r.LLMUsed)
-	assert.Nil(t, r.Hints)
+	assert.Empty(t, r.Operations)
 }
 
 func TestPipeline_OCRIntegration(t *testing.T) {
@@ -160,18 +160,18 @@ func TestPipeline_NilExtractorsDefault(t *testing.T) {
 	assert.True(t, r.HasSource("plaintext"))
 }
 
-func TestPipeline_EntityContext(t *testing.T) {
+func TestPipeline_SchemaContext(t *testing.T) {
 	p := &Pipeline{
-		EntityContext: EntityContext{
-			Vendors:    []string{"Garcia Plumbing"},
-			Projects:   []string{"Kitchen Remodel"},
-			Appliances: []string{"HVAC Unit"},
+		Schema: SchemaContext{
+			Vendors:    []EntityRow{{ID: 1, Name: "Garcia Plumbing"}},
+			Projects:   []EntityRow{{ID: 1, Name: "Kitchen Remodel"}},
+			Appliances: []EntityRow{{ID: 1, Name: "HVAC Unit"}},
 		},
 	}
-	// Without LLM client, entity context is loaded but not used.
+	// Without LLM client, schema context is loaded but not used.
 	r := p.Run(context.Background(), []byte("invoice text"), "inv.txt", "text/plain")
 	assert.Equal(t, "invoice text", r.Text())
-	assert.Nil(t, r.Hints)
+	assert.Empty(t, r.Operations)
 }
 
 func TestResult_Text_EmptySources(t *testing.T) {

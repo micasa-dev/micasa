@@ -37,7 +37,9 @@ internal/
     ocr.go           OCR via tesseract + pdftoppm
     ocr_progress.go  Channel-based OCR progress for async overlay
     llmextract.go    LLM prompt construction + response parsing
-    hints.go         ExtractionHints type definitions
+    operations.go    Operation type, parsing, and validation
+    sqlcontext.go    Schema context (DDL + entity rows) for prompts
+    hints.go         ExtractionHints type definitions (legacy)
     pipeline.go      Pipeline orchestrator (text -> OCR -> LLM)
     tools.go         External tool availability checks
   data/              Data access layer
