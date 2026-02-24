@@ -301,22 +301,24 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 					opts,
 				}
 
-				createIndexSQL := "CREATE "
+				var b strings.Builder
+				b.WriteString("CREATE ")
 				if idx.Class != "" {
-					createIndexSQL += idx.Class + " "
+					b.WriteString(idx.Class)
+					b.WriteByte(' ')
 				}
-				createIndexSQL += "INDEX ?"
-
+				b.WriteString("INDEX ?")
 				if idx.Type != "" {
-					createIndexSQL += " USING " + idx.Type
+					b.WriteString(" USING ")
+					b.WriteString(idx.Type)
 				}
-				createIndexSQL += " ON ??"
-
+				b.WriteString(" ON ??")
 				if idx.Where != "" {
-					createIndexSQL += " WHERE " + idx.Where
+					b.WriteString(" WHERE ")
+					b.WriteString(idx.Where)
 				}
 
-				return m.DB.Exec(createIndexSQL, values...).Error
+				return m.DB.Exec(b.String(), values...).Error
 			}
 		}
 		return fmt.Errorf("failed to create index with name %v", name)
