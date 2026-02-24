@@ -344,6 +344,55 @@ func TestCalendarMoveMonthViaKeyboardClamps(t *testing.T) {
 		"navigating forward from Jan 31 should show February, not overflow to March")
 }
 
+func TestCalendarToday(t *testing.T) {
+	cal := &calendarState{
+		Cursor: time.Date(2020, 6, 15, 0, 0, 0, 0, time.Local),
+	}
+	calendarToday(cal)
+	assert.True(t, sameDay(cal.Cursor, time.Now()))
+}
+
+func TestCalendarTodayKeyNavigation(t *testing.T) {
+	m := newTestModel()
+	dateVal := "2020-06-15"
+	confirmed := false
+	m.openCalendar(&dateVal, func() { confirmed = true })
+	require.NotNil(t, m.calendar)
+	assert.Equal(t, 2020, m.calendar.Cursor.Year())
+
+	// Press t to jump to today, then enter to confirm.
+	sendKey(m, "t")
+	assert.True(t, sameDay(m.calendar.Cursor, time.Now()),
+		"pressing t should jump cursor to today")
+
+	sendKey(m, "enter")
+	assert.True(t, confirmed, "OnConfirm should have been called")
+	assert.Nil(t, m.calendar, "calendar should be dismissed")
+	assert.Equal(t, time.Now().Format("2006-01-02"), dateVal,
+		"confirmed date should be today")
+}
+
+func TestCalendarTodayFromUTCCursor(t *testing.T) {
+	// openCalendar parses dates via time.Parse which returns UTC.
+	// Pressing "t" must still land on the correct local day.
+	m := newTestModel()
+	dateVal := "2020-06-15"
+	m.openCalendar(&dateVal, nil)
+	require.NotNil(t, m.calendar)
+
+	// Verify the parsed cursor is in UTC (from time.Parse).
+	require.Equal(t, time.UTC, m.calendar.Cursor.Location(),
+		"precondition: parsed date should be UTC")
+
+	sendKey(m, "t")
+	now := time.Now()
+	assert.Equal(t, now.Year(), m.calendar.Cursor.Year())
+	assert.Equal(t, now.Month(), m.calendar.Cursor.Month())
+	assert.Equal(t, now.Day(), m.calendar.Cursor.Day())
+	assert.Equal(t, time.Local, m.calendar.Cursor.Location(),
+		"cursor should be in local timezone after pressing t")
+}
+
 func TestOpenCalendarWithEmptyValue(t *testing.T) {
 	m := newTestModel()
 	dateVal := ""

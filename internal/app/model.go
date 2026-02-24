@@ -810,6 +810,8 @@ func (m *Model) handleCalendarKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		calendarMoveYear(m.calendar, -1)
 	case "]":
 		calendarMoveYear(m.calendar, 1)
+	case "t":
+		calendarToday(m.calendar)
 	case keyEnter:
 		m.confirmCalendar()
 	case keyEsc:

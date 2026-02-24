@@ -132,6 +132,7 @@ func calendarHints(styles Styles) string {
 		{"j/k", "week"},
 		{"H/L", "month"},
 		{"[/]", "year"},
+		{"t", "today"},
 		{"\u21b5", "pick"},
 		{"esc", "cancel"},
 	}
@@ -172,6 +173,11 @@ func padLines(s string, width int) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// calendarToday jumps the calendar cursor to today's date.
+func calendarToday(cal *calendarState) {
+	cal.Cursor = time.Now()
 }
 
 // calendarMove adjusts the calendar cursor by the given number of days.
