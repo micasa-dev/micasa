@@ -55,27 +55,20 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install poppler tesseract imagemagick ghostscript
 
-      - name: Add MSYS2 to PATH (Windows x64)
-        if: runner.os == 'Windows' && runner.arch != 'ARM64'
+      - name: Add MSYS2 to PATH (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          MSYS2_ARCH_DIR: ${{ runner.arch == 'ARM64' && 'clangarm64' || 'mingw64' }}
         run: |
           Add-Content $env:GITHUB_PATH "C:\msys64\usr\bin"
-          Add-Content $env:GITHUB_PATH "C:\msys64\mingw64\bin"
+          Add-Content $env:GITHUB_PATH "C:\msys64\$env:MSYS2_ARCH_DIR\bin"
 
-      - name: Add MSYS2 to PATH (Windows ARM64)
-        if: runner.os == 'Windows' && runner.arch == 'ARM64'
-        shell: pwsh
-        run: |
-          Add-Content $env:GITHUB_PATH "C:\msys64\usr\bin"
-          Add-Content $env:GITHUB_PATH "C:\msys64\clangarm64\bin"
-
-      - name: Install extraction tools (Windows x64)
-        if: runner.os == 'Windows' && runner.arch != 'ARM64'
-        run: pacman -S --noconfirm mingw-w64-x86_64-poppler mingw-w64-x86_64-tesseract-ocr mingw-w64-x86_64-tesseract-data-eng mingw-w64-x86_64-imagemagick
-
-      - name: Install extraction tools (Windows ARM64)
-        if: runner.os == 'Windows' && runner.arch == 'ARM64'
-        run: pacman -S --noconfirm mingw-w64-clang-aarch64-poppler mingw-w64-clang-aarch64-tesseract-ocr mingw-w64-clang-aarch64-tesseract-data-eng mingw-w64-clang-aarch64-imagemagick
+      - name: Install extraction tools (Windows)
+        if: runner.os == 'Windows'
+        env:
+          PKG_PREFIX: ${{ runner.arch == 'ARM64' && 'mingw-w64-clang-aarch64' || 'mingw-w64-x86_64' }}
+        run: pacman -S --noconfirm "${PKG_PREFIX}-poppler" "${PKG_PREFIX}-tesseract-ocr" "${PKG_PREFIX}-tesseract-data-eng" "${PKG_PREFIX}-imagemagick"
 
       - name: Download dependencies
         run: go mod download
