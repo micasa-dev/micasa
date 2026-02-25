@@ -49,6 +49,7 @@ type Styles struct {
 	DashRule         lipgloss.Style // dashboard horizontal rule
 	DashLabel        lipgloss.Style // dashboard dim label text
 	DashValue        lipgloss.Style // dashboard bright value text
+	DashHouseValue   lipgloss.Style // dashboard house-level data (italic)
 	DashOverdue      lipgloss.Style // overdue maintenance item
 	DashUpcoming     lipgloss.Style // upcoming maintenance (within 30 days)
 	CalCursor        lipgloss.Style // calendar: cursor day
@@ -264,6 +265,9 @@ func DefaultStyles() *Styles {
 			Foreground(textDim),
 		DashValue: lipgloss.NewStyle().
 			Foreground(textBright),
+		DashHouseValue: lipgloss.NewStyle().
+			Foreground(textDim).
+			Italic(true),
 		DashOverdue: lipgloss.NewStyle().
 			Foreground(danger).
 			Bold(true),

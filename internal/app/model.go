@@ -181,6 +181,7 @@ type Model struct {
 	dashExpanded           map[string]bool
 	dashScrollOffset       int
 	dashTotalLines         int
+	dashFlash              string
 	hasHouse               bool
 	house                  data.HouseProfile
 	mode                   Mode
@@ -558,6 +559,9 @@ func (m *Model) handleConfirmDiscard(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 // navigation, enter to jump) and blocks keys that affect backgrounded
 // widgets. Keys like D, b/f, ?, q fall through to the normal handlers.
 func (m *Model) handleDashboardKeys(key tea.KeyMsg) (tea.Cmd, bool) {
+	if key.String() != keyEnter {
+		m.dashFlash = ""
+	}
 	switch key.String() {
 	case keyJ, keyDown:
 		m.dashDown()
