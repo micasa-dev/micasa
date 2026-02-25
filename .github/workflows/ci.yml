@@ -59,9 +59,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          winget install --id oschwartz10612.Poppler --accept-source-agreements --accept-package-agreements --disable-interactivity --no-progress
-          winget install --id UB-Mannheim.TesseractOCR --accept-source-agreements --accept-package-agreements --disable-interactivity --no-progress
-          winget install --id ImageMagick.ImageMagick --accept-source-agreements --accept-package-agreements --disable-interactivity --no-progress
+          winget install --id oschwartz10612.Poppler --accept-source-agreements --accept-package-agreements --disable-interactivity --silent
+          winget install --id UB-Mannheim.TesseractOCR --accept-source-agreements --accept-package-agreements --disable-interactivity --silent
+          winget install --id ImageMagick.ImageMagick --accept-source-agreements --accept-package-agreements --disable-interactivity --silent
           Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 
       - name: Download dependencies
