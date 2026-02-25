@@ -62,20 +62,7 @@ jobs:
           winget install --id oschwartz10612.Poppler --accept-source-agreements --accept-package-agreements --disable-interactivity
           winget install --id UB-Mannheim.TesseractOCR --accept-source-agreements --accept-package-agreements --disable-interactivity
           winget install --id ImageMagick.ImageMagick --accept-source-agreements --accept-package-agreements --disable-interactivity
-
-      - name: Add winget packages to PATH (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $paths = @(
-            "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-            (Get-ChildItem "C:\Program Files\poppler-*\Library\bin" -ErrorAction SilentlyContinue | Select-Object -Last 1)
-            (Get-ChildItem "C:\Program Files\Tesseract-OCR" -ErrorAction SilentlyContinue | Select-Object -Last 1)
-            (Get-ChildItem "C:\Program Files\ImageMagick-*" -ErrorAction SilentlyContinue | Select-Object -Last 1)
-          )
-          foreach ($p in $paths) {
-            if ($p) { Add-Content $env:GITHUB_PATH "$p" }
-          }
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 
       - name: Download dependencies
         run: go mod download
