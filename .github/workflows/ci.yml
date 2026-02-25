@@ -67,10 +67,19 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $flags = '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent'
-          winget install --id oschwartz10612.Poppler @flags
-          winget install --id UB-Mannheim.TesseractOCR @flags
-          winget install --id ImageMagick.ImageMagick @flags
+          function Install-WithRetry($id, $retries = 3) {
+            $flags = '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent'
+            for ($i = 1; $i -le $retries; $i++) {
+              winget install --id $id @flags
+              if ($LASTEXITCODE -eq 0) { return }
+              Write-Host "Attempt $i/$retries failed for $id (exit $LASTEXITCODE), retrying in 10s..."
+              Start-Sleep -Seconds 10
+            }
+            throw "Failed to install $id after $retries attempts"
+          }
+          Install-WithRetry oschwartz10612.Poppler
+          Install-WithRetry UB-Mannheim.TesseractOCR
+          Install-WithRetry ImageMagick.ImageMagick
           Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
           Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\oschwartz10612.Poppler_*\poppler-*\Library\bin" |
             Select-Object -First 1 -ExpandProperty FullName |
