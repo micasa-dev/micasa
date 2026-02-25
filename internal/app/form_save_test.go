@@ -5,6 +5,7 @@ package app
 
 import (
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cpcloud/micasa/internal/data"
@@ -227,7 +228,7 @@ func TestUserCreatesMaintenanceWithDueDate(t *testing.T) {
 	assert.Equal(t, "2025-11-01", items[0].DueDate.Format(data.DateLayout))
 	assert.Zero(t, items[0].IntervalMonths)
 
-	// Verify table row display: "Next" shows due date, "Every" shows "--".
+	// Verify table row display: "Next" shows due date, "Every" is NULL (non-recurring).
 	m.reloadAll()
 	require.NoError(t, m.reloadActiveTab())
 	tab := m.activeTab()
@@ -235,7 +236,11 @@ func TestUserCreatesMaintenanceWithDueDate(t *testing.T) {
 	require.NotEmpty(t, tab.CellRows)
 	cells := tab.CellRows[0]
 	assert.Equal(t, "2025-11-01", cells[int(maintenanceColNext)].Value)
-	assert.Equal(t, "--", cells[int(maintenanceColEvery)].Value)
+	assert.True(
+		t,
+		cells[int(maintenanceColEvery)].Null,
+		"non-recurring items should have NULL interval",
+	)
 	assert.Equal(t, cellUrgency, cells[int(maintenanceColNext)].Kind)
 }
 
@@ -280,15 +285,15 @@ func TestUserCreatesMaintenanceUnscheduled(t *testing.T) {
 	assert.Zero(t, items[0].IntervalMonths)
 	assert.Nil(t, items[0].DueDate)
 
-	// Verify table row: "Next" and "Every" are both empty.
+	// Verify table row: "Next" and "Every" are both NULL.
 	m.reloadAll()
 	require.NoError(t, m.reloadActiveTab())
 	tab := m.activeTab()
 	require.NotNil(t, tab)
 	require.NotEmpty(t, tab.CellRows)
 	cells := tab.CellRows[0]
-	assert.Empty(t, cells[int(maintenanceColNext)].Value)
-	assert.Empty(t, cells[int(maintenanceColEvery)].Value)
+	assert.True(t, cells[int(maintenanceColNext)].Null)
+	assert.True(t, cells[int(maintenanceColEvery)].Null)
 }
 
 // Step 6: Edit existing interval item via full form, change to due date.
@@ -349,7 +354,11 @@ func TestUserEditsMaintenanceFromIntervalToDueDate(t *testing.T) {
 	require.NotEmpty(t, tab.CellRows)
 	cells := tab.CellRows[0]
 	assert.Equal(t, "2026-06-01", cells[int(maintenanceColNext)].Value)
-	assert.Equal(t, "--", cells[int(maintenanceColEvery)].Value)
+	assert.True(
+		t,
+		cells[int(maintenanceColEvery)].Null,
+		"non-recurring items should have NULL interval",
+	)
 }
 
 // Edit existing due-date item via full form, switch to interval.
@@ -731,4 +740,66 @@ func TestCtrlQCleanFormQuitsImmediately(t *testing.T) {
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
 	assert.NotNil(t, cmd, "clean form ctrl+q should quit immediately")
 	assert.False(t, m.confirmDiscard, "no confirm needed for clean form")
+}
+
+func TestUserCreatesIncidentWithRelativeDateYesterday(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	// User navigates to Incidents tab.
+	m.active = tabIndex(tabIncidents)
+
+	// User enters edit mode and presses 'a' to add an incident.
+	openAddForm(m)
+	require.Contains(t, m.statusView(), "saved", "user should be in form mode")
+
+	values, ok := m.formData.(*incidentFormData)
+	require.True(t, ok, "form data should be incidentFormData")
+
+	// User types "yesterday" in the date noticed field instead of YYYY-MM-DD.
+	values.Title = "Leak in basement"
+	values.DateNoticed = "yesterday"
+	m.checkFormDirty()
+
+	// User presses Ctrl+S to save.
+	sendKey(m, "ctrl+s")
+
+	status := m.statusView()
+	assert.Contains(t, status, "saved", "form should remain open after save")
+	assert.NotContains(t, status, "unsaved")
+
+	// Verify the incident was saved with the correct resolved date.
+	items, err := m.store.ListIncidents(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+
+	yesterday := time.Now().AddDate(0, 0, -1).Format(data.DateLayout)
+	assert.Equal(t, yesterday, items[0].DateNoticed.Format(data.DateLayout),
+		"'yesterday' should resolve to the previous calendar date")
+	assert.Equal(t, "Leak in basement", items[0].Title)
+}
+
+func TestUserCreatesIncidentWithRelativeDateToday(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabIncidents)
+
+	openAddForm(m)
+	require.Contains(t, m.statusView(), "saved")
+
+	values, ok := m.formData.(*incidentFormData)
+	require.True(t, ok)
+
+	values.Title = "Power outage"
+	values.DateNoticed = "today"
+	m.checkFormDirty()
+
+	sendKey(m, "ctrl+s")
+	assert.Contains(t, m.statusView(), "saved")
+
+	items, err := m.store.ListIncidents(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+
+	today := time.Now().Format(data.DateLayout)
+	assert.Equal(t, today, items[0].DateNoticed.Format(data.DateLayout),
+		"'today' should resolve to the current calendar date")
 }

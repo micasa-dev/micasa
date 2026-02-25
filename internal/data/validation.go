@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/tj/go-naturaldate"
 )
 
 const DateLayout = "2006-01-02"
@@ -110,7 +111,15 @@ func FormatCompactOptionalCents(cents *int64) string {
 }
 
 func ParseRequiredDate(input string) (time.Time, error) {
-	parsed, err := time.Parse(DateLayout, strings.TrimSpace(input))
+	return ParseRequiredDateAt(input, time.Now())
+}
+
+func ParseRequiredDateAt(input string, ref time.Time) (time.Time, error) {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" {
+		return time.Time{}, ErrInvalidDate
+	}
+	parsed, err := parseDate(trimmed, ref)
 	if err != nil {
 		return time.Time{}, ErrInvalidDate
 	}
@@ -118,15 +127,33 @@ func ParseRequiredDate(input string) (time.Time, error) {
 }
 
 func ParseOptionalDate(input string) (*time.Time, error) {
+	return ParseOptionalDateAt(input, time.Now())
+}
+
+func ParseOptionalDateAt(input string, ref time.Time) (*time.Time, error) {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
 		return nil, nil
 	}
-	parsed, err := time.Parse(DateLayout, trimmed)
+	parsed, err := parseDate(trimmed, ref)
 	if err != nil {
 		return nil, ErrInvalidDate
 	}
 	return &parsed, nil
+}
+
+// parseDate tries strict YYYY-MM-DD first, then falls back to natural language
+// parsing relative to ref. The result is always truncated to date-only (midnight UTC).
+func parseDate(input string, ref time.Time) (time.Time, error) {
+	if t, err := time.Parse(DateLayout, input); err == nil {
+		return t, nil
+	}
+	t, err := naturaldate.Parse(input, ref, naturaldate.WithDirection(naturaldate.Past))
+	if err != nil {
+		return time.Time{}, ErrInvalidDate
+	}
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
 }
 
 func FormatDate(value *time.Time) string {

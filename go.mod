@@ -20,6 +20,7 @@ require (
 	github.com/iancoleman/strcase v0.3.0
 	github.com/rmhubbert/bubbletea-overlay v0.6.5
 	github.com/stretchr/testify v1.11.1
+	github.com/tj/go-naturaldate v1.3.0
 	gorm.io/gorm v1.31.1
 	modernc.org/sqlite v1.45.0
 )
