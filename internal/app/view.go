@@ -163,10 +163,14 @@ func (m *Model) buildDashboardOverlay() string {
 	header := m.dashboardHeader()
 
 	// Minimal hints inside the overlay.
-	hints := joinWithSeparator(m.helpSeparator(),
+	hintParts := []string{
 		m.helpItem(keyShiftD, "close"),
 		m.helpItem(keyQuestion, "help"),
-	)
+	}
+	if m.dashFlash != "" {
+		hintParts = append(hintParts, m.styles.DashHouseValue.Render(m.dashFlash))
+	}
+	hints := joinWithSeparator(m.helpSeparator(), hintParts...)
 
 	// Budget for dashboardView content: outer box height minus chrome.
 	// Chrome: border (2) + padding (2) + header (1) + rule (1) + blank (1)

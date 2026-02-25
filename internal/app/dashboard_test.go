@@ -1003,6 +1003,183 @@ func TestDashboardGoTopResetsScroll(t *testing.T) {
 	assert.Equal(t, 0, m.dashScrollOffset, "g should reset scroll to top")
 }
 
+// TestDashboardDemoDataExpiringReachable loads real demo data (seed 42) and
+// verifies that the Expiring Soon data rows are visible and navigable via j
+// on a terminal with height 40.
+func TestDashboardDemoDataExpiringReachable(t *testing.T) {
+	m := newTestModelWithDemoData(t, 42)
+	m.width = 80
+	m.height = 40
+	m.showDashboard = true
+
+	now := time.Now()
+	require.NoError(t, m.loadDashboardAt(now))
+	m.dashExpanded = map[string]bool{
+		dashSectionIncidents: true,
+		dashSectionOverdue:   true,
+		dashSectionUpcoming:  true,
+		dashSectionProjects:  true,
+		dashSectionExpiring:  true,
+	}
+	m.prepareDashboardView()
+
+	t.Logf(
+		"dashboard sections: incidents=%d overdue=%d upcoming=%d projects=%d expiring=%d insurance=%v",
+		len(m.dashboard.OpenIncidents),
+		len(m.dashboard.Overdue),
+		len(m.dashboard.Upcoming),
+		len(m.dashboard.ActiveProjects),
+		len(m.dashboard.ExpiringWarranties),
+		m.dashboard.InsuranceRenewal != nil,
+	)
+	t.Logf("dashNav has %d entries", len(m.dashNav))
+
+	if len(m.dashboard.ExpiringWarranties) == 0 && m.dashboard.InsuranceRenewal == nil {
+		t.Skip("no Expiring data in demo seed at current date")
+	}
+
+	// Navigate to bottom with G, then render.
+	sendKey(m, "G")
+	overlay := m.buildDashboardOverlay()
+
+	// The Expiring section's data rows must be visible — including the
+	// insurance renewal which has no nav Target. Before the fix, the
+	// cursor couldn't reach the Expiring section when the only row was
+	// the non-navigable insurance renewal, leaving it clipped below the
+	// scroll window.
+	require.Less(t, m.dashCursor, len(m.dashNav))
+	assert.Equal(t, dashSectionExpiring, m.dashNav[m.dashCursor].Section,
+		"cursor should reach Expiring section")
+	assert.Contains(t, overlay, dashSectionExpiring,
+		"Expiring section header should be visible")
+	if m.dashboard.InsuranceRenewal != nil {
+		assert.Contains(t, overlay, "Insurance renewal",
+			"insurance renewal row should be visible when cursor is at bottom")
+	}
+	for _, w := range m.dashboard.ExpiringWarranties {
+		assert.Contains(t, overlay, w.Appliance.Name,
+			"warranty row should be visible when cursor is at bottom")
+	}
+}
+
+// TestDashboardScrollReachesAllSections verifies that navigating with j/k
+// through a fully-expanded dashboard on a short terminal reaches every
+// section. The Incidents header must be visible when at the top, and
+// Expiring Soon rows must be visible and navigable when at the bottom.
+func TestDashboardScrollReachesAllSections(t *testing.T) {
+	m := newTestModel()
+	m.width = 120
+	m.height = 25 // short terminal — forces scrolling
+	m.showDashboard = true
+
+	m.dashboard = dashboardData{
+		OpenIncidents: []data.Incident{
+			{Title: "Burst pipe", Severity: data.IncidentSeverityUrgent},
+		},
+		Overdue: []maintenanceUrgency{
+			{Item: data.MaintenanceItem{ID: 10, Name: "Filter"}, DaysFromNow: -5},
+			{Item: data.MaintenanceItem{ID: 11, Name: "Gutters"}, DaysFromNow: -3},
+		},
+		Upcoming: []maintenanceUrgency{
+			{Item: data.MaintenanceItem{ID: 20, Name: "HVAC"}, DaysFromNow: 7},
+		},
+		ActiveProjects: []data.Project{
+			{Title: "Kitchen reno", Status: "underway"},
+		},
+		ExpiringWarranties: []warrantyStatus{
+			{Appliance: data.Appliance{Name: "Dishwasher"}, DaysFromNow: 14},
+			{Appliance: data.Appliance{Name: "Fridge"}, DaysFromNow: 30},
+		},
+	}
+	m.dashboard.OpenIncidents[0].ID = 1
+	m.dashboard.ActiveProjects[0].ID = 100
+	m.dashboard.ExpiringWarranties[0].Appliance.ID = 200
+	m.dashboard.ExpiringWarranties[1].Appliance.ID = 201
+
+	// Expand all sections.
+	m.dashExpanded = map[string]bool{
+		dashSectionIncidents: true,
+		dashSectionOverdue:   true,
+		dashSectionUpcoming:  true,
+		dashSectionProjects:  true,
+		dashSectionExpiring:  true,
+	}
+	m.prepareDashboardView()
+
+	// Navigate all the way down with j.
+	for range len(m.dashNav) {
+		sendKey(m, "j")
+	}
+	overlay := m.buildDashboardOverlay()
+	assert.Contains(t, overlay, "Dishwasher",
+		"last section rows should be visible when scrolled to bottom")
+	assert.Contains(t, overlay, "Fridge",
+		"all Expiring rows should be visible when cursor is at bottom")
+
+	// Navigate all the way back up with k.
+	for range len(m.dashNav) {
+		sendKey(m, "k")
+	}
+	overlay = m.buildDashboardOverlay()
+	assert.Contains(t, overlay, dashSectionIncidents,
+		"Incidents header should be visible when scrolled to top")
+}
+
+// TestDashboardScrollIndicators verifies that scroll indicators appear when
+// content is clipped, showing how many lines are hidden above/below. Uses
+// sendKey to drive navigation through the real user code path.
+func TestDashboardScrollIndicators(t *testing.T) {
+	m := newTestModel()
+	m.width = 120
+	m.height = 20 // short terminal forces scrolling
+	m.showDashboard = true
+
+	overdue := make([]maintenanceUrgency, 15)
+	for i := range overdue {
+		overdue[i] = maintenanceUrgency{
+			Item: data.MaintenanceItem{
+				ID:   uint(i + 1), //nolint:gosec // i bounded by slice length (<=15)
+				Name: fmt.Sprintf("Task %d", i+1),
+			},
+			DaysFromNow: -(i + 1),
+		}
+	}
+	m.dashboard = dashboardData{Overdue: overdue}
+	m.dashExpanded = map[string]bool{dashSectionOverdue: true}
+	m.prepareDashboardView()
+
+	// Cursor starts at top: bottom indicator only.
+	overlay := m.buildDashboardOverlay()
+	assert.NotContains(t, overlay, symTriUp,
+		"no top indicator when cursor at top")
+	assert.Contains(t, overlay, symTriDown+" ",
+		"bottom indicator when content below")
+
+	// Navigate to bottom with G: top indicator only.
+	sendKey(m, "G")
+	overlay = m.buildDashboardOverlay()
+	assert.Contains(t, overlay, symTriUp+" ",
+		"top indicator when scrolled past top")
+	assert.NotContains(t, overlay, symTriDown+" ",
+		"no bottom indicator when at bottom")
+
+	// Navigate to middle with g then j*5: both indicators.
+	sendKey(m, "g")
+	for range 5 {
+		sendKey(m, "j")
+	}
+	overlay = m.buildDashboardOverlay()
+	assert.Contains(t, overlay, symTriUp, "top indicator when scrolled")
+	assert.Contains(t, overlay, symTriDown, "bottom indicator when more below")
+
+	// Collapse section (no scrolling needed): no indicators.
+	sendKey(m, "g") // back to header
+	sendKey(m, "e") // collapse
+	overlay = m.buildDashboardOverlay()
+	assert.NotContains(t, overlay, "more",
+		"no indicators when everything fits")
+}
+
 func TestOverlayContentWidth(t *testing.T) {
 	tests := []struct {
 		name      string

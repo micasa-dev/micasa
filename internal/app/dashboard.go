@@ -81,6 +81,7 @@ type dashNavEntry struct {
 	ID       uint
 	Section  string // section title this entry belongs to
 	IsHeader bool   // true = section header, not a data row
+	InfoOnly bool   // true = cursor can land here but Enter is a no-op
 }
 
 // ---------------------------------------------------------------------------
@@ -389,11 +390,17 @@ func (m *Model) buildDashNav() {
 	// Include the Expiring section when there are warranties OR an insurance
 	// renewal. dashExpiringRows() renders both, so the nav must match.
 	if n := len(m.dashboard.ExpiringWarranties); n > 0 || m.dashboard.InsuranceRenewal != nil {
-		entries := make([]dashNavEntry, 0, n)
+		entries := make([]dashNavEntry, 0, n+1)
 		for _, w := range m.dashboard.ExpiringWarranties {
 			entries = append(entries, dashNavEntry{
 				Tab: tabAppliances, ID: w.Appliance.ID,
 				Section: dashSectionExpiring,
+			})
+		}
+		if m.dashboard.InsuranceRenewal != nil {
+			entries = append(entries, dashNavEntry{
+				Section:  dashSectionExpiring,
+				InfoOnly: true,
 			})
 		}
 		groups = append(groups, sectionData{dashSectionExpiring, entries})
@@ -538,7 +545,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		// Column header row (if present) offsets data rows by 1.
 		headerOffset := len(tbl) - len(s.rows)
 		for j, row := range tbl {
-			if j-headerOffset == localCursor {
+			if localCursor >= 0 && j-headerOffset == localCursor {
 				cursorLine = len(lines)
 			}
 			lines = append(lines, row)
@@ -552,16 +559,57 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 	}
 
 	// Scroll windowing: show only `budget` lines, following the cursor.
-	// These mutations depend on rendered line positions and stay here.
+	// Reserve lines for scroll indicators (▲/▼) so content is never clipped
+	// without feedback. Iterate to convergence since reserving indicator
+	// lines can shift whether an indicator is needed.
 	m.dashTotalLines = len(lines)
 	if budget > 0 && len(lines) > budget {
-		m.scrollDashTo(cursorLine, budget, len(lines))
+		indicatorLines := 0
+		for range 3 {
+			viewportH := budget - indicatorLines
+			if viewportH < 1 {
+				viewportH = 1
+			}
+			m.scrollDashTo(cursorLine, viewportH, len(lines))
+			end := m.dashScrollOffset + viewportH
+			if end > len(lines) {
+				end = len(lines)
+			}
+			needed := 0
+			if m.dashScrollOffset > 0 {
+				needed++
+			}
+			if end < len(lines) {
+				needed++
+			}
+			if needed == indicatorLines {
+				break
+			}
+			indicatorLines = needed
+		}
 
-		end := m.dashScrollOffset + budget
+		viewportH := budget - indicatorLines
+		if viewportH < 1 {
+			viewportH = 1
+		}
+
+		end := m.dashScrollOffset + viewportH
 		if end > len(lines) {
 			end = len(lines)
 		}
-		lines = lines[m.dashScrollOffset:end]
+
+		visible := lines[m.dashScrollOffset:end]
+		var result []string
+		if m.dashScrollOffset > 0 {
+			result = append(result, m.styles.DashLabel.Render(
+				fmt.Sprintf("  %s %d more", symTriUp, m.dashScrollOffset)))
+		}
+		result = append(result, visible...)
+		if end < len(lines) {
+			result = append(result, m.styles.DashLabel.Render(
+				fmt.Sprintf("  %s %d more", symTriDown, len(lines)-end)))
+		}
+		lines = result
 	} else {
 		m.dashScrollOffset = 0
 	}
@@ -698,14 +746,14 @@ func (m *Model) dashExpiringRows() []dashRow {
 		}
 		rows = append(rows, dashRow{
 			Cells: []dashCell{
-				{Text: label, Style: m.styles.DashValue},
+				{Text: label, Style: m.styles.DashHouseValue},
 				{
 					Text:  daysText(ins.DaysFromNow),
 					Style: m.daysStyle(ins.DaysFromNow, overdue),
 					Align: alignRight,
 				},
 			},
-			// Not navigable: no Target.
+			Target: &dashNavEntry{InfoOnly: true},
 		})
 	}
 	return rows
@@ -774,7 +822,11 @@ func (m *Model) dashJump() {
 	}
 	entry := nav[m.dashCursor]
 	if entry.IsHeader {
-		return // use 'e' to expand/collapse
+		return
+	}
+	if entry.InfoOnly {
+		m.dashFlash = "house data, not in any tab"
+		return
 	}
 	m.showDashboard = false
 	m.switchToTab(tabIndex(entry.Tab))
