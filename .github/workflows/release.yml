@@ -58,7 +58,7 @@ jobs:
         run: |
           ext=""
           if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
-          go build -ldflags="-X main.version=${VERSION#v}" -o "micasa${ext}" ./cmd/micasa
+          go build -ldflags "-X main.version=${VERSION#v}" -o "micasa${ext}" ./cmd/micasa
 
       - name: Package
         env:
