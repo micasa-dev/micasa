@@ -66,9 +66,14 @@ jobs:
       - name: Install extraction tools (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
+        run: >-
+          winget install --id oschwartz10612.Poppler --id tesseract-ocr.tesseract --id ImageMagick.ImageMagick
+          --accept-source-agreements --accept-package-agreements --disable-interactivity --silent
+
+      - name: Add extraction tools to PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          winget install --id oschwartz10612.Poppler --id tesseract-ocr.tesseract --id ImageMagick.ImageMagick `
-            --accept-source-agreements --accept-package-agreements --disable-interactivity --silent
           Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
           Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\oschwartz10612.Poppler_*\poppler-*\Library\bin" |
             Select-Object -First 1 -ExpandProperty FullName |
