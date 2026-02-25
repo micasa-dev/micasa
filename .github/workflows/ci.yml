@@ -78,7 +78,7 @@ jobs:
             throw "Failed to install $id after $retries attempts"
           }
           Install-WithRetry oschwartz10612.Poppler
-          Install-WithRetry UB-Mannheim.TesseractOCR
+          Install-WithRetry tesseract-ocr.tesseract
           Install-WithRetry ImageMagick.ImageMagick
           Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
           Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\oschwartz10612.Poppler_*\poppler-*\Library\bin" |
