@@ -284,9 +284,9 @@ func headerTitleWidth(spec columnSpec, columnCount int) int {
 func sortIndicator(sorts []sortEntry, col int) string {
 	for i, entry := range sorts {
 		if entry.Col == col {
-			arrow := " \u25b2" // ▲ with leading space
+			arrow := " " + symTriUp // ▲ with leading space
 			if entry.Dir == sortDesc {
-				arrow = " \u25bc" // ▼ with leading space
+				arrow = " " + symTriDown // ▼ with leading space
 			}
 			if len(sorts) == 1 {
 				return arrow
@@ -473,10 +473,10 @@ func renderCell(
 	value := firstLine(cellValue.Value)
 	style := cellStyle(cellValue.Kind)
 	if cellValue.Null {
-		value = "\u2205" // ∅
+		value = symEmptySet
 		style = appStyles.Null
 	} else if value == "" {
-		value = "\u2014" // —
+		value = symEmDash
 		style = appStyles.Empty
 	} else if cellValue.Kind == cellDrilldown && value != "0" {
 		return renderPillCell(value, width, hl, deleted, dimmed)
@@ -520,9 +520,9 @@ func renderCell(
 	// Right-aligned grayed-out line count for multi-line notes.
 	var noteSuffix string
 	var noteSuffixW int
-	if cellValue.Kind == cellNotes && !cellValue.Null && value != "" && value != "\u2014" {
+	if cellValue.Kind == cellNotes && !cellValue.Null && value != "" && value != symEmDash {
 		if n := extraLineCount(cellValue.Value); n > 0 {
-			value += "\u2026"
+			value += symEllipsis
 			noteSuffix = fmt.Sprintf("+%d", n)
 			noteSuffixW = lipgloss.Width(noteSuffix)
 		}
@@ -545,7 +545,7 @@ func renderCell(
 				textMaxW = 1
 			}
 		}
-		truncated := ansi.Truncate(value, textMaxW, "\u2026")
+		truncated := ansi.Truncate(value, textMaxW, symEllipsis)
 		styled := cursorStyle.Render(truncated)
 		textW := lipgloss.Width(truncated)
 		if noteSuffixW > 0 {
@@ -574,7 +574,7 @@ func renderCell(
 		if textMaxW < 1 {
 			textMaxW = 1
 		}
-		truncated := ansi.Truncate(value, textMaxW, "\u2026")
+		truncated := ansi.Truncate(value, textMaxW, symEllipsis)
 		styledText := style.Render(truncated)
 		textW := lipgloss.Width(truncated)
 		gap := width - textW - noteSuffixW

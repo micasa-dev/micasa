@@ -231,7 +231,7 @@ func renderMiniTable(
 // an ellipsis if truncation occurs. Delegates to ansi.Truncate for correct
 // grapheme-cluster and wide-character handling.
 func truncateToWidth(text string, maxW int) string {
-	return ansi.Truncate(text, maxW, "\u2026")
+	return ansi.Truncate(text, maxW, symEllipsis)
 }
 
 // ---------------------------------------------------------------------------

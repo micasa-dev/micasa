@@ -27,19 +27,117 @@ import (
 )
 
 const (
+	// Navigation keys.
+	keyUp        = "up"
+	keyDown      = "down"
+	keyLeft      = "left"
+	keyRight     = "right"
+	keyTab       = "tab"
+	keyBackspace = "backspace"
+	keyPgUp      = "pgup"
+	keyPgDown    = "pgdown"
+	keyShiftDown = "shift+down"
+	keyShiftUp   = "shift+up"
+	keyShiftTab  = "shift+tab"
+
+	// Action keys.
 	keyEsc   = "esc"
 	keyEnter = "enter"
-	keyDown  = "down"
-	keyLeft  = "left"
-	keyRight = "right"
+
+	// Modifier keys.
+	keyCtrlC = "ctrl+c"
+	keyCtrlD = "ctrl+d"
+	keyCtrlE = "ctrl+e"
 	keyCtrlN = "ctrl+n"
+	keyCtrlO = "ctrl+o"
+	keyCtrlP = "ctrl+p"
+	keyCtrlQ = "ctrl+q"
+	keyCtrlS = "ctrl+s"
+	keyCtrlU = "ctrl+u"
+
+	// Letters (lower).
+	keyA = "a"
+	keyB = "b"
+	keyC = "c"
+	keyD = "d"
+	keyE = "e"
+	keyF = "f"
+	keyG = "g"
+	keyH = "h"
+	keyI = "i"
+	keyJ = "j"
+	keyK = "k"
+	keyL = "l"
+	keyN = "n"
+	keyO = "o"
+	keyP = "p"
+	keyR = "r"
+	keyS = "s"
+	keyT = "t"
+	keyU = "u"
+	keyX = "x"
+	keyY = "y"
+
+	// Letters (upper / shift).
+	keyShiftA = "A"
+	keyShiftB = "B"
+	keyShiftC = "C"
+	keyShiftD = "D"
+	keyShiftE = "E"
+	keyShiftF = "F"
+	keyShiftG = "G"
+	keyShiftH = "H"
+	keyShiftJ = "J"
+	keyShiftK = "K"
+	keyShiftL = "L"
+	keyShiftN = "N"
+	keyShiftS = "S"
+
+	// Symbols.
+	keyBang     = "!"
+	keySlash    = "/"
+	keyQuestion = "?"
+	keyAt       = "@"
+	keyCaret    = "^"
+	keyDollar   = "$"
+	keyLBracket = "["
+	keyRBracket = "]"
+
+	// Display symbols for key hints.
+	symReturn = "\u21b5" // ↵
+	symUp     = "\u2191" // ↑
+	symDown   = "\u2193" // ↓
+	symLeft   = "\u2190" // ←
+	symRight  = "\u2192" // →
+
+	// Box drawing.
+	symHLine      = "\u2500" // ─
+	symHLineHeavy = "\u2501" // ━
+	symVLine      = "\u2502" // │
+	symCross      = "\u253c" // ┼
+
+	// Triangles / cursors.
+	symTriUp      = "\u25b2" // ▲
+	symTriDown    = "\u25bc" // ▼
+	symTriDownSm  = "\u25be" // ▾
+	symTriRightSm = "\u25b8" // ▸
+	symTriLeft    = "\u25c0" // ◀
+	symTriRight   = "\u25b6" // ▶
+
+	// Text symbols.
+	symEllipsis  = "\u2026" // …
+	symEmptySet  = "\u2205" // ∅
+	symEmDash    = "\u2014" // —
+	symInfinity  = "\u221E" // ∞
+	symMiddleDot = "\u00b7" // ·
+	symSuperTwo  = "\u00B2" // ²
 )
 
 // Key bindings for help viewport (g/G for top/bottom are not in the
 // default viewport keymap).
 var (
-	helpGotoTop    = key.NewBinding(key.WithKeys("g"))
-	helpGotoBottom = key.NewBinding(key.WithKeys("G"))
+	helpGotoTop    = key.NewBinding(key.WithKeys(keyG))
+	helpGotoBottom = key.NewBinding(key.WithKeys(keyShiftG))
 )
 
 type Model struct {
@@ -192,7 +290,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resizeTables()
 		m.updateAllViewports()
 	case tea.KeyMsg:
-		if typed.String() == "ctrl+q" {
+		if typed.String() == keyCtrlQ {
 			if m.mode == modeForm && m.formDirty {
 				m.confirmDiscard = true
 				m.confirmQuit = true
@@ -203,7 +301,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cancelPull()
 			return m, tea.Quit
 		}
-		if typed.String() == "ctrl+c" {
+		if typed.String() == keyCtrlC {
 			// Cancel any ongoing LLM operations but don't quit.
 			m.cancelChatOperations()
 			m.cancelExtraction()
@@ -270,7 +368,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.helpViewport != nil {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			switch {
-			case keyMsg.String() == keyEsc || keyMsg.String() == "?":
+			case keyMsg.String() == keyEsc || keyMsg.String() == keyQuestion:
 				m.helpViewport = nil
 			case key.Matches(keyMsg, helpGotoTop):
 				m.helpViewport.GotoTop()
@@ -385,10 +483,10 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "ctrl+s" {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == keyCtrlS {
 		return m, m.saveFormInPlace()
 	}
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "ctrl+e" && m.notesEditMode {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == keyCtrlE && m.notesEditMode {
 		return m, m.launchExternalEditor()
 	}
 	// Block huh's deferred WindowSizeMsg from reaching the form. Without
@@ -440,7 +538,7 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 // prompt is active. Only y (discard) and n/esc (keep editing) are recognized.
 func (m *Model) handleConfirmDiscard(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
-	case "y":
+	case keyY:
 		m.confirmDiscard = false
 		if m.confirmQuit {
 			m.confirmQuit = false
@@ -449,7 +547,7 @@ func (m *Model) handleConfirmDiscard(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		m.exitForm()
-	case "n", keyEsc:
+	case keyN, keyEsc:
 		m.confirmDiscard = false
 		m.confirmQuit = false
 	}
@@ -461,40 +559,40 @@ func (m *Model) handleConfirmDiscard(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 // widgets. Keys like D, b/f, ?, q fall through to the normal handlers.
 func (m *Model) handleDashboardKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 	switch key.String() {
-	case "j", keyDown:
+	case keyJ, keyDown:
 		m.dashDown()
 		return nil, true
-	case "k", "up":
+	case keyK, keyUp:
 		m.dashUp()
 		return nil, true
-	case "J", "shift+down":
+	case keyShiftJ, keyShiftDown:
 		m.dashNextSection()
 		return nil, true
-	case "K", "shift+up":
+	case keyShiftK, keyShiftUp:
 		m.dashPrevSection()
 		return nil, true
-	case "g":
+	case keyG:
 		m.dashTop()
 		return nil, true
-	case "G":
+	case keyShiftG:
 		m.dashBottom()
 		return nil, true
-	case "e":
+	case keyE:
 		m.dashToggleCurrent()
 		return nil, true
-	case "E":
+	case keyShiftE:
 		m.dashToggleAll()
 		return nil, true
 	case keyEnter:
 		m.dashJump()
 		return nil, true
-	case "tab":
+	case keyTab:
 		// Block house profile toggle on dashboard.
 		return nil, true
-	case "h", "l", keyLeft, keyRight:
+	case keyH, keyL, keyLeft, keyRight:
 		// Block column movement on dashboard.
 		return nil, true
-	case "s", "S", "c", "C", "i", "/", "n", "N", "!":
+	case keyS, keyShiftS, keyC, keyShiftC, keyI, keySlash, keyN, keyShiftN, keyBang:
 		// Block table-specific keys on dashboard.
 		return nil, true
 	}
@@ -504,14 +602,14 @@ func (m *Model) handleDashboardKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 // handleCommonKeys processes keys available in both Normal and Edit modes.
 func (m *Model) handleCommonKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 	switch key.String() {
-	case "?":
+	case keyQuestion:
 		m.openHelp()
 		return nil, true
-	case "tab":
+	case keyTab:
 		m.showHouse = !m.showHouse
 		m.resizeTables()
 		return nil, true
-	case "ctrl+o":
+	case keyCtrlO:
 		m.magMode = !m.magMode
 		if m.chat != nil && m.chat.Visible {
 			m.refreshChatViewport()
@@ -538,25 +636,25 @@ func (m *Model) handleCommonKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case "h", keyLeft:
+	case keyH, keyLeft:
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = nextVisibleCol(tab.Specs, tab.ColCursor, false)
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case "l", keyRight:
+	case keyL, keyRight:
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = nextVisibleCol(tab.Specs, tab.ColCursor, true)
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case "^":
+	case keyCaret:
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = firstVisibleCol(tab.Specs)
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case "$":
+	case keyDollar:
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = lastVisibleCol(tab.Specs)
 			m.updateTabViewport(tab)
@@ -569,10 +667,10 @@ func (m *Model) handleCommonKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 // handleNormalKeys processes keys unique to Normal mode.
 func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 	switch key.String() {
-	case "D":
+	case keyShiftD:
 		m.toggleDashboard()
 		return nil, true
-	case "f":
+	case keyF:
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -580,7 +678,7 @@ func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			m.nextTab()
 		}
 		return nil, true
-	case "b":
+	case keyB:
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -588,7 +686,7 @@ func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			m.prevTab()
 		}
 		return nil, true
-	case "F":
+	case keyShiftF:
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -596,7 +694,7 @@ func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			m.switchToTab(len(m.tabs) - 1)
 		}
 		return nil, true
-	case "B":
+	case keyShiftB:
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -604,48 +702,48 @@ func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			m.switchToTab(0)
 		}
 		return nil, true
-	case "n":
+	case keyN:
 		m.togglePinAtCursor()
 		return nil, true
-	case "N":
+	case keyShiftN:
 		m.toggleFilterActivation()
 		return nil, true
 	case keyCtrlN:
 		m.clearAllPins()
 		return nil, true
-	case "!":
+	case keyBang:
 		m.toggleFilterInvert()
 		return nil, true
-	case "s":
+	case keyS:
 		if tab := m.effectiveTab(); tab != nil {
 			toggleSort(tab, tab.ColCursor)
 			applySorts(tab)
 		}
 		return nil, true
-	case "S":
+	case keyShiftS:
 		if tab := m.effectiveTab(); tab != nil {
 			clearSorts(tab)
 			applySorts(tab)
 		}
 		return nil, true
-	case "t":
+	case keyT:
 		if m.toggleSettledFilter() {
 			return nil, true
 		}
-	case "c":
+	case keyC:
 		m.hideCurrentColumn()
 		return nil, true
-	case "C":
+	case keyShiftC:
 		m.showAllColumns()
 		return nil, true
-	case "/":
+	case keySlash:
 		m.openColumnFinder()
 		return nil, true
-	case "o":
+	case keyO:
 		if cmd := m.openSelectedDocument(); cmd != nil {
 			return cmd, true
 		}
-	case "i":
+	case keyI:
 		m.enterEditMode()
 		return nil, true
 	case keyEnter:
@@ -657,7 +755,7 @@ func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			return m.formInitCmd(), true
 		}
 		return nil, true
-	case "@":
+	case keyAt:
 		m.openChat()
 		return nil, true
 	case keyEsc:
@@ -741,10 +839,10 @@ func (m *Model) handleNormalEnter() error {
 // handleEditKeys processes keys unique to Edit mode.
 func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 	switch key.String() {
-	case "a":
+	case keyA:
 		m.startAddForm()
 		return m.formInitCmd(), true
-	case "A":
+	case keyShiftA:
 		if tab := m.effectiveTab(); tab != nil && tab.Kind == tabDocuments {
 			if err := m.startQuickDocumentForm(); err != nil {
 				m.setStatusError(err.Error())
@@ -752,37 +850,37 @@ func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			return m.formInitCmd(), true
 		}
 		return nil, false
-	case "e":
+	case keyE:
 		if err := m.startCellOrFormEdit(); err != nil {
 			m.setStatusError(err.Error())
 			return nil, true
 		}
 		return m.formInitCmd(), true
-	case "d":
+	case keyD:
 		m.toggleDeleteSelected()
 		return nil, true
-	case "u":
+	case keyU:
 		if err := m.popUndo(); err != nil {
 			m.setStatusError(err.Error())
 		} else {
 			m.reloadAfterMutation()
 		}
 		return nil, true
-	case "r":
+	case keyR:
 		if err := m.popRedo(); err != nil {
 			m.setStatusError(err.Error())
 		} else {
 			m.reloadAfterMutation()
 		}
 		return nil, true
-	case "o":
+	case keyO:
 		if cmd := m.openSelectedDocument(); cmd != nil {
 			return cmd, true
 		}
-	case "x":
+	case keyX:
 		m.toggleShowDeleted()
 		return nil, true
-	case "p":
+	case keyP:
 		m.startHouseForm()
 		return m.formInitCmd(), true
 	case keyEsc:
@@ -794,21 +892,21 @@ func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 
 func (m *Model) handleCalendarKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
-	case "h", keyLeft:
+	case keyH, keyLeft:
 		calendarMove(m.calendar, -1)
-	case "l", keyRight:
+	case keyL, keyRight:
 		calendarMove(m.calendar, 1)
-	case "j", keyDown:
+	case keyJ, keyDown:
 		calendarMove(m.calendar, 7)
-	case "k", "up":
+	case keyK, keyUp:
 		calendarMove(m.calendar, -7)
-	case "H":
+	case keyShiftH:
 		calendarMoveMonth(m.calendar, -1)
-	case "L":
+	case keyShiftL:
 		calendarMoveMonth(m.calendar, 1)
-	case "[":
+	case keyLBracket:
 		calendarMoveYear(m.calendar, -1)
-	case "]":
+	case keyRBracket:
 		calendarMoveYear(m.calendar, 1)
 	case "t":
 		calendarToday(m.calendar)
@@ -1912,7 +2010,7 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 		if m.extractionEnabled && m.llmClient != nil && !m.extractionReady {
 			m.pendingExtractionDocID = &docID
 			if !m.pulling {
-				m.setStatusInfo("checking extraction model\u2026")
+				m.setStatusInfo("checking extraction model" + symEllipsis)
 				return m.checkExtractionModelCmd()
 			}
 		}

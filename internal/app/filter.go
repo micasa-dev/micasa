@@ -243,7 +243,7 @@ func pinSummary(tab *Tab) string {
 		vals := make([]string, 0, len(pin.Values))
 		for v := range pin.Values {
 			if v == nullPinKey {
-				vals = append(vals, "\u2205") // ∅
+				vals = append(vals, symEmptySet) // ∅
 			} else {
 				vals = append(vals, v)
 			}

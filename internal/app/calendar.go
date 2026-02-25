@@ -125,13 +125,13 @@ func calendarHints() string {
 
 	type hint struct{ k, v string }
 	items := []hint{
-		{"h/l", "day"},
-		{"j/k", "week"},
-		{"H/L", "month"},
-		{"[/]", "year"},
-		{"t", "today"},
-		{"\u21b5", "pick"},
-		{"esc", "cancel"},
+		{keyH + "/" + keyL, "day"},
+		{keyJ + "/" + keyK, "week"},
+		{keyShiftH + "/" + keyShiftL, "month"},
+		{keyLBracket + "/" + keyRBracket, "year"},
+		{keyT, "today"},
+		{symReturn, "pick"},
+		{keyEsc, "cancel"},
 	}
 
 	// Right-align the key column.

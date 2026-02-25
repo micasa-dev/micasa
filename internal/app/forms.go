@@ -1738,8 +1738,8 @@ func formTheme() *huh.Theme {
 
 func formKeyMap() *huh.KeyMap {
 	keymap := huh.NewDefaultKeyMap()
-	keymap.Quit.SetKeys("esc")
-	keymap.Quit.SetHelp("esc", "cancel")
+	keymap.Quit.SetKeys(keyEsc)
+	keymap.Quit.SetHelp(keyEsc, "cancel")
 	return keymap
 }
 
@@ -2398,8 +2398,8 @@ func (m *Model) newDocumentFilePicker(title string) *huh.FilePicker {
 	return huh.NewFilePicker().
 		Key(title).
 		Title(title + " " + short).
-		Description("h/\u2190 back \u00b7 enter open").
-		Cursor("\u25b8").
+		Description(keyH + "/" + symLeft + " back " + symMiddleDot + " " + keyEnter + " open").
+		Cursor(symTriRightSm).
 		CurrentDirectory(dir).
 		Picking(true).
 		FileAllowed(true).

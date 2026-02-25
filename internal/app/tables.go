@@ -15,10 +15,10 @@ import (
 // page-up/page-down so those keys can be used for tab navigation.
 func baseTableKeyMap() table.KeyMap {
 	km := table.DefaultKeyMap()
-	km.PageDown.SetKeys("pgdown")
-	km.PageDown.SetHelp("pgdn", "page down")
-	km.PageUp.SetKeys("pgup")
-	km.PageUp.SetHelp("pgup", "page up")
+	km.PageDown.SetKeys(keyPgDown)
+	km.PageDown.SetHelp(keyPgDown, "page down")
+	km.PageUp.SetKeys(keyPgUp)
+	km.PageUp.SetHelp(keyPgUp, "page up")
 	return km
 }
 
@@ -31,10 +31,10 @@ func normalTableKeyMap() table.KeyMap {
 // bindings so they can be used for delete/undo without conflicting.
 func editTableKeyMap() table.KeyMap {
 	km := baseTableKeyMap()
-	km.HalfPageDown.SetKeys("ctrl+d")
-	km.HalfPageDown.SetHelp("ctrl+d", "½ page down")
-	km.HalfPageUp.SetKeys("ctrl+u")
-	km.HalfPageUp.SetHelp("ctrl+u", "½ page up")
+	km.HalfPageDown.SetKeys(keyCtrlD)
+	km.HalfPageDown.SetHelp(keyCtrlD, "½ page down")
+	km.HalfPageUp.SetKeys(keyCtrlU)
+	km.HalfPageUp.SetHelp(keyCtrlU, "½ page up")
 	return km
 }
 

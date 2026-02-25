@@ -212,24 +212,24 @@ func (m *Model) handleColumnFinderKey(key tea.KeyMsg) tea.Cmd {
 	case keyEnter:
 		m.columnFinderJump()
 		return nil
-	case "up", "ctrl+p":
+	case keyUp, keyCtrlP:
 		if cf.Cursor > 0 {
 			cf.Cursor--
 		}
 		return nil
-	case "down", keyCtrlN:
+	case keyDown, keyCtrlN:
 		if cf.Cursor < len(cf.Matches)-1 {
 			cf.Cursor++
 		}
 		return nil
-	case "backspace":
+	case keyBackspace:
 		if len(cf.Query) > 0 {
 			_, size := utf8.DecodeLastRuneInString(cf.Query)
 			cf.Query = cf.Query[:len(cf.Query)-size]
 			cf.refilter()
 		}
 		return nil
-	case "ctrl+u":
+	case keyCtrlU:
 		cf.Query = ""
 		cf.refilter()
 		return nil
@@ -331,8 +331,8 @@ func (m *Model) buildColumnFinderOverlay() string {
 	b.WriteString("\n\n")
 	hints := joinWithSeparator(
 		m.helpSeparator(),
-		m.helpItem("\u21b5", "jump"),
-		m.helpItem("esc", "cancel"),
+		m.helpItem(symReturn, "jump"),
+		m.helpItem(keyEsc, "cancel"),
 	)
 	b.WriteString(hints)
 

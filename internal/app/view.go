@@ -164,8 +164,8 @@ func (m *Model) buildDashboardOverlay() string {
 
 	// Minimal hints inside the overlay.
 	hints := joinWithSeparator(m.helpSeparator(),
-		m.helpItem("D", "close"),
-		m.helpItem("?", "help"),
+		m.helpItem(keyShiftD, "close"),
+		m.helpItem(keyQuestion, "help"),
 	)
 
 	// Budget for dashboardView content: outer box height minus chrome.
@@ -278,8 +278,8 @@ func (m *Model) statusView() string {
 			prompt := m.styles.FormDirty.Render("Discard unsaved changes?")
 			hints := joinWithSeparator(
 				m.helpSeparator(),
-				m.helpItem("y", "discard"),
-				m.helpItem("n", "keep editing"),
+				m.helpItem(keyY, "discard"),
+				m.helpItem(keyN, "keep editing"),
 			)
 			return m.withPullProgress(prompt + "  " + hints)
 		}
@@ -289,14 +289,14 @@ func (m *Model) statusView() string {
 		}
 		parts := []string{
 			dirtyIndicator,
-			m.helpItem("ctrl+s", "save"),
+			m.helpItem(keyCtrlS, "save"),
 		}
 		if m.notesEditMode {
-			parts = append(parts, m.helpItem("ctrl+e", "editor"))
+			parts = append(parts, m.helpItem(keyCtrlE, "editor"))
 		}
 		parts = append(parts,
-			m.helpItem("esc", "cancel"),
-			m.helpItem("ctrl+q", "quit"),
+			m.helpItem(keyEsc, "cancel"),
+			m.helpItem(keyCtrlQ, "quit"),
 		)
 		help := joinWithSeparator(m.helpSeparator(), parts...)
 		return m.withPullProgress(m.withStatusMessage(help))
@@ -343,8 +343,8 @@ func (m *Model) inlineInputStatusView() string {
 	input := ii.Input.View()
 	hints := joinWithSeparator(
 		m.helpSeparator(),
-		m.helpItem("\u21b5", "save"),
-		m.helpItem("esc", "cancel"),
+		m.helpItem(symReturn, "save"),
+		m.helpItem(keyEsc, "cancel"),
 	)
 	prompt := title + " " + input + "  " + hints
 	return m.withStatusMessage(prompt)
@@ -377,25 +377,25 @@ func (m *Model) normalModeStatusHints(modeBadge string) []statusHint {
 	if hint := m.enterHint(); hint != "" {
 		hints = append(hints, statusHint{
 			id:       "enter",
-			full:     m.helpItem("\u21b5", hint),
-			compact:  m.helpItem("\u21b5", "open"),
+			full:     m.helpItem(symReturn, hint),
+			compact:  m.helpItem(symReturn, "open"),
 			priority: 2,
 		})
 	}
 
 	// Primary actions.
 	hints = append(hints,
-		statusHint{id: "edit", full: m.helpItem("i", "edit"), priority: 2},
+		statusHint{id: "edit", full: m.helpItem(keyI, "edit"), priority: 2},
 	)
 	if m.effectiveTab().isDocumentTab() {
 		hints = append(hints, statusHint{
-			id: "open", full: m.helpItem("o", "open"), priority: 2,
+			id: "open", full: m.helpItem(keyO, "open"), priority: 2,
 		})
 	}
 	if m.llmClient != nil {
 		hints = append(hints, statusHint{
 			id:       "ask",
-			full:     m.helpItem("@", "ask"),
+			full:     m.helpItem(keyAt, "ask"),
 			priority: 3,
 		})
 	}
@@ -403,16 +403,16 @@ func (m *Model) normalModeStatusHints(modeBadge string) []statusHint {
 	// Anchors: help is always visible; back only in detail view.
 	hints = append(hints, statusHint{
 		id:       "help",
-		full:     m.helpItem("?", "help"),
-		compact:  m.helpItem("?", "more"),
+		full:     m.helpItem(keyQuestion, "help"),
+		compact:  m.helpItem(keyQuestion, "more"),
 		priority: 0,
 		required: true,
 	})
 	if m.inDetail() {
 		hints = append(hints, statusHint{
 			id:       "exit",
-			full:     m.helpItem("esc", "back"),
-			compact:  m.renderKeys("esc"),
+			full:     m.helpItem(keyEsc, "back"),
+			compact:  m.renderKeys(keyEsc),
 			priority: 0,
 			required: true,
 		})
@@ -426,29 +426,29 @@ func (m *Model) editModeStatusHelp(modeBadge string) string {
 	hints := []statusHint{
 		{id: "mode", full: modeBadge, priority: 0, required: true},
 	}
-	addKey := "a"
+	addKey := keyA
 	if m.effectiveTab().isDocumentTab() {
-		addKey = "a/A"
+		addKey = keyA + "/" + keyShiftA
 	}
 	hints = append(hints,
 		statusHint{id: "add", full: m.helpItem(addKey, "add"), priority: 1},
-		statusHint{id: "edit", full: m.helpItem("e", m.editHint()), priority: 1},
+		statusHint{id: "edit", full: m.helpItem(keyE, m.editHint()), priority: 1},
 		statusHint{
 			id:       "del",
-			full:     m.helpItem("d", "del/restore"),
-			compact:  m.helpItem("d", "del"),
+			full:     m.helpItem(keyD, "del/restore"),
+			compact:  m.helpItem(keyD, "del"),
 			priority: 2,
 		},
 	)
 	if m.effectiveTab().isDocumentTab() {
 		hints = append(hints, statusHint{
-			id: "open", full: m.helpItem("o", "open"), priority: 2,
+			id: "open", full: m.helpItem(keyO, "open"), priority: 2,
 		})
 	}
 	hints = append(hints, statusHint{
 		id:       "exit",
-		full:     m.helpItem("esc", "nav"),
-		compact:  m.renderKeys("esc"),
+		full:     m.helpItem(keyEsc, "nav"),
+		compact:  m.renderKeys(keyEsc),
 		priority: 0,
 		required: true,
 	})
@@ -723,70 +723,70 @@ func (m *Model) helpContent() string {
 		{
 			title: "Global",
 			bindings: []binding{
-				{"ctrl+c", "Cancel LLM operation"},
-				{"ctrl+q", "Quit"},
+				{keyCtrlC, "Cancel LLM operation"},
+				{keyCtrlQ, "Quit"},
 			},
 		},
 		{
 			title: "Nav Mode",
 			bindings: []binding{
-				{"j/k/\u2191/\u2193", "Rows"},
-				{"h/l/\u2190/\u2192", "Columns"},
-				{"^/$", "First/last column"},
-				{"g/G", "First/last row"},
-				{"d/u", "Half page down/up"},
-				{"b/f", "Switch tabs"},
-				{"B/F", "First/last tab"},
-				{"s/S", "Sort / clear sorts"},
-				{"t", "Toggle settled projects"},
-				{"/", "Find column"},
-				{"c/C", "Toggle column visibility"},
-				{"N", "Toggle filter"},
-				{"n", "Pin/unpin"},
-				{"!", "Invert filter"},
+				{keyJ + "/" + keyK + "/" + symUp + "/" + symDown, "Rows"},
+				{keyH + "/" + keyL + "/" + symLeft + "/" + symRight, "Columns"},
+				{keyCaret + "/" + keyDollar, "First/last column"},
+				{keyG + "/" + keyShiftG, "First/last row"},
+				{keyD + "/" + keyU, "Half page down/up"},
+				{keyB + "/" + keyF, "Switch tabs"},
+				{keyShiftB + "/" + keyShiftF, "First/last tab"},
+				{keyS + "/" + keyShiftS, "Sort / clear sorts"},
+				{keyT, "Toggle settled projects"},
+				{keySlash, "Find column"},
+				{keyC + "/" + keyShiftC, "Toggle column visibility"},
+				{keyShiftN, "Toggle filter"},
+				{keyN, "Pin/unpin"},
+				{keyBang, "Invert filter"},
 				{keyCtrlN, "Clear pins and filter"},
-				{"\u21b5", drilldownArrow + " drill / " + linkArrow + " follow / preview"},
-				{"o", "Open document"},
-				{"tab", "House profile"},
-				{"D", "Summary"},
-				{"@", "Ask LLM"},
-				{"i", "Edit mode"},
-				{"?", "Help"},
-				{"esc", "Close detail / clear status"},
+				{symReturn, drilldownArrow + " drill / " + linkArrow + " follow / preview"},
+				{keyO, "Open document"},
+				{keyTab, "House profile"},
+				{keyShiftD, "Summary"},
+				{keyAt, "Ask LLM"},
+				{keyI, "Edit mode"},
+				{keyQuestion, "Help"},
+				{keyEsc, "Close detail / clear status"},
 			},
 		},
 		{
 			title: "Edit Mode",
 			bindings: []binding{
-				{"a", "Add entry"},
-				{"A", "Add document with extraction"},
-				{"e", "Edit cell or row"},
-				{"d", "Delete / restore"},
-				{"u/r", "Undo / redo"},
-				{"ctrl+d/ctrl+u", "Half page down/up"},
-				{"x", "Show deleted"},
-				{"p", "House profile"},
-				{"esc", "Nav mode"},
+				{keyA, "Add entry"},
+				{keyShiftA, "Add document with extraction"},
+				{keyE, "Edit cell or row"},
+				{keyD, "Delete / restore"},
+				{keyU + "/" + keyR, "Undo / redo"},
+				{keyCtrlD + "/" + keyCtrlU, "Half page down/up"},
+				{keyX, "Show deleted"},
+				{keyP, "House profile"},
+				{keyEsc, "Nav mode"},
 			},
 		},
 		{
 			title: "Forms",
 			bindings: []binding{
-				{"tab", "Next field"},
-				{"shift+tab", "Previous field"},
+				{keyTab, "Next field"},
+				{keyShiftTab, "Previous field"},
 				{"1-9", "Jump to Nth option"},
-				{"ctrl+e", "Open notes in $EDITOR"},
-				{"ctrl+s", "Save"},
-				{"esc", "Cancel"},
+				{keyCtrlE, "Open notes in $EDITOR"},
+				{keyCtrlS, "Save"},
+				{keyEsc, "Cancel"},
 			},
 		},
 		{
-			title: "Chat (@)",
+			title: "Chat (" + keyAt + ")",
 			bindings: []binding{
-				{"\u21b5", "Send message"},
-				{"ctrl+s", "Toggle SQL display"},
-				{"\u2191/\u2193", "Prompt history"},
-				{"esc", "Hide chat"},
+				{symReturn, "Send message"},
+				{keyCtrlS, "Toggle SQL display"},
+				{symUp + "/" + symDown, "Prompt history"},
+				{keyEsc, "Hide chat"},
 			},
 		},
 	}
@@ -840,9 +840,9 @@ func (m *Model) helpView() string {
 		rule = ruleStyle.Render(strings.Repeat("─", contentW))
 	}
 
-	hints := []string{m.helpItem("esc", "close")}
+	hints := []string{m.helpItem(keyEsc, "close")}
 	if vp.TotalLineCount() > vp.Height {
-		hints = append([]string{m.helpItem("j/k", "scroll")}, hints...)
+		hints = append([]string{m.helpItem(keyJ+"/"+keyK, "scroll")}, hints...)
 	}
 	closeHintStr := joinWithSeparator(m.helpSeparator(), hints...)
 

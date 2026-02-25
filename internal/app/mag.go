@@ -20,7 +20,7 @@ const magArrow = "\U0001F821" // 🠡
 // unit from the column header instead). Non-numeric values are returned unchanged.
 func magFormat(c cell, includeUnit bool) string {
 	value := strings.TrimSpace(c.Value)
-	if value == "" || value == "\u2014" || value == "0" {
+	if value == "" || value == symEmDash || value == "0" {
 		return value
 	}
 
@@ -62,7 +62,7 @@ func magFormat(c cell, includeUnit bool) string {
 	}
 
 	if f == 0 {
-		return fmt.Sprintf("%s%s%s-\u221E", sign, unit, magArrow)
+		return fmt.Sprintf("%s%s%s-%s", sign, unit, magArrow, symInfinity)
 	}
 	mag := int(math.Round(math.Log10(math.Abs(f))))
 	return fmt.Sprintf("%s%s%s%d", sign, unit, magArrow, mag)

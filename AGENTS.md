@@ -245,6 +245,10 @@ details; do not duplicate that detail here.
   `Styles` struct in `styles.go` and reference them via the package-level
   `appStyles` singleton. Never inline `lipgloss.NewStyle()` in rendering
   functions -- it defeats the singleton and reintroduces per-frame copies.
+- **Key strings use constants**: All keyboard key strings in dispatch
+  (`case`, `key.String() ==`), `key.WithKeys`, `SetKeys`, `helpItem`,
+  `renderKeys`, and display hints must use constants defined in
+  `internal/app/model.go`. Never introduce bare key string literals.
 
 ### UI/UX conventions
 

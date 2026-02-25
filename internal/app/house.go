@@ -204,14 +204,14 @@ func sqftLabel(sqft int) string {
 	if sqft == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%s ft\u00B2", humanize.Comma(int64(sqft)))
+	return fmt.Sprintf("%s ft%s", humanize.Comma(int64(sqft)), symSuperTwo)
 }
 
 func lotLabel(sqft int) string {
 	if sqft == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%s ft\u00B2 lot", humanize.Comma(int64(sqft)))
+	return fmt.Sprintf("%s ft%s lot", humanize.Comma(int64(sqft)), symSuperTwo)
 }
 
 func formatInt(value int) string {

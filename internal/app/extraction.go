@@ -938,7 +938,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case keyEsc:
 		m.cancelExtraction()
-	case "j", keyDown:
+	case keyJ, keyDown:
 		if ex.cursorExpanded() && !ex.Viewport.AtBottom() {
 			vp, cmd := ex.Viewport.Update(msg)
 			ex.Viewport = vp
@@ -952,7 +952,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 				break
 			}
 		}
-	case "k", "up":
+	case keyK, keyUp:
 		if ex.cursorExpanded() && !ex.Viewport.AtTop() {
 			vp, cmd := ex.Viewport.Update(msg)
 			ex.Viewport = vp
@@ -977,15 +977,15 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 			}
 			ex.expanded[si] = !effective
 		}
-	case "r":
+	case keyR:
 		if ex.Done && ex.hasLLM && ex.cursorStep() == stepLLM {
 			return m.rerunLLMExtraction()
 		}
-	case "a":
+	case keyA:
 		if ex.Done && !ex.HasError {
 			m.acceptExtraction()
 		}
-	case "x":
+	case keyX:
 		if ex.Done && len(ex.operations) > 0 {
 			ex.enterExploreMode()
 		}
@@ -1003,56 +1003,56 @@ func (m *Model) handleExtractionExploreKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case keyEsc:
 		ex.exploring = false
-	case "j", keyDown:
+	case keyJ, keyDown:
 		g := ex.activePreviewGroup()
 		if g != nil && ex.previewRow < len(g.cells)-1 {
 			ex.previewRow++
 		}
-	case "k", "up":
+	case keyK, keyUp:
 		if ex.previewRow > 0 {
 			ex.previewRow--
 		}
-	case "h", keyLeft:
+	case keyH, keyLeft:
 		g := ex.activePreviewGroup()
 		if g != nil && ex.previewCol > 0 {
 			ex.previewCol--
 		}
-	case "l", keyRight:
+	case keyL, keyRight:
 		g := ex.activePreviewGroup()
 		if g != nil && ex.previewCol < len(g.specs)-1 {
 			ex.previewCol++
 		}
-	case "b":
+	case keyB:
 		if ex.previewTab > 0 {
 			ex.previewTab--
 			ex.previewRow = 0
 			ex.previewCol = 0
 		}
-	case "f":
+	case keyF:
 		if ex.previewTab < len(ex.previewGroups)-1 {
 			ex.previewTab++
 			ex.previewRow = 0
 			ex.previewCol = 0
 		}
-	case "g":
+	case keyG:
 		ex.previewRow = 0
-	case "G":
+	case keyShiftG:
 		g := ex.activePreviewGroup()
 		if g != nil && len(g.cells) > 0 {
 			ex.previewRow = len(g.cells) - 1
 		}
-	case "^":
+	case keyCaret:
 		ex.previewCol = 0
-	case "$":
+	case keyDollar:
 		g := ex.activePreviewGroup()
 		if g != nil && len(g.specs) > 0 {
 			ex.previewCol = len(g.specs) - 1
 		}
-	case "a":
+	case keyA:
 		if ex.Done && !ex.HasError {
 			m.acceptExtraction()
 		}
-	case "x":
+	case keyX:
 		ex.exploring = false
 	}
 	return nil
@@ -1260,38 +1260,38 @@ func (m *Model) buildExtractionPipelineOverlay(
 		indicator := lipgloss.NewStyle().Foreground(textDim).Render(" " + label + " ")
 		indicatorW := lipgloss.Width(indicator)
 		rightW := max(0, innerW-indicatorW)
-		rule = ruleStyle.Render(strings.Repeat("\u2500", rightW)) + indicator
+		rule = ruleStyle.Render(strings.Repeat(symHLine, rightW)) + indicator
 	} else {
-		rule = ruleStyle.Render(strings.Repeat("\u2500", innerW))
+		rule = ruleStyle.Render(strings.Repeat(symHLine, innerW))
 	}
 
 	// Hint line varies by mode.
 	var hints []string
 	if ex.exploring {
-		hints = append(hints, m.helpItem("j/k", "rows"), m.helpItem("h/l", "cols"))
+		hints = append(hints, m.helpItem(keyJ+"/"+keyK, "rows"), m.helpItem(keyH+"/"+keyL, "cols"))
 		if len(ex.previewGroups) > 1 {
-			hints = append(hints, m.helpItem("b/f", "tabs"))
+			hints = append(hints, m.helpItem(keyB+"/"+keyF, "tabs"))
 		}
 		if !ex.HasError {
-			hints = append(hints, m.helpItem("a", "accept"))
+			hints = append(hints, m.helpItem(keyA, "accept"))
 		}
-		hints = append(hints, m.helpItem("x", "back"), m.helpItem("esc", "discard"))
+		hints = append(hints, m.helpItem(keyX, "back"), m.helpItem(keyEsc, "discard"))
 	} else {
-		hints = append(hints, m.helpItem("j/k", "navigate"))
+		hints = append(hints, m.helpItem(keyJ+"/"+keyK, "navigate"))
 		cursorStatus := ex.Steps[ex.cursorStep()].Status
 		if ex.Done || cursorStatus == stepDone || cursorStatus == stepFailed {
-			hints = append(hints, m.helpItem("\u21b5", "expand"))
+			hints = append(hints, m.helpItem(symReturn, "expand"))
 		}
 		if hasOps {
-			hints = append(hints, m.helpItem("x", "explore"))
+			hints = append(hints, m.helpItem(keyX, "explore"))
 		}
 		if ex.Done {
 			if !ex.HasError {
-				hints = append(hints, m.helpItem("a", "accept"))
+				hints = append(hints, m.helpItem(keyA, "accept"))
 			}
-			hints = append(hints, m.helpItem("esc", "discard"))
+			hints = append(hints, m.helpItem(keyEsc, "discard"))
 		} else {
-			hints = append(hints, m.helpItem("esc", "cancel"))
+			hints = append(hints, m.helpItem(keyEsc, "cancel"))
 		}
 	}
 	hintStr := joinWithSeparator(m.helpSeparator(), hints...)
@@ -1300,7 +1300,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 	if previewSection != "" {
 		parts = append(parts, "", previewSection)
 	}
-	parts = append(parts, ruleStyle.Render(strings.Repeat("\u2500", innerW)), hintStr)
+	parts = append(parts, ruleStyle.Render(strings.Repeat(symHLine, innerW)), hintStr)
 	boxContent := lipgloss.JoinVertical(lipgloss.Left, parts...)
 
 	return lipgloss.NewStyle().
@@ -1324,8 +1324,8 @@ func (m *Model) renderOperationPreviewSection(innerW int, interactive bool) stri
 		return lipgloss.NewStyle().Foreground(textDim).Render("no operations")
 	}
 
-	sep := m.styles.TableSeparator.Render(" \u2502 ")
-	divSep := m.styles.TableSeparator.Render("\u2500\u253c\u2500")
+	sep := m.styles.TableSeparator.Render(" " + symVLine + " ")
+	divSep := m.styles.TableSeparator.Render(symHLine + symCross + symHLine)
 	sepW := lipgloss.Width(sep)
 
 	// Tab bar: active tab highlighted in explore mode, all dimmed otherwise.
@@ -1341,7 +1341,7 @@ func (m *Model) renderOperationPreviewSection(innerW int, interactive bool) stri
 		}
 	}
 	tabBar := lipgloss.JoinHorizontal(lipgloss.Left, tabParts...)
-	underline := m.styles.TabUnderline.Render(strings.Repeat("\u2501", innerW))
+	underline := m.styles.TabUnderline.Render(strings.Repeat(symHLineHeavy, innerW))
 
 	// Always render a single tab: the active one in explore mode,
 	// the first one in pipeline mode.
@@ -1464,9 +1464,9 @@ func (m *Model) renderExtractionStep(
 	stepSettled := info.Status == stepDone || info.Status == stepFailed
 	if focused && (ex.Done || stepSettled) {
 		if expanded {
-			cursor = m.styles.ExtCursor.Render("\u25be ")
+			cursor = m.styles.ExtCursor.Render(symTriDownSm + " ")
 		} else {
-			cursor = m.styles.ExtCursor.Render("\u25b8 ")
+			cursor = m.styles.ExtCursor.Render(symTriRightSm + " ")
 		}
 	}
 
@@ -1506,7 +1506,7 @@ func (m *Model) renderExtractionStep(
 
 	// Expanded: header + rendered log content with left border pipe.
 	pipeIndent := "     " // align pipe under step name
-	pipe := m.styles.TableSeparator.Render("\u2502") + " "
+	pipe := m.styles.TableSeparator.Render(symVLine) + " "
 	logW := innerW - len(pipeIndent) - 2 // pipe + space
 	raw := strings.Join(info.Logs, "\n")
 
@@ -1789,7 +1789,7 @@ func (m *Model) extractionOverlayWidth() int {
 		if len(ex.previewGroups) == 0 {
 			ex.previewGroups = groupOperationsByTable(ex.operations)
 		}
-		sep := m.styles.TableSeparator.Render(" \u2502 ")
+		sep := m.styles.TableSeparator.Render(" " + symVLine + " ")
 		sepW := lipgloss.Width(sep)
 		needed := previewNaturalWidth(ex.previewGroups, sepW) + 4 // +4 for padding
 		if needed > w {

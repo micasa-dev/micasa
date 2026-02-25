@@ -80,11 +80,11 @@ func renderHiddenBadges(
 
 	leftMarker := "  "
 	if len(leftParts) > 0 {
-		leftMarker = "\u25c0 " // ◀ + gap
+		leftMarker = symTriLeft + " " // ◀ + gap
 	}
 	rightMarker := "  "
 	if len(rightParts) > 0 {
-		rightMarker = " \u25b6" // gap + ▶
+		rightMarker = " " + symTriRight // gap + ▶
 	}
 
 	var allParts []string
