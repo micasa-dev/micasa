@@ -10,12 +10,12 @@ import (
 )
 
 // ListMaintenanceWithSchedule returns all non-deleted maintenance items that
-// have a positive interval, preloading Category and Appliance. These are the
-// items eligible for overdue/upcoming computation.
+// have a positive interval or an explicit due date, preloading Category and
+// Appliance. These are the items eligible for overdue/upcoming computation.
 func (s *Store) ListMaintenanceWithSchedule() ([]MaintenanceItem, error) {
 	var items []MaintenanceItem
 	err := s.db.
-		Where(ColIntervalMonths+" > 0").
+		Where(ColIntervalMonths+" > 0 OR "+ColDueDate+" IS NOT NULL").
 		Preload("Category").
 		Preload("Appliance", func(q *gorm.DB) *gorm.DB {
 			return q.Unscoped()

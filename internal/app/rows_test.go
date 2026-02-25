@@ -158,6 +158,28 @@ func TestMaintenanceRowsNoAppliance(t *testing.T) {
 	assert.Zero(t, cells[0][3].LinkID)
 }
 
+// Step 12: Due-date items use the same urgency cell kind as interval items,
+// ensuring identical overdue/upcoming coloring.
+func TestMaintenanceRowsDueDateUrgencyCell(t *testing.T) {
+	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	items := []data.MaintenanceItem{
+		{
+			ID:       1,
+			Name:     "Inspect Roof",
+			DueDate:  &due,
+			Category: data.MaintenanceCategory{Name: "Exterior"},
+		},
+	}
+	_, _, cells := maintenanceRows(items, nil, nil)
+	nextCell := cells[0][int(maintenanceColNext)]
+	// "Next" column shows the due date with cellUrgency kind (same as interval items).
+	assert.Equal(t, "2025-11-01", nextCell.Value)
+	assert.Equal(t, cellUrgency, nextCell.Kind,
+		"due-date items must use cellUrgency for consistent overdue/upcoming coloring")
+	// "Every" column shows "--" (no interval).
+	assert.Equal(t, "--", cells[0][int(maintenanceColEvery)].Value)
+}
+
 func TestApplianceRows(t *testing.T) {
 	cost := int64(89900)
 	purchase := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)

@@ -36,6 +36,31 @@ func TestListMaintenanceWithSchedule(t *testing.T) {
 	assert.Equal(t, "With Interval", items[0].Name)
 }
 
+func TestListMaintenanceWithScheduleDueDate(t *testing.T) {
+	store := newTestStore(t)
+	cat := MaintenanceCategory{Name: "DueDateCat"}
+	require.NoError(t, store.db.Create(&cat).Error)
+
+	ptrTime := func(y, m, d int) *time.Time {
+		t := time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
+		return &t
+	}
+	// Item with due date (no interval) should appear.
+	require.NoError(t, store.db.Create(&MaintenanceItem{
+		Name: "With DueDate", CategoryID: cat.ID,
+		DueDate: ptrTime(2025, 11, 1),
+	}).Error)
+	// Item with neither should NOT appear.
+	require.NoError(t, store.db.Create(&MaintenanceItem{
+		Name: "Unscheduled", CategoryID: cat.ID,
+	}).Error)
+
+	items, err := store.ListMaintenanceWithSchedule()
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "With DueDate", items[0].Name)
+}
+
 func TestListActiveProjects(t *testing.T) {
 	store := newTestStore(t)
 	var pt ProjectType

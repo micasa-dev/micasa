@@ -237,6 +237,18 @@ func TestMaintenanceFormValuesNoAppliance(t *testing.T) {
 	assert.Zero(t, got.ApplianceID)
 }
 
+func TestMaintenanceFormValuesDueDate(t *testing.T) {
+	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	item := data.MaintenanceItem{
+		Name:       "Inspect Roof",
+		CategoryID: 1,
+		DueDate:    &due,
+	}
+	got := maintenanceFormValues(item)
+	assert.Equal(t, "2025-11-01", got.DueDate)
+	assert.Empty(t, got.IntervalMonths)
+}
+
 func TestApplianceFormValues(t *testing.T) {
 	cost := int64(89900)
 	purchase := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)

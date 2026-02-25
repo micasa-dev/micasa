@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -134,6 +135,7 @@ func TestUserCreatesMaintenanceWithDurationInterval(t *testing.T) {
 	values, ok := m.formData.(*maintenanceFormData)
 	require.True(t, ok)
 	values.Name = "HVAC Filter"
+	values.ScheduleType = schedInterval
 	values.IntervalMonths = "1y"
 	m.checkFormDirty()
 
@@ -163,6 +165,7 @@ func TestUserCreatesMaintenanceWithCombinedInterval(t *testing.T) {
 	values, ok := m.formData.(*maintenanceFormData)
 	require.True(t, ok)
 	values.Name = "Gutter Cleaning"
+	values.ScheduleType = schedInterval
 	values.IntervalMonths = "2y 6m"
 	sendKey(m, "ctrl+s")
 
@@ -171,6 +174,340 @@ func TestUserCreatesMaintenanceWithCombinedInterval(t *testing.T) {
 	require.Len(t, items, 1)
 	assert.Equal(t, 30, items[0].IntervalMonths)
 	assert.Equal(t, "2y 6m", maintenanceFormValues(items[0]).IntervalMonths)
+}
+
+// Step 1: Create maintenance with interval -- existing behavior unchanged.
+func TestUserCreatesMaintenanceWithIntervalOnly(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "HVAC Filter"
+	values.ScheduleType = schedInterval
+	values.IntervalMonths = "3"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, 3, items[0].IntervalMonths)
+	assert.Nil(t, items[0].DueDate)
+
+	// Verify table row display: "Every" shows 3m, "Next" is empty (no last serviced).
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.CellRows)
+	cells := tab.CellRows[0]
+	assert.Equal(t, "3m", cells[int(maintenanceColEvery)].Value)
+}
+
+// Step 2: Create maintenance with due date.
+func TestUserCreatesMaintenanceWithDueDate(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Inspect Roof"
+	values.ScheduleType = schedDueDate
+	values.DueDate = "2025-11-01"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.NotNil(t, items[0].DueDate)
+	assert.Equal(t, "2025-11-01", items[0].DueDate.Format(data.DateLayout))
+	assert.Zero(t, items[0].IntervalMonths)
+
+	// Verify table row display: "Next" shows due date, "Every" shows "--".
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.CellRows)
+	cells := tab.CellRows[0]
+	assert.Equal(t, "2025-11-01", cells[int(maintenanceColNext)].Value)
+	assert.Equal(t, "--", cells[int(maintenanceColEvery)].Value)
+	assert.Equal(t, cellUrgency, cells[int(maintenanceColNext)].Kind)
+}
+
+// Steps 3-4: Schedule type selector enforces mutual exclusion.
+// When ScheduleType is "interval", stale DueDate values are ignored.
+func TestScheduleTypeSelectorIgnoresStaleValues(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Selective"
+	values.ScheduleType = schedInterval
+	values.IntervalMonths = "6"
+	values.DueDate = "2025-11-01" // stale value from a previous edit
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, 6, items[0].IntervalMonths)
+	assert.Nil(t, items[0].DueDate, "due date should be ignored when schedule type is interval")
+}
+
+// Step 5: Create maintenance with neither interval nor due date (unscheduled).
+func TestUserCreatesMaintenanceUnscheduled(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Unscheduled Task"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Zero(t, items[0].IntervalMonths)
+	assert.Nil(t, items[0].DueDate)
+
+	// Verify table row: "Next" and "Every" are both empty.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.CellRows)
+	cells := tab.CellRows[0]
+	assert.Empty(t, cells[int(maintenanceColNext)].Value)
+	assert.Empty(t, cells[int(maintenanceColEvery)].Value)
+}
+
+// Step 6: Edit existing interval item via full form, change to due date.
+func TestUserEditsMaintenanceFromIntervalToDueDate(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+
+	// Create an item with an interval.
+	openAddForm(m)
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "HVAC Filter"
+	values.ScheduleType = schedInterval
+	values.IntervalMonths = "3"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	// Reload and select the row.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.Rows)
+	tab.Table.SetCursor(0)
+	id := tab.Rows[0].ID
+
+	// Open the full edit form (via the ID column fallback).
+	sendKey(m, "i")
+	tab.ColCursor = int(maintenanceColID)
+	sendKey(m, "e")
+	require.Equal(t, modeForm, m.mode, "should open full edit form")
+
+	// Verify current form values show the interval.
+	editValues, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	assert.Equal(t, "3m", editValues.IntervalMonths)
+	assert.Equal(t, schedInterval, editValues.ScheduleType)
+	assert.Empty(t, editValues.DueDate)
+
+	// Change to due date via the schedule type selector.
+	editValues.ScheduleType = schedDueDate
+	editValues.IntervalMonths = ""
+	editValues.DueDate = "2026-06-01"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	// Verify DB state.
+	item, err := m.store.GetMaintenance(id)
+	require.NoError(t, err)
+	assert.Zero(t, item.IntervalMonths)
+	require.NotNil(t, item.DueDate)
+	assert.Equal(t, "2026-06-01", item.DueDate.Format(data.DateLayout))
+
+	// Verify table display after reload.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab = m.activeTab()
+	require.NotEmpty(t, tab.CellRows)
+	cells := tab.CellRows[0]
+	assert.Equal(t, "2026-06-01", cells[int(maintenanceColNext)].Value)
+	assert.Equal(t, "--", cells[int(maintenanceColEvery)].Value)
+}
+
+// Edit existing due-date item via full form, switch to interval.
+func TestUserEditsMaintenanceFromDueDateToInterval(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+
+	// Create an item with a due date.
+	openAddForm(m)
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Roof Inspect"
+	values.ScheduleType = schedDueDate
+	values.DueDate = "2026-04-15"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	// Reload and select the row.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.Rows)
+	tab.Table.SetCursor(0)
+	id := tab.Rows[0].ID
+
+	// Open the full edit form.
+	sendKey(m, "i")
+	tab.ColCursor = int(maintenanceColID)
+	sendKey(m, "e")
+	require.Equal(t, modeForm, m.mode)
+
+	// Verify the edit form pre-populates schedule type as due_date.
+	editValues, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	assert.Equal(t, schedDueDate, editValues.ScheduleType)
+	assert.Equal(t, "2026-04-15", editValues.DueDate)
+
+	// Switch to recurring interval.
+	editValues.ScheduleType = schedInterval
+	editValues.DueDate = ""
+	editValues.IntervalMonths = "12"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	// Verify DB state.
+	item, err := m.store.GetMaintenance(id)
+	require.NoError(t, err)
+	assert.Equal(t, 12, item.IntervalMonths)
+	assert.Nil(t, item.DueDate)
+
+	// Verify table display.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab = m.activeTab()
+	require.NotEmpty(t, tab.CellRows)
+	cells := tab.CellRows[0]
+	assert.Equal(t, "1y", cells[int(maintenanceColEvery)].Value)
+}
+
+// Edit existing interval item to unscheduled (schedule type = none).
+func TestUserEditsMaintenanceFromIntervalToNone(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+
+	// Create an item with an interval.
+	openAddForm(m)
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Filter Change"
+	values.ScheduleType = schedInterval
+	values.IntervalMonths = "6"
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	tab.Table.SetCursor(0)
+	id := tab.Rows[0].ID
+
+	// Open the full edit form.
+	sendKey(m, "i")
+	tab.ColCursor = int(maintenanceColID)
+	sendKey(m, "e")
+	require.Equal(t, modeForm, m.mode)
+
+	editValues, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	assert.Equal(t, schedInterval, editValues.ScheduleType)
+
+	// Switch to none -- makes the item unscheduled.
+	editValues.ScheduleType = schedNone
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	item, err := m.store.GetMaintenance(id)
+	require.NoError(t, err)
+	assert.Zero(t, item.IntervalMonths)
+	assert.Nil(t, item.DueDate)
+
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab = m.activeTab()
+	require.NotEmpty(t, tab.CellRows)
+	cells := tab.CellRows[0]
+	assert.Empty(t, cells[int(maintenanceColNext)].Value)
+	assert.Empty(t, cells[int(maintenanceColEvery)].Value)
+}
+
+// When ScheduleType is "due_date", stale IntervalMonths values are ignored.
+func TestScheduleTypeDueDateIgnoresStaleInterval(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Stale Interval"
+	values.ScheduleType = schedDueDate
+	values.DueDate = "2026-03-01"
+	values.IntervalMonths = "12" // stale value
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Zero(
+		t,
+		items[0].IntervalMonths,
+		"interval should be ignored when schedule type is due_date",
+	)
+	require.NotNil(t, items[0].DueDate)
+	assert.Equal(t, "2026-03-01", items[0].DueDate.Format(data.DateLayout))
+}
+
+// When ScheduleType is "none", both interval and due date are cleared.
+func TestScheduleTypeNoneIgnoresBothFields(t *testing.T) {
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Stale Both"
+	values.ScheduleType = schedNone
+	values.IntervalMonths = "6"   // stale
+	values.DueDate = "2026-01-01" // stale
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Zero(t, items[0].IntervalMonths)
+	assert.Nil(t, items[0].DueDate)
 }
 
 func TestUserCancelsFormWithEscAfterSaving(t *testing.T) {

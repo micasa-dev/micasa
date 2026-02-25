@@ -181,6 +181,9 @@ details; do not duplicate that detail here.
   (e.g. `origin/main`) even if no `upstream` remote exists.
 - **Modern CLI tools**: Use `rg` not `grep`, `fd` not `find`, `sd` not
   `sed` where possible.
+- **Read deps locally**: To read a dependency's source, look in the local
+  Go module cache (`go env GOMODCACHE`) instead of making web requests to
+  GitHub, curl, or other alternatives.
 
 ### Nix
 

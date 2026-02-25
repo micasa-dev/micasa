@@ -292,7 +292,7 @@ func TestAddMaintenanceFormHasOnlyEssentialFields(t *testing.T) {
 	require.NoError(t, m.startMaintenanceForm())
 
 	view := formFieldLabels(m)
-	for _, want := range []string{"Item", "Category", "Interval"} {
+	for _, want := range []string{"Item", "Category", "Schedule"} {
 		assert.Containsf(t, view, want, "add maintenance form should contain %q", want)
 	}
 	for _, absent := range []string{"Manual URL", "Manual notes", "Cost", "Last serviced"} {

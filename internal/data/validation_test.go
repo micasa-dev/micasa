@@ -218,18 +218,37 @@ func TestParseOptionalCentsInvalid(t *testing.T) {
 
 func TestComputeNextDue(t *testing.T) {
 	last := time.Date(2024, 10, 10, 0, 0, 0, 0, time.UTC)
-	next := ComputeNextDue(&last, 6)
+	next := ComputeNextDue(&last, 6, nil)
 	require.NotNil(t, next)
 	assert.Equal(t, "2025-04-10", next.Format(DateLayout))
 }
 
 func TestComputeNextDueNilDate(t *testing.T) {
-	assert.Nil(t, ComputeNextDue(nil, 6))
+	assert.Nil(t, ComputeNextDue(nil, 6, nil))
 }
 
 func TestComputeNextDueZeroInterval(t *testing.T) {
 	d := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	assert.Nil(t, ComputeNextDue(&d, 0))
+	assert.Nil(t, ComputeNextDue(&d, 0, nil))
+}
+
+func TestComputeNextDueExplicitDueDate(t *testing.T) {
+	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	next := ComputeNextDue(nil, 0, &due)
+	require.NotNil(t, next)
+	assert.Equal(t, "2025-11-01", next.Format(DateLayout))
+}
+
+func TestComputeNextDueDateOverridesInterval(t *testing.T) {
+	last := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	due := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+	next := ComputeNextDue(&last, 6, &due)
+	require.NotNil(t, next)
+	assert.Equal(t, "2025-03-15", next.Format(DateLayout))
+}
+
+func TestComputeNextDueNeitherSet(t *testing.T) {
+	assert.Nil(t, ComputeNextDue(nil, 0, nil))
 }
 
 func TestFormatCompactCents(t *testing.T) {
@@ -410,7 +429,7 @@ func TestComputeNextDueMonthEndClamping(t *testing.T) {
 	// User scenario: maintenance item serviced Jan 31, interval 1 month.
 	// Next due should be Feb 28, not March 3 (the time.AddDate gotcha).
 	last := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
-	next := ComputeNextDue(&last, 1)
+	next := ComputeNextDue(&last, 1, nil)
 	require.NotNil(t, next)
 	assert.Equal(t, "2025-02-28", next.Format(DateLayout))
 }

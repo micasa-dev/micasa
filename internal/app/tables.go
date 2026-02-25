@@ -354,7 +354,7 @@ func applianceMaintenanceRows(
 	docCounts map[uint]int,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(item data.MaintenanceItem) rowSpec {
-		interval := formatInterval(item.IntervalMonths)
+		interval := maintenanceIntervalText(item)
 		logCount := "0"
 		if n := logCounts[item.ID]; n > 0 {
 			logCount = fmt.Sprintf("%d", n)
@@ -363,7 +363,7 @@ func applianceMaintenanceRows(
 		if n := docCounts[item.ID]; n > 0 {
 			docCount = fmt.Sprintf("%d", n)
 		}
-		nextDue := data.ComputeNextDue(item.LastServicedAt, item.IntervalMonths)
+		nextDue := data.ComputeNextDue(item.LastServicedAt, item.IntervalMonths, item.DueDate)
 		return rowSpec{
 			ID:      item.ID,
 			Deleted: item.DeletedAt.Valid,
@@ -481,6 +481,15 @@ func applianceRows(
 
 // formatInterval returns a compact interval string: "3m", "1y", "2y 6m".
 // Returns empty for non-positive values.
+// maintenanceIntervalText returns the display value for the "Every" column.
+// Items with an explicit due date show "--" (no recurring interval).
+func maintenanceIntervalText(item data.MaintenanceItem) string {
+	if item.DueDate != nil {
+		return "--"
+	}
+	return formatInterval(item.IntervalMonths)
+}
+
 func formatInterval(months int) string {
 	if months <= 0 {
 		return ""
@@ -684,7 +693,7 @@ func maintenanceRows(
 	docCounts map[uint]int,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(item data.MaintenanceItem) rowSpec {
-		interval := formatInterval(item.IntervalMonths)
+		interval := maintenanceIntervalText(item)
 		var appCell cell
 		if item.ApplianceID != nil {
 			appCell = cell{Value: item.Appliance.Name, Kind: cellText, LinkID: *item.ApplianceID}
@@ -699,7 +708,7 @@ func maintenanceRows(
 		if n := docCounts[item.ID]; n > 0 {
 			docCount = fmt.Sprintf("%d", n)
 		}
-		nextDue := data.ComputeNextDue(item.LastServicedAt, item.IntervalMonths)
+		nextDue := data.ComputeNextDue(item.LastServicedAt, item.IntervalMonths, item.DueDate)
 		return rowSpec{
 			ID:      item.ID,
 			Deleted: item.DeletedAt.Valid,

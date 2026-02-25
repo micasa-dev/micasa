@@ -873,8 +873,9 @@ func TestSaveFormInPlaceSetEditID(t *testing.T) {
 		cats, _ := m.store.MaintenanceCategories()
 		m.formKind = formMaintenance
 		m.formData = &maintenanceFormData{
-			Name:       "Change Filter",
-			CategoryID: cats[0].ID,
+			Name:         "Change Filter",
+			CategoryID:   cats[0].ID,
+			ScheduleType: schedNone,
 		}
 
 		m.saveFormInPlace()
@@ -884,6 +885,7 @@ func TestSaveFormInPlaceSetEditID(t *testing.T) {
 		m.formData = &maintenanceFormData{
 			Name:           "Change Filter",
 			CategoryID:     cats[0].ID,
+			ScheduleType:   schedInterval,
 			IntervalMonths: "6",
 		}
 		m.status = statusMsg{}

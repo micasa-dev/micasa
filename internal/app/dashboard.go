@@ -254,7 +254,7 @@ func (m *Model) loadDashboardAt(now time.Time) error {
 		return fmt.Errorf("load maintenance: %w", err)
 	}
 	for _, item := range items {
-		nextDue := data.ComputeNextDue(item.LastServicedAt, item.IntervalMonths)
+		nextDue := data.ComputeNextDue(item.LastServicedAt, item.IntervalMonths, item.DueDate)
 		if nextDue == nil {
 			continue
 		}

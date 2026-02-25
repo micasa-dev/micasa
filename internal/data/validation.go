@@ -18,12 +18,13 @@ import (
 const DateLayout = "2006-01-02"
 
 var (
-	ErrInvalidMoney    = errors.New("invalid money value")
-	ErrNegativeMoney   = errors.New("negative money value")
-	ErrInvalidDate     = errors.New("invalid date value")
-	ErrInvalidInt      = errors.New("invalid integer value")
-	ErrInvalidFloat    = errors.New("invalid decimal value")
-	ErrInvalidInterval = errors.New("invalid interval value")
+	ErrInvalidMoney       = errors.New("invalid money value")
+	ErrNegativeMoney      = errors.New("negative money value")
+	ErrInvalidDate        = errors.New("invalid date value")
+	ErrInvalidInt         = errors.New("invalid integer value")
+	ErrInvalidFloat       = errors.New("invalid decimal value")
+	ErrInvalidInterval    = errors.New("invalid interval value")
+	ErrIntervalAndDueDate = errors.New("set interval or due date, not both")
 )
 
 func ParseRequiredCents(input string) (int64, error) {
@@ -227,7 +228,10 @@ func ParseRequiredFloat(input string) (float64, error) {
 	return value, nil
 }
 
-func ComputeNextDue(last *time.Time, intervalMonths int) *time.Time {
+func ComputeNextDue(last *time.Time, intervalMonths int, dueDate *time.Time) *time.Time {
+	if dueDate != nil {
+		return dueDate
+	}
 	if last == nil || intervalMonths <= 0 {
 		return nil
 	}

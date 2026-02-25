@@ -216,6 +216,82 @@ func TestLoadDashboardAtOpenIncidents(t *testing.T) {
 	assert.True(t, hasIncidentNav, "dashboard nav should include incident entries")
 }
 
+func TestLoadDashboardAtDueDateOverdue(t *testing.T) {
+	m := newTestModelWithStore(t)
+	cats, _ := m.store.MaintenanceCategories()
+
+	// Due date in the past -> overdue.
+	pastDue := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+		Name:       "Inspect Roof",
+		CategoryID: cats[0].ID,
+		DueDate:    &pastDue,
+	}))
+
+	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, m.loadDashboardAt(now))
+
+	require.Len(t, m.dashboard.Overdue, 1)
+	assert.Equal(t, "Inspect Roof", m.dashboard.Overdue[0].Item.Name)
+	assert.Less(t, m.dashboard.Overdue[0].DaysFromNow, 0)
+}
+
+func TestLoadDashboardAtDueDateUpcoming(t *testing.T) {
+	m := newTestModelWithStore(t)
+	cats, _ := m.store.MaintenanceCategories()
+
+	// Due date 10 days in the future -> upcoming.
+	soonDue := time.Date(2026, 2, 11, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+		Name:       "Replace Batteries",
+		CategoryID: cats[0].ID,
+		DueDate:    &soonDue,
+	}))
+
+	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, m.loadDashboardAt(now))
+
+	require.Len(t, m.dashboard.Upcoming, 1)
+	assert.Equal(t, "Replace Batteries", m.dashboard.Upcoming[0].Item.Name)
+	assert.Equal(t, 10, m.dashboard.Upcoming[0].DaysFromNow)
+}
+
+func TestLoadDashboardAtDueDateFarFuture(t *testing.T) {
+	m := newTestModelWithStore(t)
+	cats, _ := m.store.MaintenanceCategories()
+
+	// Due date 6 months away -> neither overdue nor upcoming.
+	farDue := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+		Name:       "Annual Furnace",
+		CategoryID: cats[0].ID,
+		DueDate:    &farDue,
+	}))
+
+	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, m.loadDashboardAt(now))
+
+	assert.Empty(t, m.dashboard.Overdue)
+	assert.Empty(t, m.dashboard.Upcoming)
+}
+
+// Step 11: Unscheduled items (no interval, no due date) never appear on dashboard.
+func TestLoadDashboardAtExcludesUnscheduledItems(t *testing.T) {
+	m := newTestModelWithStore(t)
+	cats, _ := m.store.MaintenanceCategories()
+
+	require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+		Name:       "Unscheduled Task",
+		CategoryID: cats[0].ID,
+	}))
+
+	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, m.loadDashboardAt(now))
+
+	assert.Empty(t, m.dashboard.Overdue)
+	assert.Empty(t, m.dashboard.Upcoming)
+}
+
 func TestLoadDashboardExcludesAppliancesWithoutWarranty(t *testing.T) {
 	m := newTestModelWithStore(t)
 

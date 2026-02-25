@@ -44,6 +44,7 @@ const (
 	ColCostCents         = "cost_cents"
 	ColTotalCents        = "total_cents"
 	ColIntervalMonths    = "interval_months"
+	ColDueDate           = "due_date"
 	ColLastServicedAt    = "last_serviced_at"
 	ColWarrantyExpiry    = "warranty_expiry"
 	ColServicedAt        = "serviced_at"
@@ -225,6 +226,7 @@ type MaintenanceItem struct {
 	Appliance      Appliance           `gorm:"constraint:OnDelete:SET NULL;"`
 	LastServicedAt *time.Time
 	IntervalMonths int
+	DueDate        *time.Time
 	ManualURL      string
 	ManualText     string
 	Notes          string
