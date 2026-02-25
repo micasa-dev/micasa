@@ -220,17 +220,17 @@ details; do not duplicate that detail here.
 
 ### Testing
 
-- **Tests hit real code paths**: Every test must exercise the same path a
-  real user triggers. Unit tests on internals are additions, never
-  replacements for pipeline-level tests.
+- **Tests simulate real user interaction**: Every test for a feature or
+  bug fix MUST drive behavior through user input: keypresses via
+  `sendKey`, form submissions via `openAddForm` + `ctrl+s`, etc. You
+  are never allowed to write tests that only call internal APIs or set
+  model fields directly. Internal/unit tests are permitted only after
+  user-interaction tests exist and only when you judge them genuinely
+  necessary as supplements.
 - **Regression tests are strict TDD**: Write a test that reproduces the
   bug first, confirm it fails, then iterate on the fix until the test
   passes. Do not game this by wildly mutating code just to satisfy the
-  test -- fix the actual root cause. If it is a UI bug, the test MUST
-  simulate real user interaction (keypresses via `sendKey`, form
-  submissions via `openAddForm` + `ctrl+s`, etc.). Never call internal
-  APIs or set model fields directly to work around the bug path -- the
-  test must go through the same code path the user triggers.
+  test -- fix the actual root cause.
 - **Use `testify/assert` and `testify/require`**: `require` for
   preconditions, `assert` for assertions. No bare `t.Fatal`/`t.Error`.
 - **Test every error path**: Every function that can fail needs at least
