@@ -65,6 +65,46 @@ func (m *Model) handlerForFormKind(kind FormKind) TabHandler {
 	return nil
 }
 
+// makeSnapshot builds an undoEntry for the given entity. Every TabHandler
+// Snapshot method delegates to this to avoid repeating the get-check-build
+// pattern.
+func makeSnapshot[T any](
+	id uint,
+	get func(uint) (T, error),
+	kind FormKind,
+	desc func(T) string,
+	restore func(T) error,
+) (undoEntry, bool) {
+	entity, err := get(id)
+	if err != nil {
+		return undoEntry{}, false
+	}
+	return undoEntry{
+		Description: desc(entity),
+		FormKind:    kind,
+		EntityID:    id,
+		Restore:     func() error { return restore(entity) },
+	}, true
+}
+
+// fetchCounts calls a count function and returns its result, degrading to an
+// empty map on error so the primary entity list still renders.
+func fetchCounts(fn func([]uint) (map[uint]int, error), ids []uint) map[uint]int {
+	counts, err := fn(ids)
+	if err != nil {
+		return map[uint]int{}
+	}
+	return counts
+}
+
+// fetchDocCounts is a convenience wrapper around fetchCounts for document
+// count queries that require an entity kind parameter.
+func fetchDocCounts(store *data.Store, kind string, ids []uint) map[uint]int {
+	return fetchCounts(func(ids []uint) (map[uint]int, error) {
+		return store.CountDocumentsByEntity(kind, ids)
+	}, ids)
+}
+
 // ---------------------------------------------------------------------------
 // projectHandler
 // ---------------------------------------------------------------------------
@@ -82,16 +122,8 @@ func (projectHandler) Load(
 		return nil, nil, nil, err
 	}
 	ids := entityIDs(projects, func(p data.Project) uint { return p.ID })
-	// Supplementary counts degrade to 0 on error so the primary entity
-	// list still renders. This pattern repeats across all handlers.
-	quoteCounts, err := store.CountQuotesByProject(ids)
-	if err != nil {
-		quoteCounts = map[uint]int{}
-	}
-	docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityProject, ids)
-	if err != nil {
-		docCounts = map[uint]int{}
-	}
+	quoteCounts := fetchCounts(store.CountQuotesByProject, ids)
+	docCounts := fetchDocCounts(store, data.DocumentEntityProject, ids)
 	rows, meta, cellRows := projectRows(projects, quoteCounts, docCounts)
 	return rows, meta, cellRows, nil
 }
@@ -122,18 +154,10 @@ func (projectHandler) SubmitForm(m *Model) error {
 }
 
 func (projectHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	project, err := store.GetProject(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	return undoEntry{
-		Description: fmt.Sprintf("project %q", project.Title),
-		FormKind:    formProject,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateProject(project)
-		},
-	}, true
+	return makeSnapshot(id, store.GetProject, formProject,
+		func(p data.Project) string { return fmt.Sprintf("project %q", p.Title) },
+		func(p data.Project) error { return store.UpdateProject(p) },
+	)
 }
 
 func (projectHandler) SyncFixedValues(m *Model, specs []columnSpec) {
@@ -161,10 +185,7 @@ func (quoteHandler) Load(
 		return nil, nil, nil, err
 	}
 	ids := entityIDs(quotes, func(q data.Quote) uint { return q.ID })
-	docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityQuote, ids)
-	if err != nil {
-		docCounts = map[uint]int{}
-	}
+	docCounts := fetchDocCounts(store, data.DocumentEntityQuote, ids)
 	rows, meta, cellRows := quoteRows(quotes, docCounts)
 	return rows, meta, cellRows, nil
 }
@@ -194,19 +215,10 @@ func (quoteHandler) SubmitForm(m *Model) error {
 }
 
 func (quoteHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	quote, err := store.GetQuote(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	vendor := quote.Vendor
-	return undoEntry{
-		Description: fmt.Sprintf("quote from %s", vendor.Name),
-		FormKind:    formQuote,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateQuote(quote, vendor)
-		},
-	}, true
+	return makeSnapshot(id, store.GetQuote, formQuote,
+		func(q data.Quote) string { return fmt.Sprintf("quote from %s", q.Vendor.Name) },
+		func(q data.Quote) error { return store.UpdateQuote(q, q.Vendor) },
+	)
 }
 
 func (quoteHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
@@ -227,16 +239,9 @@ func (maintenanceHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	// Batch-fetch service log counts and document counts for all items.
 	ids := entityIDs(items, func(item data.MaintenanceItem) uint { return item.ID })
-	logCounts, err := store.CountServiceLogs(ids)
-	if err != nil {
-		logCounts = map[uint]int{} // non-fatal
-	}
-	docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityMaintenance, ids)
-	if err != nil {
-		docCounts = map[uint]int{}
-	}
+	logCounts := fetchCounts(store.CountServiceLogs, ids)
+	docCounts := fetchDocCounts(store, data.DocumentEntityMaintenance, ids)
 	rows, meta, cellRows := maintenanceRows(items, logCounts, docCounts)
 	return rows, meta, cellRows, nil
 }
@@ -266,18 +271,10 @@ func (maintenanceHandler) SubmitForm(m *Model) error {
 }
 
 func (maintenanceHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	item, err := store.GetMaintenance(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	return undoEntry{
-		Description: fmt.Sprintf("maintenance %q", item.Name),
-		FormKind:    formMaintenance,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateMaintenance(item)
-		},
-	}, true
+	return makeSnapshot(id, store.GetMaintenance, formMaintenance,
+		func(m data.MaintenanceItem) string { return fmt.Sprintf("maintenance %q", m.Name) },
+		func(m data.MaintenanceItem) error { return store.UpdateMaintenance(m) },
+	)
 }
 
 func (maintenanceHandler) SyncFixedValues(m *Model, specs []columnSpec) {
@@ -305,14 +302,8 @@ func (applianceHandler) Load(
 		return nil, nil, nil, err
 	}
 	ids := entityIDs(items, func(a data.Appliance) uint { return a.ID })
-	maintCounts, err := store.CountMaintenanceByAppliance(ids)
-	if err != nil {
-		maintCounts = map[uint]int{}
-	}
-	docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityAppliance, ids)
-	if err != nil {
-		docCounts = map[uint]int{}
-	}
+	maintCounts := fetchCounts(store.CountMaintenanceByAppliance, ids)
+	docCounts := fetchDocCounts(store, data.DocumentEntityAppliance, ids)
 	rows, meta, cellRows := applianceRows(items, maintCounts, docCounts, time.Now())
 	return rows, meta, cellRows, nil
 }
@@ -343,18 +334,10 @@ func (applianceHandler) SubmitForm(m *Model) error {
 }
 
 func (applianceHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	item, err := store.GetAppliance(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	return undoEntry{
-		Description: fmt.Sprintf("appliance %q", item.Name),
-		FormKind:    formAppliance,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateAppliance(item)
-		},
-	}, true
+	return makeSnapshot(id, store.GetAppliance, formAppliance,
+		func(a data.Appliance) string { return fmt.Sprintf("appliance %q", a.Name) },
+		func(a data.Appliance) error { return store.UpdateAppliance(a) },
+	)
 }
 
 func (applianceHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
@@ -376,10 +359,7 @@ func (incidentHandler) Load(
 		return nil, nil, nil, err
 	}
 	ids := entityIDs(items, func(inc data.Incident) uint { return inc.ID })
-	docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityIncident, ids)
-	if err != nil {
-		docCounts = map[uint]int{}
-	}
+	docCounts := fetchDocCounts(store, data.DocumentEntityIncident, ids)
 	rows, meta, cellRows := incidentRows(items, docCounts)
 	return rows, meta, cellRows, nil
 }
@@ -409,18 +389,10 @@ func (incidentHandler) SubmitForm(m *Model) error {
 }
 
 func (incidentHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	item, err := store.GetIncident(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	return undoEntry{
-		Description: fmt.Sprintf("incident %q", item.Title),
-		FormKind:    formIncident,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateIncident(item)
-		},
-	}, true
+	return makeSnapshot(id, store.GetIncident, formIncident,
+		func(inc data.Incident) string { return fmt.Sprintf("incident %q", inc.Title) },
+		func(inc data.Incident) error { return store.UpdateIncident(inc) },
+	)
 }
 
 func (incidentHandler) SyncFixedValues(_ *Model, specs []columnSpec) {
@@ -504,14 +476,8 @@ func newApplianceMaintenanceHandler(applianceID uint) scopedHandler {
 				return nil, nil, nil, err
 			}
 			ids := entityIDs(items, func(item data.MaintenanceItem) uint { return item.ID })
-			logCounts, err := store.CountServiceLogs(ids)
-			if err != nil {
-				logCounts = map[uint]int{}
-			}
-			docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityMaintenance, ids)
-			if err != nil {
-				docCounts = map[uint]int{}
-			}
+			logCounts := fetchCounts(store.CountServiceLogs, ids)
+			docCounts := fetchDocCounts(store, data.DocumentEntityMaintenance, ids)
 			rows, meta, cellRows := applianceMaintenanceRows(items, logCounts, docCounts)
 			return rows, meta, cellRows, nil
 		},
@@ -539,10 +505,7 @@ func (h serviceLogHandler) Load(
 		return nil, nil, nil, err
 	}
 	ids := entityIDs(entries, func(e data.ServiceLogEntry) uint { return e.ID })
-	docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityServiceLog, ids)
-	if err != nil {
-		docCounts = map[uint]int{}
-	}
+	docCounts := fetchDocCounts(store, data.DocumentEntityServiceLog, ids)
 	rows, meta, cellRows := serviceLogRows(entries, docCounts)
 	return rows, meta, cellRows, nil
 }
@@ -571,20 +534,13 @@ func (h serviceLogHandler) SubmitForm(m *Model) error {
 	return m.submitServiceLogForm()
 }
 
-func (h serviceLogHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	entry, err := store.GetServiceLog(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	vendor := entry.Vendor
-	return undoEntry{
-		Description: fmt.Sprintf("service log %s", entry.ServicedAt.Format("2006-01-02")),
-		FormKind:    formServiceLog,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateServiceLog(entry, vendor)
+func (serviceLogHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
+	return makeSnapshot(id, store.GetServiceLog, formServiceLog,
+		func(e data.ServiceLogEntry) string {
+			return fmt.Sprintf("service log %s", e.ServicedAt.Format("2006-01-02"))
 		},
-	}, true
+		func(e data.ServiceLogEntry) error { return store.UpdateServiceLog(e, e.Vendor) },
+	)
 }
 
 func (serviceLogHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
@@ -606,18 +562,9 @@ func (vendorHandler) Load(
 		return nil, nil, nil, err
 	}
 	ids := entityIDs(vendors, func(v data.Vendor) uint { return v.ID })
-	quoteCounts, err := store.CountQuotesByVendor(ids)
-	if err != nil {
-		quoteCounts = map[uint]int{}
-	}
-	jobCounts, err := store.CountServiceLogsByVendor(ids)
-	if err != nil {
-		jobCounts = map[uint]int{}
-	}
-	docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityVendor, ids)
-	if err != nil {
-		docCounts = map[uint]int{}
-	}
+	quoteCounts := fetchCounts(store.CountQuotesByVendor, ids)
+	jobCounts := fetchCounts(store.CountServiceLogsByVendor, ids)
+	docCounts := fetchDocCounts(store, data.DocumentEntityVendor, ids)
 	rows, meta, cellRows := vendorRows(vendors, quoteCounts, jobCounts, docCounts)
 	return rows, meta, cellRows, nil
 }
@@ -648,18 +595,10 @@ func (vendorHandler) SubmitForm(m *Model) error {
 }
 
 func (vendorHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	vendor, err := store.GetVendor(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	return undoEntry{
-		Description: fmt.Sprintf("vendor %q", vendor.Name),
-		FormKind:    formVendor,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateVendor(vendor)
-		},
-	}, true
+	return makeSnapshot(id, store.GetVendor, formVendor,
+		func(v data.Vendor) string { return fmt.Sprintf("vendor %q", v.Name) },
+		func(v data.Vendor) error { return store.UpdateVendor(v) },
+	)
 }
 
 func (vendorHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
@@ -674,10 +613,7 @@ func newVendorQuoteHandler(vendorID uint) scopedHandler {
 				return nil, nil, nil, err
 			}
 			ids := entityIDs(quotes, func(q data.Quote) uint { return q.ID })
-			docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityQuote, ids)
-			if err != nil {
-				docCounts = map[uint]int{}
-			}
+			docCounts := fetchDocCounts(store, data.DocumentEntityQuote, ids)
 			rows, meta, cellRows := vendorQuoteRows(quotes, docCounts)
 			return rows, meta, cellRows, nil
 		},
@@ -729,10 +665,7 @@ func newProjectQuoteHandler(projectID uint) scopedHandler {
 				return nil, nil, nil, err
 			}
 			ids := entityIDs(quotes, func(q data.Quote) uint { return q.ID })
-			docCounts, err := store.CountDocumentsByEntity(data.DocumentEntityQuote, ids)
-			if err != nil {
-				docCounts = map[uint]int{}
-			}
+			docCounts := fetchDocCounts(store, data.DocumentEntityQuote, ids)
 			rows, meta, cellRows := projectQuoteRows(quotes, docCounts)
 			return rows, meta, cellRows, nil
 		},
@@ -786,18 +719,10 @@ func (documentHandler) SubmitForm(m *Model) error {
 }
 
 func (documentHandler) Snapshot(store *data.Store, id uint) (undoEntry, bool) {
-	doc, err := store.GetDocument(id)
-	if err != nil {
-		return undoEntry{}, false
-	}
-	return undoEntry{
-		Description: fmt.Sprintf("document %q", doc.Title),
-		FormKind:    formDocument,
-		EntityID:    id,
-		Restore: func() error {
-			return store.UpdateDocument(doc)
-		},
-	}, true
+	return makeSnapshot(id, store.GetDocument, formDocument,
+		func(d data.Document) string { return fmt.Sprintf("document %q", d.Title) },
+		func(d data.Document) error { return store.UpdateDocument(d) },
+	)
 }
 
 func (documentHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
