@@ -31,5 +31,25 @@ checksum:
 changelog:
   disable: true
 
+dockers_v2:
+  - images:
+      - "ghcr.io/cpcloud/micasa"
+    tags:
+      - "{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Major }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      "org.opencontainers.image.title": micasa
+      "org.opencontainers.image.description": Terminal UI for managing home projects and maintenance
+      "org.opencontainers.image.source": https://github.com/cpcloud/micasa
+      "org.opencontainers.image.url": https://micasa.dev
+      "org.opencontainers.image.documentation": https://micasa.dev/docs/
+      "org.opencontainers.image.licenses": Apache-2.0
+      "org.opencontainers.image.version": "{{ .Version }}"
+
 release:
   mode: keep-existing

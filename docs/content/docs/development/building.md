@@ -87,10 +87,9 @@ The flake exposes several convenience apps:
 
 ## Container image
 
-Build the OCI container image via Nix:
+Multi-arch container images (`linux/amd64` and `linux/arm64`) are published to
+GHCR on every release:
 
 ```sh
-nix build '.#micasa-container'
-docker load < result
-docker run -it --rm micasa:latest --demo
+docker run -it --rm ghcr.io/cpcloud/micasa:latest --demo
 ```
