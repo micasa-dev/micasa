@@ -26,7 +26,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-latest
+          - macos-15-intel
+          - windows-latest
+          - windows-11-arm
         go-version: ["1.25"]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -39,26 +45,37 @@ jobs:
 
       - name: Install extraction tools (Linux)
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr imagemagick
-          if ! command -v magick &>/dev/null; then
-            sudo ln -s "$(command -v convert)" /usr/local/bin/magick
-          fi
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr imagemagick
+
+      - name: Symlink magick to convert (Linux)
+        if: runner.os == 'Linux'
+        run: command -v magick || sudo ln -s "$(command -v convert)" /usr/local/bin/magick
 
       - name: Install extraction tools (macOS)
         if: runner.os == 'macOS'
         run: brew install poppler tesseract imagemagick ghostscript
 
-      - name: Add MSYS2 to PATH (Windows)
-        if: runner.os == 'Windows'
+      - name: Add MSYS2 to PATH (Windows x64)
+        if: runner.os == 'Windows' && runner.arch != 'ARM64'
         shell: pwsh
         run: |
           Add-Content $env:GITHUB_PATH "C:\msys64\usr\bin"
           Add-Content $env:GITHUB_PATH "C:\msys64\mingw64\bin"
 
-      - name: Install extraction tools (Windows)
-        if: runner.os == 'Windows'
+      - name: Add MSYS2 to PATH (Windows ARM64)
+        if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        shell: pwsh
+        run: |
+          Add-Content $env:GITHUB_PATH "C:\msys64\usr\bin"
+          Add-Content $env:GITHUB_PATH "C:\msys64\clangarm64\bin"
+
+      - name: Install extraction tools (Windows x64)
+        if: runner.os == 'Windows' && runner.arch != 'ARM64'
         run: pacman -S --noconfirm mingw-w64-x86_64-poppler mingw-w64-x86_64-tesseract-ocr mingw-w64-x86_64-tesseract-data-eng mingw-w64-x86_64-imagemagick
+
+      - name: Install extraction tools (Windows ARM64)
+        if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        run: pacman -S --noconfirm mingw-w64-clang-aarch64-poppler mingw-w64-clang-aarch64-tesseract-ocr mingw-w64-clang-aarch64-tesseract-data-eng mingw-w64-clang-aarch64-imagemagick
 
       - name: Download dependencies
         run: go mod download

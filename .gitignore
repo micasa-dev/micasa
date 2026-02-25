@@ -29,6 +29,9 @@ vendor
 *.db
 *.sqlite
 
+# GoReleaser
+dist/
+
 # Nix
 .direnv
 result

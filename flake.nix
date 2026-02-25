@@ -198,6 +198,7 @@
               pkgs.poppler-utils
               pkgs.imagemagick
               pkgs.gopls
+              pkgs.goreleaser
             ]
             ++ enabledPackages;
           };
