@@ -354,7 +354,7 @@ func applianceMaintenanceRows(
 	docCounts map[uint]int,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(item data.MaintenanceItem) rowSpec {
-		interval := maintenanceIntervalText(item)
+		intervalCell := maintenanceIntervalCell(item)
 		logCount := "0"
 		if n := logCounts[item.ID]; n > 0 {
 			logCount = fmt.Sprintf("%d", n)
@@ -373,7 +373,7 @@ func applianceMaintenanceRows(
 				{Value: item.Category.Name, Kind: cellText},
 				dateCell(item.LastServicedAt, cellDate),
 				dateCell(nextDue, cellUrgency),
-				{Value: interval, Kind: cellText},
+				intervalCell,
 				{Value: logCount, Kind: cellDrilldown},
 				{Value: docCount, Kind: cellDrilldown},
 			},
@@ -481,13 +481,14 @@ func applianceRows(
 
 // formatInterval returns a compact interval string: "3m", "1y", "2y 6m".
 // Returns empty for non-positive values.
-// maintenanceIntervalText returns the display value for the "Every" column.
-// Items with an explicit due date show "--" (no recurring interval).
-func maintenanceIntervalText(item data.MaintenanceItem) string {
-	if item.DueDate != nil {
-		return "--"
+// maintenanceIntervalCell returns the cell for the "Every" column.
+// Items with no interval return a NULL cell.
+func maintenanceIntervalCell(item data.MaintenanceItem) cell {
+	v := formatInterval(item.IntervalMonths)
+	if v == "" {
+		return cell{Kind: cellText, Null: true}
 	}
-	return formatInterval(item.IntervalMonths)
+	return cell{Value: v, Kind: cellText}
 }
 
 func formatInterval(months int) string {
@@ -693,7 +694,7 @@ func maintenanceRows(
 	docCounts map[uint]int,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(item data.MaintenanceItem) rowSpec {
-		interval := maintenanceIntervalText(item)
+		intervalCell := maintenanceIntervalCell(item)
 		var appCell cell
 		if item.ApplianceID != nil {
 			appCell = cell{Value: item.Appliance.Name, Kind: cellText, LinkID: *item.ApplianceID}
@@ -719,7 +720,7 @@ func maintenanceRows(
 				appCell,
 				dateCell(item.LastServicedAt, cellDate),
 				dateCell(nextDue, cellUrgency),
-				{Value: interval, Kind: cellText},
+				intervalCell,
 				{Value: logCount, Kind: cellDrilldown},
 				{Value: docCount, Kind: cellDrilldown},
 			},

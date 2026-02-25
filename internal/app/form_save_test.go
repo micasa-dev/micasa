@@ -228,7 +228,7 @@ func TestUserCreatesMaintenanceWithDueDate(t *testing.T) {
 	assert.Equal(t, "2025-11-01", items[0].DueDate.Format(data.DateLayout))
 	assert.Zero(t, items[0].IntervalMonths)
 
-	// Verify table row display: "Next" shows due date, "Every" shows "--".
+	// Verify table row display: "Next" shows due date, "Every" is NULL (non-recurring).
 	m.reloadAll()
 	require.NoError(t, m.reloadActiveTab())
 	tab := m.activeTab()
@@ -236,7 +236,11 @@ func TestUserCreatesMaintenanceWithDueDate(t *testing.T) {
 	require.NotEmpty(t, tab.CellRows)
 	cells := tab.CellRows[0]
 	assert.Equal(t, "2025-11-01", cells[int(maintenanceColNext)].Value)
-	assert.Equal(t, "--", cells[int(maintenanceColEvery)].Value)
+	assert.True(
+		t,
+		cells[int(maintenanceColEvery)].Null,
+		"non-recurring items should have NULL interval",
+	)
 	assert.Equal(t, cellUrgency, cells[int(maintenanceColNext)].Kind)
 }
 
@@ -281,15 +285,15 @@ func TestUserCreatesMaintenanceUnscheduled(t *testing.T) {
 	assert.Zero(t, items[0].IntervalMonths)
 	assert.Nil(t, items[0].DueDate)
 
-	// Verify table row: "Next" and "Every" are both empty.
+	// Verify table row: "Next" and "Every" are both NULL.
 	m.reloadAll()
 	require.NoError(t, m.reloadActiveTab())
 	tab := m.activeTab()
 	require.NotNil(t, tab)
 	require.NotEmpty(t, tab.CellRows)
 	cells := tab.CellRows[0]
-	assert.Empty(t, cells[int(maintenanceColNext)].Value)
-	assert.Empty(t, cells[int(maintenanceColEvery)].Value)
+	assert.True(t, cells[int(maintenanceColNext)].Null)
+	assert.True(t, cells[int(maintenanceColEvery)].Null)
 }
 
 // Step 6: Edit existing interval item via full form, change to due date.
@@ -350,7 +354,11 @@ func TestUserEditsMaintenanceFromIntervalToDueDate(t *testing.T) {
 	require.NotEmpty(t, tab.CellRows)
 	cells := tab.CellRows[0]
 	assert.Equal(t, "2026-06-01", cells[int(maintenanceColNext)].Value)
-	assert.Equal(t, "--", cells[int(maintenanceColEvery)].Value)
+	assert.True(
+		t,
+		cells[int(maintenanceColEvery)].Null,
+		"non-recurring items should have NULL interval",
+	)
 }
 
 // Edit existing due-date item via full form, switch to interval.

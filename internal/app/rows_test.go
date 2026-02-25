@@ -176,8 +176,10 @@ func TestMaintenanceRowsDueDateUrgencyCell(t *testing.T) {
 	assert.Equal(t, "2025-11-01", nextCell.Value)
 	assert.Equal(t, cellUrgency, nextCell.Kind,
 		"due-date items must use cellUrgency for consistent overdue/upcoming coloring")
-	// "Every" column shows "--" (no interval).
-	assert.Equal(t, "--", cells[0][int(maintenanceColEvery)].Value)
+	// "Every" column is NULL (non-recurring).
+	everyCell := cells[0][int(maintenanceColEvery)]
+	assert.Empty(t, everyCell.Value)
+	assert.True(t, everyCell.Null, "non-recurring items should have NULL interval")
 }
 
 func TestApplianceRows(t *testing.T) {
