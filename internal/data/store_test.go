@@ -1536,6 +1536,18 @@ func TestMultipleDocumentsListOrder(t *testing.T) {
 		}))
 	}
 
+	// Pin each document to a distinct past timestamp so ordering is
+	// deterministic regardless of wall-clock granularity (SQLite stores
+	// datetime with second precision; on fast machines the creates can
+	// land in the same second).
+	base := time.Now().Add(-time.Hour)
+	for i, name := range []string{"Alpha", "Beta", "Gamma"} {
+		ts := base.Add(time.Duration(i) * time.Minute)
+		require.NoError(t, store.db.Exec(
+			"UPDATE documents SET updated_at = ? WHERE title = ?", ts, name,
+		).Error)
+	}
+
 	docs, err := store.ListDocuments(false)
 	require.NoError(t, err)
 	require.Len(t, docs, 3)
@@ -1546,6 +1558,8 @@ func TestMultipleDocumentsListOrder(t *testing.T) {
 	assert.Equal(t, "Alpha", docs[2].Title)
 
 	// User edits the oldest document -- it should move to the top.
+	// GORM sets updated_at to time.Now(), which is after the pinned past
+	// timestamps, so "Alpha Updated" sorts first.
 	require.NoError(t, store.UpdateDocument(Document{
 		ID:    docs[2].ID,
 		Title: "Alpha Updated",
