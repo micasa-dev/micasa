@@ -55,21 +55,27 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install poppler tesseract imagemagick ghostscript
 
-      - name: Add MSYS2 to PATH (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          MSYS2_ARCH_DIR: ${{ runner.arch == 'ARM64' && 'clangarm64' || 'mingw64' }}
-        run: |
-          Add-Content $env:GITHUB_PATH "C:\msys64\usr\bin"
-          Add-Content $env:GITHUB_PATH "C:\msys64\$env:MSYS2_ARCH_DIR\bin"
-
       - name: Install extraction tools (Windows)
         if: runner.os == 'Windows'
-        shell: bash
-        env:
-          PKG_PREFIX: ${{ runner.arch == 'ARM64' && 'mingw-w64-clang-aarch64' || 'mingw-w64-x86_64' }}
-        run: pacman -S --noconfirm "${PKG_PREFIX}-poppler" "${PKG_PREFIX}-tesseract-ocr" "${PKG_PREFIX}-tesseract-data-eng" "${PKG_PREFIX}-imagemagick"
+        shell: pwsh
+        run: |
+          winget install --id oschwartz10612.Poppler --accept-source-agreements --accept-package-agreements --disable-interactivity
+          winget install --id UB-Mannheim.TesseractOCR --accept-source-agreements --accept-package-agreements --disable-interactivity
+          winget install --id ImageMagick.ImageMagick --accept-source-agreements --accept-package-agreements --disable-interactivity
+
+      - name: Add winget packages to PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $paths = @(
+            "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+            (Get-ChildItem "C:\Program Files\poppler-*\Library\bin" -ErrorAction SilentlyContinue | Select-Object -Last 1)
+            (Get-ChildItem "C:\Program Files\Tesseract-OCR" -ErrorAction SilentlyContinue | Select-Object -Last 1)
+            (Get-ChildItem "C:\Program Files\ImageMagick-*" -ErrorAction SilentlyContinue | Select-Object -Last 1)
+          )
+          foreach ($p in $paths) {
+            if ($p) { Add-Content $env:GITHUB_PATH "$p" }
+          }
 
       - name: Download dependencies
         run: go mod download
