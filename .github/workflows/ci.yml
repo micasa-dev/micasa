@@ -55,16 +55,19 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install poppler tesseract imagemagick ghostscript
 
-      - name: Upgrade winget (Windows)
+      - name: Disable winget progress bar (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: winget upgrade --id Microsoft.AppInstaller --accept-source-agreements --accept-package-agreements --disable-interactivity --silent
+        run: |
+          $settingsDir = "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState"
+          New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
+          '{"visual":{"progressBar":"disabled"}}' | Set-Content "$settingsDir\settings.json"
 
       - name: Install extraction tools (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $flags = '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent', '--no-progress'
+          $flags = '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent'
           winget install --id oschwartz10612.Poppler @flags
           winget install --id UB-Mannheim.TesseractOCR @flags
           winget install --id ImageMagick.ImageMagick @flags
