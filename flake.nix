@@ -360,7 +360,6 @@
             text = ''
               TAPES="docs/tapes"
               ntapes=$(fd -g 'using-*.tape' . "$TAPES" | wc -l)
-              ntapes=$(fd -g 'using-*.tape' . "$TAPES" | wc -l)
               if [[ "$ntapes" -eq 0 ]]; then
                 echo "no using-*.tape files found in $TAPES" >&2
                 exit 1
