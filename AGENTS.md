@@ -195,6 +195,7 @@ details; do not duplicate that detail here.
   hardcode `/nix/store/...` hashes.
 - **Use `writeShellApplication`** not `writeShellScriptBin` for Nix shell
   scripts. Use **`pkgs.python3.pkgs`** not `pkgs.python3Packages`.
+- **Nix package mappings**: `benchstat` is in `nixpkgs#goperf`.
 
 ### Git and CI
 
