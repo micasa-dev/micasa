@@ -91,25 +91,14 @@ jobs:
       - name: Print test seed
         run: echo "MICASA_TEST_SEED=${{ github.run_id }}"
 
-      - name: Check race detector support
-        id: race
-        shell: bash
-        env:
-          CGO_ENABLED: "1"
-        run: |
-          if go test -race -run '^$' ./cmd/micasa 2>/dev/null; then
-            echo "flags=-race" >> "$GITHUB_OUTPUT"
-            echo "cgo=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "flags=" >> "$GITHUB_OUTPUT"
-            echo "cgo=0" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Test
         env:
-          CGO_ENABLED: ${{ steps.race.outputs.cgo }}
+          CGO_ENABLED: ${{ (runner.os != 'Windows' || runner.arch != 'ARM64') && '1' || '0' }}
           MICASA_TEST_SEED: ${{ github.run_id }}
-        run: go test ${{ steps.race.outputs.flags }} -shuffle on -timeout 5m -coverprofile coverage.txt ./...
+        shell: bash
+        run: |
+          race=; [ "$CGO_ENABLED" = "1" ] && race="-race"
+          go test $race -shuffle on -timeout 5m -coverprofile coverage.txt ./...
 
       - name: Benchmarks (smoke)
         run: go test -bench . -benchtime 1x -timeout 5m -run '^$' ./...
