@@ -1490,7 +1490,7 @@ func requiredDate(label string) func(string) error {
 			return fmt.Errorf("%s is required", label)
 		}
 		if _, err := data.ParseRequiredDate(input); err != nil {
-			return fmt.Errorf("%s should be YYYY-MM-DD", label)
+			return fmt.Errorf("%s should be YYYY-MM-DD or a relative date like 'yesterday'", label)
 		}
 		return nil
 	}
@@ -2173,16 +2173,15 @@ func endDateAfterStart(startDate, endDate *string) func(string) error {
 		if end == "" || start == "" {
 			return nil
 		}
-		s, err := time.Parse(data.DateLayout, start)
-		if err != nil {
-			// start date will be caught by its own validator
+		s, err := data.ParseOptionalDate(start)
+		if err != nil || s == nil {
 			return nil //nolint:nilerr // start date validated by its own field
 		}
-		e, err := time.Parse(data.DateLayout, end)
-		if err != nil {
+		e, err := data.ParseOptionalDate(end)
+		if err != nil || e == nil {
 			return nil //nolint:nilerr // end date format already checked by optionalDate above
 		}
-		if e.Before(s) {
+		if e.Before(*s) {
 			return fmt.Errorf("end date must not be before start date")
 		}
 		return nil
@@ -2192,7 +2191,7 @@ func endDateAfterStart(startDate, endDate *string) func(string) error {
 func optionalDate(label string) func(string) error {
 	return func(input string) error {
 		if _, err := data.ParseOptionalDate(input); err != nil {
-			return fmt.Errorf("%s should be YYYY-MM-DD", label)
+			return fmt.Errorf("%s should be YYYY-MM-DD or a relative date like 'yesterday'", label)
 		}
 		return nil
 	}

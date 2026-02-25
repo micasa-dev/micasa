@@ -135,10 +135,74 @@ func TestParseRequiredDate(t *testing.T) {
 }
 
 func TestParseRequiredDateInvalid(t *testing.T) {
-	for _, input := range []string{"", "06/11/2025", "not-a-date", "2025-13-01"} {
+	for _, input := range []string{"", "2025-13-01"} {
 		_, err := ParseRequiredDate(input)
 		assert.Error(t, err, "input=%q", input)
 	}
+}
+
+func TestParseRequiredDateAtNaturalLanguage(t *testing.T) {
+	ref := time.Date(2026, 2, 25, 14, 30, 0, 0, time.UTC)
+	tests := []struct {
+		input string
+		want  string
+	}{
+		// strict format still works
+		{"2025-06-11", "2025-06-11"},
+		{" 2025-06-11 ", "2025-06-11"},
+		// natural language expressions
+		{"today", "2026-02-25"},
+		{"yesterday", "2026-02-24"},
+		{"2 weeks ago", "2026-02-11"},
+		{"last friday", "2026-02-20"},
+	}
+	for _, tt := range tests {
+		got, err := ParseRequiredDateAt(tt.input, ref)
+		require.NoError(t, err, "input=%q", tt.input)
+		assert.Equal(t, tt.want, got.Format(DateLayout), "input=%q", tt.input)
+	}
+}
+
+func TestParseRequiredDateAtTruncatesTime(t *testing.T) {
+	ref := time.Date(2026, 2, 25, 14, 30, 45, 123, time.UTC)
+	got, err := ParseRequiredDateAt("today", ref)
+	require.NoError(t, err)
+	assert.Equal(t, 0, got.Hour(), "hour should be zero")
+	assert.Equal(t, 0, got.Minute(), "minute should be zero")
+	assert.Equal(t, 0, got.Second(), "second should be zero")
+	assert.Equal(t, 0, got.Nanosecond(), "nanosecond should be zero")
+}
+
+func TestParseRequiredDateAtInvalid(t *testing.T) {
+	ref := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
+	for _, input := range []string{""} {
+		_, err := ParseRequiredDateAt(input, ref)
+		assert.Error(t, err, "input=%q", input)
+	}
+}
+
+func TestParseOptionalDateAtNaturalLanguage(t *testing.T) {
+	ref := time.Date(2026, 2, 25, 14, 30, 0, 0, time.UTC)
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"today", "2026-02-25"},
+		{"yesterday", "2026-02-24"},
+	}
+	for _, tt := range tests {
+		got, err := ParseOptionalDateAt(tt.input, ref)
+		require.NoError(t, err, "input=%q", tt.input)
+		require.NotNil(t, got, "input=%q", tt.input)
+		assert.Equal(t, tt.want, got.Format(DateLayout), "input=%q", tt.input)
+	}
+}
+
+func TestParseOptionalDateAtEmpty(t *testing.T) {
+	ref := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
+	got, err := ParseOptionalDateAt("", ref)
+	require.NoError(t, err)
+	assert.Nil(t, got)
 }
 
 func TestFormatDate(t *testing.T) {
