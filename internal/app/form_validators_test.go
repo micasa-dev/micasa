@@ -88,57 +88,39 @@ func TestOptionalDateRejectsInvalid(t *testing.T) {
 	}
 }
 
-func TestEndDateAfterStartRejectsEarlierEnd(t *testing.T) {
-	start := testValidatorDate
-	end := "2025-06-10"
-	validate := endDateAfterStart(&start, &end)
-	err := validate(end)
-	require.Error(t, err)
-	assert.Equal(t, "end date must not be before start date", err.Error())
-}
-
-func TestEndDateAfterStartAcceptsSameDay(t *testing.T) {
-	start := testValidatorDate
-	end := testValidatorDate
-	validate := endDateAfterStart(&start, &end)
-	assert.NoError(t, validate(end))
-}
-
-func TestEndDateAfterStartAcceptsLaterEnd(t *testing.T) {
-	start := "2025-06-10"
-	end := testValidatorDate
-	validate := endDateAfterStart(&start, &end)
-	assert.NoError(t, validate(end))
-}
-
-func TestEndDateAfterStartAcceptsEmptyEnd(t *testing.T) {
-	start := testValidatorDate
-	end := ""
-	validate := endDateAfterStart(&start, &end)
-	assert.NoError(t, validate(end))
-}
-
-func TestEndDateAfterStartAcceptsEmptyStart(t *testing.T) {
-	start := ""
-	end := testValidatorDate
-	validate := endDateAfterStart(&start, &end)
-	assert.NoError(t, validate(end))
-}
-
-func TestEndDateAfterStartAcceptsBothEmpty(t *testing.T) {
-	start := ""
-	end := ""
-	validate := endDateAfterStart(&start, &end)
-	assert.NoError(t, validate(end))
-}
-
-func TestEndDateAfterStartRejectsInvalidEndFormat(t *testing.T) {
-	start := testValidatorDate
-	end := "not-a-date"
-	validate := endDateAfterStart(&start, &end)
-	err := validate(end)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "YYYY-MM-DD")
+func TestEndDateAfterStart(t *testing.T) {
+	cases := []struct {
+		name    string
+		start   string
+		end     string
+		wantErr string // empty means no error expected
+	}{
+		{
+			"rejects earlier end",
+			testValidatorDate,
+			"2025-06-10",
+			"end date must not be before start date",
+		},
+		{"accepts same day", testValidatorDate, testValidatorDate, ""},
+		{"accepts later end", "2025-06-10", testValidatorDate, ""},
+		{"accepts empty end", testValidatorDate, "", ""},
+		{"accepts empty start", "", testValidatorDate, ""},
+		{"accepts both empty", "", "", ""},
+		{"rejects invalid end format", testValidatorDate, "not-a-date", "YYYY-MM-DD"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			start, end := tc.start, tc.end
+			validate := endDateAfterStart(&start, &end)
+			err := validate(end)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
 }
 
 func TestOptionalMoneyAcceptsValid(t *testing.T) {
@@ -193,10 +175,15 @@ func TestVendorFormValues(t *testing.T) {
 		Email:       "alice@hvac.com",
 		Phone:       "555-1234",
 		Website:     "https://hvac.com",
+		Notes:       "vendor notes",
 	}
 	got := vendorFormValues(vendor)
 	assert.Equal(t, "HVAC Pros", got.Name)
 	assert.Equal(t, "Alice", got.ContactName)
+	assert.Equal(t, "alice@hvac.com", got.Email)
+	assert.Equal(t, "555-1234", got.Phone)
+	assert.Equal(t, "https://hvac.com", got.Website)
+	assert.Equal(t, "vendor notes", got.Notes)
 }
 
 func TestQuoteFormValues(t *testing.T) {

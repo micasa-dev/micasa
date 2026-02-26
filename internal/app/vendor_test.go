@@ -131,13 +131,6 @@ func TestQuoteVendorColumnLinksToVendorTab(t *testing.T) {
 	assert.Equal(t, tabVendors, vendorSpec.Link.TargetTab)
 }
 
-func TestVendorFormData(t *testing.T) {
-	v := vendorFormValues(sampleVendors()[0])
-	assert.Equal(t, "Acme Plumbing", v.Name)
-	assert.Equal(t, "Jo Smith", v.ContactName)
-	assert.Equal(t, "jo@example.com", v.Email)
-}
-
 func TestVendorJobsItemColumnLinksToMaintenanceTab(t *testing.T) {
 	specs := vendorJobsColumnSpecs()
 	itemSpec := specs[1] // Item column

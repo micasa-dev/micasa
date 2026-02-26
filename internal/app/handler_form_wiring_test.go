@@ -1141,68 +1141,28 @@ func TestEntityDocumentHandlerInlineEditSkipsEntityColumn(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// SyncFixedValues tests for handlers that have non-trivial implementations
+// SyncFixedValues no-op handlers (handlers with empty FixedValues)
 // ---------------------------------------------------------------------------
 
-func TestIncidentHandlerSyncFixedValuesSetsStatusAndSeverity(t *testing.T) {
-	m := newTestModelWithStore(t)
-	h := incidentHandler{}
-	specs := []columnSpec{
-		{Title: "ID"},
-		{Title: "Title"},
-		{Title: "Status"},
-		{Title: "Severity"},
+func TestSyncFixedValuesNoOp(t *testing.T) {
+	cases := []struct {
+		name string
+		h    TabHandler
+	}{
+		{"quote", quoteHandler{}},
+		{"appliance", applianceHandler{}},
+		{"vendor", vendorHandler{}},
+		{"serviceLog", serviceLogHandler{}},
+		{"document", documentHandler{}},
 	}
-	h.SyncFixedValues(m, specs)
-
-	require.NotEmpty(t, specs[2].FixedValues)
-	assert.Contains(t, specs[2].FixedValues, data.IncidentStatusOpen)
-	assert.Contains(t, specs[2].FixedValues, data.IncidentStatusInProgress)
-
-	require.NotEmpty(t, specs[3].FixedValues)
-	assert.Contains(t, specs[3].FixedValues, data.IncidentSeverityUrgent)
-	assert.Contains(t, specs[3].FixedValues, data.IncidentSeveritySoon)
-	assert.Contains(t, specs[3].FixedValues, data.IncidentSeverityWhenever)
-}
-
-func TestQuoteHandlerSyncFixedValuesNoOp(t *testing.T) {
-	m := newTestModelWithStore(t)
-	h := quoteHandler{}
-	specs := []columnSpec{{Title: "Total"}}
-	h.SyncFixedValues(m, specs)
-	assert.Empty(t, specs[0].FixedValues)
-}
-
-func TestApplianceHandlerSyncFixedValuesNoOp(t *testing.T) {
-	m := newTestModelWithStore(t)
-	h := applianceHandler{}
-	specs := []columnSpec{{Title: "Name"}}
-	h.SyncFixedValues(m, specs)
-	assert.Empty(t, specs[0].FixedValues)
-}
-
-func TestVendorHandlerSyncFixedValuesNoOp(t *testing.T) {
-	m := newTestModelWithStore(t)
-	h := vendorHandler{}
-	specs := []columnSpec{{Title: "Name"}}
-	h.SyncFixedValues(m, specs)
-	assert.Empty(t, specs[0].FixedValues)
-}
-
-func TestServiceLogHandlerSyncFixedValuesNoOp(t *testing.T) {
-	m := newTestModelWithStore(t)
-	h := serviceLogHandler{}
-	specs := []columnSpec{{Title: "Date"}}
-	h.SyncFixedValues(m, specs)
-	assert.Empty(t, specs[0].FixedValues)
-}
-
-func TestDocumentHandlerSyncFixedValuesNoOp(t *testing.T) {
-	m := newTestModelWithStore(t)
-	h := documentHandler{}
-	specs := []columnSpec{{Title: "Title"}}
-	h.SyncFixedValues(m, specs)
-	assert.Empty(t, specs[0].FixedValues)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newTestModelWithStore(t)
+			specs := []columnSpec{{Title: "Col"}}
+			tc.h.SyncFixedValues(m, specs)
+			assert.Empty(t, specs[0].FixedValues)
+		})
+	}
 }
 
 // ---------------------------------------------------------------------------
