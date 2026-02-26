@@ -194,7 +194,6 @@
               pkgs.imagemagick
               pkgs.gopls
               pkgs.goreleaser
-              pkgs.syft
             ]
             ++ enabledPackages;
           };
