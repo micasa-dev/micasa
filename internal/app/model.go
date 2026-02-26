@@ -2091,6 +2091,7 @@ func (m *Model) saveFormInPlace() tea.Cmd {
 		m.setStatusError(err.Error())
 		return nil
 	}
+	m.setStatusSaved(true)
 	m.snapshotForm()
 	m.reloadAfterFormSave(kind)
 	// After a create, position the cursor on the new row so that

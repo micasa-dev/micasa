@@ -152,6 +152,12 @@ func parseDate(input string, ref time.Time) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, ErrInvalidDate
 	}
+	// naturaldate silently returns the reference time for unrecognized input.
+	// Reject results that exactly match the reference (the only false
+	// positive is "now", but "today" already works for that intent).
+	if t.Equal(ref) {
+		return time.Time{}, ErrInvalidDate
+	}
 	y, m, d := t.Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
 }

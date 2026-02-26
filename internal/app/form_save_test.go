@@ -803,3 +803,50 @@ func TestUserCreatesIncidentWithRelativeDateToday(t *testing.T) {
 	assert.Equal(t, today, items[0].DateNoticed.Format(data.DateLayout),
 		"'today' should resolve to the current calendar date")
 }
+
+func TestCtrlSSaveClearsStatusErrorAfterRetry(t *testing.T) {
+	m := newTestModelWithStore(t)
+	openHouseForm(m)
+
+	// User enters an invalid year.
+	values, ok := m.formData.(*houseFormData)
+	require.True(t, ok)
+	values.YearBuilt = "abc"
+	m.checkFormDirty()
+
+	sendKey(m, "ctrl+s")
+	require.Equal(t, statusError, m.status.Kind,
+		"invalid input should surface a status error")
+	assert.Contains(t, m.status.Text, "Year Built",
+		"error should name the offending field")
+
+	// User fixes the input and retries.
+	values.YearBuilt = "1990"
+	m.checkFormDirty()
+
+	sendKey(m, "ctrl+s")
+	assert.NotEqual(t, statusError, m.status.Kind,
+		"successful save should clear the previous error")
+	assert.Contains(t, m.statusView(), "Saved",
+		"status should show saved confirmation")
+}
+
+func TestDateParserRejectsGarbageInput(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	// Navigate to incidents tab and open the add form.
+	m.active = tabIndex(tabIncidents)
+	openAddForm(m)
+
+	values, ok := m.formData.(*incidentFormData)
+	require.True(t, ok)
+	values.Title = "Test Incident"
+	values.DateNoticed = "nope"
+	m.checkFormDirty()
+
+	sendKey(m, "ctrl+s")
+	require.Equal(t, statusError, m.status.Kind,
+		"garbage date input should be rejected")
+	assert.Contains(t, m.status.Text, "Date Noticed",
+		"error should name the offending field")
+}

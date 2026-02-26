@@ -174,10 +174,10 @@ func TestParseRequiredDateAtTruncatesTime(t *testing.T) {
 }
 
 func TestParseRequiredDateAtInvalid(t *testing.T) {
-	ref := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
-	for _, input := range []string{""} {
+	ref := time.Date(2026, 2, 25, 14, 30, 0, 0, time.UTC)
+	for _, input := range []string{"", "nope", "abc", "not a date"} {
 		_, err := ParseRequiredDateAt(input, ref)
-		assert.Error(t, err, "input=%q", input)
+		assert.ErrorIs(t, err, ErrInvalidDate, "input=%q should be rejected", input)
 	}
 }
 
