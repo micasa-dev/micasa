@@ -28,8 +28,8 @@ Only `Title`, `Status`, and `Severity` are required.
 | `Location` | text | Where in the house | E.g., "Kitchen", "Roof" |
 | `Appliance` | link | Related appliance | Optional. Press `enter` to jump to the appliance |
 | `Vendor` | link | Assigned vendor | Optional. Press `enter` to jump to the vendor |
-| `Noticed` | date | When discovered | YYYY-MM-DD |
-| `Resolved` | date | When fixed | YYYY-MM-DD. Only shown on the edit form |
+| `Noticed` | date | When discovered | [Date input]({{< ref "/docs/using/date-input" >}}) |
+| `Resolved` | date | When fixed | [Date input]({{< ref "/docs/using/date-input" >}}). Only shown on the edit form |
 | `Cost` | money | Repair cost | Dollar amount |
 | `Docs` | drill | Document count | Press `enter` to view linked documents |
 

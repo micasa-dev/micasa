@@ -27,7 +27,7 @@ enable auto-computed due dates.
 | `Item` | text | Task name | Required. E.g., "HVAC filter replacement" |
 | `Category` | select | Task type | Pre-seeded categories (HVAC, Plumbing, etc.) |
 | `Appliance` | link | Linked appliance | Optional. Press `enter` to jump to appliance |
-| `Last` | date | Last serviced date | YYYY-MM-DD |
+| `Last` | date | Last serviced date | [Date input]({{< ref "/docs/using/date-input" >}}) |
 | `Next` | urgency | Next due date | Auto-computed: `Last` + `Every`. Color-coded by proximity |
 | `Every` | number | Interval | Compact format (e.g., "6m", "1y", "2y 6m") |
 | `Log` | drill | Service log count | Press `enter` to open |

@@ -27,7 +27,7 @@ Only the `Name` is required.
 | `Model` | text | Model number | For warranty lookups and replacements |
 | `Serial` | text | Serial number | |
 | `Location` | text | Where in the house | E.g., "Kitchen", "Basement" |
-| `Purchased` | date | Purchase date | YYYY-MM-DD |
+| `Purchased` | date | Purchase date | [Date input]({{< ref "/docs/using/date-input" >}}) |
 | `Age` | computed | Time since purchase | Read-only. E.g., "3y 2m", "8m", "<1m" |
 | `Warranty` | warranty | Warranty expiry | Green when active, red when expired. Shows on dashboard when expiring |
 | `Cost` | money | Purchase price | Dollar amount |

@@ -180,6 +180,7 @@ input:
 | `j`/`k`   | Move one week down/up |
 | `H`/`L`   | Move one month back/forward |
 | `[`/`]` | Move one year back/forward |
+| `t`       | Jump to today |
 | `enter`   | Pick the highlighted date |
 | `esc`     | Cancel (keep original value) |
 

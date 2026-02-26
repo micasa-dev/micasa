@@ -31,7 +31,7 @@ is linked to a project.
 | `Labor` | money | Labor portion | Optional |
 | `Mat` | money | Materials portion | Optional |
 | `Other` | money | Other costs | Optional |
-| `Recv` | date | Date received | YYYY-MM-DD |
+| `Recv` | date | Date received | [Date input]({{< ref "/docs/using/date-input" >}}) |
 
 The edit form also includes a `Notes` textarea for free-text annotations about
 the quote. Notes are stored on the quote record but don't appear as a table
