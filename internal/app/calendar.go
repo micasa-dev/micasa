@@ -71,7 +71,7 @@ func calendarGrid(cal calendarState) string {
 		case isToday:
 			style = appStyles.CalToday
 		default:
-			style = lipgloss.NewStyle()
+			style = appStyles.Base
 		}
 
 		row.WriteString(style.Render(label))

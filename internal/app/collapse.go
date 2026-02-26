@@ -5,8 +5,6 @@ package app
 
 import (
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // gapSeparators computes a per-gap separator for the header/data and divider.
@@ -22,7 +20,7 @@ func gapSeparators(
 		return nil, nil
 	}
 	collapsedSep := appStyles.TableSeparator.Render(" ") +
-		lipgloss.NewStyle().Foreground(secondary).Render("⋯") +
+		appStyles.SecondaryText.Render("⋯") +
 		appStyles.TableSeparator.Render(" ")
 
 	plainSeps = make([]string, n-1)

@@ -312,13 +312,13 @@ func (m *Model) buildColumnFinderOverlay() string {
 
 			line := "  " + title
 			if selected {
-				pointer := lipgloss.NewStyle().Foreground(accent).Bold(true).Render("▸ ")
+				pointer := appStyles.AccentBold.Render("▸ ")
 				line = pointer + title
 			}
 
 			// Truncate to fit.
 			if lipgloss.Width(line) > innerW {
-				line = lipgloss.NewStyle().MaxWidth(innerW).Render(line)
+				line = appStyles.Base.MaxWidth(innerW).Render(line)
 			}
 
 			b.WriteString(line)
@@ -336,10 +336,7 @@ func (m *Model) buildColumnFinderOverlay() string {
 	)
 	b.WriteString(hints)
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(accent).
-		Padding(1, 2).
+	return appStyles.OverlayBox.
 		Width(contentW).
 		Render(b.String())
 }
@@ -357,7 +354,7 @@ func highlightFuzzyMatch(match columnFinderMatch) string {
 		posSet[p] = true
 	}
 
-	matchStyle := lipgloss.NewStyle().Foreground(accent).Bold(true)
+	matchStyle := appStyles.AccentBold
 	dimStyle := appStyles.HeaderHint
 
 	runes := []rune(title)

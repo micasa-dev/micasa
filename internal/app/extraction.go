@@ -199,7 +199,7 @@ func (m *Model) startExtractionOverlay(
 	}
 
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
-	sp.Style = lipgloss.NewStyle().Foreground(accent)
+	sp.Style = appStyles.AccentText
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -1134,7 +1134,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 	contentW, innerW int, titleLine string,
 ) string {
 	ex := m.extraction
-	ruleStyle := lipgloss.NewStyle().Foreground(border)
+	ruleStyle := appStyles.Rule
 
 	// Compute column widths across all active steps for alignment.
 	active := ex.activeSteps()
@@ -1242,28 +1242,11 @@ func (m *Model) buildExtractionPipelineOverlay(
 
 	vpView := ex.Viewport.View()
 	if ex.exploring {
-		vpView = lipgloss.NewStyle().Foreground(textDim).Render(vpView)
+		vpView = appStyles.TextDim.Render(vpView)
 	}
 
-	// Scroll indicator in rule.
-	var rule string
-	if ex.Viewport.TotalLineCount() > ex.Viewport.Height {
-		var label string
-		switch {
-		case ex.Viewport.AtTop():
-			label = "Top"
-		case ex.Viewport.AtBottom():
-			label = "Bot"
-		default:
-			label = fmt.Sprintf("%d%%", int(ex.Viewport.ScrollPercent()*100))
-		}
-		indicator := lipgloss.NewStyle().Foreground(textDim).Render(" " + label + " ")
-		indicatorW := lipgloss.Width(indicator)
-		rightW := max(0, innerW-indicatorW)
-		rule = ruleStyle.Render(strings.Repeat(symHLine, rightW)) + indicator
-	} else {
-		rule = ruleStyle.Render(strings.Repeat(symHLine, innerW))
-	}
+	rule := m.scrollRule(innerW, ex.Viewport.TotalLineCount(), ex.Viewport.Height,
+		ex.Viewport.AtTop(), ex.Viewport.AtBottom(), ex.Viewport.ScrollPercent(), symHLine)
 
 	// Hint line varies by mode.
 	var hints []string
@@ -1303,10 +1286,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 	parts = append(parts, ruleStyle.Render(strings.Repeat(symHLine, innerW)), hintStr)
 	boxContent := lipgloss.JoinVertical(lipgloss.Left, parts...)
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(accent).
-		Padding(1, 2).
+	return m.styles.OverlayBox.
 		Width(contentW).
 		Render(boxContent)
 }
@@ -1321,7 +1301,7 @@ func (m *Model) renderOperationPreviewSection(innerW int, interactive bool) stri
 	}
 	groups := ex.previewGroups
 	if len(groups) == 0 {
-		return lipgloss.NewStyle().Foreground(textDim).Render("no operations")
+		return appStyles.TextDim.Render("no operations")
 	}
 
 	sep := m.styles.TableSeparator.Render(" " + symVLine + " ")
@@ -1364,7 +1344,7 @@ func (m *Model) renderOperationPreviewSection(innerW int, interactive bool) stri
 
 	result := b.String()
 	if !interactive {
-		result = lipgloss.NewStyle().Foreground(textDim).Render(result)
+		result = appStyles.TextDim.Render(result)
 	}
 	return result
 }

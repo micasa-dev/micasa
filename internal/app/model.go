@@ -237,7 +237,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		progress.WithGradient(textDim.Dark, accent.Dark),
 		progress.WithFillCharacters('━', '┄'),
 	)
-	pprog.PercentageStyle = lipgloss.NewStyle().Foreground(textDim)
+	pprog.PercentageStyle = appStyles.TextDim
 
 	model := &Model{
 		store:              store,
@@ -924,9 +924,7 @@ func (m *Model) handleCalendarKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.confirmCalendar()
 	case keyEsc:
 		m.calendar = nil
-		m.formKind = formNone
-		m.formData = nil
-		m.editID = nil
+		m.resetFormState()
 	}
 	return m, nil
 }
@@ -1679,9 +1677,7 @@ func (m *Model) toggleSettledFilter() bool {
 	if hasColumnPins(tab, col) {
 		// Turn off: clear status column pins.
 		clearPinsForColumn(tab, col)
-		applyRowFilter(tab, m.magMode)
-		applySorts(tab)
-		m.updateTabViewport(tab)
+		m.refreshTable(tab)
 		m.setStatusInfo("Settled shown.")
 	} else {
 		// Turn on: pin all active (non-settled) statuses, activate filter.
@@ -1689,9 +1685,7 @@ func (m *Model) toggleSettledFilter() bool {
 			togglePin(tab, col, status)
 		}
 		tab.FilterActive = true
-		applyRowFilter(tab, m.magMode)
-		applySorts(tab)
-		m.updateTabViewport(tab)
+		m.refreshTable(tab)
 		m.setStatusInfo("Settled hidden.")
 	}
 	return true
@@ -1742,10 +1736,8 @@ func (m *Model) reloadTab(tab *Tab) error {
 	tab.FullRows = rows
 	tab.FullMeta = meta
 	tab.FullCellRows = cellRows
-	applyRowFilter(tab, m.magMode)
 	tab.Stale = false
-	applySorts(tab)
-	m.updateTabViewport(tab)
+	m.refreshTable(tab)
 	return nil
 }
 
@@ -2262,11 +2254,24 @@ func (m *Model) submitInlineInput() {
 	m.reloadAfterFormSave(kind)
 }
 
+// resetFormState zeroes all form-related fields. Every path that exits a
+// form, inline edit, or calendar overlay should call this to prevent drift.
+func (m *Model) resetFormState() {
+	m.formKind = formNone
+	m.form = nil
+	m.formData = nil
+	m.formSnapshot = nil
+	m.formDirty = false
+	m.confirmDiscard = false
+	m.pendingFormInit = nil
+	m.editID = nil
+	m.notesEditMode = false
+	m.notesFieldPtr = nil
+}
+
 func (m *Model) closeInlineInput() {
 	m.inlineInput = nil
-	m.formKind = formNone
-	m.formData = nil
-	m.editID = nil
+	m.resetFormState()
 }
 
 // exitForm closes the form and restores the previous mode. If editID is
@@ -2281,16 +2286,7 @@ func (m *Model) exitForm() {
 	} else {
 		m.setAllTableKeyMaps(normalTableKeyMap())
 	}
-	m.formKind = formNone
-	m.form = nil
-	m.formData = nil
-	m.formSnapshot = nil
-	m.formDirty = false
-	m.confirmDiscard = false
-	m.pendingFormInit = nil
-	m.editID = nil
-	m.notesEditMode = false
-	m.notesFieldPtr = nil
+	m.resetFormState()
 	if savedID != nil {
 		if tab := m.effectiveTab(); tab != nil {
 			selectRowByID(tab, *savedID)
@@ -2363,6 +2359,32 @@ func (m *Model) overlayContentWidth() int {
 		w = 30
 	}
 	return w
+}
+
+// scrollRule renders a horizontal rule with an embedded Vim-style scroll
+// indicator (Top/Bot/N%) when content overflows the viewport.
+func (m *Model) scrollRule(
+	width, totalLines, viewportH int,
+	atTop, atBottom bool,
+	pct float64,
+	ch string,
+) string {
+	if totalLines <= viewportH {
+		return m.styles.Rule.Render(strings.Repeat(ch, width))
+	}
+	var label string
+	switch {
+	case atTop:
+		label = "Top"
+	case atBottom:
+		label = "Bot"
+	default:
+		label = fmt.Sprintf("%d%%", int(pct*100))
+	}
+	indicator := m.styles.TextDim.Render(" " + label + " ")
+	indicatorW := lipgloss.Width(indicator)
+	rightW := max(0, width-indicatorW)
+	return m.styles.Rule.Render(strings.Repeat(ch, rightW)) + indicator
 }
 
 func (m *Model) terminalTooSmall() bool {
@@ -2471,9 +2493,7 @@ func (m *Model) togglePinAtCursor() {
 	// pin the magnitude representation; otherwise pin the raw value.
 	pinValue := cellDisplayValue(c, m.magMode)
 	pinned := togglePin(tab, col, pinValue)
-	applyRowFilter(tab, m.magMode)
-	applySorts(tab)
-	m.updateTabViewport(tab)
+	m.refreshTable(tab)
 	if pinned {
 		m.setStatusInfo("Pinned.")
 	} else {
@@ -2490,9 +2510,7 @@ func (m *Model) toggleFilterActivation() {
 	// ("eager mode"): arm the filter first, then every n immediately filters.
 	tab.FilterActive = !tab.FilterActive
 	if hasPins(tab) {
-		applyRowFilter(tab, m.magMode)
-		applySorts(tab)
-		m.updateTabViewport(tab)
+		m.refreshTable(tab)
 	}
 }
 
@@ -2502,9 +2520,7 @@ func (m *Model) clearAllPins() {
 		return
 	}
 	clearPins(tab)
-	applyRowFilter(tab, m.magMode)
-	applySorts(tab)
-	m.updateTabViewport(tab)
+	m.refreshTable(tab)
 	m.setStatusInfo("Pins cleared.")
 }
 
@@ -2515,9 +2531,7 @@ func (m *Model) toggleFilterInvert() {
 	}
 	tab.FilterInverted = !tab.FilterInverted
 	if hasPins(tab) {
-		applyRowFilter(tab, m.magMode)
-		applySorts(tab)
-		m.updateTabViewport(tab)
+		m.refreshTable(tab)
 	}
 }
 
@@ -2580,6 +2594,14 @@ func (m *Model) updateAllViewports() {
 	if dc := m.detail(); dc != nil {
 		m.updateTabViewport(&dc.Tab)
 	}
+}
+
+// refreshTable reapplies row filters, sorts, and viewport layout for a tab.
+// Use this after any change to pins, filter state, or row data.
+func (m *Model) refreshTable(tab *Tab) {
+	applyRowFilter(tab, m.magMode)
+	applySorts(tab)
+	m.updateTabViewport(tab)
 }
 
 func (m *Model) updateTabViewport(tab *Tab) {

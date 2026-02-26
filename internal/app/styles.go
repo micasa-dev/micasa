@@ -84,6 +84,22 @@ type Styles struct {
 	HouseWindow      lipgloss.Style // house art: windows
 	HouseDoor        lipgloss.Style // house art: door
 	StatusStyles     map[string]lipgloss.Style
+	// Reusable utility styles to avoid per-frame lipgloss.NewStyle() allocations.
+	OverlayBox       lipgloss.Style          // overlay: rounded border + accent + padding
+	TextDim          lipgloss.Style          // dim text (textDim foreground)
+	AccentBold       lipgloss.Style          // accent foreground + bold
+	AccentText       lipgloss.Style          // accent foreground only
+	SecondaryText    lipgloss.Style          // secondary foreground only
+	Rule             lipgloss.Style          // border-colored separator
+	Base             lipgloss.Style          // unstyled base (avoids per-frame NewStyle)
+	UrgencyOverdue   lipgloss.Style          // cell: overdue urgency
+	UrgencySoon      lipgloss.Style          // cell: soon urgency
+	UrgencyUpcoming  lipgloss.Style          // cell: upcoming urgency
+	UrgencyFar       lipgloss.Style          // cell: far-future urgency
+	WarrantyExpired  lipgloss.Style          // cell: expired warranty
+	WarrantyActive   lipgloss.Style          // cell: active warranty
+	EntityKindStyles map[byte]lipgloss.Style // cell: entity kind letter colors
+	DimPath          lipgloss.Style          // file picker: dimmed path text
 }
 
 // Colorblind-safe palette (Wong) with adaptive light/dark variants.
@@ -352,6 +368,31 @@ func DefaultStyles() *Styles {
 			Foreground(warning),
 		HouseDoor: lipgloss.NewStyle().
 			Foreground(secondary),
+		OverlayBox: lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(accent).
+			Padding(1, 2),
+		TextDim:         lipgloss.NewStyle().Foreground(textDim),
+		AccentBold:      lipgloss.NewStyle().Foreground(accent).Bold(true),
+		AccentText:      lipgloss.NewStyle().Foreground(accent),
+		SecondaryText:   lipgloss.NewStyle().Foreground(secondary),
+		Rule:            lipgloss.NewStyle().Foreground(border),
+		Base:            lipgloss.NewStyle(),
+		UrgencyOverdue:  lipgloss.NewStyle().Foreground(danger).Bold(true),
+		UrgencySoon:     lipgloss.NewStyle().Foreground(secondary),
+		UrgencyUpcoming: lipgloss.NewStyle().Foreground(warning),
+		UrgencyFar:      lipgloss.NewStyle().Foreground(success),
+		WarrantyExpired: lipgloss.NewStyle().Foreground(danger),
+		WarrantyActive:  lipgloss.NewStyle().Foreground(success),
+		EntityKindStyles: map[byte]lipgloss.Style{
+			'A': lipgloss.NewStyle().Foreground(muted),
+			'I': lipgloss.NewStyle().Foreground(danger),
+			'M': lipgloss.NewStyle().Foreground(secondary),
+			'P': lipgloss.NewStyle().Foreground(accent),
+			'Q': lipgloss.NewStyle().Foreground(success),
+			'V': lipgloss.NewStyle().Foreground(warning),
+		},
+		DimPath: lipgloss.NewStyle().Foreground(textDim),
 		StatusStyles: map[string]lipgloss.Style{
 			// Project statuses.
 			"ideating":  lipgloss.NewStyle().Foreground(muted),

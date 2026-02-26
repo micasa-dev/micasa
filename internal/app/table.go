@@ -16,7 +16,7 @@ import (
 
 // defaultStyle is reused for cells that need no special styling, avoiding
 // a lipgloss.NewStyle() allocation per cell per render.
-var defaultStyle = lipgloss.NewStyle()
+var defaultStyle = appStyles.Base
 
 const (
 	linkArrow                 = "→"   // FK link to another tab
@@ -621,7 +621,7 @@ func renderPillCell(
 
 	// Pad to fill the column; pill is always right-aligned.
 	if pad := width - pillW; pad > 0 {
-		padStyle := lipgloss.NewStyle()
+		padStyle := appStyles.Base
 		if hl == highlightRow {
 			padStyle = padStyle.Background(surface)
 		}
@@ -664,36 +664,27 @@ func cellStyle(kind cellKind) lipgloss.Style {
 	}
 }
 
-// Pre-computed urgency/warranty styles to avoid allocating per cell per frame.
+// Urgency/warranty/entity-kind styles live in appStyles to avoid
+// duplicate definitions. Package-level aliases for readability in
+// cell-rendering code.
 var (
-	urgencyOverdue  = lipgloss.NewStyle().Foreground(danger).Bold(true)
-	urgencySoon     = lipgloss.NewStyle().Foreground(secondary)
-	urgencyUpcoming = lipgloss.NewStyle().Foreground(warning)
-	urgencyFar      = lipgloss.NewStyle().Foreground(success)
-	warrantyExpired = lipgloss.NewStyle().Foreground(danger)
-	warrantyActive  = lipgloss.NewStyle().Foreground(success)
+	urgencyOverdue  = appStyles.UrgencyOverdue
+	urgencySoon     = appStyles.UrgencySoon
+	urgencyUpcoming = appStyles.UrgencyUpcoming
+	urgencyFar      = appStyles.UrgencyFar
+	warrantyExpired = appStyles.WarrantyExpired
+	warrantyActive  = appStyles.WarrantyActive
 )
-
-// entityKindLetterStyles maps the single-letter entity prefix to a
-// colorblind-safe color from the Wong palette.
-var entityKindLetterStyles = map[byte]lipgloss.Style{
-	'A': lipgloss.NewStyle().Foreground(muted),     // Appliance
-	'I': lipgloss.NewStyle().Foreground(danger),    // Incident
-	'M': lipgloss.NewStyle().Foreground(secondary), // Maintenance
-	'P': lipgloss.NewStyle().Foreground(accent),    // Project
-	'Q': lipgloss.NewStyle().Foreground(success),   // Quote
-	'V': lipgloss.NewStyle().Foreground(warning),   // Vendor
-}
 
 // entityCellStyle returns a style for the entity cell based on the kind-letter
 // prefix. The letter (A/I/M/P/Q/V) maps to a kind-specific color.
 func entityCellStyle(value string) lipgloss.Style {
 	if len(value) > 0 {
-		if s, ok := entityKindLetterStyles[value[0]]; ok {
+		if s, ok := appStyles.EntityKindStyles[value[0]]; ok {
 			return s
 		}
 	}
-	return lipgloss.NewStyle().Foreground(textDim)
+	return appStyles.TextDim
 }
 
 // urgencyStyle returns a style colored from green (far out) through yellow

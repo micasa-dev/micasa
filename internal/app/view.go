@@ -191,14 +191,10 @@ func (m *Model) buildDashboardOverlay() string {
 		lipgloss.Left, header, rule, content, "", hints,
 	)
 
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(accent).
-		Padding(1, 2).
+	return m.styles.OverlayBox.
 		Width(contentW).
-		MaxHeight(maxH)
-
-	return box.Render(boxContent)
+		MaxHeight(maxH).
+		Render(boxContent)
 }
 
 // tabsLocked returns true when tab switching is disabled and inactive tabs
@@ -564,7 +560,7 @@ func (m *Model) withPullProgress(statusOutput string) string {
 	if m.pullDisplay == "" {
 		return statusOutput
 	}
-	progressLine := lipgloss.NewStyle().Foreground(textDim).Render(m.pullDisplay)
+	progressLine := m.styles.TextDim.Render(m.pullDisplay)
 	return lipgloss.JoinVertical(lipgloss.Left, statusOutput, progressLine)
 }
 
@@ -637,11 +633,7 @@ func (m *Model) buildCalendarOverlay() string {
 		return ""
 	}
 	grid := calendarGrid(*m.calendar)
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(accent).
-		Padding(1, 2).
-		Render(grid)
+	return m.styles.OverlayBox.Render(grid)
 }
 
 func (m *Model) buildNotePreviewOverlay() string {
@@ -668,10 +660,7 @@ func (m *Model) buildNotePreviewOverlay() string {
 		maxH = 10
 	}
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(accent).
-		Padding(1, 2).
+	return m.styles.OverlayBox.
 		Width(contentW).
 		MaxHeight(maxH).
 		Render(b.String())
@@ -823,27 +812,8 @@ func (m *Model) helpView() string {
 
 	content := vp.View()
 	contentW := vp.Width
-	ruleStyle := lipgloss.NewStyle().Foreground(border)
-
-	// Embed a Vim-style scroll indicator in the rule when content overflows.
-	var rule string
-	if vp.TotalLineCount() > vp.Height {
-		var label string
-		switch {
-		case vp.AtTop():
-			label = "Top"
-		case vp.AtBottom():
-			label = "Bot"
-		default:
-			label = fmt.Sprintf("%d%%", int(vp.ScrollPercent()*100))
-		}
-		indicator := lipgloss.NewStyle().Foreground(textDim).Render(" " + label + " ")
-		indicatorW := lipgloss.Width(indicator)
-		rightW := max(0, contentW-indicatorW)
-		rule = ruleStyle.Render(strings.Repeat("─", rightW)) + indicator
-	} else {
-		rule = ruleStyle.Render(strings.Repeat("─", contentW))
-	}
+	rule := m.scrollRule(contentW, vp.TotalLineCount(), vp.Height,
+		vp.AtTop(), vp.AtBottom(), vp.ScrollPercent(), "─")
 
 	hints := []string{m.helpItem(keyEsc, "close")}
 	if vp.TotalLineCount() > vp.Height {
@@ -851,10 +821,7 @@ func (m *Model) helpView() string {
 	}
 	closeHintStr := joinWithSeparator(m.helpSeparator(), hints...)
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(accent).
-		Padding(1, 2).
+	return m.styles.OverlayBox.
 		Render(content + "\n\n" + rule + "\n" + closeHintStr)
 }
 

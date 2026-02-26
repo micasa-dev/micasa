@@ -632,7 +632,7 @@ func (m *Model) dashSectionHeader(
 		style = m.styles.DashSectionAlert
 	}
 	if dimmed {
-		style = lipgloss.NewStyle().
+		style = appStyles.Base.
 			Foreground(style.GetBackground()).
 			Padding(0, 1)
 	}

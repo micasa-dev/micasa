@@ -1516,7 +1516,7 @@ func entityOptionLabel(kind, label string) string {
 	if !ok {
 		return label
 	}
-	if s, ok := entityKindLetterStyles[letter[0]]; ok {
+	if s, ok := appStyles.EntityKindStyles[letter[0]]; ok {
 		return s.Render(label)
 	}
 	return label
@@ -2328,8 +2328,7 @@ func houseFormValues(profile data.HouseProfile) *houseFormData {
 
 // requiredTitle appends a colored ∗ (U+2217) to a form field label.
 func requiredTitle(label string) string {
-	marker := lipgloss.NewStyle().Foreground(secondary).Render(" ∗")
-	return label + marker
+	return label + appStyles.SecondaryText.Render(" ∗")
 }
 
 // requiredLegend returns the "∗ required" legend line for forms that have
@@ -2338,9 +2337,7 @@ func (m *Model) requiredLegend() string {
 	if !m.formHasRequired {
 		return ""
 	}
-	marker := lipgloss.NewStyle().Foreground(secondary).Render("∗")
-	label := lipgloss.NewStyle().Foreground(textDim).Render(" required")
-	return marker + label
+	return appStyles.SecondaryText.Render("∗") + appStyles.TextDim.Render(" required")
 }
 
 func intToString(value int) string {

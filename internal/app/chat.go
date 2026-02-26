@@ -167,7 +167,7 @@ func (m *Model) openChat() {
 	vp.KeyMap.Right.SetEnabled(false)
 
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
-	sp.Style = lipgloss.NewStyle().Foreground(accent)
+	sp.Style = m.styles.AccentText
 
 	// Load persisted prompt history from the database.
 	var history []string
@@ -454,7 +454,7 @@ func (m *Model) handleModelsListMsg(msg modelsListMsg) {
 	for _, name := range msg.Models {
 		if name == current {
 			// Use accent-colored bullet to indicate active model.
-			marker := lipgloss.NewStyle().Foreground(accent).Render("• ")
+			marker := m.styles.AccentText.Render("• ")
 			b.WriteString(marker + name + "\n")
 		} else {
 			b.WriteString("  " + name + "\n")
@@ -837,7 +837,7 @@ func (m *Model) sqlHintItem() string {
 	label := "sql"
 	var style lipgloss.Style
 	if m.chat != nil && m.chat.ShowSQL {
-		style = lipgloss.NewStyle().Foreground(accent).Bold(true)
+		style = m.styles.AccentBold
 	} else {
 		style = m.styles.HeaderHint
 	}
@@ -1216,7 +1216,7 @@ func (m *Model) renderChatMessages() string {
 			// Skip if it's the last message to avoid trailing separator.
 			if i < len(m.chat.Messages)-1 && text != "" {
 				sep := strings.Repeat("─", innerW)
-				rendered += "\n" + lipgloss.NewStyle().Foreground(textDim).Render(sep)
+				rendered += "\n" + m.styles.TextDim.Render(sep)
 			}
 		case roleError:
 			rendered = m.styles.Error.Render("error: " + wordWrap(msg.Content, innerW-9))
@@ -1402,10 +1402,7 @@ func (m *Model) buildChatOverlay() string {
 		maxH = 12
 	}
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(accent).
-		Padding(1, 2).
+	return m.styles.OverlayBox.
 		Width(contentW).
 		MaxHeight(maxH).
 		Render(boxContent)
@@ -1459,7 +1456,7 @@ func (m *Model) renderModelCompleter(innerW int) string {
 		}
 	}
 
-	pointer := lipgloss.NewStyle().Foreground(accent).Bold(true)
+	pointer := m.styles.AccentBold
 	lineIdx := 0
 	for i := start; i < end; i++ {
 		entry := mc.Matches[i]
@@ -1475,7 +1472,7 @@ func (m *Model) renderModelCompleter(innerW int) string {
 		}
 
 		if lipgloss.Width(line) > innerW {
-			line = lipgloss.NewStyle().MaxWidth(innerW).Render(line)
+			line = m.styles.Base.MaxWidth(innerW).Render(line)
 		}
 		lines[lineIdx] = line
 		lineIdx++
