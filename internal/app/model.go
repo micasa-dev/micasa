@@ -860,6 +860,12 @@ func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			return nil, true
 		}
 		return m.formInitCmd(), true
+	case keyShiftE:
+		if err := m.startEditForm(); err != nil {
+			m.setStatusError(err.Error())
+			return nil, true
+		}
+		return m.formInitCmd(), true
 	case keyD:
 		m.toggleDeleteSelected()
 		return nil, true
