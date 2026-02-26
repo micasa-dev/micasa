@@ -250,10 +250,12 @@ details; do not duplicate that detail here.
   could tie MUST include a tiebreaker (typically `id DESC`).
 - **Audit new deps before adding**: Review source for security issues
   before integrating third-party dependencies.
-- **Styles live in `appStyles`**: Add new `lipgloss.Style` fields to the
-  `Styles` struct in `styles.go` and reference them via the package-level
-  `appStyles` singleton. Never inline `lipgloss.NewStyle()` in rendering
-  functions -- it defeats the singleton and reintroduces per-frame copies.
+- **Styles live in `appStyles`**: Add new styles as private fields on the
+  `Styles` struct in `styles.go` with public accessor methods, and reference
+  them via the package-level `appStyles` singleton (e.g. `appStyles.Money()`).
+  If a new style duplicates an existing definition, add a method alias instead
+  of a new field. Never inline `lipgloss.NewStyle()` in rendering functions --
+  it defeats the singleton and reintroduces per-frame copies.
 - **Key strings use constants**: All keyboard key strings in dispatch
   (`case`, `key.String() ==`), `key.WithKeys`, `SetKeys`, `helpItem`,
   `renderKeys`, and display hints must use constants defined in
