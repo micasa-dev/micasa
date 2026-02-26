@@ -8,6 +8,8 @@ builds:
     binary: micasa
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
     ldflags:
       - -X main.version={{ .Version }}
     goos:
