@@ -37,7 +37,7 @@ func TestBuildViewShowsTerminalTooSmallMessage(t *testing.T) {
 	m.width = minUsableWidth - 1
 	m.height = minUsableHeight - 1
 	m.showDashboard = true
-	m.showNotePreview = true
+	m.notePreview = &notePreviewState{text: "test"}
 
 	output := m.buildView()
 	assert.Contains(t, output, "Terminal too small")

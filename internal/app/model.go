@@ -161,6 +161,12 @@ type dashState struct {
 	flash        string
 }
 
+// notePreviewState holds the text shown in the note preview overlay.
+type notePreviewState struct {
+	text  string
+	title string
+}
+
 type Model struct {
 	store                  *data.Store
 	dbPath                 string
@@ -186,9 +192,7 @@ type Model struct {
 	helpViewport           *viewport.Model
 	showHouse              bool
 	showDashboard          bool
-	showNotePreview        bool
-	notePreviewText        string
-	notePreviewTitle       string
+	notePreview            *notePreviewState
 	calendar               *calendarState
 	columnFinder           *columnFinderState
 	dash                   dashState
@@ -410,11 +414,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Note preview overlay: any key dismisses it.
-	if m.showNotePreview {
+	if m.notePreview != nil {
 		if _, ok := msg.(tea.KeyMsg); ok {
-			m.showNotePreview = false
-			m.notePreviewText = ""
-			m.notePreviewTitle = ""
+			m.notePreview = nil
 		}
 		return m, nil
 	}
@@ -804,9 +806,7 @@ func (m *Model) handleNormalEnter() error {
 	// On a notes column, show the note preview overlay.
 	if spec.Kind == cellNotes {
 		if c, ok := m.selectedCell(col); ok && c.Value != "" {
-			m.notePreviewTitle = spec.Title
-			m.notePreviewText = c.Value
-			m.showNotePreview = true
+			m.notePreview = &notePreviewState{text: c.Value, title: spec.Title}
 		}
 		return nil
 	}
@@ -2405,7 +2405,7 @@ func (m *Model) terminalTooSmall() bool {
 func (m *Model) hasActiveOverlay() bool {
 	return m.dashboardVisible() ||
 		m.calendar != nil ||
-		m.showNotePreview ||
+		m.notePreview != nil ||
 		m.columnFinder != nil ||
 		(m.extraction != nil && m.extraction.Visible) ||
 		m.helpViewport != nil

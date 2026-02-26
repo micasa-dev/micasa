@@ -38,8 +38,7 @@ func TestStatusBarHiddenWhenHelpActive(t *testing.T) {
 
 func TestStatusBarHiddenWhenNotePreviewActive(t *testing.T) {
 	m := newTestModel()
-	m.showNotePreview = true
-	m.notePreviewText = "test note"
+	m.notePreview = &notePreviewState{text: "test note"}
 
 	status := m.statusView()
 
@@ -79,7 +78,7 @@ func TestStatusBarHiddenWhenCalendarActive(t *testing.T) {
 func TestStatusBarShownWhenNoOverlayActive(t *testing.T) {
 	m := newTestModel()
 	m.showDashboard = false
-	m.showNotePreview = false
+	m.notePreview = nil
 	m.helpViewport = nil
 	m.columnFinder = nil
 	m.calendar = nil

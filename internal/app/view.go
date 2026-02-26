@@ -32,7 +32,7 @@ func (m *Model) buildView() string {
 	}{
 		{m.dashboardVisible(), m.buildDashboardOverlay},
 		{m.calendar != nil, m.buildCalendarOverlay},
-		{m.showNotePreview, m.buildNotePreviewOverlay},
+		{m.notePreview != nil, m.buildNotePreviewOverlay},
 		{m.columnFinder != nil, m.buildColumnFinderOverlay},
 		{m.extraction != nil && m.extraction.Visible, m.buildExtractionOverlay},
 		{m.chat != nil && m.chat.Visible, m.buildChatOverlay},
@@ -640,7 +640,7 @@ func (m *Model) buildNotePreviewOverlay() string {
 	contentW := m.overlayContentWidth()
 
 	var b strings.Builder
-	title := m.notePreviewTitle
+	title := m.notePreview.title
 	if title == "" {
 		title = "Notes"
 	}
@@ -649,7 +649,7 @@ func (m *Model) buildNotePreviewOverlay() string {
 
 	// Word-wrap the note text to fit within the box.
 	innerW := contentW - 4 // padding
-	text := m.notePreviewText
+	text := m.notePreview.text
 	b.WriteString(wordWrap(text, innerW))
 	b.WriteString("\n\n")
 

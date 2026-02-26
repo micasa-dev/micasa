@@ -44,9 +44,9 @@ func TestNotePreviewOpensOnEnter(t *testing.T) {
 	// Press enter in Normal mode.
 	sendKey(m, "enter")
 
-	require.True(t, m.showNotePreview)
-	assert.Equal(t, "Changed the filter and checked pressure", m.notePreviewText)
-	assert.Equal(t, "Notes", m.notePreviewTitle)
+	require.NotNil(t, m.notePreview)
+	assert.Equal(t, "Changed the filter and checked pressure", m.notePreview.text)
+	assert.Equal(t, "Notes", m.notePreview.title)
 	// Note preview overlay should be visible in the rendered view.
 	view := m.buildView()
 	assert.Contains(t, view, "Changed the filter and checked pressure")
@@ -55,14 +55,11 @@ func TestNotePreviewOpensOnEnter(t *testing.T) {
 
 func TestNotePreviewDismissesOnAnyKey(t *testing.T) {
 	m := newTestModel()
-	m.showNotePreview = true
-	m.notePreviewText = "some note"
-	m.notePreviewTitle = "Notes"
+	m.notePreview = &notePreviewState{text: "some note", title: "Notes"}
 
 	sendKey(m, "q")
 
-	assert.False(t, m.showNotePreview)
-	assert.Empty(t, m.notePreviewText)
+	assert.Nil(t, m.notePreview)
 	// After dismissal, the note overlay should not be in the view and
 	// the normal tab hints should be visible.
 	view := m.buildView()
@@ -91,16 +88,17 @@ func TestNotePreviewDoesNotOpenOnEmptyNote(t *testing.T) {
 
 	sendKey(m, "enter")
 
-	assert.False(t, m.showNotePreview)
+	assert.Nil(t, m.notePreview)
 	// Tab hints should still be visible (no overlay opened).
 	assert.Contains(t, m.statusView(), "NAV")
 }
 
 func TestNotePreviewRendersInView(t *testing.T) {
 	m := newTestModel()
-	m.showNotePreview = true
-	m.notePreviewText = "This is a test note with some content."
-	m.notePreviewTitle = "Notes"
+	m.notePreview = &notePreviewState{
+		text:  "This is a test note with some content.",
+		title: "Notes",
+	}
 
 	view := m.buildView()
 	assert.Contains(t, view, "This is a test note")
@@ -109,8 +107,7 @@ func TestNotePreviewRendersInView(t *testing.T) {
 
 func TestNotePreviewBlocksOtherKeys(t *testing.T) {
 	m := newTestModel()
-	m.showNotePreview = true
-	m.notePreviewText = "test"
+	m.notePreview = &notePreviewState{text: "test"}
 	initialTab := m.active
 
 	// These should all be absorbed by the note preview.
@@ -252,9 +249,10 @@ func TestMultilineNotesRenderedAsSingleLineInTable(t *testing.T) {
 
 func TestMultilineNotesPreservedInPreviewOverlay(t *testing.T) {
 	m := newTestModel()
-	m.showNotePreview = true
-	m.notePreviewText = "Changed the filter\nand checked pressure"
-	m.notePreviewTitle = "Notes"
+	m.notePreview = &notePreviewState{
+		text:  "Changed the filter\nand checked pressure",
+		title: "Notes",
+	}
 
 	view := m.buildView()
 	assert.Contains(t, view, "Changed the filter")
@@ -417,6 +415,6 @@ func TestNotePreviewStillWorksAfterNotesEditChanges(t *testing.T) {
 
 	sendKey(m, "enter")
 
-	require.True(t, m.showNotePreview)
-	assert.Equal(t, "read-only preview", m.notePreviewText)
+	require.NotNil(t, m.notePreview)
+	assert.Equal(t, "read-only preview", m.notePreview.text)
 }
