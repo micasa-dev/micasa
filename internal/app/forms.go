@@ -5,7 +5,6 @@ package app
 
 import (
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -701,15 +700,15 @@ func (m *Model) parseIncidentFormData() (data.Incident, error) {
 	}
 	noticed, err := data.ParseRequiredDate(values.DateNoticed)
 	if err != nil {
-		return data.Incident{}, err
+		return data.Incident{}, data.FieldError("Date Noticed", err)
 	}
 	resolved, err := data.ParseOptionalDate(values.DateResolved)
 	if err != nil {
-		return data.Incident{}, err
+		return data.Incident{}, data.FieldError("Date Resolved", err)
 	}
 	cost, err := data.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.Incident{}, err
+		return data.Incident{}, data.FieldError("Cost", err)
 	}
 	var appID *uint
 	if values.ApplianceID > 0 {
@@ -963,15 +962,15 @@ func (m *Model) parseApplianceFormData() (data.Appliance, error) {
 	}
 	purchaseDate, err := data.ParseOptionalDate(values.PurchaseDate)
 	if err != nil {
-		return data.Appliance{}, err
+		return data.Appliance{}, data.FieldError("Purchase Date", err)
 	}
 	warrantyExpiry, err := data.ParseOptionalDate(values.WarrantyExpiry)
 	if err != nil {
-		return data.Appliance{}, err
+		return data.Appliance{}, data.FieldError("Warranty Expiry", err)
 	}
 	cost, err := data.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.Appliance{}, err
+		return data.Appliance{}, data.FieldError("Cost", err)
 	}
 	return data.Appliance{
 		Name:           strings.TrimSpace(values.Name),
@@ -1405,11 +1404,11 @@ func (m *Model) parseServiceLogFormData() (data.ServiceLogEntry, data.Vendor, er
 	}
 	servicedAt, err := data.ParseRequiredDate(values.ServicedAt)
 	if err != nil {
-		return data.ServiceLogEntry{}, data.Vendor{}, err
+		return data.ServiceLogEntry{}, data.Vendor{}, data.FieldError("Serviced At", err)
 	}
 	cost, err := data.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.ServiceLogEntry{}, data.Vendor{}, err
+		return data.ServiceLogEntry{}, data.Vendor{}, data.FieldError("Cost", err)
 	}
 	entry := data.ServiceLogEntry{
 		MaintenanceItemID: values.MaintenanceItemID,
@@ -1484,7 +1483,7 @@ func requiredDate(label string) func(string) error {
 			return fmt.Errorf("%s is required", label)
 		}
 		if _, err := data.ParseRequiredDate(input); err != nil {
-			return fmt.Errorf("%s should be YYYY-MM-DD or a relative date like 'yesterday'", label)
+			return data.FieldError(label, err)
 		}
 		return nil
 	}
@@ -1800,35 +1799,35 @@ func (m *Model) submitHouseForm() error {
 	}
 	yearBuilt, err := data.ParseOptionalInt(values.YearBuilt)
 	if err != nil {
-		return err
+		return data.FieldError("Year Built", err)
 	}
 	sqft, err := data.ParseOptionalInt(values.SquareFeet)
 	if err != nil {
-		return err
+		return data.FieldError("Square Feet", err)
 	}
 	lotSqft, err := data.ParseOptionalInt(values.LotSquareFeet)
 	if err != nil {
-		return err
+		return data.FieldError("Lot Size", err)
 	}
 	bedrooms, err := data.ParseOptionalInt(values.Bedrooms)
 	if err != nil {
-		return err
+		return data.FieldError("Bedrooms", err)
 	}
 	bathrooms, err := data.ParseOptionalFloat(values.Bathrooms)
 	if err != nil {
-		return err
+		return data.FieldError("Bathrooms", err)
 	}
 	insuranceRenewal, err := data.ParseOptionalDate(values.InsuranceRenewal)
 	if err != nil {
-		return err
+		return data.FieldError("Insurance Renewal", err)
 	}
 	propertyTax, err := data.ParseOptionalCents(values.PropertyTax)
 	if err != nil {
-		return err
+		return data.FieldError("Property Tax", err)
 	}
 	hoaFee, err := data.ParseOptionalCents(values.HOAFee)
 	if err != nil {
-		return err
+		return data.FieldError("HOA Fee", err)
 	}
 	profile := data.HouseProfile{
 		Nickname:         strings.TrimSpace(values.Nickname),
@@ -1897,19 +1896,19 @@ func (m *Model) parseProjectFormData() (data.Project, error) {
 	}
 	budget, err := data.ParseOptionalCents(values.Budget)
 	if err != nil {
-		return data.Project{}, err
+		return data.Project{}, data.FieldError("Budget", err)
 	}
 	actual, err := data.ParseOptionalCents(values.Actual)
 	if err != nil {
-		return data.Project{}, err
+		return data.Project{}, data.FieldError("Actual", err)
 	}
 	startDate, err := data.ParseOptionalDate(values.StartDate)
 	if err != nil {
-		return data.Project{}, err
+		return data.Project{}, data.FieldError("Start Date", err)
 	}
 	endDate, err := data.ParseOptionalDate(values.EndDate)
 	if err != nil {
-		return data.Project{}, err
+		return data.Project{}, data.FieldError("End Date", err)
 	}
 	return data.Project{
 		Title:         strings.TrimSpace(values.Title),
@@ -1947,23 +1946,23 @@ func (m *Model) parseQuoteFormData() (data.Quote, data.Vendor, error) {
 	}
 	total, err := data.ParseRequiredCents(values.Total)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, err
+		return data.Quote{}, data.Vendor{}, data.FieldError("Total", err)
 	}
 	labor, err := data.ParseOptionalCents(values.Labor)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, err
+		return data.Quote{}, data.Vendor{}, data.FieldError("Labor", err)
 	}
 	materials, err := data.ParseOptionalCents(values.Materials)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, err
+		return data.Quote{}, data.Vendor{}, data.FieldError("Materials", err)
 	}
 	other, err := data.ParseOptionalCents(values.Other)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, err
+		return data.Quote{}, data.Vendor{}, data.FieldError("Other", err)
 	}
 	received, err := data.ParseOptionalDate(values.ReceivedDate)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, err
+		return data.Quote{}, data.Vendor{}, data.FieldError("Received Date", err)
 	}
 	quote := data.Quote{
 		ProjectID:      values.ProjectID,
@@ -2009,7 +2008,7 @@ func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
 	}
 	lastServiced, err := data.ParseOptionalDate(values.LastServiced)
 	if err != nil {
-		return data.MaintenanceItem{}, err
+		return data.MaintenanceItem{}, data.FieldError("Last Serviced", err)
 	}
 
 	// The schedule type selector enforces mutual exclusion at the UI level:
@@ -2022,18 +2021,18 @@ func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
 	case schedInterval:
 		interval, err = data.ParseIntervalMonths(values.IntervalMonths)
 		if err != nil {
-			return data.MaintenanceItem{}, err
+			return data.MaintenanceItem{}, data.FieldError("Interval", err)
 		}
 	case schedDueDate:
 		dueDate, err = data.ParseOptionalDate(values.DueDate)
 		if err != nil {
-			return data.MaintenanceItem{}, err
+			return data.MaintenanceItem{}, data.FieldError("Due Date", err)
 		}
 	}
 
 	cost, err := data.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.MaintenanceItem{}, err
+		return data.MaintenanceItem{}, data.FieldError("Cost", err)
 	}
 	var appID *uint
 	if values.ApplianceID > 0 {
@@ -2127,7 +2126,7 @@ func requiredText(label string) func(string) error {
 func optionalInt(label string) func(string) error {
 	return func(input string) error {
 		if _, err := data.ParseOptionalInt(input); err != nil {
-			return fmt.Errorf("%s should be a whole number", label)
+			return data.FieldError(label, err)
 		}
 		return nil
 	}
@@ -2136,10 +2135,7 @@ func optionalInt(label string) func(string) error {
 func optionalInterval(label string) func(string) error {
 	return func(input string) error {
 		if _, err := data.ParseIntervalMonths(input); err != nil {
-			return fmt.Errorf(
-				"%s should be months (6), or a duration like 6m, 1y, 2y 6m",
-				label,
-			)
+			return data.FieldError(label, err)
 		}
 		return nil
 	}
@@ -2148,7 +2144,7 @@ func optionalInterval(label string) func(string) error {
 func optionalFloat(label string) func(string) error {
 	return func(input string) error {
 		if _, err := data.ParseOptionalFloat(input); err != nil {
-			return fmt.Errorf("%s should be a number like 2.5", label)
+			return data.FieldError(label, err)
 		}
 		return nil
 	}
@@ -2184,23 +2180,16 @@ func endDateAfterStart(startDate, endDate *string) func(string) error {
 func optionalDate(label string) func(string) error {
 	return func(input string) error {
 		if _, err := data.ParseOptionalDate(input); err != nil {
-			return fmt.Errorf("%s should be YYYY-MM-DD or a relative date like 'yesterday'", label)
+			return data.FieldError(label, err)
 		}
 		return nil
 	}
 }
 
-func moneyError(label string, err error) error {
-	if errors.Is(err, data.ErrNegativeMoney) {
-		return fmt.Errorf("%s must be a positive amount", label)
-	}
-	return fmt.Errorf("%s should look like 1250.00", label)
-}
-
 func optionalMoney(label string) func(string) error {
 	return func(input string) error {
 		if _, err := data.ParseOptionalCents(input); err != nil {
-			return moneyError(label, err)
+			return data.FieldError(label, err)
 		}
 		return nil
 	}
@@ -2209,7 +2198,7 @@ func optionalMoney(label string) func(string) error {
 func requiredMoney(label string) func(string) error {
 	return func(input string) error {
 		if _, err := data.ParseRequiredCents(input); err != nil {
-			return moneyError(label, err)
+			return data.FieldError(label, err)
 		}
 		return nil
 	}
