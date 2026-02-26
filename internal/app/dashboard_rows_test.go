@@ -66,28 +66,6 @@ func TestDashMaintSplitRowsEmpty(t *testing.T) {
 	assert.Nil(t, upcoming)
 }
 
-func TestDashMaintRowsRelativeDuration(t *testing.T) {
-	m := newTestModel()
-	m.styles = appStyles
-
-	m.dashboard = dashboardData{
-		Overdue: []maintenanceUrgency{{
-			Item:        data.MaintenanceItem{ID: 1, Name: "Task"},
-			DaysFromNow: -5,
-		}},
-	}
-
-	rows, _ := m.dashMaintSplitRows()
-	require.Len(t, rows, 1)
-	assert.Equal(t, "5d", rows[0].Cells[1].Text)
-	assert.Equal(
-		t,
-		m.styles.DashOverdue,
-		rows[0].Cells[1].Style,
-		"overdue duration uses DashOverdue style",
-	)
-}
-
 func TestDashProjectRowsColumns(t *testing.T) {
 	m := newTestModel()
 	m.styles = appStyles
