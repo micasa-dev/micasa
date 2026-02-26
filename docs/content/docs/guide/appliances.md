@@ -65,4 +65,5 @@ stored on the appliance record but don't appear as a table column.
 ## Inline editing
 
 All columns except `ID`, `Age`, and `Maint` support inline editing. Press `e`
-in Edit mode on a cell to edit just that field.
+in Edit mode on a cell to edit just that field. Press `E` from any column to
+open the full edit form.

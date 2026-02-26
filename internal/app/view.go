@@ -436,7 +436,7 @@ func (m *Model) editModeStatusHelp(modeBadge string) string {
 	}
 	hints = append(hints,
 		statusHint{id: "add", full: m.helpItem(addKey, "add"), priority: 1},
-		statusHint{id: "edit", full: m.helpItem(keyE, m.editHint()), priority: 1},
+		statusHint{id: "edit", full: m.helpItem(keyE+"/"+keyShiftE, m.editHint()), priority: 1},
 		statusHint{
 			id:       "del",
 			full:     m.helpItem(keyD, "del/restore"),
@@ -765,6 +765,7 @@ func (m *Model) helpContent() string {
 				{keyA, "Add entry"},
 				{keyShiftA, "Add document with extraction"},
 				{keyE, "Edit cell or row"},
+				{keyShiftE, "Edit row (full form)"},
 				{keyD, "Delete / restore"},
 				{keyU + "/" + keyR, "Undo / redo"},
 				{keyCtrlD + "/" + keyCtrlU, "Half page down/up"},

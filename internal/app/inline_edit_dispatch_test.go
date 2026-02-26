@@ -93,6 +93,43 @@ func TestInlineEditAppliaceDateColumnOpensCalendar(t *testing.T) {
 	assert.Nil(t, m.inlineInput, "date column should NOT open inline input")
 }
 
+func TestShiftEOpensFullEditFormRegardlessOfColumn(t *testing.T) {
+	m := newTestModelWithStore(t)
+	// Create a vendor so there's data to edit.
+	m.startVendorForm()
+	m.form.Init()
+	values, ok := m.formData.(*vendorFormData)
+	require.True(t, ok, "unexpected form data type")
+	values.Name = "Test Vendor"
+	require.NoError(t, m.submitVendorForm())
+	m.exitForm()
+	m.reloadAll()
+
+	// Switch to vendor tab.
+	for i, tab := range m.tabs {
+		if tab.Kind == tabVendors {
+			m.active = i
+			break
+		}
+	}
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.Rows)
+	tab.Table.SetCursor(0)
+
+	// Enter edit mode and position cursor on Name column (editable).
+	sendKey(m, "i")
+	tab.ColCursor = int(vendorColName)
+
+	// Pressing 'E' should open the full edit form, not inline edit.
+	sendKey(m, "E")
+	assert.Equal(t, modeForm, m.mode,
+		"shift+e should open the full edit form even on an editable column")
+	assert.Nil(t, m.inlineInput,
+		"shift+e should not open inline input")
+}
+
 func TestEditKeyDispatchesInlineEditInEditMode(t *testing.T) {
 	m := newTestModelWithStore(t)
 	// Create a vendor so there's data to edit.

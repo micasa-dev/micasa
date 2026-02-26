@@ -93,6 +93,7 @@ Same as Nav mode, except `d` and `u` are rebound:
 | `a`   | Add new entry to current tab |
 | `A`   | Add document with extraction (Docs tab only) |
 | `e`   | Edit current cell inline (date columns open calendar picker), or full form if cell is read-only |
+| `E`   | Open full edit form for the selected row (regardless of column) |
 | `d`   | Toggle delete/restore on selected row |
 | `x`   | Toggle visibility of soft-deleted rows |
 | `p`   | Edit house profile |

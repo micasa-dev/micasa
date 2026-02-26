@@ -33,8 +33,9 @@ Vendors can be created in two ways:
 ## Editing a vendor
 
 Navigate to the Vendors tab, enter Edit mode (`i`), and press `e` on the
-cell you want to change. Edits to a vendor's contact info propagate to all
-quotes and service log entries that reference that vendor.
+cell you want to change, or `E` to open the full edit form. Edits to a
+vendor's contact info propagate to all quotes and service log entries that
+reference that vendor.
 
 ## Cross-tab navigation
 

@@ -61,7 +61,8 @@ but doesn't appear as a table column.
 
 In Edit mode, press `e` on any non-`ID` column to edit just that cell inline.
 Press `e` on the `ID` column (or any read-only column) to open the full edit
-form, which includes the description field.
+form, which includes the description field. Press `E` from any column to jump
+straight to the full form.
 
 ## Linked quotes
 

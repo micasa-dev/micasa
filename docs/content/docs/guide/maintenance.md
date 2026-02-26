@@ -87,8 +87,8 @@ The edit form includes fields that don't appear as table columns:
 | `Cost` | money | Estimated or typical cost per service |
 | `Notes` | text | General notes about this maintenance item |
 
-These fields are accessible when editing a maintenance item (press `e` on the
-`ID` column or any read-only column to open the full form).
+These fields are accessible when editing a maintenance item (press `E` from any
+column, or `e` on the `ID` column, to open the full form).
 
 ## Appliance link
 

@@ -188,5 +188,5 @@ For the LLM step, install [Ollama](https://ollama.com) and pull a model
 ## Inline editing
 
 In Edit mode, press `e` on the `Title` or `Notes` column to edit inline. Press
-`e` on any other column to open the full edit form. The file attachment cannot
-be changed after creation.
+`e` on any other column (or `E` from any column) to open the full edit form.
+The file attachment cannot be changed after creation.

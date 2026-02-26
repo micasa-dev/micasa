@@ -51,4 +51,5 @@ incident in the table.
 ## Inline editing
 
 All columns except `ID` and `Docs` support inline editing. Press `e` in Edit
-mode on a cell to edit just that field.
+mode on a cell to edit just that field. Press `E` from any column to open the
+full edit form.

@@ -434,7 +434,7 @@
             name = "run-osv-scanner";
             runtimeInputs = [ pkgs.osv-scanner ];
             text = ''
-              osv-scanner scan --config osv-scanner.toml --recursive .
+              osv-scanner scan --config osv-scanner.toml --no-ignore --recursive .
             '';
           };
           run-pre-commit = pkgs.writeShellApplication {

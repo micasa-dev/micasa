@@ -45,6 +45,7 @@ and `u` are rebound from page navigation to data actions:
 |-------|---------------------------|
 | `a`   | Add new entry             |
 | `e`   | Edit cell or full row     |
+| `E`   | Open full edit form       |
 | `d`   | Delete or restore item    |
 | `x`   | Toggle show deleted items |
 | `p`   | Edit house profile        |
