@@ -76,12 +76,12 @@ func TestHideChatCancelsStreaming(t *testing.T) {
 func TestHideChatCancelsPull(t *testing.T) {
 	m := newTestModel()
 	m.openChat()
-	m.pulling = true
-	m.pullFromChat = true
-	m.pullCancel = func() {}
+	m.pull.active = true
+	m.pull.fromChat = true
+	m.pull.cancel = func() {}
 
 	m.hideChat()
-	assert.False(t, m.pulling)
+	assert.False(t, m.pull.active)
 }
 
 // --- handleChatKey: esc hides chat ---
@@ -1359,7 +1359,7 @@ func TestCmdSwitchModelPullAlreadyInProgress(t *testing.T) {
 	m := newTestModel()
 	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test", 5*time.Second)
 	m.openChat()
-	m.pulling = true
+	m.pull.active = true
 
 	cmd := m.cmdSwitchModel("new-model")
 	assert.Nil(t, cmd)

@@ -107,46 +107,46 @@ func TestDashboardDismissedByTabSwitch(t *testing.T) {
 func TestDashboardNavigation(t *testing.T) {
 	m := newTestModel()
 	m.showDashboard = true
-	m.dashboard = nonEmptyDashboard()
+	m.dash.data = nonEmptyDashboard()
 	// Populate nav with 5 entries.
-	m.dashNav = []dashNavEntry{
+	m.dash.nav = []dashNavEntry{
 		{Tab: tabMaintenance, ID: 1},
 		{Tab: tabMaintenance, ID: 2},
 		{Tab: tabProjects, ID: 3},
 		{Tab: tabAppliances, ID: 4},
 		{Tab: tabMaintenance, ID: 5},
 	}
-	m.dashCursor = 0
+	m.dash.cursor = 0
 
 	// j moves down.
 	sendKey(m, "j")
-	assert.Equal(t, 1, m.dashCursor)
+	assert.Equal(t, 1, m.dash.cursor)
 	// k moves up.
 	sendKey(m, "k")
-	assert.Equal(t, 0, m.dashCursor)
+	assert.Equal(t, 0, m.dash.cursor)
 	// k at 0 stays at 0 (no wrap).
 	sendKey(m, "k")
-	assert.Equal(t, 0, m.dashCursor)
+	assert.Equal(t, 0, m.dash.cursor)
 	// G jumps to bottom.
 	sendKey(m, "G")
-	assert.Equal(t, 4, m.dashCursor)
+	assert.Equal(t, 4, m.dash.cursor)
 	// j at bottom stays at bottom.
 	sendKey(m, "j")
-	assert.Equal(t, 4, m.dashCursor)
+	assert.Equal(t, 4, m.dash.cursor)
 	// g jumps to top.
 	sendKey(m, "g")
-	assert.Equal(t, 0, m.dashCursor)
+	assert.Equal(t, 0, m.dash.cursor)
 }
 
 func TestDashboardEnterKeyJumps(t *testing.T) {
 	m := newTestModel()
 	m.showDashboard = true
-	m.dashboard = nonEmptyDashboard()
-	m.dashNav = []dashNavEntry{
+	m.dash.data = nonEmptyDashboard()
+	m.dash.nav = []dashNavEntry{
 		{Tab: tabMaintenance, ID: 1},
 		{Tab: tabProjects, ID: 42},
 	}
-	m.dashCursor = 1
+	m.dash.cursor = 1
 
 	sendKey(m, "enter")
 	assert.False(t, m.showDashboard)
@@ -156,9 +156,9 @@ func TestDashboardEnterKeyJumps(t *testing.T) {
 func TestDashboardBlocksTableKeys(t *testing.T) {
 	m := newTestModel()
 	m.showDashboard = true
-	m.dashboard = nonEmptyDashboard()
-	m.dashNav = []dashNavEntry{{Tab: tabMaintenance, ID: 1}}
-	m.dashCursor = 0
+	m.dash.data = nonEmptyDashboard()
+	m.dash.nav = []dashNavEntry{{Tab: tabMaintenance, ID: 1}}
+	m.dash.cursor = 0
 	startTab := m.active
 
 	// h/l should not move column cursor.
@@ -191,9 +191,9 @@ func TestDashboardViewEmptySections(t *testing.T) {
 	m := newTestModel()
 	m.width = 120
 	m.height = 40
-	m.dashboard = dashboardData{}
-	m.dashNav = nil
-	m.dashCursor = 0
+	m.dash.data = dashboardData{}
+	m.dash.nav = nil
+	m.dash.cursor = 0
 	m.prepareDashboardView()
 
 	view := m.dashboardView(50, 120)
@@ -209,7 +209,7 @@ func TestDashboardViewWithData(t *testing.T) {
 	overdueDue := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
 	lastSrv := time.Date(2025, 10, 25, 0, 0, 0, 0, time.UTC)
 
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		Overdue: []maintenanceUrgency{{
 			Item: data.MaintenanceItem{
 				Name:           "HVAC Filter",
@@ -224,7 +224,7 @@ func TestDashboardViewWithData(t *testing.T) {
 		}},
 	}
 	// Expand all sections so data rows are visible.
-	m.dashExpanded = map[string]bool{
+	m.dash.expanded = map[string]bool{
 		dashSectionOverdue:  true,
 		dashSectionProjects: true,
 	}
@@ -243,7 +243,7 @@ func TestDashboardViewIncidentsFirst(t *testing.T) {
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
 	overdueDue := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
 
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{{
 			Title:    "Burst pipe",
 			Status:   data.IncidentStatusOpen,
@@ -260,7 +260,7 @@ func TestDashboardViewIncidentsFirst(t *testing.T) {
 		}},
 	}
 	// Expand all sections so data rows are visible for ordering check.
-	m.dashExpanded = map[string]bool{
+	m.dash.expanded = map[string]bool{
 		dashSectionIncidents: true,
 		dashSectionOverdue:   true,
 		dashSectionProjects:  true,
@@ -292,7 +292,7 @@ func TestDashboardViewFitsOverlayWidth(t *testing.T) {
 	overdueDue := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
 	lastSrv := time.Date(2025, 10, 25, 0, 0, 0, 0, time.UTC)
 
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		Overdue: []maintenanceUrgency{{
 			Item: data.MaintenanceItem{
 				Name:           "Refrigerator coil cleaning and deep inspection",
@@ -325,8 +325,8 @@ func TestDashboardOverlay(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
-	m.dashboard = dashboardData{}
-	m.dashNav = nil
+	m.dash.data = dashboardData{}
+	m.dash.nav = nil
 
 	ov := m.buildDashboardOverlay()
 	today := time.Now().Format("Monday, Jan 2")
@@ -360,7 +360,7 @@ func TestDashboardOverlayFitsHeight(t *testing.T) {
 		}
 		projects[i].ID = uint(100 + i) //nolint:gosec // i bounded by slice length (≤8)
 	}
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		Overdue:        overdue,
 		ActiveProjects: projects,
 	}
@@ -379,7 +379,7 @@ func TestDashboardOverlayDimsSurroundingContent(t *testing.T) {
 	m.height = 40
 	m.showDashboard = true
 	// Populate dashboard with data so the overlay actually renders.
-	m.dashboard = nonEmptyDashboard()
+	m.dash.data = nonEmptyDashboard()
 
 	view := m.buildView()
 	// Every line of the composited view that contains background content
@@ -399,7 +399,7 @@ func TestDashboardHiddenWhenEmpty(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
-	m.dashboard = dashboardData{}
+	m.dash.data = dashboardData{}
 
 	view := m.buildView()
 	// Empty dashboard should not show the overlay — no dimming.
@@ -416,7 +416,7 @@ func TestDashboardStatusBarShowsNormal(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
-	m.dashboard = nonEmptyDashboard()
+	m.dash.data = nonEmptyDashboard()
 	status := m.statusView()
 	// With overlay active, main tab keybindings should be hidden.
 	assert.NotContains(t, status, "NAV")
@@ -427,7 +427,7 @@ func TestBuildDashNav(t *testing.T) {
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
 	overdueDue := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
 
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{
 			{Title: "Burst pipe", Severity: data.IncidentSeverityUrgent},
 		},
@@ -442,37 +442,37 @@ func TestBuildDashNav(t *testing.T) {
 			DaysFromNow: 45,
 		}},
 	}
-	m.dashboard.OpenIncidents[0].ID = 5
+	m.dash.data.OpenIncidents[0].ID = 5
 	// Expand incidents (default) so its data rows appear in nav.
-	m.dashExpanded = map[string]bool{
+	m.dash.expanded = map[string]bool{
 		dashSectionIncidents: true,
 	}
 	m.buildDashNav()
 
 	// Nav has: incidents header + 1 row, overdue header, projects header,
 	// expiring header = 5 entries. Only incidents is expanded.
-	require.Len(t, m.dashNav, 5)
+	require.Len(t, m.dash.nav, 5)
 
 	// Incidents header first, then data row.
-	assert.True(t, m.dashNav[0].IsHeader)
-	assert.Equal(t, dashSectionIncidents, m.dashNav[0].Section)
-	assert.Equal(t, tabIncidents, m.dashNav[1].Tab)
-	assert.Equal(t, uint(5), m.dashNav[1].ID)
+	assert.True(t, m.dash.nav[0].IsHeader)
+	assert.Equal(t, dashSectionIncidents, m.dash.nav[0].Section)
+	assert.Equal(t, tabIncidents, m.dash.nav[1].Tab)
+	assert.Equal(t, uint(5), m.dash.nav[1].ID)
 
 	// Collapsed sections: just headers.
-	assert.True(t, m.dashNav[2].IsHeader)
-	assert.Equal(t, dashSectionOverdue, m.dashNav[2].Section)
-	assert.True(t, m.dashNav[3].IsHeader)
-	assert.Equal(t, dashSectionProjects, m.dashNav[3].Section)
-	assert.True(t, m.dashNav[4].IsHeader)
-	assert.Equal(t, dashSectionExpiring, m.dashNav[4].Section)
+	assert.True(t, m.dash.nav[2].IsHeader)
+	assert.Equal(t, dashSectionOverdue, m.dash.nav[2].Section)
+	assert.True(t, m.dash.nav[3].IsHeader)
+	assert.Equal(t, dashSectionProjects, m.dash.nav[3].Section)
+	assert.True(t, m.dash.nav[4].IsHeader)
+	assert.Equal(t, dashSectionExpiring, m.dash.nav[4].Section)
 
 	// Expand overdue, verify its data rows appear.
-	m.dashExpanded[dashSectionOverdue] = true
+	m.dash.expanded[dashSectionOverdue] = true
 	m.buildDashNav()
-	require.Len(t, m.dashNav, 6) // +1 data row
-	assert.Equal(t, tabMaintenance, m.dashNav[3].Tab)
-	assert.Equal(t, uint(10), m.dashNav[3].ID)
+	require.Len(t, m.dash.nav, 6) // +1 data row
+	assert.Equal(t, tabMaintenance, m.dash.nav[3].Tab)
+	assert.Equal(t, uint(10), m.dash.nav[3].ID)
 }
 
 func TestRenderMiniTable(t *testing.T) {
@@ -664,11 +664,11 @@ func TestDashboardViewScrollsWithSmallBudget(t *testing.T) {
 		}
 		projects[i].ID = uint(100 + i) //nolint:gosec // i bounded by slice length (≤5)
 	}
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		Overdue:        overdue,
 		ActiveProjects: projects,
 	}
-	m.dashExpanded = map[string]bool{
+	m.dash.expanded = map[string]bool{
 		dashSectionOverdue:  true,
 		dashSectionProjects: true,
 	}
@@ -687,19 +687,19 @@ func TestDashboardViewScrollsWithSmallBudget(t *testing.T) {
 	}
 
 	// Nav: 2 headers + 8 overdue rows + 5 project rows = 15.
-	assert.Equal(t, 15, len(m.dashNav), "nav should have all entries")
+	assert.Equal(t, 15, len(m.dash.nav), "nav should have all entries")
 
 	// With a tiny budget the view is scrolled, not trimmed.
-	m.dashExpanded = map[string]bool{
+	m.dash.expanded = map[string]bool{
 		dashSectionOverdue:  true,
 		dashSectionProjects: true,
 	}
 	m.prepareDashboardView()
-	m.dashCursor = 0
+	m.dash.cursor = 0
 	smallView := m.dashboardView(6, 120)
 	lines := strings.Split(smallView, "\n")
 	assert.LessOrEqual(t, len(lines), 6, "scrolled view should fit budget")
-	assert.Greater(t, m.dashTotalLines, 6, "total lines should exceed budget")
+	assert.Greater(t, m.dash.totalLines, 6, "total lines should exceed budget")
 }
 
 func TestDashboardScrollFollowsCursor(t *testing.T) {
@@ -717,18 +717,18 @@ func TestDashboardScrollFollowsCursor(t *testing.T) {
 			DaysFromNow: -(i + 1),
 		}
 	}
-	m.dashboard = dashboardData{Overdue: overdue}
-	m.dashExpanded = map[string]bool{dashSectionOverdue: true}
+	m.dash.data = dashboardData{Overdue: overdue}
+	m.dash.expanded = map[string]bool{dashSectionOverdue: true}
 	m.prepareDashboardView()
 
 	// Nav: 1 header + 10 rows = 11. Budget must fit pill + col header + tail.
-	m.dashCursor = 10
+	m.dash.cursor = 10
 	view := m.dashboardView(8, 120)
 	assert.Contains(t, view, "Item 10", "cursor item should be visible")
-	assert.Greater(t, m.dashScrollOffset, 0, "should have scrolled down")
+	assert.Greater(t, m.dash.scrollOffset, 0, "should have scrolled down")
 
 	// All nav entries are preserved (header + 10 rows).
-	assert.Equal(t, 11, len(m.dashNav), "nav should have all entries")
+	assert.Equal(t, 11, len(m.dash.nav), "nav should have all entries")
 }
 
 // TestDashboardExpandCollapseWithEKey verifies a user can toggle section
@@ -742,7 +742,7 @@ func TestDashboardExpandCollapseWithEKey(t *testing.T) {
 
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
 	overdueDue := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{{
 			Title:    "Burst pipe",
 			Severity: data.IncidentSeverityUrgent,
@@ -753,8 +753,8 @@ func TestDashboardExpandCollapseWithEKey(t *testing.T) {
 			DaysFromNow: daysUntil(now, overdueDue),
 		}},
 	}
-	m.dashboard.OpenIncidents[0].ID = 5
-	m.dashExpanded = map[string]bool{dashSectionIncidents: true}
+	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.prepareDashboardView()
 
 	// Incidents is expanded by default — data row should be in nav.
@@ -762,19 +762,19 @@ func TestDashboardExpandCollapseWithEKey(t *testing.T) {
 	assert.Contains(t, view, "Burst pipe")
 
 	// Cursor on Incidents header. Press e to collapse it.
-	m.dashCursor = 0
+	m.dash.cursor = 0
 	sendKey(m, "e")
-	assert.False(t, m.dashExpanded[dashSectionIncidents], "e should collapse current section")
+	assert.False(t, m.dash.expanded[dashSectionIncidents], "e should collapse current section")
 
 	// Press E to expand all.
 	sendKey(m, "E")
-	assert.True(t, m.dashExpanded[dashSectionIncidents])
-	assert.True(t, m.dashExpanded[dashSectionOverdue])
+	assert.True(t, m.dash.expanded[dashSectionIncidents])
+	assert.True(t, m.dash.expanded[dashSectionOverdue])
 
 	// Press E again to collapse all.
 	sendKey(m, "E")
-	assert.False(t, m.dashExpanded[dashSectionIncidents])
-	assert.False(t, m.dashExpanded[dashSectionOverdue])
+	assert.False(t, m.dash.expanded[dashSectionIncidents])
+	assert.False(t, m.dash.expanded[dashSectionOverdue])
 }
 
 // TestDashboardSectionNavWithShiftJK verifies J/K jump between section
@@ -787,7 +787,7 @@ func TestDashboardSectionNavWithShiftJK(t *testing.T) {
 
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
 	overdueDue := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{{
 			Title:    "Burst pipe",
 			Severity: data.IncidentSeverityUrgent,
@@ -798,28 +798,28 @@ func TestDashboardSectionNavWithShiftJK(t *testing.T) {
 		}},
 		ActiveProjects: []data.Project{{ID: 20, Title: "Deck"}},
 	}
-	m.dashboard.OpenIncidents[0].ID = 5
-	m.dashExpanded = map[string]bool{dashSectionIncidents: true}
+	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
 	// Start on Incidents header.
-	m.dashCursor = 0
-	assert.True(t, m.dashNav[0].IsHeader)
-	assert.Equal(t, dashSectionIncidents, m.dashNav[0].Section)
+	m.dash.cursor = 0
+	assert.True(t, m.dash.nav[0].IsHeader)
+	assert.Equal(t, dashSectionIncidents, m.dash.nav[0].Section)
 
 	// J jumps to the next section header (Overdue).
 	sendKey(m, "J")
-	assert.True(t, m.dashNav[m.dashCursor].IsHeader)
-	assert.Equal(t, dashSectionOverdue, m.dashNav[m.dashCursor].Section)
+	assert.True(t, m.dash.nav[m.dash.cursor].IsHeader)
+	assert.Equal(t, dashSectionOverdue, m.dash.nav[m.dash.cursor].Section)
 
 	// Another J jumps to Projects header.
 	sendKey(m, "J")
-	assert.True(t, m.dashNav[m.dashCursor].IsHeader)
-	assert.Equal(t, dashSectionProjects, m.dashNav[m.dashCursor].Section)
+	assert.True(t, m.dash.nav[m.dash.cursor].IsHeader)
+	assert.Equal(t, dashSectionProjects, m.dash.nav[m.dash.cursor].Section)
 
 	// K jumps back to Overdue.
 	sendKey(m, "K")
-	assert.Equal(t, dashSectionOverdue, m.dashNav[m.dashCursor].Section)
+	assert.Equal(t, dashSectionOverdue, m.dash.nav[m.dash.cursor].Section)
 }
 
 // TestDashboardEnterKeyJumpsToIncidents verifies a user can navigate to an
@@ -831,21 +831,21 @@ func TestDashboardEnterKeyJumpsToIncidents(t *testing.T) {
 	m.width = 120
 	m.height = 40
 
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{{
 			Title:    "Burst pipe",
 			Severity: data.IncidentSeverityUrgent,
 		}},
 	}
-	m.dashboard.OpenIncidents[0].ID = 42
-	m.dashExpanded = map[string]bool{dashSectionIncidents: true}
+	m.dash.data.OpenIncidents[0].ID = 42
+	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
 	// Cursor starts on Incidents header. Move down to the data row.
-	m.dashCursor = 0
+	m.dash.cursor = 0
 	sendKey(m, "j")
-	require.False(t, m.dashNav[m.dashCursor].IsHeader, "should be on a data row")
-	assert.Equal(t, uint(42), m.dashNav[m.dashCursor].ID)
+	require.False(t, m.dash.nav[m.dash.cursor].IsHeader, "should be on a data row")
+	assert.Equal(t, uint(42), m.dash.nav[m.dash.cursor].ID)
 
 	// Press Enter to jump.
 	sendKey(m, "enter")
@@ -865,7 +865,7 @@ func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
 	expiry := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{{
 			Title:    "Burst pipe",
 			Severity: data.IncidentSeverityUrgent,
@@ -875,16 +875,16 @@ func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 			DaysFromNow: daysUntil(now, expiry),
 		}},
 	}
-	m.dashboard.OpenIncidents[0].ID = 5
-	m.dashboard.ExpiringWarranties[0].Appliance.ID = 99
-	m.dashExpanded = map[string]bool{dashSectionIncidents: true}
+	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.data.ExpiringWarranties[0].Appliance.ID = 99
+	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
 	// Use J to jump to the Expiring section header.
-	m.dashCursor = 0
+	m.dash.cursor = 0
 	sendKey(m, "J") // → Expiring header
-	require.True(t, m.dashNav[m.dashCursor].IsHeader)
-	assert.Equal(t, dashSectionExpiring, m.dashNav[m.dashCursor].Section,
+	require.True(t, m.dash.nav[m.dash.cursor].IsHeader)
+	assert.Equal(t, dashSectionExpiring, m.dash.nav[m.dash.cursor].Section,
 		"J should land on Expiring Soon header")
 
 	// Expand the section and rebuild nav (simulates the View cycle).
@@ -893,8 +893,8 @@ func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 
 	// Move down into the data row.
 	sendKey(m, "j")
-	require.False(t, m.dashNav[m.dashCursor].IsHeader, "should be on a data row")
-	assert.Equal(t, uint(99), m.dashNav[m.dashCursor].ID)
+	require.False(t, m.dash.nav[m.dash.cursor].IsHeader, "should be on a data row")
+	assert.Equal(t, uint(99), m.dash.nav[m.dash.cursor].ID)
 
 	// Press Enter to jump to the Appliances tab.
 	sendKey(m, "enter")
@@ -913,7 +913,7 @@ func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 	m.height = 40
 
 	renewal := time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC)
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{{
 			Title:    "Burst pipe",
 			Severity: data.IncidentSeverityUrgent,
@@ -924,13 +924,13 @@ func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 			DaysFromNow: 60,
 		},
 	}
-	m.dashboard.OpenIncidents[0].ID = 5
-	m.dashExpanded = map[string]bool{dashSectionIncidents: true}
+	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
 	// The Expiring section should be in the nav even with only insurance.
 	var found bool
-	for _, entry := range m.dashNav {
+	for _, entry := range m.dash.nav {
 		if entry.IsHeader && entry.Section == dashSectionExpiring {
 			found = true
 			break
@@ -940,9 +940,9 @@ func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 		"Expiring Soon header should be in nav with insurance-only data")
 
 	// User can J-jump to the Expiring header.
-	m.dashCursor = 0
+	m.dash.cursor = 0
 	sendKey(m, "J") // → Expiring header
-	assert.Equal(t, dashSectionExpiring, m.dashNav[m.dashCursor].Section,
+	assert.Equal(t, dashSectionExpiring, m.dash.nav[m.dash.cursor].Section,
 		"J should reach Expiring Soon header")
 
 	// Expand and rebuild nav to verify the section expands without crashing.
@@ -959,12 +959,12 @@ func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 func TestDashboardEnterOnHeaderDoesNotJump(t *testing.T) {
 	m := newTestModel()
 	m.showDashboard = true
-	m.dashboard = nonEmptyDashboard()
-	m.dashExpanded = map[string]bool{dashSectionIncidents: true}
+	m.dash.data = nonEmptyDashboard()
+	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
-	m.dashCursor = 0
+	m.dash.cursor = 0
 
-	require.True(t, m.dashNav[0].IsHeader)
+	require.True(t, m.dash.nav[0].IsHeader)
 	sendKey(m, "enter")
 	assert.True(t, m.showDashboard, "enter on header should not dismiss dashboard")
 }
@@ -987,20 +987,20 @@ func TestDashboardGoTopResetsScroll(t *testing.T) {
 			DaysFromNow: -(i + 1),
 		}
 	}
-	m.dashboard = dashboardData{Overdue: overdue}
-	m.dashExpanded = map[string]bool{dashSectionOverdue: true}
+	m.dash.data = dashboardData{Overdue: overdue}
+	m.dash.expanded = map[string]bool{dashSectionOverdue: true}
 	m.prepareDashboardView()
 
 	// Go to bottom, then back to top.
 	sendKey(m, "G")
-	require.Greater(t, m.dashCursor, 0)
+	require.Greater(t, m.dash.cursor, 0)
 	m.prepareDashboardView()
 	m.dashboardView(6, 120) // render to set scroll offset
-	require.Greater(t, m.dashScrollOffset, 0, "should have scrolled down")
+	require.Greater(t, m.dash.scrollOffset, 0, "should have scrolled down")
 
 	sendKey(m, "g")
-	assert.Equal(t, 0, m.dashCursor)
-	assert.Equal(t, 0, m.dashScrollOffset, "g should reset scroll to top")
+	assert.Equal(t, 0, m.dash.cursor)
+	assert.Equal(t, 0, m.dash.scrollOffset, "g should reset scroll to top")
 }
 
 // TestDashboardDemoDataExpiringReachable loads real demo data (seed 42) and
@@ -1014,7 +1014,7 @@ func TestDashboardDemoDataExpiringReachable(t *testing.T) {
 
 	now := time.Now()
 	require.NoError(t, m.loadDashboardAt(now))
-	m.dashExpanded = map[string]bool{
+	m.dash.expanded = map[string]bool{
 		dashSectionIncidents: true,
 		dashSectionOverdue:   true,
 		dashSectionUpcoming:  true,
@@ -1025,16 +1025,16 @@ func TestDashboardDemoDataExpiringReachable(t *testing.T) {
 
 	t.Logf(
 		"dashboard sections: incidents=%d overdue=%d upcoming=%d projects=%d expiring=%d insurance=%v",
-		len(m.dashboard.OpenIncidents),
-		len(m.dashboard.Overdue),
-		len(m.dashboard.Upcoming),
-		len(m.dashboard.ActiveProjects),
-		len(m.dashboard.ExpiringWarranties),
-		m.dashboard.InsuranceRenewal != nil,
+		len(m.dash.data.OpenIncidents),
+		len(m.dash.data.Overdue),
+		len(m.dash.data.Upcoming),
+		len(m.dash.data.ActiveProjects),
+		len(m.dash.data.ExpiringWarranties),
+		m.dash.data.InsuranceRenewal != nil,
 	)
-	t.Logf("dashNav has %d entries", len(m.dashNav))
+	t.Logf("dashNav has %d entries", len(m.dash.nav))
 
-	if len(m.dashboard.ExpiringWarranties) == 0 && m.dashboard.InsuranceRenewal == nil {
+	if len(m.dash.data.ExpiringWarranties) == 0 && m.dash.data.InsuranceRenewal == nil {
 		t.Skip("no Expiring data in demo seed at current date")
 	}
 
@@ -1047,16 +1047,16 @@ func TestDashboardDemoDataExpiringReachable(t *testing.T) {
 	// cursor couldn't reach the Expiring section when the only row was
 	// the non-navigable insurance renewal, leaving it clipped below the
 	// scroll window.
-	require.Less(t, m.dashCursor, len(m.dashNav))
-	assert.Equal(t, dashSectionExpiring, m.dashNav[m.dashCursor].Section,
+	require.Less(t, m.dash.cursor, len(m.dash.nav))
+	assert.Equal(t, dashSectionExpiring, m.dash.nav[m.dash.cursor].Section,
 		"cursor should reach Expiring section")
 	assert.Contains(t, overlay, dashSectionExpiring,
 		"Expiring section header should be visible")
-	if m.dashboard.InsuranceRenewal != nil {
+	if m.dash.data.InsuranceRenewal != nil {
 		assert.Contains(t, overlay, "Insurance renewal",
 			"insurance renewal row should be visible when cursor is at bottom")
 	}
-	for _, w := range m.dashboard.ExpiringWarranties {
+	for _, w := range m.dash.data.ExpiringWarranties {
 		assert.Contains(t, overlay, w.Appliance.Name,
 			"warranty row should be visible when cursor is at bottom")
 	}
@@ -1072,7 +1072,7 @@ func TestDashboardScrollReachesAllSections(t *testing.T) {
 	m.height = 25 // short terminal — forces scrolling
 	m.showDashboard = true
 
-	m.dashboard = dashboardData{
+	m.dash.data = dashboardData{
 		OpenIncidents: []data.Incident{
 			{Title: "Burst pipe", Severity: data.IncidentSeverityUrgent},
 		},
@@ -1091,13 +1091,13 @@ func TestDashboardScrollReachesAllSections(t *testing.T) {
 			{Appliance: data.Appliance{Name: "Fridge"}, DaysFromNow: 30},
 		},
 	}
-	m.dashboard.OpenIncidents[0].ID = 1
-	m.dashboard.ActiveProjects[0].ID = 100
-	m.dashboard.ExpiringWarranties[0].Appliance.ID = 200
-	m.dashboard.ExpiringWarranties[1].Appliance.ID = 201
+	m.dash.data.OpenIncidents[0].ID = 1
+	m.dash.data.ActiveProjects[0].ID = 100
+	m.dash.data.ExpiringWarranties[0].Appliance.ID = 200
+	m.dash.data.ExpiringWarranties[1].Appliance.ID = 201
 
 	// Expand all sections.
-	m.dashExpanded = map[string]bool{
+	m.dash.expanded = map[string]bool{
 		dashSectionIncidents: true,
 		dashSectionOverdue:   true,
 		dashSectionUpcoming:  true,
@@ -1107,7 +1107,7 @@ func TestDashboardScrollReachesAllSections(t *testing.T) {
 	m.prepareDashboardView()
 
 	// Navigate all the way down with j.
-	for range len(m.dashNav) {
+	for range len(m.dash.nav) {
 		sendKey(m, "j")
 	}
 	overlay := m.buildDashboardOverlay()
@@ -1117,7 +1117,7 @@ func TestDashboardScrollReachesAllSections(t *testing.T) {
 		"all Expiring rows should be visible when cursor is at bottom")
 
 	// Navigate all the way back up with k.
-	for range len(m.dashNav) {
+	for range len(m.dash.nav) {
 		sendKey(m, "k")
 	}
 	overlay = m.buildDashboardOverlay()
@@ -1144,8 +1144,8 @@ func TestDashboardScrollIndicators(t *testing.T) {
 			DaysFromNow: -(i + 1),
 		}
 	}
-	m.dashboard = dashboardData{Overdue: overdue}
-	m.dashExpanded = map[string]bool{dashSectionOverdue: true}
+	m.dash.data = dashboardData{Overdue: overdue}
+	m.dash.expanded = map[string]bool{dashSectionOverdue: true}
 	m.prepareDashboardView()
 
 	// Cursor starts at top: bottom indicator only.

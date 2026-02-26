@@ -114,7 +114,7 @@ func TestDashJumpClearsStaleFlag(t *testing.T) {
 
 	// Find the first non-header nav entry to jump to.
 	jumpIdx := -1
-	for i, entry := range m.dashNav {
+	for i, entry := range m.dash.nav {
 		if !entry.IsHeader {
 			jumpIdx = i
 			break
@@ -123,8 +123,8 @@ func TestDashJumpClearsStaleFlag(t *testing.T) {
 	if jumpIdx < 0 {
 		t.Skip("no data nav entries in demo data")
 	}
-	m.dashCursor = jumpIdx
-	targetTab := m.dashNav[jumpIdx].Tab
+	m.dash.cursor = jumpIdx
+	targetTab := m.dash.nav[jumpIdx].Tab
 	sendKey(m, "enter")
 
 	// The target tab should be fresh after the jump.

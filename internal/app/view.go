@@ -167,8 +167,8 @@ func (m *Model) buildDashboardOverlay() string {
 		m.helpItem(keyShiftD, "close"),
 		m.helpItem(keyQuestion, "help"),
 	}
-	if m.dashFlash != "" {
-		hintParts = append(hintParts, m.styles.DashHouseValue.Render(m.dashFlash))
+	if m.dash.flash != "" {
+		hintParts = append(hintParts, m.styles.DashHouseValue.Render(m.dash.flash))
 	}
 	hints := joinWithSeparator(m.helpSeparator(), hintParts...)
 
@@ -557,10 +557,10 @@ func (m *Model) withStatusMessage(helpLine string) string {
 // withPullProgress appends the model download progress line below the status
 // output when a pull is active.
 func (m *Model) withPullProgress(statusOutput string) string {
-	if m.pullDisplay == "" {
+	if m.pull.display == "" {
 		return statusOutput
 	}
-	progressLine := m.styles.TextDim.Render(m.pullDisplay)
+	progressLine := m.styles.TextDim.Render(m.pull.display)
 	return lipgloss.JoinVertical(lipgloss.Left, statusOutput, progressLine)
 }
 

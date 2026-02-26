@@ -48,13 +48,13 @@ func TestLoadDashboardAtClassifiesOverdueAndUpcoming(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.Len(t, m.dashboard.Overdue, 1)
-	assert.Equal(t, "Replace Filter", m.dashboard.Overdue[0].Item.Name)
-	assert.Equal(t, "Furnace", m.dashboard.Overdue[0].ApplianceName)
-	assert.Less(t, m.dashboard.Overdue[0].DaysFromNow, 0)
+	require.Len(t, m.dash.data.Overdue, 1)
+	assert.Equal(t, "Replace Filter", m.dash.data.Overdue[0].Item.Name)
+	assert.Equal(t, "Furnace", m.dash.data.Overdue[0].ApplianceName)
+	assert.Less(t, m.dash.data.Overdue[0].DaysFromNow, 0)
 
 	// "Clean Coils" is due in ~2 months — not within 30 days, so not upcoming.
-	assert.Empty(t, m.dashboard.Upcoming)
+	assert.Empty(t, m.dash.data.Upcoming)
 }
 
 func TestLoadDashboardAtUpcomingWithin30Days(t *testing.T) {
@@ -74,9 +74,9 @@ func TestLoadDashboardAtUpcomingWithin30Days(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.Len(t, m.dashboard.Upcoming, 1)
-	assert.GreaterOrEqual(t, m.dashboard.Upcoming[0].DaysFromNow, 0)
-	assert.LessOrEqual(t, m.dashboard.Upcoming[0].DaysFromNow, 30)
+	require.Len(t, m.dash.data.Upcoming, 1)
+	assert.GreaterOrEqual(t, m.dash.data.Upcoming[0].DaysFromNow, 0)
+	assert.LessOrEqual(t, m.dash.data.Upcoming[0].DaysFromNow, 30)
 }
 
 func TestLoadDashboardAtActiveProjects(t *testing.T) {
@@ -98,8 +98,8 @@ func TestLoadDashboardAtActiveProjects(t *testing.T) {
 	require.NoError(t, m.loadDashboardAt(now))
 
 	// Only in-progress projects should appear.
-	require.Len(t, m.dashboard.ActiveProjects, 1)
-	assert.Equal(t, "Kitchen Remodel", m.dashboard.ActiveProjects[0].Title)
+	require.Len(t, m.dash.data.ActiveProjects, 1)
+	assert.Equal(t, "Kitchen Remodel", m.dash.data.ActiveProjects[0].Title)
 }
 
 func TestLoadDashboardAtExpiringWarranties(t *testing.T) {
@@ -114,8 +114,8 @@ func TestLoadDashboardAtExpiringWarranties(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.Len(t, m.dashboard.ExpiringWarranties, 1)
-	assert.Equal(t, "Dishwasher", m.dashboard.ExpiringWarranties[0].Appliance.Name)
+	require.Len(t, m.dash.data.ExpiringWarranties, 1)
+	assert.Equal(t, "Dishwasher", m.dash.data.ExpiringWarranties[0].Appliance.Name)
 }
 
 func TestLoadDashboardAtInsuranceRenewal(t *testing.T) {
@@ -129,9 +129,9 @@ func TestLoadDashboardAtInsuranceRenewal(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.NotNil(t, m.dashboard.InsuranceRenewal)
-	assert.Equal(t, "State Farm", m.dashboard.InsuranceRenewal.Carrier)
-	assert.Equal(t, 28, m.dashboard.InsuranceRenewal.DaysFromNow)
+	require.NotNil(t, m.dash.data.InsuranceRenewal)
+	assert.Equal(t, "State Farm", m.dash.data.InsuranceRenewal.Carrier)
+	assert.Equal(t, 28, m.dash.data.InsuranceRenewal.DaysFromNow)
 }
 
 func TestLoadDashboardAtInsuranceRenewalOutOfRange(t *testing.T) {
@@ -146,7 +146,7 @@ func TestLoadDashboardAtInsuranceRenewalOutOfRange(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	assert.Nil(t, m.dashboard.InsuranceRenewal)
+	assert.Nil(t, m.dash.data.InsuranceRenewal)
 }
 
 func TestLoadDashboardAtBuildsNav(t *testing.T) {
@@ -165,10 +165,10 @@ func TestLoadDashboardAtBuildsNav(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	assert.NotEmpty(t, m.dashNav)
+	assert.NotEmpty(t, m.dash.nav)
 	// First entry is the section header for Overdue.
-	assert.True(t, m.dashNav[0].IsHeader)
-	assert.Equal(t, dashSectionOverdue, m.dashNav[0].Section)
+	assert.True(t, m.dash.nav[0].IsHeader)
+	assert.Equal(t, dashSectionOverdue, m.dash.nav[0].Section)
 }
 
 func TestLoadDashboardAtOpenIncidents(t *testing.T) {
@@ -200,14 +200,14 @@ func TestLoadDashboardAtOpenIncidents(t *testing.T) {
 	now := time.Now()
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.Len(t, m.dashboard.OpenIncidents, 2)
+	require.Len(t, m.dash.data.OpenIncidents, 2)
 	// Urgent should come first (severity ordering).
-	assert.Equal(t, "Burst pipe", m.dashboard.OpenIncidents[0].Title)
-	assert.Equal(t, "Cracked window", m.dashboard.OpenIncidents[1].Title)
+	assert.Equal(t, "Burst pipe", m.dash.data.OpenIncidents[0].Title)
+	assert.Equal(t, "Cracked window", m.dash.data.OpenIncidents[1].Title)
 
 	// Nav should include incident entries.
 	hasIncidentNav := false
-	for _, entry := range m.dashNav {
+	for _, entry := range m.dash.nav {
 		if entry.Tab == tabIncidents {
 			hasIncidentNav = true
 			break
@@ -231,9 +231,9 @@ func TestLoadDashboardAtDueDateOverdue(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.Len(t, m.dashboard.Overdue, 1)
-	assert.Equal(t, "Inspect Roof", m.dashboard.Overdue[0].Item.Name)
-	assert.Less(t, m.dashboard.Overdue[0].DaysFromNow, 0)
+	require.Len(t, m.dash.data.Overdue, 1)
+	assert.Equal(t, "Inspect Roof", m.dash.data.Overdue[0].Item.Name)
+	assert.Less(t, m.dash.data.Overdue[0].DaysFromNow, 0)
 }
 
 func TestLoadDashboardAtDueDateUpcoming(t *testing.T) {
@@ -251,9 +251,9 @@ func TestLoadDashboardAtDueDateUpcoming(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.Len(t, m.dashboard.Upcoming, 1)
-	assert.Equal(t, "Replace Batteries", m.dashboard.Upcoming[0].Item.Name)
-	assert.Equal(t, 10, m.dashboard.Upcoming[0].DaysFromNow)
+	require.Len(t, m.dash.data.Upcoming, 1)
+	assert.Equal(t, "Replace Batteries", m.dash.data.Upcoming[0].Item.Name)
+	assert.Equal(t, 10, m.dash.data.Upcoming[0].DaysFromNow)
 }
 
 func TestLoadDashboardAtDueDateFarFuture(t *testing.T) {
@@ -271,8 +271,8 @@ func TestLoadDashboardAtDueDateFarFuture(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	assert.Empty(t, m.dashboard.Overdue)
-	assert.Empty(t, m.dashboard.Upcoming)
+	assert.Empty(t, m.dash.data.Overdue)
+	assert.Empty(t, m.dash.data.Upcoming)
 }
 
 // Step 11: Unscheduled items (no interval, no due date) never appear on dashboard.
@@ -288,8 +288,8 @@ func TestLoadDashboardAtExcludesUnscheduledItems(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	assert.Empty(t, m.dashboard.Overdue)
-	assert.Empty(t, m.dashboard.Upcoming)
+	assert.Empty(t, m.dash.data.Overdue)
+	assert.Empty(t, m.dash.data.Upcoming)
 }
 
 func TestLoadDashboardExcludesAppliancesWithoutWarranty(t *testing.T) {
@@ -308,6 +308,6 @@ func TestLoadDashboardExcludesAppliancesWithoutWarranty(t *testing.T) {
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, m.loadDashboardAt(now))
 
-	require.Len(t, m.dashboard.ExpiringWarranties, 1)
-	assert.Equal(t, "Fridge", m.dashboard.ExpiringWarranties[0].Appliance.Name)
+	require.Len(t, m.dash.data.ExpiringWarranties, 1)
+	assert.Equal(t, "Fridge", m.dash.data.ExpiringWarranties[0].Appliance.Name)
 }

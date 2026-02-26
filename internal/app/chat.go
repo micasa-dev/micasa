@@ -241,8 +241,8 @@ func (m *Model) cancelChatOperations() {
 			m.refreshChatViewport()
 		}
 	}
-	if m.pulling {
-		wasChatPull := m.pullFromChat
+	if m.pull.active {
+		wasChatPull := m.pull.fromChat
 		m.cancelPull()
 		if wasChatPull && m.chat.Visible {
 			m.chat.Messages = append(m.chat.Messages, chatMessage{
@@ -585,7 +585,7 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 	if m.llmClient == nil {
 		return nil
 	}
-	if m.pulling {
+	if m.pull.active {
 		m.chat.Messages = append(m.chat.Messages, chatMessage{
 			Role: roleError, Content: "a model pull is already in progress",
 		})
@@ -593,8 +593,8 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 		return nil
 	}
 
-	m.pullFromChat = true
-	m.pullDisplay = "checking " + name + symEllipsis
+	m.pull.fromChat = true
+	m.pull.display = "checking " + name + symEllipsis
 	m.resizeTables()
 
 	client := m.llmClient

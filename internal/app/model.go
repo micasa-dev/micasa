@@ -140,6 +140,27 @@ var (
 	helpGotoBottom = key.NewBinding(key.WithKeys(keyShiftG))
 )
 
+// pullState groups fields for an in-progress Ollama model pull.
+type pullState struct {
+	active   bool               // true while a pull is in progress
+	fromChat bool               // true when initiated from chat /model
+	display  string             // status bar progress text
+	peak     float64            // high-water mark for progress bar
+	cancel   context.CancelFunc // cancel in-flight pull
+	progress progress.Model     // bubbles progress bar widget
+}
+
+// dashState groups dashboard overlay fields.
+type dashState struct {
+	data         dashboardData
+	cursor       int
+	nav          []dashNavEntry
+	expanded     map[string]bool
+	scrollOffset int
+	totalLines   int
+	flash        string
+}
+
 type Model struct {
 	store                  *data.Store
 	dbPath                 string
@@ -153,12 +174,7 @@ type Model struct {
 	extractors             []extract.Extractor // configured extractors
 	extractionReady        bool                // true once extraction model confirmed available
 	pendingExtractionDocID *uint               // doc saved without LLM; extract after pull
-	pulling                bool                // true while a model pull is in progress
-	pullFromChat           bool                // true when pull was initiated from chat /model
-	pullDisplay            string              // status bar progress text
-	pullPeak               float64             // high-water mark for progress bar
-	pullCancel             context.CancelFunc  // cancel in-flight pull
-	pullProgress           progress.Model      // bubbles progress bar widget
+	pull                   pullState
 	extraction             *extractionLogState // non-nil when extraction overlay is active
 	chat                   *chatState          // non-nil when chat overlay is open
 	styles                 *Styles
@@ -175,13 +191,7 @@ type Model struct {
 	notePreviewTitle       string
 	calendar               *calendarState
 	columnFinder           *columnFinderState
-	dashboard              dashboardData
-	dashCursor             int
-	dashNav                []dashNavEntry
-	dashExpanded           map[string]bool
-	dashScrollOffset       int
-	dashTotalLines         int
-	dashFlash              string
+	dash                   dashState
 	hasHouse               bool
 	house                  data.HouseProfile
 	mode                   Mode
@@ -249,7 +259,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		extractionEnabled:  options.ExtractionConfig.Enabled,
 		extractionThinking: options.ExtractionConfig.Thinking,
 		extractors:         options.ExtractionConfig.Extractors,
-		pullProgress:       pprog,
+		pull:               pullState{progress: pprog},
 		styles:             appStyles,
 		tabs:               NewTabs(),
 		active:             0,
@@ -560,7 +570,7 @@ func (m *Model) handleConfirmDiscard(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 // widgets. Keys like D, b/f, ?, q fall through to the normal handlers.
 func (m *Model) handleDashboardKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 	if key.String() != keyEnter {
-		m.dashFlash = ""
+		m.dash.flash = ""
 	}
 	switch key.String() {
 	case keyJ, keyDown:
@@ -1462,7 +1472,7 @@ func (m *Model) reloadIfStale(tab *Tab) error {
 // dashboardVisible reports whether the dashboard overlay should actually
 // render. The preference may be on but there's nothing to show.
 func (m *Model) dashboardVisible() bool {
-	return m.showDashboard && !m.dashboard.empty()
+	return m.showDashboard && !m.dash.data.empty()
 }
 
 func (m *Model) toggleDashboard() {
@@ -1820,7 +1830,7 @@ func (m *Model) statusLines() int {
 	if m.status.Text != "" {
 		lines++
 	}
-	if m.pullDisplay != "" {
+	if m.pull.display != "" {
 		lines++
 	}
 	return lines
@@ -1872,7 +1882,7 @@ func (m *Model) checkExtractionModelCmd() tea.Cmd {
 // completion actions depend on who started the pull.
 func (m *Model) handlePullProgress(msg pullProgressMsg) tea.Cmd {
 	if msg.Err != nil {
-		fromChat := m.pullFromChat
+		fromChat := m.pull.fromChat
 		m.clearPullState()
 		if fromChat && m.chat != nil {
 			m.chat.Messages = append(m.chat.Messages, chatMessage{
@@ -1887,7 +1897,7 @@ func (m *Model) handlePullProgress(msg pullProgressMsg) tea.Cmd {
 		return nil
 	}
 	if msg.Done {
-		fromChat := m.pullFromChat
+		fromChat := m.pull.fromChat
 		m.clearPullState()
 		m.status = statusMsg{}
 		// Mark extraction model as ready if it matches.
@@ -1927,11 +1937,11 @@ func (m *Model) handlePullProgress(msg pullProgressMsg) tea.Cmd {
 		return nil
 	}
 
-	m.pulling = true
+	m.pull.active = true
 	if msg.PullState != nil {
-		m.pullCancel = msg.PullState.Cancel
+		m.pull.cancel = msg.PullState.Cancel
 	}
-	m.pullDisplay = m.formatPullProgress(msg)
+	m.pull.display = m.formatPullProgress(msg)
 	m.resizeTables()
 
 	ps := msg.PullState
@@ -1948,17 +1958,17 @@ func (m *Model) formatPullProgress(msg pullProgressMsg) string {
 		return label
 	}
 	pct := msg.Percent
-	if pct > m.pullPeak {
-		m.pullPeak = pct
+	if pct > m.pull.peak {
+		m.pull.peak = pct
 	} else {
-		pct = m.pullPeak
+		pct = m.pull.peak
 	}
 	barW := m.width/3 - lipgloss.Width(label) - 2
 	if barW < 15 {
 		barW = 15
 	}
-	m.pullProgress.Width = barW
-	return label + " " + m.pullProgress.ViewAs(pct)
+	m.pull.progress.Width = barW
+	return label + " " + m.pull.progress.ViewAs(pct)
 }
 
 // extractionLLMClient returns the LLM client configured for extraction,
@@ -2011,7 +2021,7 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 		// If LLM is configured but model not ready, queue for after pull.
 		if m.extractionEnabled && m.llmClient != nil && !m.extractionReady {
 			m.pendingExtractionDocID = &docID
-			if !m.pulling {
+			if !m.pull.active {
 				m.setStatusInfo("checking extraction model" + symEllipsis)
 				return m.checkExtractionModelCmd()
 			}
@@ -2030,18 +2040,15 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 
 // cancelPull cancels any in-flight model pull.
 func (m *Model) cancelPull() {
-	if m.pullCancel != nil {
-		m.pullCancel()
+	if m.pull.cancel != nil {
+		m.pull.cancel()
 	}
 	m.clearPullState()
 }
 
 func (m *Model) clearPullState() {
-	m.pulling = false
-	m.pullFromChat = false
-	m.pullDisplay = ""
-	m.pullPeak = 0
-	m.pullCancel = nil
+	prog := m.pull.progress // preserve the progress bar widget
+	m.pull = pullState{progress: prog}
 }
 
 func (m *Model) saveForm() tea.Cmd {

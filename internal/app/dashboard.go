@@ -323,10 +323,10 @@ func (m *Model) loadDashboardAt(now time.Time) error {
 		}
 	}
 
-	m.dashboard = d
-	m.dashScrollOffset = 0
-	if m.dashExpanded == nil {
-		m.dashExpanded = map[string]bool{
+	m.dash.data = d
+	m.dash.scrollOffset = 0
+	if m.dash.expanded == nil {
+		m.dash.expanded = map[string]bool{
 			dashSectionIncidents: true,
 		}
 	}
@@ -347,9 +347,9 @@ func (m *Model) buildDashNav() {
 	}
 	var groups []sectionData
 
-	if n := len(m.dashboard.OpenIncidents); n > 0 {
+	if n := len(m.dash.data.OpenIncidents); n > 0 {
 		entries := make([]dashNavEntry, 0, n)
-		for _, inc := range m.dashboard.OpenIncidents {
+		for _, inc := range m.dash.data.OpenIncidents {
 			entries = append(entries, dashNavEntry{
 				Tab: tabIncidents, ID: inc.ID,
 				Section: dashSectionIncidents,
@@ -357,9 +357,9 @@ func (m *Model) buildDashNav() {
 		}
 		groups = append(groups, sectionData{dashSectionIncidents, entries})
 	}
-	if n := len(m.dashboard.Overdue); n > 0 {
+	if n := len(m.dash.data.Overdue); n > 0 {
 		entries := make([]dashNavEntry, 0, n)
-		for _, e := range m.dashboard.Overdue {
+		for _, e := range m.dash.data.Overdue {
 			entries = append(entries, dashNavEntry{
 				Tab: tabMaintenance, ID: e.Item.ID,
 				Section: dashSectionOverdue,
@@ -367,9 +367,9 @@ func (m *Model) buildDashNav() {
 		}
 		groups = append(groups, sectionData{dashSectionOverdue, entries})
 	}
-	if n := len(m.dashboard.Upcoming); n > 0 {
+	if n := len(m.dash.data.Upcoming); n > 0 {
 		entries := make([]dashNavEntry, 0, n)
-		for _, e := range m.dashboard.Upcoming {
+		for _, e := range m.dash.data.Upcoming {
 			entries = append(entries, dashNavEntry{
 				Tab: tabMaintenance, ID: e.Item.ID,
 				Section: dashSectionUpcoming,
@@ -377,9 +377,9 @@ func (m *Model) buildDashNav() {
 		}
 		groups = append(groups, sectionData{dashSectionUpcoming, entries})
 	}
-	if n := len(m.dashboard.ActiveProjects); n > 0 {
+	if n := len(m.dash.data.ActiveProjects); n > 0 {
 		entries := make([]dashNavEntry, 0, n)
-		for _, p := range m.dashboard.ActiveProjects {
+		for _, p := range m.dash.data.ActiveProjects {
 			entries = append(entries, dashNavEntry{
 				Tab: tabProjects, ID: p.ID,
 				Section: dashSectionProjects,
@@ -389,15 +389,15 @@ func (m *Model) buildDashNav() {
 	}
 	// Include the Expiring section when there are warranties OR an insurance
 	// renewal. dashExpiringRows() renders both, so the nav must match.
-	if n := len(m.dashboard.ExpiringWarranties); n > 0 || m.dashboard.InsuranceRenewal != nil {
+	if n := len(m.dash.data.ExpiringWarranties); n > 0 || m.dash.data.InsuranceRenewal != nil {
 		entries := make([]dashNavEntry, 0, n+1)
-		for _, w := range m.dashboard.ExpiringWarranties {
+		for _, w := range m.dash.data.ExpiringWarranties {
 			entries = append(entries, dashNavEntry{
 				Tab: tabAppliances, ID: w.Appliance.ID,
 				Section: dashSectionExpiring,
 			})
 		}
-		if m.dashboard.InsuranceRenewal != nil {
+		if m.dash.data.InsuranceRenewal != nil {
 			entries = append(entries, dashNavEntry{
 				Section:  dashSectionExpiring,
 				InfoOnly: true,
@@ -411,19 +411,19 @@ func (m *Model) buildDashNav() {
 		nav = append(nav, dashNavEntry{
 			Section: g.title, IsHeader: true,
 		})
-		if m.dashExpanded[g.title] {
+		if m.dash.expanded[g.title] {
 			nav = append(nav, g.entries...)
 		}
 	}
 
-	m.dashNav = nav
-	if m.dashCursor >= len(nav) {
-		m.dashCursor = max(0, len(nav)-1)
+	m.dash.nav = nav
+	if m.dash.cursor >= len(nav) {
+		m.dash.cursor = max(0, len(nav)-1)
 	}
 }
 
 func (m *Model) dashNavCount() int {
-	return len(m.dashNav)
+	return len(m.dash.nav)
 }
 
 // ---------------------------------------------------------------------------
@@ -512,19 +512,19 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 
 	// Find which section the cursor belongs to so we can dim the rest.
 	cursorSection := ""
-	if m.dashCursor >= 0 && m.dashCursor < len(m.dashNav) {
-		cursorSection = m.dashNav[m.dashCursor].Section
+	if m.dash.cursor >= 0 && m.dash.cursor < len(m.dash.nav) {
+		cursorSection = m.dash.nav[m.dash.cursor].Section
 	}
 
 	for i, s := range sections {
-		expanded := m.dashExpanded[s.title]
+		expanded := m.dash.expanded[s.title]
 
 		if i > 0 {
 			lines = append(lines, "") // blank between sections
 		}
 
 		// Section header is always a nav stop. Dim if cursor is in another section.
-		isHeaderCursor := navIdx == m.dashCursor
+		isHeaderCursor := navIdx == m.dash.cursor
 		dimmed := cursorSection != "" && cursorSection != s.title
 		hdr := m.dashSectionHeader(s.title, len(s.rows), dimmed)
 		if isHeaderCursor {
@@ -538,7 +538,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		}
 
 		// Expanded: render data rows below the header.
-		localCursor := m.dashCursor - navIdx
+		localCursor := m.dash.cursor - navIdx
 		tbl := renderMiniTable(
 			s.headers, s.rows, colGap, maxWidth, localCursor, sel, m.styles.DashLabel,
 		)
@@ -562,7 +562,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 	// Reserve lines for scroll indicators (▲/▼) so content is never clipped
 	// without feedback. Iterate to convergence since reserving indicator
 	// lines can shift whether an indicator is needed.
-	m.dashTotalLines = len(lines)
+	m.dash.totalLines = len(lines)
 	if budget > 0 && len(lines) > budget {
 		indicatorLines := 0
 		for range 3 {
@@ -571,12 +571,12 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 				viewportH = 1
 			}
 			m.scrollDashTo(cursorLine, viewportH, len(lines))
-			end := m.dashScrollOffset + viewportH
+			end := m.dash.scrollOffset + viewportH
 			if end > len(lines) {
 				end = len(lines)
 			}
 			needed := 0
-			if m.dashScrollOffset > 0 {
+			if m.dash.scrollOffset > 0 {
 				needed++
 			}
 			if end < len(lines) {
@@ -593,16 +593,16 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 			viewportH = 1
 		}
 
-		end := m.dashScrollOffset + viewportH
+		end := m.dash.scrollOffset + viewportH
 		if end > len(lines) {
 			end = len(lines)
 		}
 
-		visible := lines[m.dashScrollOffset:end]
+		visible := lines[m.dash.scrollOffset:end]
 		var result []string
-		if m.dashScrollOffset > 0 {
+		if m.dash.scrollOffset > 0 {
 			result = append(result, m.styles.DashLabel.Render(
-				fmt.Sprintf("  %s %d more", symTriUp, m.dashScrollOffset)))
+				fmt.Sprintf("  %s %d more", symTriUp, m.dash.scrollOffset)))
 		}
 		result = append(result, visible...)
 		if end < len(lines) {
@@ -611,7 +611,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		}
 		lines = result
 	} else {
-		m.dashScrollOffset = 0
+		m.dash.scrollOffset = 0
 	}
 
 	return strings.Join(lines, "\n")
@@ -649,8 +649,8 @@ func (m *Model) dashSectionHeader(
 // Duration cells use the section's accent color: warning for overdue,
 // upcoming style for due-soon.
 func (m *Model) dashMaintSplitRows() (overdue, upcoming []dashRow) {
-	overdue = m.maintUrgencyRows(m.dashboard.Overdue, m.styles.DashOverdue)
-	upcoming = m.maintUrgencyRows(m.dashboard.Upcoming, m.styles.DashUpcoming)
+	overdue = m.maintUrgencyRows(m.dash.data.Overdue, m.styles.DashOverdue)
+	upcoming = m.maintUrgencyRows(m.dash.data.Upcoming, m.styles.DashUpcoming)
 	return overdue, upcoming
 }
 
@@ -674,7 +674,7 @@ func (m *Model) maintUrgencyRows(
 }
 
 func (m *Model) dashProjectRows() []dashRow {
-	d := m.dashboard
+	d := m.dash.data
 	now := time.Now()
 	rows := make([]dashRow, 0, len(d.ActiveProjects))
 	for _, p := range d.ActiveProjects {
@@ -694,7 +694,7 @@ func (m *Model) dashProjectRows() []dashRow {
 }
 
 func (m *Model) dashIncidentRows() []dashRow {
-	d := m.dashboard
+	d := m.dash.data
 	now := time.Now()
 	rows := make([]dashRow, 0, len(d.OpenIncidents))
 	for _, inc := range d.OpenIncidents {
@@ -717,7 +717,7 @@ func (m *Model) dashIncidentRows() []dashRow {
 }
 
 func (m *Model) dashExpiringRows() []dashRow {
-	d := m.dashboard
+	d := m.dash.data
 	var rows []dashRow
 	// WarrantyExpiry is guaranteed non-nil here: ListExpiringWarranties uses
 	// WHERE warranty_expiry IS NOT NULL, and loadDashboardAt skips nil entries
@@ -768,22 +768,22 @@ func (m *Model) dashDown() {
 	if n == 0 {
 		return
 	}
-	m.dashCursor++
-	if m.dashCursor >= n {
-		m.dashCursor = n - 1
+	m.dash.cursor++
+	if m.dash.cursor >= n {
+		m.dash.cursor = n - 1
 	}
 }
 
 func (m *Model) dashUp() {
-	m.dashCursor--
-	if m.dashCursor < 0 {
-		m.dashCursor = 0
+	m.dash.cursor--
+	if m.dash.cursor < 0 {
+		m.dash.cursor = 0
 	}
 }
 
 func (m *Model) dashTop() {
-	m.dashCursor = 0
-	m.dashScrollOffset = 0
+	m.dash.cursor = 0
+	m.dash.scrollOffset = 0
 }
 
 func (m *Model) dashBottom() {
@@ -791,15 +791,15 @@ func (m *Model) dashBottom() {
 	if n == 0 {
 		return
 	}
-	m.dashCursor = n - 1
+	m.dash.cursor = n - 1
 }
 
 // dashNextSection jumps the cursor to the next section header.
 func (m *Model) dashNextSection() {
-	n := len(m.dashNav)
-	for i := m.dashCursor + 1; i < n; i++ {
-		if m.dashNav[i].IsHeader {
-			m.dashCursor = i
+	n := len(m.dash.nav)
+	for i := m.dash.cursor + 1; i < n; i++ {
+		if m.dash.nav[i].IsHeader {
+			m.dash.cursor = i
 			return
 		}
 	}
@@ -807,25 +807,25 @@ func (m *Model) dashNextSection() {
 
 // dashPrevSection jumps the cursor to the previous section header.
 func (m *Model) dashPrevSection() {
-	for i := m.dashCursor - 1; i >= 0; i-- {
-		if m.dashNav[i].IsHeader {
-			m.dashCursor = i
+	for i := m.dash.cursor - 1; i >= 0; i-- {
+		if m.dash.nav[i].IsHeader {
+			m.dash.cursor = i
 			return
 		}
 	}
 }
 
 func (m *Model) dashJump() {
-	nav := m.dashNav
-	if m.dashCursor < 0 || m.dashCursor >= len(nav) {
+	nav := m.dash.nav
+	if m.dash.cursor < 0 || m.dash.cursor >= len(nav) {
 		return
 	}
-	entry := nav[m.dashCursor]
+	entry := nav[m.dash.cursor]
 	if entry.IsHeader {
 		return
 	}
 	if entry.InfoOnly {
-		m.dashFlash = "house data, not in any tab"
+		m.dash.flash = "house data, not in any tab"
 		return
 	}
 	m.showDashboard = false
@@ -836,19 +836,19 @@ func (m *Model) dashJump() {
 }
 
 func (m *Model) dashToggleSection(section string) {
-	if m.dashExpanded == nil {
-		m.dashExpanded = make(map[string]bool)
+	if m.dash.expanded == nil {
+		m.dash.expanded = make(map[string]bool)
 	}
-	m.dashExpanded[section] = !m.dashExpanded[section]
+	m.dash.expanded[section] = !m.dash.expanded[section]
 }
 
 // dashToggleCurrent toggles expand/collapse for the section the cursor is in.
 func (m *Model) dashToggleCurrent() {
-	nav := m.dashNav
-	if m.dashCursor < 0 || m.dashCursor >= len(nav) {
+	nav := m.dash.nav
+	if m.dash.cursor < 0 || m.dash.cursor >= len(nav) {
 		return
 	}
-	section := nav[m.dashCursor].Section
+	section := nav[m.dash.cursor].Section
 	if section == "" {
 		return
 	}
@@ -858,19 +858,19 @@ func (m *Model) dashToggleCurrent() {
 // dashToggleAll expands all sections if any are collapsed, otherwise
 // collapses all.
 func (m *Model) dashToggleAll() {
-	if m.dashExpanded == nil {
-		m.dashExpanded = make(map[string]bool)
+	if m.dash.expanded == nil {
+		m.dash.expanded = make(map[string]bool)
 	}
 	allExpanded := true
-	for _, entry := range m.dashNav {
-		if entry.IsHeader && !m.dashExpanded[entry.Section] {
+	for _, entry := range m.dash.nav {
+		if entry.IsHeader && !m.dash.expanded[entry.Section] {
 			allExpanded = false
 			break
 		}
 	}
-	for _, entry := range m.dashNav {
+	for _, entry := range m.dash.nav {
 		if entry.IsHeader {
-			m.dashExpanded[entry.Section] = !allExpanded
+			m.dash.expanded[entry.Section] = !allExpanded
 		}
 	}
 }
@@ -955,19 +955,19 @@ func capSlice[T any](s []T, maxLen int) []T {
 // scrollDashTo adjusts dashScrollOffset so that targetLine is visible within
 // a window of viewportH lines out of totalLines.
 func (m *Model) scrollDashTo(targetLine, viewportH, totalLines int) {
-	if targetLine < m.dashScrollOffset {
-		m.dashScrollOffset = targetLine
-	} else if targetLine >= m.dashScrollOffset+viewportH {
-		m.dashScrollOffset = targetLine - viewportH + 1
+	if targetLine < m.dash.scrollOffset {
+		m.dash.scrollOffset = targetLine
+	} else if targetLine >= m.dash.scrollOffset+viewportH {
+		m.dash.scrollOffset = targetLine - viewportH + 1
 	}
 	maxOffset := totalLines - viewportH
 	if maxOffset < 0 {
 		maxOffset = 0
 	}
-	if m.dashScrollOffset > maxOffset {
-		m.dashScrollOffset = maxOffset
+	if m.dash.scrollOffset > maxOffset {
+		m.dash.scrollOffset = maxOffset
 	}
-	if m.dashScrollOffset < 0 {
-		m.dashScrollOffset = 0
+	if m.dash.scrollOffset < 0 {
+		m.dash.scrollOffset = 0
 	}
 }
