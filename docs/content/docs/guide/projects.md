@@ -28,8 +28,8 @@ The `Title` field is required. Everything else is optional or has a default.
 | `Status` | select | Lifecycle stage | See [status lifecycle](#status-lifecycle) below |
 | `Budget` | money | Planned cost | Dollar amount (e.g., 1250.00) |
 | `Actual` | money | Real cost | Over-budget is highlighted on the dashboard |
-| `Start` | date | Start date | YYYY-MM-DD |
-| `End` | date | End date | YYYY-MM-DD |
+| `Start` | date | Start date | [Date input]({{< ref "/docs/using/date-input" >}}) |
+| `End` | date | End date | [Date input]({{< ref "/docs/using/date-input" >}}) |
 | `Quotes` | drill | Number of linked quotes | Press `enter` to view linked quotes |
 | `Docs` | drill | Number of linked documents | Press `enter` to view linked documents |
 
