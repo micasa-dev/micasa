@@ -10,7 +10,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/cpcloud/micasa/internal/data"
-	"github.com/dustin/go-humanize"
 )
 
 func (m *Model) houseView() string {
@@ -42,7 +41,7 @@ func (m *Model) houseCollapsed() string {
 		styledPart(val, m.house.Nickname),
 		styledPart(hint, formatCityState(m.house)),
 		styledPart(hint, bedBathLabel(m.house)),
-		styledPart(hint, sqftLabel(m.house.SquareFeet)),
+		styledPart(hint, data.FormatArea(m.house.SquareFeet, m.unitSystem)),
 		styledPart(hint, formatInt(m.house.YearBuilt)),
 	)
 	return joinInline(title, badge) + "  " + stats
@@ -63,8 +62,8 @@ func (m *Model) houseExpanded() string {
 
 	structNums := joinStyledParts(sep,
 		styledPart(val, formatInt(m.house.YearBuilt)),
-		styledPart(val, sqftLabel(m.house.SquareFeet)),
-		styledPart(val, lotLabel(m.house.LotSquareFeet)),
+		styledPart(val, data.FormatArea(m.house.SquareFeet, m.unitSystem)),
+		styledPart(val, data.FormatLotArea(m.house.LotSquareFeet, m.unitSystem)),
 		styledPart(val, bedBathLabel(m.house)),
 	)
 	structMaterials := joinStyledParts(sep,
@@ -198,20 +197,6 @@ func bedBathLabel(profile data.HouseProfile) string {
 		return ""
 	}
 	return strings.Join(parts, " / ")
-}
-
-func sqftLabel(sqft int) string {
-	if sqft == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%s ft%s", humanize.Comma(int64(sqft)), symSuperTwo)
-}
-
-func lotLabel(sqft int) string {
-	if sqft == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%s ft%s lot", humanize.Comma(int64(sqft)), symSuperTwo)
 }
 
 func formatInt(value int) string {

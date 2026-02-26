@@ -32,6 +32,7 @@ type ChatInput struct {
 const (
 	settingLLMModel          = "llm.model"
 	settingShowDashboard     = "ui.show_dashboard"
+	settingUnitSystem        = "ui.unit_system"
 	settingTesseractHintSeen = "hint.tesseract_shown"
 
 	// chatHistoryMax is the maximum number of chat inputs retained.
@@ -89,6 +90,24 @@ func (s *Store) PutShowDashboard(show bool) error {
 		val = "true"
 	}
 	return s.PutSetting(settingShowDashboard, val)
+}
+
+// GetUnitSystem returns the persisted unit system preference, falling
+// back to locale-based detection if no preference has been saved.
+func (s *Store) GetUnitSystem() (UnitSystem, error) {
+	val, err := s.GetSetting(settingUnitSystem)
+	if err != nil {
+		return DefaultUnitSystem(), err
+	}
+	if val == "" {
+		return DefaultUnitSystem(), nil
+	}
+	return ParseUnitSystem(val), nil
+}
+
+// PutUnitSystem persists the user's unit system preference.
+func (s *Store) PutUnitSystem(u UnitSystem) error {
+	return s.PutSetting(settingUnitSystem, u.String())
 }
 
 // TesseractHintSeen returns whether the one-time "install tesseract" hint

@@ -260,7 +260,8 @@ func TestHouseFormValues(t *testing.T) {
 		Bedrooms:  3,
 		Bathrooms: 2.5,
 	}
-	got := houseFormValues(profile)
+	m := newTestModel()
+	got := m.houseFormValues(profile)
 	assert.Equal(t, "Home", got.Nickname)
 	assert.Equal(t, "1995", got.YearBuilt)
 	assert.Equal(t, "3", got.Bedrooms)

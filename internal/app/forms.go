@@ -168,7 +168,7 @@ type applianceFormData struct {
 func (m *Model) startHouseForm() {
 	values := &houseFormData{}
 	if m.hasHouse {
-		values = houseFormValues(m.house)
+		values = m.houseFormValues(m.house)
 	}
 
 	basicsGroup := huh.NewGroup(
@@ -197,15 +197,15 @@ func (m *Model) startHouseForm() {
 				Value(&values.YearBuilt).
 				Validate(optionalInt("year built")),
 			huh.NewInput().
-				Title("Square feet").
-				Placeholder("1820").
+				Title(data.AreaFormTitle(m.unitSystem)).
+				Placeholder(data.AreaPlaceholder(m.unitSystem)).
 				Value(&values.SquareFeet).
-				Validate(optionalInt("square feet")),
+				Validate(optionalInt(data.AreaFormTitle(m.unitSystem))),
 			huh.NewInput().
-				Title("Lot square feet").
-				Placeholder("7000").
+				Title(data.LotAreaFormTitle(m.unitSystem)).
+				Placeholder(data.LotAreaPlaceholder(m.unitSystem)).
 				Value(&values.LotSquareFeet).
-				Validate(optionalInt("lot square feet")),
+				Validate(optionalInt(data.LotAreaFormTitle(m.unitSystem))),
 			huh.NewInput().
 				Title("Bedrooms").
 				Placeholder("3").
@@ -1801,14 +1801,16 @@ func (m *Model) submitHouseForm() error {
 	if err != nil {
 		return data.FieldError("Year Built", err)
 	}
-	sqft, err := data.ParseOptionalInt(values.SquareFeet)
+	sqftDisplay, err := data.ParseOptionalInt(values.SquareFeet)
 	if err != nil {
-		return data.FieldError("Square Feet", err)
+		return data.FieldError(data.AreaFormTitle(m.unitSystem), err)
 	}
-	lotSqft, err := data.ParseOptionalInt(values.LotSquareFeet)
+	sqft := data.DisplayIntToSqFt(sqftDisplay, m.unitSystem)
+	lotDisplay, err := data.ParseOptionalInt(values.LotSquareFeet)
 	if err != nil {
-		return data.FieldError("Lot Size", err)
+		return data.FieldError(data.LotAreaFormTitle(m.unitSystem), err)
 	}
+	lotSqft := data.DisplayIntToSqFt(lotDisplay, m.unitSystem)
 	bedrooms, err := data.ParseOptionalInt(values.Bedrooms)
 	if err != nil {
 		return data.FieldError("Bedrooms", err)
@@ -2276,7 +2278,7 @@ func applianceFormValues(item data.Appliance) *applianceFormData {
 	}
 }
 
-func houseFormValues(profile data.HouseProfile) *houseFormData {
+func (m *Model) houseFormValues(profile data.HouseProfile) *houseFormData {
 	return &houseFormData{
 		Nickname:         profile.Nickname,
 		AddressLine1:     profile.AddressLine1,
@@ -2285,8 +2287,8 @@ func houseFormValues(profile data.HouseProfile) *houseFormData {
 		State:            profile.State,
 		PostalCode:       profile.PostalCode,
 		YearBuilt:        intToString(profile.YearBuilt),
-		SquareFeet:       intToString(profile.SquareFeet),
-		LotSquareFeet:    intToString(profile.LotSquareFeet),
+		SquareFeet:       intToString(data.SqFtToDisplayInt(profile.SquareFeet, m.unitSystem)),
+		LotSquareFeet:    intToString(data.SqFtToDisplayInt(profile.LotSquareFeet, m.unitSystem)),
 		Bedrooms:         intToString(profile.Bedrooms),
 		Bathrooms:        formatFloat(profile.Bathrooms),
 		FoundationType:   profile.FoundationType,

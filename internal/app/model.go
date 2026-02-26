@@ -92,6 +92,7 @@ const (
 	keyShiftL = "L"
 	keyShiftN = "N"
 	keyShiftS = "S"
+	keyShiftU = "U"
 
 	// Symbols.
 	keyBang     = "!"
@@ -196,6 +197,7 @@ type Model struct {
 	calendar               *calendarState
 	columnFinder           *columnFinderState
 	dash                   dashState
+	unitSystem             data.UnitSystem
 	hasHouse               bool
 	house                  data.HouseProfile
 	mode                   Mode
@@ -270,6 +272,8 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		showHouse:          false,
 		mode:               modeNormal,
 	}
+	// Best-effort: fall back to locale detection if setting unreadable.
+	model.unitSystem, _ = store.GetUnitSystem()
 	if err := model.loadLookups(); err != nil {
 		return nil, err
 	}
@@ -741,6 +745,9 @@ func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 			clearSorts(tab)
 			applySorts(tab)
 		}
+		return nil, true
+	case keyShiftU:
+		m.toggleUnitSystem()
 		return nil, true
 	case keyT:
 		if m.toggleSettledFilter() {
@@ -1473,6 +1480,18 @@ func (m *Model) reloadIfStale(tab *Tab) error {
 // render. The preference may be on but there's nothing to show.
 func (m *Model) dashboardVisible() bool {
 	return m.showDashboard && !m.dash.data.empty()
+}
+
+func (m *Model) toggleUnitSystem() {
+	if m.unitSystem == data.UnitsImperial {
+		m.unitSystem = data.UnitsMetric
+	} else {
+		m.unitSystem = data.UnitsImperial
+	}
+	m.setStatusInfo("units: " + m.unitSystem.String())
+	if m.store != nil {
+		m.surfaceError(m.store.PutUnitSystem(m.unitSystem))
+	}
 }
 
 func (m *Model) toggleDashboard() {

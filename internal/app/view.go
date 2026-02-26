@@ -741,6 +741,7 @@ func (m *Model) helpContent() string {
 				{symReturn, drilldownArrow + " drill / " + linkArrow + " follow / preview"},
 				{keyO, "Open document"},
 				{keyTab, "House profile"},
+				{keyShiftU, "Toggle units"},
 				{keyShiftD, "Summary"},
 				{keyAt, "Ask LLM"},
 				{keyI, "Edit mode"},
