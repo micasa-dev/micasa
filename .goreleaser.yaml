@@ -44,6 +44,9 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
+    sbom: false
+    flags:
+      - "--provenance=false"
     labels:
       "org.opencontainers.image.title": micasa
       "org.opencontainers.image.description": Terminal UI for managing home projects and maintenance
@@ -52,6 +55,9 @@ dockers_v2:
       "org.opencontainers.image.documentation": https://micasa.dev/docs/
       "org.opencontainers.image.licenses": Apache-2.0
       "org.opencontainers.image.version": "{{ .Version }}"
+
+sboms:
+  - artifacts: archive
 
 release:
   mode: keep-existing
