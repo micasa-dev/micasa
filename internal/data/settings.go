@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cpcloud/micasa/internal/locale"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -98,10 +99,10 @@ func (s *Store) PutShowDashboard(show bool) error {
 func (s *Store) GetUnitSystem() (UnitSystem, error) {
 	val, err := s.GetSetting(settingUnitSystem)
 	if err != nil {
-		return DefaultUnitSystem(), err
+		return UnitSystemForLocale(locale.DetectLocale()), err
 	}
 	if val == "" {
-		return DefaultUnitSystem(), nil
+		return UnitSystemForLocale(locale.DetectLocale()), nil
 	}
 	return ParseUnitSystem(val), nil
 }

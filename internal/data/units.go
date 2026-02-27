@@ -5,7 +5,6 @@ package data
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -153,28 +152,16 @@ var imperialRegions = map[string]bool{
 	"MM": true,
 }
 
-// DefaultUnitSystem detects the user's preferred unit system from locale
-// environment variables. Returns metric unless the region is US, LR, or MM.
-func DefaultUnitSystem() UnitSystem {
-	locale := os.Getenv("LC_ALL")
-	if locale == "" {
-		locale = os.Getenv("LANG")
-	}
-	if locale == "" {
-		return UnitsImperial
-	}
-
-	// Strip encoding suffix (e.g. ".UTF-8").
-	if idx := strings.IndexByte(locale, '.'); idx >= 0 {
-		locale = locale[:idx]
-	}
-
-	tag := language.Make(locale)
+// UnitSystemForLocale returns the unit system appropriate for the given
+// locale tag. Returns imperial for US, LR, MM regions; metric otherwise.
+// Use locale.DetectLocale() to obtain the tag from the environment.
+func UnitSystemForLocale(tag language.Tag) UnitSystem {
 	region, _ := tag.Region()
-	if region.String() == "" || region.String() == "ZZ" {
+	r := region.String()
+	if r == "" || r == "ZZ" {
 		return UnitsImperial
 	}
-	if imperialRegions[region.String()] {
+	if imperialRegions[r] {
 		return UnitsImperial
 	}
 	return UnitsMetric

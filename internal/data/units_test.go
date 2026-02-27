@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/language"
 )
 
 func TestUnitSystemString(t *testing.T) {
@@ -106,45 +107,23 @@ func TestFormTitlesAndPlaceholders(t *testing.T) {
 	assert.Equal(t, "650", LotAreaPlaceholder(UnitsMetric))
 }
 
-func TestDefaultUnitSystemUSLocale(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LANG", "en_US.UTF-8")
-	assert.Equal(t, UnitsImperial, DefaultUnitSystem())
-}
-
-func TestDefaultUnitSystemGermanLocale(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LANG", "de_DE.UTF-8")
-	assert.Equal(t, UnitsMetric, DefaultUnitSystem())
-}
-
-func TestDefaultUnitSystemFrenchLocale(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LANG", "fr_FR.UTF-8")
-	assert.Equal(t, UnitsMetric, DefaultUnitSystem())
-}
-
-func TestDefaultUnitSystemJapaneseLocale(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LANG", "ja_JP.UTF-8")
-	assert.Equal(t, UnitsMetric, DefaultUnitSystem())
-}
-
-func TestDefaultUnitSystemEmptyLocale(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LANG", "")
-	assert.Equal(t, UnitsImperial, DefaultUnitSystem())
-}
-
-func TestDefaultUnitSystemLCAllOverrides(t *testing.T) {
-	t.Setenv("LC_ALL", "de_DE.UTF-8")
-	t.Setenv("LANG", "en_US.UTF-8")
-	assert.Equal(t, UnitsMetric, DefaultUnitSystem(),
-		"LC_ALL should take precedence over LANG")
-}
-
-func TestDefaultUnitSystemLiberiaIsImperial(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LANG", "en_LR.UTF-8")
-	assert.Equal(t, UnitsImperial, DefaultUnitSystem())
+func TestUnitSystemForLocale(t *testing.T) {
+	cases := []struct {
+		name string
+		tag  language.Tag
+		want UnitSystem
+	}{
+		{"US is imperial", language.AmericanEnglish, UnitsImperial},
+		{"Germany is metric", language.German, UnitsMetric},
+		{"France is metric", language.French, UnitsMetric},
+		{"Japan is metric", language.Japanese, UnitsMetric},
+		{"Liberia is imperial", language.MustParse("en-LR"), UnitsImperial},
+		{"Myanmar is imperial", language.MustParse("my-MM"), UnitsImperial},
+		{"undetermined defaults to imperial", language.Und, UnitsImperial},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, UnitSystemForLocale(tc.tag))
+		})
+	}
 }
