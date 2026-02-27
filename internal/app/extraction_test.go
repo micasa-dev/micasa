@@ -54,6 +54,12 @@ func sendExtractionKey(m *Model, key string) {
 		msg = tea.KeyMsg{Type: tea.KeyCtrlB}
 	case keyCtrlQ:
 		msg = tea.KeyMsg{Type: tea.KeyCtrlQ}
+	case "backspace":
+		msg = tea.KeyMsg{Type: tea.KeyBackspace}
+	case "up":
+		msg = tea.KeyMsg{Type: tea.KeyUp}
+	case "down":
+		msg = tea.KeyMsg{Type: tea.KeyDown}
 	default:
 		msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
 	}
@@ -493,6 +499,270 @@ func TestExploreMode_AcceptWorksInExploreMode(t *testing.T) {
 	// a silent no-op, so accept succeeds and clears extraction state.
 	sendExtractionKey(m, "a")
 	assert.Nil(t, m.extraction, "accept without store succeeds and clears state")
+}
+
+// --- Model picker ---
+
+func TestModelPicker_ROpensPickerOnDoneLLMStep(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+
+	// Move cursor to the LLM step.
+	sendExtractionKey(m, "j")
+	require.Equal(t, 1, ex.cursor)
+
+	// Press r -- should activate the model picker.
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker, "r should open model picker")
+	// No LLM client in test model, so picker is populated with well-known
+	// models immediately (not in loading state).
+	assert.False(t, ex.modelPicker.Loading, "no client means immediate populate")
+	assert.Greater(t, len(ex.modelPicker.All), 0, "well-known models should be available")
+}
+
+func TestModelPicker_EscDismissesWithoutRerun(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+
+	// Activate picker and manually populate it (skip async fetch).
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker)
+	ex.modelPicker.Loading = false
+	ex.modelPicker.All = []modelCompleterEntry{
+		{Name: "qwen3:8b", Local: true},
+	}
+	refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+
+	// Esc should dismiss the picker.
+	sendExtractionKey(m, "esc")
+	assert.Nil(t, ex.modelPicker, "esc should dismiss picker")
+	assert.True(t, ex.Done, "extraction should still be done (no rerun)")
+}
+
+func TestModelPicker_EnterSelectsModelAndReruns(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+
+	// Activate and populate picker.
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker)
+	ex.modelPicker.Loading = false
+	ex.modelPicker.All = []modelCompleterEntry{
+		{Name: "llama3.3", Local: true},
+		{Name: "qwen3:8b", Local: true},
+	}
+	refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+
+	// Navigate to second entry (arrow keys, not j/k which type chars).
+	sendExtractionKey(m, "down")
+	assert.Equal(t, 1, ex.modelPicker.Cursor)
+
+	sendExtractionKey(m, "enter")
+
+	// Picker should be dismissed and extraction model switched.
+	assert.Nil(t, ex.modelPicker, "picker should be dismissed after enter")
+	assert.Equal(t, "qwen3:8b", m.extractionModel, "extraction model should be updated")
+	assert.Nil(t, m.extractionClient, "client cache should be invalidated")
+}
+
+func TestModelPicker_FilterNarrowsMatches(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker)
+	ex.modelPicker.Loading = false
+	ex.modelPicker.All = []modelCompleterEntry{
+		{Name: "llama3.3", Local: true},
+		{Name: "qwen3:8b", Local: true},
+		{Name: "qwen3:32b", Local: true},
+	}
+	refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+	require.Len(t, ex.modelPicker.Matches, 3)
+
+	// Type "qw" to filter.
+	sendExtractionKey(m, "q")
+	sendExtractionKey(m, "w")
+	assert.Equal(t, "qw", ex.modelFilter)
+	assert.Len(t, ex.modelPicker.Matches, 2, "filter should narrow to qwen models")
+
+	// Backspace should widen.
+	sendExtractionKey(m, "backspace")
+	assert.Equal(t, "q", ex.modelFilter)
+	assert.Len(t, ex.modelPicker.Matches, 2, "q still matches both qwen models")
+}
+
+func TestModelPicker_ArrowsNavigateCursor(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker)
+	ex.modelPicker.Loading = false
+	ex.modelPicker.All = []modelCompleterEntry{
+		{Name: "a", Local: true},
+		{Name: "b", Local: true},
+		{Name: "c", Local: true},
+	}
+	refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+
+	sendExtractionKey(m, "down")
+	assert.Equal(t, 1, ex.modelPicker.Cursor)
+
+	sendExtractionKey(m, "down")
+	assert.Equal(t, 2, ex.modelPicker.Cursor)
+
+	// Should not go past last entry.
+	sendExtractionKey(m, "down")
+	assert.Equal(t, 2, ex.modelPicker.Cursor)
+
+	sendExtractionKey(m, "up")
+	assert.Equal(t, 1, ex.modelPicker.Cursor)
+}
+
+func TestModelPicker_JKTypeInsteadOfNavigate(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker)
+	ex.modelPicker.Loading = false
+	ex.modelPicker.All = []modelCompleterEntry{
+		{Name: "a", Local: true},
+	}
+	refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+
+	// j and k should type into the filter, not navigate.
+	sendExtractionKey(m, "j")
+	assert.Equal(t, "j", ex.modelFilter)
+	sendExtractionKey(m, "k")
+	assert.Equal(t, "jk", ex.modelFilter)
+	assert.Equal(t, 0, ex.modelPicker.Cursor, "cursor should not move from j/k")
+}
+
+func TestModelPicker_RerunPreservesAllSteps(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+	ex.Steps[stepExtract] = extractionStepInfo{
+		Status: stepDone,
+		Detail: "tesseract",
+		Metric: "1234 chars",
+	}
+
+	// Move to LLM step and open picker.
+	sendExtractionKey(m, "j") // text → extract
+	sendExtractionKey(m, "j") // extract → LLM
+	require.Equal(t, 2, ex.cursor)
+
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker)
+	ex.modelPicker.Loading = false
+	ex.modelPicker.All = []modelCompleterEntry{
+		{Name: "qwen3:8b", Local: true},
+	}
+	refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+
+	// Select the model.
+	sendExtractionKey(m, "enter")
+
+	// All three steps must still be active.
+	active := ex.activeSteps()
+	require.Len(t, active, 3, "all steps should survive rerun")
+	assert.Equal(t, stepText, active[0])
+	assert.Equal(t, stepExtract, active[1])
+	assert.Equal(t, stepLLM, active[2])
+
+	// Extract step should be untouched.
+	assert.True(t, ex.hasExtract, "hasExtract should still be true")
+	assert.Equal(t, stepDone, ex.Steps[stepExtract].Status)
+	assert.Equal(t, "tesseract", ex.Steps[stepExtract].Detail)
+	assert.Equal(t, "1234 chars", ex.Steps[stepExtract].Metric)
+
+	// LLM step should be running with the new model.
+	assert.Equal(t, stepRunning, ex.Steps[stepLLM].Status)
+	assert.Equal(t, "qwen3:8b", m.extractionModel)
+}
+
+func TestModelPicker_RerunRendersAllSteps(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+	ex.Steps[stepExtract] = extractionStepInfo{
+		Status: stepDone,
+		Detail: "tesseract",
+		Metric: "1234 chars",
+	}
+	m.width = 120
+	m.height = 40
+
+	// Move to LLM step, open picker, select model.
+	sendExtractionKey(m, "j")
+	sendExtractionKey(m, "j")
+	sendExtractionKey(m, "r")
+	require.NotNil(t, ex.modelPicker)
+	ex.modelPicker.Loading = false
+	ex.modelPicker.All = []modelCompleterEntry{
+		{Name: "qwen3:8b", Local: true},
+	}
+	refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+	sendExtractionKey(m, "enter")
+
+	// Render the overlay.
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "ext", "extract step should be in overlay output")
+	assert.Contains(t, out, "tesseract", "extract detail should be in overlay output")
+	assert.Contains(t, out, "llm", "LLM step should be in overlay output")
+}
+
+func TestModelPicker_RNoOpWhenNotOnLLMStep(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepDone,
+	})
+	ex := m.extraction
+	ex.Done = true
+	// Cursor is on text step (index 0).
+
+	sendExtractionKey(m, "r")
+	assert.Nil(t, ex.modelPicker, "r should not open picker on text step")
+}
+
+func TestModelPicker_RNoOpWhenNotDone(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepLLM: stepRunning,
+	})
+	ex := m.extraction
+
+	sendExtractionKey(m, "r")
+	assert.Nil(t, ex.modelPicker, "r should not open picker when extraction is running")
 }
 
 // --- NeedsOCR integration ---

@@ -528,15 +528,19 @@ func mergeModelLists(serverModels []string) []modelCompleterEntry {
 	return all
 }
 
-// refilterCompleter updates the completer match list from the current input.
+// refilterCompleter updates the chat completer match list from the current input.
 func (m *Model) refilterCompleter() {
 	mc := m.chat.Completer
 	if mc == nil {
 		return
 	}
 	query, _ := m.completerQuery()
-	current := m.llmModelLabel()
+	refilterModelCompleter(mc, query, m.llmModelLabel())
+}
 
+// refilterModelCompleter updates a model completer's match list for the given
+// filter query, marking current as the active model.
+func refilterModelCompleter(mc *modelCompleter, query, current string) {
 	if query == "" {
 		mc.Matches = make([]modelCompleterMatch, len(mc.All))
 		for i, entry := range mc.All {
@@ -1412,7 +1416,12 @@ func (m *Model) buildChatOverlay() string {
 // renderModelCompleter renders the inline model completion list with a
 // fixed height of completerMaxLines so the overlay doesn't shift.
 func (m *Model) renderModelCompleter(innerW int) string {
-	mc := m.chat.Completer
+	query, _ := m.completerQuery()
+	return m.renderModelCompleterFor(m.chat.Completer, query, innerW)
+}
+
+// renderModelCompleterFor renders the model completion list for any completer.
+func (m *Model) renderModelCompleterFor(mc *modelCompleter, query string, innerW int) string {
 	if mc == nil {
 		return ""
 	}
@@ -1428,7 +1437,6 @@ func (m *Model) renderModelCompleter(innerW int) string {
 	}
 
 	if len(mc.Matches) == 0 {
-		query, _ := m.completerQuery()
 		if query != "" {
 			lines[0] = m.styles.Empty().Render("  no matching models")
 		} else {

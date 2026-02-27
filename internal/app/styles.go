@@ -50,6 +50,7 @@ type Styles struct {
 	deletedCell      lipgloss.Style
 	overlayBox       lipgloss.Style
 	breadcrumb       lipgloss.Style
+	blinkCursor      lipgloss.Style
 }
 
 // Colorblind-safe palette (Wong) with adaptive light/dark variants.
@@ -196,6 +197,9 @@ func DefaultStyles() *Styles {
 		breadcrumb: lipgloss.NewStyle().
 			Foreground(textBright).
 			Bold(true),
+		blinkCursor: lipgloss.NewStyle().
+			Foreground(accent).
+			Blink(true),
 	}
 }
 
@@ -349,6 +353,7 @@ func (s *Styles) ModelRemoteHL() lipgloss.Style    { return s.modelRemoteHL }
 func (s *Styles) DeletedCell() lipgloss.Style      { return s.deletedCell }
 func (s *Styles) OverlayBox() lipgloss.Style       { return s.overlayBox }
 func (s *Styles) Breadcrumb() lipgloss.Style       { return s.breadcrumb }
+func (s *Styles) BlinkCursor() lipgloss.Style      { return s.blinkCursor }
 
 // --- Map-lookup methods ---
 

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -114,6 +115,10 @@ type extractionLogState struct {
 	previewTab    int                 // active tab in explore mode
 	previewRow    int                 // row cursor within active tab
 	previewCol    int                 // column cursor within active tab
+
+	// Model picker: inline model selection before rerunning LLM step.
+	modelPicker *modelCompleter // non-nil when picker is showing
+	modelFilter string          // current filter text for fuzzy matching
 }
 
 // activeSteps returns the ordered list of steps that are shown.
@@ -996,6 +1001,9 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 // handleExtractionKey processes keys when the extraction overlay is visible.
 func (m *Model) handleExtractionKey(msg tea.KeyMsg) tea.Cmd {
 	ex := m.extraction
+	if ex.modelPicker != nil && !ex.modelPicker.Loading {
+		return m.handleExtractionModelPickerKey(msg)
+	}
 	if ex.exploring {
 		return m.handleExtractionExploreKey(msg)
 	}
@@ -1049,7 +1057,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		}
 	case keyR:
 		if ex.Done && ex.hasLLM && ex.cursorStep() == stepLLM {
-			return m.rerunLLMExtraction()
+			return m.activateExtractionModelPicker()
 		}
 	case keyA:
 		if ex.Done && !ex.HasError {
@@ -1069,6 +1077,115 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		return cmd
 	}
 	return nil
+}
+
+// activateExtractionModelPicker opens the inline model picker in the
+// extraction overlay, fetching the list of available models.
+func (m *Model) activateExtractionModelPicker() tea.Cmd {
+	ex := m.extraction
+	if ex.modelPicker != nil {
+		return nil
+	}
+	ex.modelPicker = &modelCompleter{Loading: true}
+	ex.modelFilter = ""
+
+	client := m.extractionLLMClient()
+	if client == nil {
+		ex.modelPicker.Loading = false
+		ex.modelPicker.All = mergeModelLists(nil)
+		refilterModelCompleter(ex.modelPicker, "", m.extractionModelLabel())
+		return nil
+	}
+	timeout := client.Timeout()
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		models, err := client.ListModels(ctx)
+		return modelsListMsg{Models: models, Err: err}
+	}
+}
+
+// handleExtractionModelPickerKey handles keys when the extraction model
+// picker is showing.
+func (m *Model) handleExtractionModelPickerKey(msg tea.KeyMsg) tea.Cmd {
+	ex := m.extraction
+	mc := ex.modelPicker
+	switch msg.String() {
+	case keyEsc:
+		ex.modelPicker = nil
+		ex.modelFilter = ""
+	case keyUp, keyCtrlP:
+		if mc.Cursor > 0 {
+			mc.Cursor--
+		}
+	case keyDown, keyCtrlN:
+		if mc.Cursor < len(mc.Matches)-1 {
+			mc.Cursor++
+		}
+	case keyEnter:
+		if len(mc.Matches) > 0 {
+			selected := mc.Matches[mc.Cursor].Name
+			isLocal := mc.Matches[mc.Cursor].Local
+			ex.modelPicker = nil
+			ex.modelFilter = ""
+			return m.switchExtractionModel(selected, isLocal)
+		}
+		ex.modelPicker = nil
+		ex.modelFilter = ""
+	case keyBackspace:
+		if len(ex.modelFilter) > 0 {
+			ex.modelFilter = ex.modelFilter[:len(ex.modelFilter)-1]
+			refilterModelCompleter(mc, ex.modelFilter, m.extractionModelLabel())
+		}
+	default:
+		r := []rune(msg.String())
+		if len(r) == 1 && unicode.IsPrint(r[0]) {
+			ex.modelFilter += string(r[0])
+			refilterModelCompleter(mc, ex.modelFilter, m.extractionModelLabel())
+		}
+	}
+	return nil
+}
+
+// switchExtractionModel sets the extraction model and either reruns
+// immediately (if local) or initiates a pull first.
+func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
+	m.extractionModel = name
+	m.extractionClient = nil
+
+	if isLocal {
+		m.extractionReady = true
+		return m.rerunLLMExtraction()
+	}
+
+	// Model needs pulling -- use the same pull infrastructure.
+	if m.pull.active {
+		m.setStatusError("a model pull is already in progress")
+		return nil
+	}
+	m.pull.display = "checking " + name + symEllipsis
+	m.resizeTables()
+
+	client := m.extractionLLMClient()
+	if client == nil {
+		return nil
+	}
+	timeout := client.Timeout()
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		models, _ := client.ListModels(ctx)
+		for _, model := range models {
+			if model == name || strings.HasPrefix(model, name+":") {
+				return pullProgressMsg{
+					Status: "Switched to " + model,
+					Done:   true,
+					Model:  model,
+				}
+			}
+		}
+		return startPull(client, name)
+	}
 }
 
 // handleExtractionExploreKey handles keys in table explore mode.
@@ -1322,9 +1439,25 @@ func (m *Model) buildExtractionPipelineOverlay(
 	rule := m.scrollRule(innerW, ex.Viewport.TotalLineCount(), ex.Viewport.Height,
 		ex.Viewport.AtTop(), ex.Viewport.AtBottom(), ex.Viewport.ScrollPercent(), symHLine)
 
+	// Model picker section (shown between viewport and hints when active).
+	pickerSection := ""
+	if ex.modelPicker != nil {
+		filterLine := m.styles.HeaderHint().Render("model ") +
+			m.styles.Base().Render(ex.modelFilter) +
+			m.styles.BlinkCursor().Render("\u2588")
+		list := m.renderModelCompleterFor(ex.modelPicker, ex.modelFilter, innerW)
+		pickerSection = filterLine + "\n" + list
+	}
+
 	// Hint line varies by mode.
 	var hints []string
-	if ex.exploring {
+	if ex.modelPicker != nil {
+		hints = append(hints,
+			m.helpItem(symUp+"/"+symDown, "navigate"),
+			m.helpItem(symReturn, "select"),
+			m.helpItem(keyEsc, "cancel"),
+		)
+	} else if ex.exploring {
 		hints = append(hints, m.helpItem(keyJ+"/"+keyK, "rows"), m.helpItem(keyH+"/"+keyL, "cols"))
 		if len(ex.previewGroups) > 1 {
 			hints = append(hints, m.helpItem(keyB+"/"+keyF, "tabs"))
@@ -1357,7 +1490,9 @@ func (m *Model) buildExtractionPipelineOverlay(
 	hintStr := joinWithSeparator(m.helpSeparator(), hints...)
 
 	parts := []string{titleLine, "", vpView, rule}
-	if previewSection != "" {
+	if pickerSection != "" {
+		parts = append(parts, "", pickerSection)
+	} else if previewSection != "" {
 		parts = append(parts, "", previewSection)
 	}
 	parts = append(parts, ruleStyle.Render(strings.Repeat(symHLine, innerW)), hintStr)
@@ -1551,9 +1686,9 @@ func (m *Model) renderExtractionStep(
 		hdr.WriteString("  ")
 		hdr.WriteString(hint.Render(fmt.Sprintf("%*s", cols.Elapsed, e)))
 	}
-	if si == stepLLM && info.Status == stepDone && ex.Done && focused {
+	if si == stepLLM && info.Status == stepDone && ex.Done && focused && ex.modelPicker == nil {
 		hdr.WriteString("  ")
-		hdr.WriteString(m.styles.ExtRerun().Render("r to rerun"))
+		hdr.WriteString(m.styles.ExtRerun().Render("r model"))
 	}
 	header := hdr.String()
 

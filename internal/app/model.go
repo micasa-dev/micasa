@@ -361,6 +361,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case extractionLLMChunkMsg:
 		return m, m.handleExtractionLLMChunk(typed)
 	case modelsListMsg:
+		// Feed the extraction model picker first if it's waiting.
+		if ex := m.extraction; ex != nil && ex.modelPicker != nil && ex.modelPicker.Loading {
+			ex.modelPicker.Loading = false
+			if typed.Err == nil {
+				ex.modelPicker.All = mergeModelLists(typed.Models)
+			} else {
+				ex.modelPicker.All = mergeModelLists(nil)
+			}
+			refilterModelCompleter(ex.modelPicker, ex.modelFilter, m.extractionModelLabel())
+			return m, nil
+		}
 		if m.chat != nil {
 			m.handleModelsListMsg(typed)
 		}
@@ -1969,6 +1980,11 @@ func (m *Model) handlePullProgress(msg pullProgressMsg) tea.Cmd {
 					docID, doc.FileName, doc.Data, doc.MIMEType, doc.ExtractedText,
 				)
 			}
+		}
+		// Auto-rerun extraction if the overlay is open and waiting for a
+		// model that just finished pulling.
+		if m.extractionReady && m.extraction != nil && m.extraction.Done && !fromChat {
+			return m.rerunLLMExtraction()
 		}
 		return nil
 	}
