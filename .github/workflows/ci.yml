@@ -55,6 +55,10 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install poppler tesseract imagemagick-full ghostscript
 
+      - name: Add imagemagick-full to PATH (macOS)
+        if: runner.os == 'macOS'
+        run: echo "$(brew --prefix imagemagick-full)/bin" >> "$GITHUB_PATH"
+
       - name: Disable winget progress bar (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
