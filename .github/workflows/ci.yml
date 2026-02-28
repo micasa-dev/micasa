@@ -67,7 +67,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $flags = @('--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent')
+          $flags = @('--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent', '--force')
           winget install --id oschwartz10612.Poppler @flags
           winget install --id tesseract-ocr.tesseract @flags
           winget install --id ImageMagick.ImageMagick @flags
