@@ -53,7 +53,7 @@ jobs:
 
       - name: Install extraction tools (macOS)
         if: runner.os == 'macOS'
-        run: brew install poppler tesseract imagemagick ghostscript
+        run: brew install poppler tesseract imagemagick-full ghostscript
 
       - name: Disable winget progress bar (Windows)
         if: runner.os == 'Windows'
