@@ -244,6 +244,24 @@ func TestProviderName(t *testing.T) {
 	assert.Equal(t, "llamacpp", client.ProviderName())
 }
 
+func TestSupportsModelListing(t *testing.T) {
+	tests := []struct {
+		provider string
+		supports bool
+	}{
+		{"llamacpp", true},
+		{"ollama", true},
+		{"anthropic", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.provider, func(t *testing.T) {
+			c, err := NewClient(tt.provider, "http://localhost:8080", "m", "k", testTimeout)
+			require.NoError(t, err)
+			assert.Equal(t, tt.supports, c.SupportsModelListing())
+		})
+	}
+}
+
 func TestChatStreamSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")

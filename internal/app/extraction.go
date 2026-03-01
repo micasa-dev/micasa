@@ -1155,7 +1155,16 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 		return nil
 	}
 	timeout := client.Timeout()
+	canList := client.SupportsModelListing()
 	return func() tea.Msg {
+		// Cloud providers without model listing: trust the name.
+		if !canList {
+			return pullProgressMsg{
+				Status: "Switched to " + name,
+				Done:   true,
+				Model:  name,
+			}
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		models, _ := client.ListModels(ctx)
@@ -1166,16 +1175,6 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 					Done:   true,
 					Model:  model,
 				}
-			}
-		}
-		if !client.IsLocalServer() {
-			return pullProgressMsg{
-				Err: fmt.Errorf(
-					"model %q not available -- check the model name in your config",
-					name,
-				),
-				Done:  true,
-				Model: name,
 			}
 		}
 		return startPull(client.BaseURL(), name)

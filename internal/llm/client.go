@@ -201,6 +201,13 @@ func (c *Client) completionParams(messages []Message, opts []ChatOption) anyllm.
 	return params
 }
 
+// SupportsModelListing returns true if the provider implements the
+// ModelLister interface. Cloud providers like Anthropic do not.
+func (c *Client) SupportsModelListing() bool {
+	_, ok := c.provider.(anyllm.ModelLister)
+	return ok
+}
+
 // ListModels fetches the available model IDs. Returns an error if the
 // provider does not support model listing.
 func (c *Client) ListModels(ctx context.Context) ([]string, error) {

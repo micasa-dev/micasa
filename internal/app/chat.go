@@ -599,7 +599,16 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 	timeout := client.Timeout()
 	baseURL := client.BaseURL()
 	isLocal := client.IsLocalServer()
+	canList := client.SupportsModelListing()
 	return func() tea.Msg {
+		// Cloud providers without model listing: trust the name.
+		if !canList {
+			return pullProgressMsg{
+				Status: "Switched to " + name,
+				Done:   true,
+				Model:  name,
+			}
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		// Best-effort: if listing fails, fall through to pull attempt.

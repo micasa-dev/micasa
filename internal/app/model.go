@@ -1829,6 +1829,14 @@ func (m *Model) checkExtractionModelCmd() tea.Cmd {
 
 	client := m.llmClient
 	timeout := client.Timeout()
+
+	// Cloud providers that don't support model listing: trust the config.
+	if !client.SupportsModelListing() {
+		return func() tea.Msg {
+			return pullProgressMsg{Done: true, Model: model}
+		}
+	}
+
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
@@ -1846,16 +1854,6 @@ func (m *Model) checkExtractionModelCmd() tea.Cmd {
 					Done:  true,
 					Model: m,
 				}
-			}
-		}
-		if !client.IsLocalServer() {
-			return pullProgressMsg{
-				Err: fmt.Errorf(
-					"model %q not available -- check the model name in your config",
-					model,
-				),
-				Done:  true,
-				Model: model,
 			}
 		}
 		return startPull(client.BaseURL(), model)
