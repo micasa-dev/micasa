@@ -175,7 +175,8 @@ type Model struct {
 	dbPath                string
 	configPath            string
 	llmClient             *llm.Client
-	llmExtraContext       string // user-provided context appended to prompts
+	llmConfig             *llmConfig // saved for extraction client creation
+	llmExtraContext       string     // user-provided context appended to prompts
 	ex                    extractState
 	pull                  pullState
 	chat                  *chatState // non-nil when chat overlay is open
@@ -214,28 +215,29 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 	var extraContext string
 	if options.LLMConfig != nil {
 		model := options.LLMConfig.Model
+		cfg := options.LLMConfig
 		// Prefer the last-used model from the database if available.
 		if persisted, err := store.GetLastModel(); err == nil && persisted != "" {
 			model = persisted
-		} else {
+		} else if cfg.Provider == "ollama" {
 			// No persisted model -- try auto-detecting if the server has exactly one.
-			tempClient := llm.NewClient(options.LLMConfig.BaseURL, model, options.LLMConfig.APIKey, options.LLMConfig.Timeout)
-			if detected := autoDetectModel(tempClient); detected != "" {
-				model = detected
-				// Persist so we don't re-detect every startup.
-				_ = store.PutLastModel(model)
+			tempClient, err := llm.NewClient(cfg.Provider, cfg.BaseURL, model, cfg.APIKey, cfg.Timeout)
+			if err == nil {
+				if detected := autoDetectModel(tempClient); detected != "" {
+					model = detected
+					_ = store.PutLastModel(model)
+				}
 			}
 		}
-		client = llm.NewClient(
-			options.LLMConfig.BaseURL,
-			model,
-			options.LLMConfig.APIKey,
-			options.LLMConfig.Timeout,
-		)
-		if options.LLMConfig.Thinking != nil {
-			client.SetThinking(*options.LLMConfig.Thinking)
+		var err error
+		client, err = llm.NewClient(cfg.Provider, cfg.BaseURL, model, cfg.APIKey, cfg.Timeout)
+		if err != nil {
+			return nil, fmt.Errorf("create llm client: %w", err)
 		}
-		extraContext = options.LLMConfig.ExtraContext
+		if cfg.Thinking != "" {
+			client.SetThinking(cfg.Thinking)
+		}
+		extraContext = cfg.ExtraContext
 	}
 
 	pprog := progress.New(
@@ -249,6 +251,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		dbPath:          options.DBPath,
 		configPath:      options.ConfigPath,
 		llmClient:       client,
+		llmConfig:       options.LLMConfig,
 		llmExtraContext: extraContext,
 		ex: extractState{
 			extractionModel:    options.ExtractionConfig.Model,
@@ -1845,7 +1848,17 @@ func (m *Model) checkExtractionModelCmd() tea.Cmd {
 				}
 			}
 		}
-		return startPull(client, model)
+		if !client.IsLocalServer() {
+			return pullProgressMsg{
+				Err: fmt.Errorf(
+					"model %q not available -- check the model name in your config",
+					model,
+				),
+				Done:  true,
+				Model: model,
+			}
+		}
+		return startPull(client.BaseURL(), model)
 	}
 }
 
@@ -1957,17 +1970,26 @@ func (m *Model) extractionLLMClient() *llm.Client {
 	if m.llmClient == nil {
 		return nil
 	}
+	if m.llmConfig == nil {
+		return nil
+	}
 	model := m.ex.extractionModel
 	if model == "" {
 		model = m.llmClient.Model()
 	}
-	c := llm.NewClient(
-		m.llmClient.BaseURL(),
+	c, err := llm.NewClient(
+		m.llmConfig.Provider,
+		m.llmConfig.BaseURL,
 		model,
-		m.llmClient.APIKey(),
-		m.llmClient.Timeout(),
+		m.llmConfig.APIKey,
+		m.llmConfig.Timeout,
 	)
-	c.SetThinking(m.ex.extractionThinking)
+	if err != nil {
+		return nil
+	}
+	if m.ex.extractionThinking != "" {
+		c.SetThinking(m.ex.extractionThinking)
+	}
 	m.ex.extractionClient = c
 	return c
 }

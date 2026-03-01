@@ -57,7 +57,7 @@ type formState struct {
 type extractState struct {
 	extractionModel        string
 	extractionEnabled      bool
-	extractionThinking     bool
+	extractionThinking     string
 	extractionClient       *llm.Client
 	extractors             []extract.Extractor
 	extractionReady        bool
@@ -226,12 +226,13 @@ type Options struct {
 // TOML config. Kept as a separate type so the app package doesn't import
 // config directly.
 type llmConfig struct {
+	Provider     string
 	BaseURL      string
 	Model        string
 	APIKey       string
 	ExtraContext string
 	Timeout      time.Duration
-	Thinking     *bool // nil = don't send; non-nil = send enable_thinking
+	Thinking     string // reasoning effort: none|low|medium|high|auto
 }
 
 // extractionConfig holds resolved extraction pipeline settings.
@@ -239,14 +240,15 @@ type extractionConfig struct {
 	Model      string              // overrides LLM model; empty = use chat model
 	Extractors []extract.Extractor // configured extractors; nil = defaults
 	Enabled    bool                // LLM extraction enabled
-	Thinking   bool                // enable model thinking mode (e.g. qwen3 <think>)
+	Thinking   string              // reasoning effort level
 }
 
 // SetExtraction configures the extraction pipeline on the Options.
 func (o *Options) SetExtraction(
 	model string,
 	extractors []extract.Extractor,
-	enabled, thinking bool,
+	enabled bool,
+	thinking string,
 ) {
 	o.ExtractionConfig = extractionConfig{
 		Model:      model,
@@ -259,15 +261,16 @@ func (o *Options) SetExtraction(
 // SetLLM configures the LLM backend on the Options. Pass empty strings to
 // disable the LLM feature.
 func (o *Options) SetLLM(
-	baseURL, model, apiKey, extraContext string,
+	provider, baseURL, model, apiKey, extraContext string,
 	timeout time.Duration,
-	thinking *bool,
+	thinking string,
 ) {
-	if baseURL == "" || model == "" {
+	if model == "" {
 		o.LLMConfig = nil
 		return
 	}
 	o.LLMConfig = &llmConfig{
+		Provider:     provider,
 		BaseURL:      baseURL,
 		Model:        model,
 		APIKey:       apiKey,

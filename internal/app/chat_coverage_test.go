@@ -38,6 +38,23 @@ func requireOllama(t *testing.T) {
 	}
 }
 
+// testLLMClient creates a llamacpp client for unit tests that don't hit a
+// real server. llamacpp is OpenAI-compatible and needs no API key.
+func testLLMClient(t *testing.T, model string) *llm.Client {
+	t.Helper()
+	c, err := llm.NewClient("llamacpp", "http://localhost:11434/v1", model, "", 5*time.Second)
+	require.NoError(t, err)
+	return c
+}
+
+// testOllamaClient creates an Ollama client for live integration tests.
+func testOllamaClient(t *testing.T, model string) *llm.Client {
+	t.Helper()
+	c, err := llm.NewClient("ollama", "http://localhost:11434", model, "", 10*time.Second)
+	require.NoError(t, err)
+	return c
+}
+
 // --- hideChat ---
 
 func TestHideChatSetsVisibleFalse(t *testing.T) {
@@ -197,7 +214,7 @@ func TestBuildChatOverlayContainsTitle(t *testing.T) {
 
 func TestBuildChatOverlayWithClientShowsModelName(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test-model", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "test-model")
 	m.openChat()
 
 	overlay := m.buildChatOverlay()
@@ -487,7 +504,7 @@ func TestBuildConversationHistoryExcludesEmptyAssistant(t *testing.T) {
 
 func TestBuildFallbackMessagesStructure(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test-model", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "test-model")
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleUser, Content: "prior question"},
@@ -510,7 +527,7 @@ func TestBuildFallbackMessagesStructure(t *testing.T) {
 
 func TestBuildFallbackMessagesNoHistory(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test-model", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "test-model")
 	m.openChat()
 
 	msgs := m.buildFallbackMessages("question")
@@ -666,7 +683,7 @@ func TestActivateCompleterAlreadyActive(t *testing.T) {
 
 func TestActivateCompleterWithClient(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "test")
 	m.openChat()
 
 	cmd := m.activateCompleter()
@@ -720,7 +737,7 @@ func TestRefilterCompleterWithQuery(t *testing.T) {
 
 func TestRefilterCompleterMarksActive(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "alpha", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "alpha")
 	m.openChat()
 	m.chat.Input.SetValue("/model ")
 	m.chat.Completer = &modelCompleter{
@@ -936,7 +953,7 @@ func TestSubmitChatDeduplicatesHistory(t *testing.T) {
 
 func TestSubmitChatRemovesInterruptedNotice(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "test")
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleNotice, Content: "Interrupted"},
@@ -995,7 +1012,7 @@ func TestHandleSlashCommandUnknown(t *testing.T) {
 
 func TestHandleSlashCommandModelNoArg(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "qwen3", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "qwen3")
 	m.openChat()
 
 	cmd := m.handleSlashCommand("/model")
@@ -1011,7 +1028,7 @@ func TestHandleSlashCommandModelNoArg(t *testing.T) {
 
 func TestHandleModelsListMsgRendersInChat(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "m1", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "m1")
 	m.openChat()
 
 	m.handleModelsListMsg(modelsListMsg{Models: []string{"m1", "m2"}})
@@ -1357,7 +1374,7 @@ func TestRenderChatMessagesPullCancelled(t *testing.T) {
 
 func TestCmdSwitchModelPullAlreadyInProgress(t *testing.T) {
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test", "", 5*time.Second)
+	m.llmClient = testLLMClient(t, "test")
 	m.openChat()
 	m.pull.active = true
 
@@ -1376,7 +1393,7 @@ func TestCmdSwitchModelPullAlreadyInProgress(t *testing.T) {
 func TestCmdListModelsLive(t *testing.T) {
 	requireOllama(t)
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "", "", 10*time.Second)
+	m.llmClient = testOllamaClient(t, "")
 	m.openChat()
 
 	cmd := m.cmdListModels()
@@ -1391,7 +1408,7 @@ func TestCmdListModelsLive(t *testing.T) {
 func TestCmdSwitchModelLive(t *testing.T) {
 	requireOllama(t)
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "", "", 10*time.Second)
+	m.llmClient = testOllamaClient(t, "")
 	m.openChat()
 
 	cmd := m.cmdSwitchModel("this-model-definitely-does-not-exist-xyz-9999")
@@ -1405,7 +1422,7 @@ func TestCmdSwitchModelLive(t *testing.T) {
 func TestSubmitChatLiveSlashModels(t *testing.T) {
 	requireOllama(t)
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "test", "", 10*time.Second)
+	m.llmClient = testOllamaClient(t, "test")
 	m.openChat()
 	m.chat.Input.SetValue("/models")
 
@@ -1514,7 +1531,7 @@ func TestWaitForChunkClosedChannel(t *testing.T) {
 func TestActivateCompleterLive(t *testing.T) {
 	requireOllama(t)
 	m := newTestModel()
-	m.llmClient = llm.NewClient("http://localhost:11434/v1", "", "", 10*time.Second)
+	m.llmClient = testOllamaClient(t, "")
 	m.openChat()
 
 	cmd := m.activateCompleter()

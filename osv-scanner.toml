@@ -16,3 +16,44 @@ reason = "minor TLS 1.3 info disclosure requiring network-local attacker; defaul
 [[IgnoredVulns]]
 id = "GO-2026-4342"
 reason = "archive/zip DoS via crafted ZIP filenames; micasa never opens or processes ZIP archives"
+
+# ollama server-side vulnerabilities -- micasa only imports ollama/api as a
+# thin HTTP client (Client.Pull); none of these server-side code paths (GGUF
+# parsing, registry auth, manifest handling, endpoint authorization) are
+# reachable from the api package.
+
+[[IgnoredVulns]]
+id = "GO-2025-3548"
+reason = "server-side GZIP bomb in registry pull handler; api.Client.Pull is an HTTP client that never runs server code"
+
+[[IgnoredVulns]]
+id = "GO-2025-3557"
+reason = "server-side unlimited memory in GGUF parsing; api package never touches GGUF files"
+
+[[IgnoredVulns]]
+id = "GO-2025-3558"
+reason = "server-side OOB read in llm/gguf.go; api package never touches GGUF files"
+
+[[IgnoredVulns]]
+id = "GO-2025-3559"
+reason = "server-side divide-by-zero in ggufPadding; api package never touches GGUF files"
+
+[[IgnoredVulns]]
+id = "GO-2025-3582"
+reason = "server-side null pointer in GGUF handling; api package never touches GGUF files"
+
+[[IgnoredVulns]]
+id = "GO-2025-3689"
+reason = "server-side divide-by-zero in GGUF import; api package never touches GGUF files"
+
+[[IgnoredVulns]]
+id = "GO-2025-3695"
+reason = "server-side unsafe array indexing in pull manifest handler; api.Client.Pull only sends HTTP requests"
+
+[[IgnoredVulns]]
+id = "GO-2025-3824"
+reason = "server-side cross-domain token leak in registry auth; api.Client uses local key signing only"
+
+[[IgnoredVulns]]
+id = "GO-2025-4251"
+reason = "server-side missing auth on API endpoints; deployment concern, not reachable from client code"

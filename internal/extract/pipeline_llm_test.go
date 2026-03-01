@@ -18,19 +18,19 @@ import (
 )
 
 // newTestLLMServer creates an httptest server that returns the given response
-// as an OpenAI-compatible chat completion response. This is the same
-// shape that Ollama/llama.cpp serve.
+// as an OpenAI-compatible chat completion response.
 func newTestLLMServer(t *testing.T, responseContent string) (*httptest.Server, *llm.Client) {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/v1/chat/completions", r.URL.Path)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprintf(w,
 			`{"choices":[{"message":{"content":%s}}]}`,
 			mustMarshalJSON(t, responseContent),
 		)
 	}))
 	t.Cleanup(srv.Close)
-	client := llm.NewClient(srv.URL+"/v1", "test-model", "", 5*time.Second)
+	client, err := llm.NewClient("llamacpp", srv.URL+"/v1", "test-model", "", 5*time.Second)
+	require.NoError(t, err)
 	return srv, client
 }
 
@@ -81,7 +81,8 @@ func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 // from being saved.
 func TestPipeline_LLMServerDown(t *testing.T) {
 	// Point at a port that's not listening.
-	client := llm.NewClient("http://127.0.0.1:1/v1", "test-model", "", time.Second)
+	client, err := llm.NewClient("llamacpp", "http://127.0.0.1:1/v1", "test-model", "", time.Second)
+	require.NoError(t, err)
 
 	p := &Pipeline{LLMClient: client}
 	r := p.Run(context.Background(), []byte("Some invoice text"), "invoice.txt", "text/plain")
@@ -99,12 +100,14 @@ func TestPipeline_LLMServerDown(t *testing.T) {
 // unparseable JSON, the pipeline captures the error without crashing.
 func TestPipeline_LLMGarbageResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w,
 			`{"choices":[{"message":{"content":"I don't understand the question"}}]}`,
 		)
 	}))
 	t.Cleanup(srv.Close)
-	client := llm.NewClient(srv.URL+"/v1", "test-model", "", 5*time.Second)
+	client, err := llm.NewClient("llamacpp", srv.URL+"/v1", "test-model", "", 5*time.Second)
+	require.NoError(t, err)
 
 	p := &Pipeline{LLMClient: client}
 	r := p.Run(context.Background(), []byte("invoice text"), "doc.txt", "text/plain")
@@ -122,10 +125,12 @@ func TestPipeline_LLMSkippedWithoutText(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		called = true
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{"choices":[{"message":{"content":"[]"}}]}`)
 	}))
 	t.Cleanup(srv.Close)
-	client := llm.NewClient(srv.URL+"/v1", "test-model", "", 5*time.Second)
+	client, err := llm.NewClient("llamacpp", srv.URL+"/v1", "test-model", "", 5*time.Second)
+	require.NoError(t, err)
 
 	p := &Pipeline{LLMClient: client}
 	r := p.Run(context.Background(), []byte{0xFF, 0xD8}, "photo.bin", "application/octet-stream")

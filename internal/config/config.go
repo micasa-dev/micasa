@@ -39,18 +39,23 @@ type Locale struct {
 	Currency string `toml:"currency"`
 }
 
-// LLM holds settings for the local LLM inference backend.
+// LLM holds settings for the LLM inference backend.
 type LLM struct {
-	// BaseURL is the root of an OpenAI-compatible API.
-	// The client appends /chat/completions, /models, etc.
-	// Default: http://localhost:11434/v1 (Ollama)
-	BaseURL string `toml:"base_url" env:"OLLAMA_HOST"`
+	// Provider selects which LLM provider to use. Supported values:
+	// ollama, anthropic, openai, openrouter, deepseek, gemini, groq,
+	// mistral, llamacpp, llamafile. Auto-detected when empty.
+	Provider string `toml:"provider" env:"MICASA_LLM_PROVIDER"`
+
+	// BaseURL is the base URL for the provider's API.
+	// Default varies by provider (e.g. http://localhost:11434 for Ollama).
+	// No /v1 suffix needed -- the provider handles path construction.
+	BaseURL string `toml:"base_url" env:"MICASA_LLM_BASE_URL"`
 
 	// Model is the model identifier passed in chat requests.
 	// Default: qwen3
 	Model string `toml:"model" env:"MICASA_LLM_MODEL"`
 
-	// APIKey is the Bearer token sent with every request. Required for cloud
+	// APIKey is the authentication credential. Required for cloud
 	// providers (Anthropic, OpenAI, OpenRouter, etc.). Leave empty for local
 	// servers like Ollama that don't require authentication.
 	APIKey string `toml:"api_key" env:"MICASA_LLM_API_KEY"`
@@ -65,9 +70,9 @@ type LLM struct {
 	// "10s", "500ms". Default: "5s".
 	Timeout string `toml:"timeout" env:"MICASA_LLM_TIMEOUT"`
 
-	// Thinking enables the model's internal reasoning mode for chat
-	// (e.g. qwen3 <think> blocks). Default: unset (not sent to server).
-	Thinking *bool `toml:"thinking,omitempty" env:"MICASA_LLM_THINKING"`
+	// Thinking controls the model's reasoning effort level. Supported values:
+	// none, low, medium, high, auto. Empty string = don't send (server default).
+	Thinking string `toml:"thinking,omitempty" env:"MICASA_LLM_THINKING"`
 }
 
 // TimeoutDuration returns the parsed LLM timeout, falling back to
@@ -133,10 +138,10 @@ type Extraction struct {
 	// string, e.g. "30s", "1m". Default: "30s".
 	TextTimeout string `toml:"text_timeout" env:"MICASA_TEXT_TIMEOUT"`
 
-	// Thinking enables the model's internal reasoning mode (e.g. qwen3
-	// <think> blocks). Disable for faster responses when structured output
-	// is all you need. Default: false.
-	Thinking *bool `toml:"thinking,omitempty" env:"MICASA_EXTRACTION_THINKING"`
+	// Thinking controls the model's reasoning effort level for extraction.
+	// Supported values: none, low, medium, high, auto.
+	// Empty string = don't send (server default). Default: empty.
+	Thinking string `toml:"thinking,omitempty" env:"MICASA_EXTRACTION_THINKING"`
 }
 
 // IsEnabled returns whether LLM extraction is enabled. Defaults to true
@@ -161,10 +166,10 @@ func (e Extraction) TextTimeoutDuration() time.Duration {
 	return d
 }
 
-// ThinkingEnabled returns whether model thinking mode is enabled.
-// Defaults to false (faster, no <think> blocks).
-func (e Extraction) ThinkingEnabled() bool {
-	return e.Thinking != nil && *e.Thinking
+// ThinkingLevel returns the reasoning effort string for extraction.
+// Returns empty string when unset (server default).
+func (e Extraction) ThinkingLevel() string {
+	return e.Thinking
 }
 
 // ResolvedModel returns the extraction model, falling back to the given
@@ -177,8 +182,9 @@ func (e Extraction) ResolvedModel(chatModel string) string {
 }
 
 const (
-	DefaultBaseURL         = "http://localhost:11434/v1"
+	DefaultBaseURL         = "http://localhost:11434"
 	DefaultModel           = "qwen3"
+	DefaultProvider        = "ollama"
 	DefaultLLMTimeout      = 5 * time.Second
 	DefaultCacheTTL        = 30 * 24 * time.Hour // 30 days
 	DefaultMaxExtractPages = 20
@@ -235,10 +241,36 @@ func LoadFromPath(path string) (Config, error) {
 		return cfg, err
 	}
 
-	// Normalize OLLAMA_HOST: strip trailing slash and append /v1 if needed.
+	// Normalize base URL: strip trailing slash and /v1 suffix --
+	// providers handle their own path construction.
 	cfg.LLM.BaseURL = strings.TrimRight(cfg.LLM.BaseURL, "/")
-	if os.Getenv("OLLAMA_HOST") != "" && !strings.HasSuffix(cfg.LLM.BaseURL, "/v1") {
-		cfg.LLM.BaseURL += "/v1"
+	cfg.LLM.BaseURL = strings.TrimSuffix(cfg.LLM.BaseURL, "/v1")
+
+	// Auto-detect provider from base_url and api_key when not explicitly set.
+	if cfg.LLM.Provider == "" {
+		cfg.LLM.Provider = detectProvider(cfg.LLM.BaseURL, cfg.LLM.APIKey)
+	}
+
+	// Validate provider name.
+	if !validProvider(cfg.LLM.Provider) {
+		return cfg, fmt.Errorf(
+			"llm.provider: unknown provider %q -- supported: %s",
+			cfg.LLM.Provider, strings.Join(providerNames(), ", "),
+		)
+	}
+
+	// Validate thinking level.
+	if cfg.LLM.Thinking != "" && !validThinkingLevel(cfg.LLM.Thinking) {
+		return cfg, fmt.Errorf(
+			"llm.thinking: invalid level %q -- supported: none, low, medium, high, auto",
+			cfg.LLM.Thinking,
+		)
+	}
+	if cfg.Extraction.Thinking != "" && !validThinkingLevel(cfg.Extraction.Thinking) {
+		return cfg, fmt.Errorf(
+			"extraction.thinking: invalid level %q -- supported: none, low, medium, high, auto",
+			cfg.Extraction.Thinking,
+		)
 	}
 
 	if cfg.LLM.Timeout != "" {
@@ -624,6 +656,66 @@ func migrateRenamedEnvVars(cfg *Config) {
 	}
 }
 
+// providers lists every supported provider name.
+var providers = []string{
+	"ollama",
+	"anthropic",
+	"openai",
+	"openrouter",
+	"deepseek",
+	"gemini",
+	"groq",
+	"mistral",
+	"llamacpp",
+	"llamafile",
+}
+
+func providerNames() []string { return providers }
+
+func validProvider(name string) bool {
+	for _, p := range providers {
+		if p == name {
+			return true
+		}
+	}
+	return false
+}
+
+var thinkingLevels = map[string]bool{
+	"none": true, "low": true, "medium": true, "high": true, "auto": true,
+}
+
+func validThinkingLevel(level string) bool {
+	return thinkingLevels[level]
+}
+
+// detectProvider infers the provider from the base URL and API key.
+func detectProvider(baseURL, apiKey string) string {
+	if apiKey != "" {
+		lower := strings.ToLower(baseURL)
+		switch {
+		case strings.Contains(lower, "anthropic"):
+			return "anthropic"
+		case strings.Contains(lower, "openrouter"):
+			return "openrouter"
+		case strings.Contains(lower, "deepseek"):
+			return "deepseek"
+		case strings.Contains(lower, "googleapis") || strings.Contains(lower, "generativelanguage"):
+			return "gemini"
+		case strings.Contains(lower, "groq"):
+			return "groq"
+		case strings.Contains(lower, "mistral"):
+			return "mistral"
+		case strings.Contains(lower, "openai"):
+			return "openai"
+		default:
+			// API key but unrecognized URL -- assume OpenAI-compatible.
+			return "openai"
+		}
+	}
+	return DefaultProvider
+}
+
 // ExampleTOML returns a commented config file suitable for writing as a
 // starter config. Not written automatically -- offered to the user on demand.
 func ExampleTOML() string {
@@ -631,16 +723,21 @@ func ExampleTOML() string {
 # Place this file at: ` + Path() + `
 
 [llm]
-# Base URL for an OpenAI-compatible API endpoint.
-# Ollama (default): http://localhost:11434/v1
-# llama.cpp:        http://localhost:8080/v1
-# LM Studio:        http://localhost:1234/v1
-base_url = "` + DefaultBaseURL + `"
+# LLM provider. Supported: ollama, anthropic, openai, openrouter,
+# deepseek, gemini, groq, mistral, llamacpp, llamafile.
+# Auto-detected from base_url and api_key when not set.
+# provider = "ollama"
+
+# Base URL for the provider's API. No /v1 suffix needed.
+# Ollama (default): http://localhost:11434
+# llama.cpp:        http://localhost:8080
+# LM Studio:        http://localhost:1234
+# base_url = "` + DefaultBaseURL + `"
 
 # Model name passed in chat requests.
 model = "` + DefaultModel + `"
 
-# API key (Bearer token) for cloud providers.
+# API key for cloud providers.
 # Not needed for local servers like Ollama.
 # api_key = ""
 
@@ -653,9 +750,9 @@ model = "` + DefaultModel + `"
 # Increase if your LLM server is slow to respond.
 # timeout = "5s"
 
-# Enable model thinking mode for chat (e.g. qwen3 <think> blocks).
-# Unset = don't send (server default), true = enable, false = disable.
-# thinking = false
+# Model reasoning effort level for chat. Supported: none, low, medium, high, auto.
+# Empty = don't send (server default).
+# thinking = "medium"
 
 [documents]
 # Maximum file size for document imports. Accepts unitized strings or bare
@@ -683,10 +780,9 @@ model = "` + DefaultModel + `"
 # Text and image extraction still work independently.
 # enabled = true
 
-# Enable model thinking mode for extraction (e.g. qwen3 <think> blocks).
-# Disable for faster responses when structured output is all you need.
-# Default: false.
-# thinking = false
+# Model reasoning effort level for extraction. Supported: none, low, medium, high, auto.
+# Empty = don't send. Default: empty (no reasoning).
+# thinking = ""
 
 [locale]
 # ISO 4217 currency code. Stored in the database on first run; after that the
