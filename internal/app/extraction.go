@@ -1184,7 +1184,17 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 				}
 			}
 		}
-		return startPull(client, name)
+		if !client.IsLocalServer() {
+			return pullProgressMsg{
+				Err: fmt.Errorf(
+					"model %q not available -- check the model name in your config",
+					name,
+				),
+				Done:  true,
+				Model: name,
+			}
+		}
+		return startPull(client.BaseURL(), name)
 	}
 }
 

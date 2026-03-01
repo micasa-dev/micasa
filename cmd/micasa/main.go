@@ -145,6 +145,7 @@ func (cmd *runCmd) Run() error {
 		ConfigPath: config.Path(),
 	}
 	opts.SetLLM(
+		cfg.LLM.Provider,
 		cfg.LLM.BaseURL,
 		cfg.LLM.Model,
 		cfg.LLM.APIKey,
@@ -160,7 +161,7 @@ func (cmd *runCmd) Run() error {
 		cfg.Extraction.ResolvedModel(cfg.LLM.Model),
 		extractors,
 		cfg.Extraction.IsEnabled(),
-		cfg.Extraction.ThinkingEnabled(),
+		cfg.Extraction.ThinkingLevel(),
 	)
 
 	model, err := app.NewModel(store, opts)

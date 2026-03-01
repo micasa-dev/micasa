@@ -4,26 +4,34 @@
 package llm
 
 import (
-	"bufio"
-	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
+
+	anyllm "github.com/mozilla-ai/any-llm-go"
+	anyllmerrors "github.com/mozilla-ai/any-llm-go/errors"
+	"github.com/mozilla-ai/any-llm-go/providers/anthropic"
+	"github.com/mozilla-ai/any-llm-go/providers/deepseek"
+	"github.com/mozilla-ai/any-llm-go/providers/gemini"
+	"github.com/mozilla-ai/any-llm-go/providers/groq"
+	"github.com/mozilla-ai/any-llm-go/providers/llamacpp"
+	"github.com/mozilla-ai/any-llm-go/providers/llamafile"
+	"github.com/mozilla-ai/any-llm-go/providers/mistral"
+	"github.com/mozilla-ai/any-llm-go/providers/ollama"
+	"github.com/mozilla-ai/any-llm-go/providers/openai"
 )
 
-// Client talks to an OpenAI-compatible API endpoint (Ollama, llama.cpp,
-// LM Studio, Anthropic, OpenAI, OpenRouter, etc.).
+// Client wraps an any-llm-go provider behind a stable API for the rest
+// of the application.
 type Client struct {
-	baseURL  string // e.g. "http://localhost:11434/v1"
-	model    string
-	apiKey   string // Bearer token; empty for local servers
-	timeout  time.Duration
-	thinking *bool // nil = don't send; non-nil = send enable_thinking
-	http     *http.Client
+	provider     anyllm.Provider
+	providerName string
+	baseURL      string
+	model        string
+	timeout      time.Duration
+	thinking     string // reasoning effort: none|low|medium|high|auto
 }
 
 // Message represents a single turn in the conversation.
@@ -39,37 +47,20 @@ type StreamChunk struct {
 	Err     error
 }
 
-// --- OpenAI-compatible request/response types ---
-
-type chatRequest struct {
-	Model          string          `json:"model"`
-	Messages       []Message       `json:"messages"`
-	Stream         bool            `json:"stream"`
-	Temperature    *float64        `json:"temperature,omitempty"`
-	Options        map[string]any  `json:"options,omitempty"`
-	ResponseFormat *responseFormat `json:"response_format,omitempty"`
-}
-
-type responseFormat struct {
-	Type       string      `json:"type"`
-	JSONSchema *jsonSchema `json:"json_schema,omitempty"`
-}
-
-type jsonSchema struct {
-	Name   string         `json:"name"`
-	Schema map[string]any `json:"schema"`
+// chatParams holds options that can be modified per-request.
+type chatParams struct {
+	responseFormat *anyllm.ResponseFormat
 }
 
 // ChatOption configures a chat completion request.
-type ChatOption func(*chatRequest)
+type ChatOption func(*chatParams)
 
 // WithJSONSchema constrains the model output to match the given JSON Schema.
-// Ollama's OpenAI-compatible endpoint maps this to the native format parameter.
 func WithJSONSchema(name string, schema map[string]any) ChatOption {
-	return func(r *chatRequest) {
-		r.ResponseFormat = &responseFormat{
+	return func(p *chatParams) {
+		p.responseFormat = &anyllm.ResponseFormat{
 			Type: "json_schema",
-			JSONSchema: &jsonSchema{
+			JSONSchema: &anyllm.JSONSchema{
 				Name:   name,
 				Schema: schema,
 			},
@@ -77,53 +68,81 @@ func WithJSONSchema(name string, schema map[string]any) ChatOption {
 	}
 }
 
-type chatCompletionChunk struct {
-	Choices []struct {
-		Delta struct {
-			Content string `json:"content"`
-		} `json:"delta"`
-		FinishReason *string `json:"finish_reason"`
-	} `json:"choices"`
+// localProviders are providers that run on the user's machine.
+var localProviders = map[string]bool{
+	"ollama":    true,
+	"llamacpp":  true,
+	"llamafile": true,
 }
 
-// chatCompletionResponse is the non-streaming response shape.
-type chatCompletionResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-}
-
-type modelsResponse struct {
-	Data []struct {
-		ID string `json:"id"`
-	} `json:"data"`
-}
-
-// NewClient creates an LLM client targeting the given OpenAI-compatible
-// endpoint and model. Pass an empty apiKey for local servers that don't
-// require authentication. The timeout controls quick operations like ping
-// and model listing.
-func NewClient(baseURL, model, apiKey string, timeout time.Duration) *Client {
+// NewClient creates an LLM client for the named provider. Returns an error
+// if the provider cannot be initialized.
+func NewClient(
+	providerName, baseURL, model, apiKey string,
+	timeout time.Duration,
+) (*Client, error) {
+	opts := buildOpts(baseURL, apiKey, timeout)
+	p, err := createProvider(providerName, opts)
+	if err != nil {
+		return nil, fmt.Errorf("create %s provider: %w", providerName, err)
+	}
 	return &Client{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		model:   model,
-		apiKey:  apiKey,
-		timeout: timeout,
-		http:    &http.Client{},
+		provider:     p,
+		providerName: providerName,
+		baseURL:      baseURL,
+		model:        model,
+		timeout:      timeout,
+	}, nil
+}
+
+func buildOpts(baseURL, apiKey string, timeout time.Duration) []anyllm.Option {
+	var opts []anyllm.Option
+	if baseURL != "" {
+		opts = append(opts, anyllm.WithBaseURL(baseURL))
+	}
+	if apiKey != "" {
+		opts = append(opts, anyllm.WithAPIKey(apiKey))
+	}
+	if timeout > 0 {
+		opts = append(opts, anyllm.WithTimeout(timeout))
+	}
+	return opts
+}
+
+func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) {
+	switch name {
+	case "ollama":
+		return ollama.New(opts...)
+	case "anthropic":
+		return anthropic.New(opts...)
+	case "openai", "openrouter":
+		return openai.New(opts...)
+	case "deepseek":
+		return deepseek.New(opts...)
+	case "gemini":
+		return gemini.New(opts...)
+	case "groq":
+		return groq.New(opts...)
+	case "mistral":
+		return mistral.New(opts...)
+	case "llamacpp":
+		return llamacpp.New(opts...)
+	case "llamafile":
+		return llamafile.New(opts...)
+	default:
+		return nil, fmt.Errorf("unknown provider %q", name)
 	}
 }
 
-// IsLocalServer returns true when no API key is configured, indicating a local
-// server like Ollama. Used to gate Ollama-specific features like model pulling.
-func (c *Client) IsLocalServer() bool {
-	return c.apiKey == ""
+// ProviderName returns the provider identifier (e.g. "ollama", "anthropic").
+func (c *Client) ProviderName() string {
+	return c.providerName
 }
 
-// APIKey returns the configured API key.
-func (c *Client) APIKey() string {
-	return c.apiKey
+// IsLocalServer returns true for providers that run on the user's machine
+// (ollama, llamacpp, llamafile).
+func (c *Client) IsLocalServer() bool {
+	return localProviders[c.providerName]
 }
 
 // Model returns the configured model name.
@@ -131,23 +150,14 @@ func (c *Client) Model() string {
 	return c.model
 }
 
-// SetModel switches the active model. The caller is responsible for verifying
-// the model exists (e.g. via ListModels).
+// SetModel switches the active model.
 func (c *Client) SetModel(model string) {
 	c.model = model
 }
 
-// SetThinking enables or disables model thinking mode.
-func (c *Client) SetThinking(enabled bool) {
-	c.thinking = &enabled
-}
-
-// requestOptions returns Ollama options, or nil if none are configured.
-func (c *Client) requestOptions() map[string]any {
-	if c.thinking == nil {
-		return nil
-	}
-	return map[string]any{"enable_thinking": *c.thinking}
+// SetThinking sets the reasoning effort level.
+func (c *Client) SetThinking(level string) {
+	c.thinking = level
 }
 
 // BaseURL returns the configured base URL.
@@ -160,385 +170,206 @@ func (c *Client) Timeout() time.Duration {
 	return c.timeout
 }
 
-// setAuth adds the Authorization header when an API key is configured.
-func (c *Client) setAuth(req *http.Request) {
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+// toMessages converts internal Message types to any-llm-go Messages.
+func toMessages(msgs []Message) []anyllm.Message {
+	out := make([]anyllm.Message, len(msgs))
+	for i, m := range msgs {
+		out[i] = anyllm.Message{Role: m.Role, Content: m.Content}
 	}
+	return out
 }
 
-// ListModels fetches the available model IDs from the inference server.
+// completionParams builds a CompletionParams from the client state and options.
+func (c *Client) completionParams(messages []Message, opts []ChatOption) anyllm.CompletionParams {
+	temp := 0.0
+	params := anyllm.CompletionParams{
+		Model:       c.model,
+		Messages:    toMessages(messages),
+		Temperature: &temp,
+	}
+	if c.thinking != "" {
+		params.ReasoningEffort = anyllm.ReasoningEffort(c.thinking)
+	}
+
+	var cp chatParams
+	for _, opt := range opts {
+		opt(&cp)
+	}
+	if cp.responseFormat != nil {
+		params.ResponseFormat = cp.responseFormat
+	}
+	return params
+}
+
+// ListModels fetches the available model IDs. Returns an error if the
+// provider does not support model listing.
 func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(
-		ctx, http.MethodGet, c.baseURL+"/models", nil,
-	)
+	lister, ok := c.provider.(anyllm.ModelLister)
+	if !ok {
+		return nil, fmt.Errorf("%s provider does not support listing models", c.providerName)
+	}
+
+	resp, err := lister.ListModels(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	c.setAuth(req)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, c.unreachableError()
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, cleanErrorResponse(resp.StatusCode, errBody)
+		return nil, c.wrapError(err)
 	}
 
-	var models modelsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&models); err != nil {
-		return nil, fmt.Errorf("decode model list: %w", err)
-	}
-
-	ids := make([]string, len(models.Data))
-	for i, m := range models.Data {
+	ids := make([]string, len(resp.Data))
+	for i, m := range resp.Data {
 		ids[i] = m.ID
 	}
 	return ids, nil
 }
 
-// PullChunk is a single progress update from the Ollama pull API.
-type PullChunk struct {
-	Status    string `json:"status"`
-	Digest    string `json:"digest"`
-	Total     int64  `json:"total"`
-	Completed int64  `json:"completed"`
-	Error     string `json:"error"` // Ollama streams errors in this field
-}
-
-// PullScanner wraps the streaming response from the Ollama pull API.
-type PullScanner struct {
-	body    io.ReadCloser
-	scanner *bufio.Scanner
-}
-
-// Next returns the next progress chunk, or nil at EOF.
-func (ps *PullScanner) Next() (*PullChunk, error) {
-	for ps.scanner.Scan() {
-		line := strings.TrimSpace(ps.scanner.Text())
-		if line == "" {
-			continue
-		}
-		var chunk PullChunk
-		if err := json.Unmarshal([]byte(line), &chunk); err != nil {
-			continue // skip malformed lines
-		}
-		return &chunk, nil
-	}
-	if err := ps.scanner.Err(); err != nil {
-		return nil, err
-	}
-	_ = ps.body.Close()
-	return nil, nil // EOF
-}
-
-// PullModel initiates a model pull via the Ollama native API. The base URL
-// is assumed to be the OpenAI-compatible endpoint (e.g.
-// "http://localhost:11434/v1"); this method strips "/v1" to reach the Ollama
-// native API at "/api/pull".
-func (c *Client) PullModel(ctx context.Context, model string) (*PullScanner, error) {
-	// Derive Ollama native base from OpenAI-compatible base.
-	ollamaBase := strings.TrimRight(c.baseURL, "/")
-	ollamaBase = strings.TrimSuffix(ollamaBase, "/v1")
-
-	body, err := json.Marshal(map[string]string{"name": model})
-	if err != nil {
-		return nil, fmt.Errorf("marshal pull request: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost,
-		ollamaBase+"/api/pull",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("build pull request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, c.unreachableError()
-	}
-	if resp.StatusCode != http.StatusOK {
-		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		_ = resp.Body.Close()
-		return nil, cleanErrorResponse(resp.StatusCode, errBody)
-	}
-
-	return &PullScanner{
-		body:    resp.Body,
-		scanner: bufio.NewScanner(resp.Body),
-	}, nil
-}
-
 // Ping checks whether the API is reachable and the configured model is
-// available. Returns a user-friendly error if not.
+// available. For providers without model listing, it's a no-op.
 func (c *Client) Ping(ctx context.Context) error {
+	lister, ok := c.provider.(anyllm.ModelLister)
+	if !ok {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(
-		ctx, http.MethodGet, c.baseURL+"/models", nil,
-	)
+	resp, err := lister.ListModels(ctx)
 	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	c.setAuth(req)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return c.unreachableError()
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return cleanErrorResponse(resp.StatusCode, errBody)
+		return c.wrapError(err)
 	}
 
-	var models modelsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&models); err != nil {
-		return fmt.Errorf("decode model list: %w", err)
-	}
-
-	for _, m := range models.Data {
-		// Ollama model names can include :tag suffixes; match on prefix.
+	for _, m := range resp.Data {
 		if m.ID == c.model || strings.HasPrefix(m.ID, c.model+":") {
 			return nil
 		}
 	}
-	if c.IsLocalServer() {
+	if c.providerName == "ollama" {
 		return fmt.Errorf(
 			"model %q not found -- pull it with `ollama pull %s`",
 			c.model, c.model,
 		)
 	}
 	return fmt.Errorf(
-		"model %q not available at %s -- check the model name in your config",
-		c.model, c.baseURL,
+		"model %q not available -- check the model name in your config",
+		c.model,
 	)
 }
 
 // ChatComplete sends a non-streaming chat completion request and returns the
-// full response content. Used for structured output like SQL generation where
-// the caller needs the complete result before proceeding.
+// full response content.
 func (c *Client) ChatComplete(
 	ctx context.Context,
 	messages []Message,
 	opts ...ChatOption,
 ) (string, error) {
-	temp := 0.0
-	cr := chatRequest{
-		Model:       c.model,
-		Messages:    messages,
-		Stream:      false,
-		Temperature: &temp,
-		Options:     c.requestOptions(),
-	}
-	for _, opt := range opts {
-		opt(&cr)
-	}
-	body, err := json.Marshal(cr)
+	params := c.completionParams(messages, opts)
+
+	resp, err := c.provider.Completion(ctx, params)
 	if err != nil {
-		return "", fmt.Errorf("marshal request: %w", err)
+		return "", c.wrapError(err)
 	}
-
-	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost,
-		c.baseURL+"/chat/completions",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return "", fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	c.setAuth(req)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return "", c.unreachableError()
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return "", cleanErrorResponse(resp.StatusCode, errBody)
-	}
-
-	var result chatCompletionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("decode response: %w", err)
-	}
-	if len(result.Choices) == 0 {
+	if len(resp.Choices) == 0 {
 		return "", fmt.Errorf("no choices in response")
 	}
-	return result.Choices[0].Message.Content, nil
+	return resp.Choices[0].Message.ContentString(), nil
 }
 
-// ChatStream sends a chat completion request and returns a channel that emits
-// streamed response chunks. The channel closes when the response completes or
+// ChatStream sends a streaming chat completion request and returns a channel
+// of StreamChunk values. The channel closes when the response completes or
 // the context is cancelled. Callers must drain the channel.
 func (c *Client) ChatStream(
 	ctx context.Context,
 	messages []Message,
 	opts ...ChatOption,
 ) (<-chan StreamChunk, error) {
-	temp := 0.0
-	cr := chatRequest{
-		Model:       c.model,
-		Messages:    messages,
-		Stream:      true,
-		Temperature: &temp,
-		Options:     c.requestOptions(),
-	}
-	for _, opt := range opts {
-		opt(&cr)
-	}
-	body, err := json.Marshal(cr)
-	if err != nil {
-		return nil, fmt.Errorf("marshal request: %w", err)
-	}
+	params := c.completionParams(messages, opts)
 
-	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost,
-		c.baseURL+"/chat/completions",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	c.setAuth(req)
+	chunks, errs := c.provider.CompletionStream(ctx, params)
 
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, c.unreachableError()
-	}
-	if resp.StatusCode != http.StatusOK {
-		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		_ = resp.Body.Close()
-		return nil, cleanErrorResponse(resp.StatusCode, errBody)
-	}
-
-	ch := make(chan StreamChunk, 16)
-	go sseReader(ctx, resp.Body, ch)
-	return ch, nil
+	out := make(chan StreamChunk, 16)
+	go func() {
+		defer close(out)
+		for {
+			select {
+			case chunk, ok := <-chunks:
+				if !ok {
+					return
+				}
+				content := ""
+				done := false
+				if len(chunk.Choices) > 0 {
+					content = chunk.Choices[0].Delta.Content
+					done = chunk.Choices[0].FinishReason != ""
+				}
+				select {
+				case out <- StreamChunk{Content: content, Done: done}:
+				case <-ctx.Done():
+					return
+				}
+				if done {
+					return
+				}
+			case err, ok := <-errs:
+				if ok && err != nil {
+					select {
+					case out <- StreamChunk{Err: c.wrapError(err)}:
+					case <-ctx.Done():
+					}
+				}
+				return
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return out, nil
 }
 
-// sseReader reads Server-Sent Events from the response body, parses each
-// chunk, and sends it on the channel. Closes the channel and body when done.
-func sseReader(ctx context.Context, body io.ReadCloser, ch chan<- StreamChunk) {
-	defer close(ch)
-	defer func() { _ = body.Close() }()
-
-	scanner := bufio.NewScanner(body)
-	for scanner.Scan() {
-		if ctx.Err() != nil {
-			return
-		}
-		line := scanner.Text()
-
-		// SSE format: "data: {json}" or "data: [DONE]"
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-		payload := strings.TrimPrefix(line, "data: ")
-
-		if payload == "[DONE]" {
-			select {
-			case ch <- StreamChunk{Done: true}:
-			case <-ctx.Done():
-			}
-			return
-		}
-
-		var chunk chatCompletionChunk
-		if err := json.Unmarshal([]byte(payload), &chunk); err != nil {
-			select {
-			case ch <- StreamChunk{Err: fmt.Errorf("decode chunk: %w", err)}:
-			case <-ctx.Done():
-			}
-			return
-		}
-
-		if len(chunk.Choices) == 0 {
-			continue
-		}
-
-		content := chunk.Choices[0].Delta.Content
-		done := chunk.Choices[0].FinishReason != nil
-
-		select {
-		case ch <- StreamChunk{Content: content, Done: done}:
-		case <-ctx.Done():
-			return
-		}
-
-		if done {
-			return
-		}
+// wrapError converts any-llm-go errors to user-friendly messages.
+func (c *Client) wrapError(err error) error {
+	if err == nil {
+		return nil
 	}
-	if err := scanner.Err(); err != nil && ctx.Err() == nil {
-		select {
-		case ch <- StreamChunk{Err: fmt.Errorf("read stream: %w", err)}:
-		case <-ctx.Done():
-		}
-	}
-}
 
-// unreachableError returns a user-friendly error when the server can't be
-// reached. For local servers it suggests starting Ollama; for cloud providers
-// it suggests checking the URL.
-func (c *Client) unreachableError() error {
-	if c.IsLocalServer() {
+	var providerErr *anyllmerrors.ProviderError
+	if errors.As(err, &providerErr) {
+		if c.providerName == "ollama" {
+			return fmt.Errorf("cannot reach ollama -- start it with `ollama serve`")
+		}
+		if c.IsLocalServer() {
+			return fmt.Errorf("cannot reach %s server -- is it running?", c.providerName)
+		}
+		return fmt.Errorf("cannot reach %s -- check your base_url and network", c.providerName)
+	}
+
+	var modelErr *anyllmerrors.ModelNotFoundError
+	if errors.As(err, &modelErr) {
+		if c.providerName == "ollama" {
+			return fmt.Errorf(
+				"model %q not found -- pull it with `ollama pull %s`",
+				c.model, c.model,
+			)
+		}
 		return fmt.Errorf(
-			"cannot reach %s -- start it with `ollama serve`",
-			c.baseURL,
+			"model %q not available -- check the model name in your config",
+			c.model,
 		)
 	}
-	return fmt.Errorf(
-		"cannot reach %s -- check your base_url and network connection",
-		c.baseURL,
-	)
-}
 
-// cleanErrorResponse tries to extract a human-readable message from an HTTP
-// error response. Handles both OpenAI-style {"error": {"message": "..."}} and
-// Ollama-style {"error": "..."} responses. Falls back to the raw body if
-// parsing fails.
-func cleanErrorResponse(statusCode int, body []byte) error {
-	// Try OpenAI-style nested error.
-	var openAIErr struct {
-		Error struct {
-			Message string `json:"message"`
-			Type    string `json:"type"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(body, &openAIErr); err == nil && openAIErr.Error.Message != "" {
-		return fmt.Errorf("server error (%d): %s", statusCode, openAIErr.Error.Message)
+	var authErr *anyllmerrors.AuthenticationError
+	if errors.As(err, &authErr) {
+		return fmt.Errorf(
+			"authentication failed for %s -- check your api_key",
+			c.providerName,
+		)
 	}
 
-	// Try Ollama-style flat error.
-	var ollamaErr struct {
-		Error string `json:"error"`
-	}
-	if err := json.Unmarshal(body, &ollamaErr); err == nil && ollamaErr.Error != "" {
-		return fmt.Errorf("server error (%d): %s", statusCode, ollamaErr.Error)
+	var rateLimitErr *anyllmerrors.RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		return fmt.Errorf("rate limited by %s -- try again shortly", c.providerName)
 	}
 
-	// Fallback: raw body if it's short and doesn't look like JSON noise.
-	bodyStr := string(body)
-	if len(bodyStr) < 100 && !strings.Contains(bodyStr, "{") {
-		return fmt.Errorf("server error (%d): %s", statusCode, bodyStr)
-	}
-
-	// Last resort: generic message without dumping raw JSON.
-	return fmt.Errorf("server returned %d", statusCode)
+	return err
 }

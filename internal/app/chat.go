@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
+	ollamaPull "github.com/cpcloud/micasa/internal/ollama"
 )
 
 const (
@@ -142,7 +143,7 @@ type pullProgressMsg struct {
 type ollamaPullState struct {
 	Model   string
 	Cancel  context.CancelFunc
-	Scanner *llm.PullScanner
+	Scanner *ollamaPull.PullScanner
 }
 
 // openChat shows the chat overlay. If a session already exists it is
@@ -603,6 +604,8 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 
 	client := m.llmClient
 	timeout := client.Timeout()
+	baseURL := client.BaseURL()
+	isLocal := client.IsLocalServer()
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
@@ -617,21 +620,21 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 				}
 			}
 		}
-		if !client.IsLocalServer() {
+		if !isLocal {
 			return pullProgressMsg{
 				Err:  fmt.Errorf("model %q not found -- check the model name", name),
 				Done: true,
 			}
 		}
-		return startPull(client, name)
+		return startPull(baseURL, name)
 	}
 }
 
 // startPull initiates a model pull via the Ollama HTTP API and returns the
 // first progress message.
-func startPull(client *llm.Client, name string) tea.Msg {
+func startPull(baseURL, name string) tea.Msg {
 	ctx, cancel := context.WithCancel(context.Background())
-	scanner, err := client.PullModel(ctx, name)
+	scanner, err := ollamaPull.PullModel(ctx, baseURL, name)
 	if err != nil {
 		cancel()
 		return pullProgressMsg{Err: err, Done: true}

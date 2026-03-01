@@ -35,13 +35,13 @@ func TestDefaultsApplied(t *testing.T) {
 
 func TestLoadFromFile(t *testing.T) {
 	path := writeConfig(t, `[llm]
-base_url = "http://myhost:8080/v1"
+base_url = "http://myhost:8080"
 model = "llama3"
 extra_context = "My house is old."
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, "http://myhost:8080/v1", cfg.LLM.BaseURL)
+	assert.Equal(t, "http://myhost:8080", cfg.LLM.BaseURL)
 	assert.Equal(t, "llama3", cfg.LLM.Model)
 	assert.Equal(t, "My house is old.", cfg.LLM.ExtraContext)
 }
@@ -58,41 +58,85 @@ model = "phi3"
 
 func TestEnvOverridesConfig(t *testing.T) {
 	path := writeConfig(t, `[llm]
-base_url = "http://file-host:1234/v1"
+base_url = "http://file-host:1234"
 model = "from-file"
 `)
-	t.Setenv("OLLAMA_HOST", "http://env-host:5678")
+	t.Setenv("MICASA_LLM_BASE_URL", "http://env-host:5678")
 	t.Setenv("MICASA_LLM_MODEL", "from-env")
 
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, "http://env-host:5678/v1", cfg.LLM.BaseURL)
+	assert.Equal(t, "http://env-host:5678", cfg.LLM.BaseURL)
 	assert.Equal(t, "from-env", cfg.LLM.Model)
 }
 
-func TestOllamaHostAppendsV1(t *testing.T) {
-	t.Setenv("OLLAMA_HOST", "http://myhost:11434")
-
-	cfg, err := LoadFromPath(noConfig(t))
+func TestBaseURLV1SuffixStripped(t *testing.T) {
+	path := writeConfig(t, `[llm]
+base_url = "http://myhost:11434/v1"
+`)
+	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, "http://myhost:11434/v1", cfg.LLM.BaseURL)
-}
-
-func TestOllamaHostAlreadyHasV1(t *testing.T) {
-	t.Setenv("OLLAMA_HOST", "http://myhost:11434/v1")
-
-	cfg, err := LoadFromPath(noConfig(t))
-	require.NoError(t, err)
-	assert.Equal(t, "http://myhost:11434/v1", cfg.LLM.BaseURL)
+	assert.Equal(t, "http://myhost:11434", cfg.LLM.BaseURL,
+		"/v1 suffix should be stripped -- providers handle path construction")
 }
 
 func TestTrailingSlashStripped(t *testing.T) {
 	path := writeConfig(t, `[llm]
-base_url = "http://localhost:11434/v1/"
+base_url = "http://localhost:11434/"
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, "http://localhost:11434/v1", cfg.LLM.BaseURL)
+	assert.Equal(t, "http://localhost:11434", cfg.LLM.BaseURL)
+}
+
+func TestProviderAutoDetection(t *testing.T) {
+	tests := []struct {
+		name     string
+		baseURL  string
+		apiKey   string
+		expected string
+	}{
+		{"no key defaults to ollama", "", "", DefaultProvider},
+		{"anthropic URL", "https://api.anthropic.com", "sk-ant-key", "anthropic"},
+		{"openai URL", "https://api.openai.com", "sk-key", "openai"},
+		{"openrouter URL", "https://openrouter.ai", "sk-key", "openrouter"},
+		{"unknown with key defaults to openai", "https://custom.api.com", "key", "openai"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, detectProvider(tt.baseURL, tt.apiKey))
+		})
+	}
+}
+
+func TestProviderExplicitConfig(t *testing.T) {
+	path := writeConfig(t, `[llm]
+provider = "anthropic"
+api_key = "sk-ant-test"
+model = "claude-sonnet-4-5-20250929"
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, "anthropic", cfg.LLM.Provider)
+}
+
+func TestProviderEnvOverride(t *testing.T) {
+	t.Setenv("MICASA_LLM_PROVIDER", "openai")
+	t.Setenv("MICASA_LLM_API_KEY", "sk-test")
+
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, "openai", cfg.LLM.Provider)
+}
+
+func TestProviderInvalidReturnsError(t *testing.T) {
+	path := writeConfig(t, `[llm]
+provider = "bogus"
+`)
+	_, err := LoadFromPath(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "bogus")
+	assert.Contains(t, err.Error(), "supported")
 }
 
 func TestExampleTOML(t *testing.T) {
@@ -311,7 +355,8 @@ api_key = "sk-ant-api03-secret"
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, "https://api.anthropic.com/v1", cfg.LLM.BaseURL)
+	// /v1 suffix is stripped -- providers handle path construction.
+	assert.Equal(t, "https://api.anthropic.com", cfg.LLM.BaseURL)
 	assert.Equal(t, "claude-sonnet-4-5-20250929", cfg.LLM.Model)
 	assert.Equal(t, "sk-ant-api03-secret", cfg.LLM.APIKey)
 }
@@ -424,7 +469,6 @@ func TestInvalidEnvVarReturnsError(t *testing.T) {
 	}{
 		{"MICASA_MAX_EXTRACT_PAGES", "not-a-number", "expected integer"},
 		{"MICASA_EXTRACTION_ENABLED", "maybe", "expected true or false"},
-		{"MICASA_LLM_THINKING", "dunno", "expected true or false"},
 		{"MICASA_MAX_DOCUMENT_SIZE", "lots", "expected byte size"},
 		{"MICASA_CACHE_TTL", "forever", "expected duration"},
 		{"MICASA_CACHE_TTL_DAYS", "many", "expected integer"},
@@ -438,6 +482,31 @@ func TestInvalidEnvVarReturnsError(t *testing.T) {
 			assert.Contains(t, err.Error(), tt.wantMsg)
 		})
 	}
+}
+
+func TestInvalidThinkingLevelReturnsError(t *testing.T) {
+	t.Run("llm.thinking", func(t *testing.T) {
+		t.Setenv("MICASA_LLM_THINKING", "dunno")
+		_, err := LoadFromPath(noConfig(t))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid level")
+		assert.Contains(t, err.Error(), "dunno")
+	})
+	t.Run("extraction.thinking", func(t *testing.T) {
+		t.Setenv("MICASA_EXTRACTION_THINKING", "yolo")
+		_, err := LoadFromPath(noConfig(t))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid level")
+		assert.Contains(t, err.Error(), "yolo")
+	})
+	t.Run("valid levels", func(t *testing.T) {
+		for _, level := range []string{"none", "low", "medium", "high", "auto"} {
+			t.Setenv("MICASA_LLM_THINKING", level)
+			cfg, err := LoadFromPath(noConfig(t))
+			require.NoError(t, err, "level %q should be valid", level)
+			assert.Equal(t, level, cfg.LLM.Thinking)
+		}
+	})
 }
 
 // --- Config Get ---
@@ -502,7 +571,8 @@ func TestEnvVars(t *testing.T) {
 	assert.NotEmpty(t, m)
 
 	want := map[string]string{
-		"OLLAMA_HOST":                "llm.base_url",
+		"MICASA_LLM_PROVIDER":        "llm.provider",
+		"MICASA_LLM_BASE_URL":        "llm.base_url",
 		"MICASA_LLM_API_KEY":         "llm.api_key",
 		"MICASA_LLM_MODEL":           "llm.model",
 		"MICASA_LLM_TIMEOUT":         "llm.timeout",
