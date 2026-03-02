@@ -29,7 +29,7 @@ type Store struct {
 	currency        locale.Currency
 }
 
-var unscopedPreload = func(q *gorm.DB) *gorm.DB { return q.Unscoped() }
+func unscopedPreload(q *gorm.DB) *gorm.DB { return q.Unscoped() }
 
 func Open(path string) (*Store, error) {
 	if err := ValidateDBPath(path); err != nil {
