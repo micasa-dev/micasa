@@ -1,0 +1,11 @@
+# Copyright 2026 Phillip Cloud
+# Licensed under the Apache License, Version 2.0
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
