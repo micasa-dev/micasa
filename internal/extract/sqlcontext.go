@@ -82,9 +82,9 @@ func FormatEntityRows(label string, rows []EntityRow) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("-- %s (id, name)\n", label))
+	fmt.Fprintf(&b, "-- %s (id, name)\n", label)
 	for _, r := range rows {
-		b.WriteString(fmt.Sprintf("-- %d, %s\n", r.ID, r.Name))
+		fmt.Fprintf(&b, "-- %d, %s\n", r.ID, r.Name)
 	}
 	return b.String()
 }

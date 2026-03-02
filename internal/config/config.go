@@ -58,7 +58,7 @@ type LLM struct {
 	// APIKey is the authentication credential. Required for cloud
 	// providers (Anthropic, OpenAI, OpenRouter, etc.). Leave empty for local
 	// servers like Ollama that don't require authentication.
-	APIKey string `toml:"api_key" env:"MICASA_LLM_API_KEY"`
+	APIKey string `toml:"api_key" env:"MICASA_LLM_API_KEY"` //nolint:gosec // config field, not a hardcoded credential
 
 	// ExtraContext is custom text appended to all system prompts.
 	// Useful for domain-specific details: house style, location, etc.

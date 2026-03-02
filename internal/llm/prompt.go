@@ -213,9 +213,9 @@ for appliance names/types.
 
 func formatDDL(t TableInfo) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("CREATE TABLE %s (\n", t.Name))
+	fmt.Fprintf(&b, "CREATE TABLE %s (\n", t.Name)
 	for i, c := range t.Columns {
-		b.WriteString(fmt.Sprintf("  %s %s", c.Name, c.Type))
+		fmt.Fprintf(&b, "  %s %s", c.Name, c.Type)
 		if c.PK {
 			b.WriteString(" PRIMARY KEY")
 		}
@@ -239,7 +239,7 @@ func formatDDL(t TableInfo) string {
 
 func formatTable(t TableInfo) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("### %s\n", t.Name))
+	fmt.Fprintf(&b, "### %s\n", t.Name)
 	for _, c := range t.Columns {
 		flags := ""
 		if c.PK {
@@ -248,7 +248,7 @@ func formatTable(t TableInfo) string {
 		if c.NotNull {
 			flags += " NOT NULL"
 		}
-		b.WriteString(fmt.Sprintf("- %s %s%s\n", c.Name, c.Type, flags))
+		fmt.Fprintf(&b, "- %s %s%s\n", c.Name, c.Type, flags)
 	}
 	return b.String()
 }

@@ -318,7 +318,13 @@ func ocrImageFile(ctx context.Context, imgPath string) (string, []byte, error) {
 	// worker pool controls parallelism without OpenMP oversubscription.
 	var tsvBuf bytes.Buffer
 	var stderr bytes.Buffer
-	tsvCmd := exec.CommandContext(ctx, "tesseract", imgPath, "stdout", "tsv")
+	tsvCmd := exec.CommandContext( //nolint:gosec // imgPath is a temp file we created
+		ctx,
+		"tesseract",
+		imgPath,
+		"stdout",
+		"tsv",
+	)
 	tsvCmd.Env = append(os.Environ(), "OMP_THREAD_LIMIT=1")
 	tsvCmd.Stdout = &tsvBuf
 	tsvCmd.Stderr = &stderr

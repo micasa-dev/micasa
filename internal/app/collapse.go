@@ -27,7 +27,7 @@ func gapSeparators(
 	collapsedSeps = make([]string, n-1)
 	for i := 0; i < n-1; i++ {
 		plainSeps[i] = normalSep
-		if visToFull[i+1] > visToFull[i]+1 {
+		if visToFull[i+1] > visToFull[i]+1 { //nolint:gosec // i+1 < n guaranteed by loop bound
 			collapsedSeps[i] = collapsedSep
 		} else {
 			collapsedSeps[i] = normalSep

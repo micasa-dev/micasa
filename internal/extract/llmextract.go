@@ -57,17 +57,17 @@ func operationExtractionSystemPrompt(ctx SchemaContext) string {
 func operationExtractionUserMessage(in ExtractionPromptInput) string {
 	var b strings.Builder
 	if in.DocID > 0 {
-		b.WriteString(fmt.Sprintf("Document ID: %d\n", in.DocID))
+		fmt.Fprintf(&b, "Document ID: %d\n", in.DocID)
 	}
-	b.WriteString(fmt.Sprintf("Filename: %s\n", in.Filename))
-	b.WriteString(fmt.Sprintf("MIME: %s\n", in.MIME))
-	b.WriteString(fmt.Sprintf("Size: %d bytes\n", in.SizeBytes))
+	fmt.Fprintf(&b, "Filename: %s\n", in.Filename)
+	fmt.Fprintf(&b, "MIME: %s\n", in.MIME)
+	fmt.Fprintf(&b, "Size: %d bytes\n", in.SizeBytes)
 
 	for _, src := range in.Sources {
 		if strings.TrimSpace(src.Text) == "" {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("\n---\n\n## Source: %s\n", src.Tool))
+		fmt.Fprintf(&b, "\n---\n\n## Source: %s\n", src.Tool)
 		if src.Desc != "" {
 			b.WriteString(src.Desc + "\n\n")
 		}

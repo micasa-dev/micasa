@@ -179,7 +179,7 @@ func (s *Store) DataDump() string {
 		if len(rows) == 0 {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("### %s (%d rows)\n\n", name, len(rows)))
+		fmt.Fprintf(&b, "### %s (%d rows)\n\n", name, len(rows))
 		for _, row := range rows {
 			parts := make([]string, 0, len(cols))
 			for i, col := range cols {

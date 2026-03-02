@@ -818,7 +818,7 @@ func (m *Model) helpContent() string {
 		for _, bind := range section.bindings {
 			keys := m.renderKeys(bind.key)
 			desc := m.styles.HeaderHint().Render(bind.desc)
-			b.WriteString(fmt.Sprintf("  %s  %s\n", keys, desc))
+			fmt.Fprintf(&b, "  %s  %s\n", keys, desc)
 		}
 		if i < len(sections)-1 {
 			b.WriteString("\n")

@@ -62,13 +62,13 @@ func openFileCmd(path string) tea.Cmd {
 			cmd = exec.Command("open", path) //nolint:gosec // path from trusted cache directory
 		case "windows":
 			openerName = "cmd"
-			cmd = exec.Command(
+			cmd = exec.Command( //nolint:gosec // path from trusted cache directory
 				"cmd",
 				"/c",
 				"start",
 				"",
 				path,
-			) //nolint:gosec // path from trusted cache directory
+			)
 		default:
 			openerName = "xdg-open"
 			cmd = exec.Command("xdg-open", path) //nolint:gosec // path from trusted cache directory

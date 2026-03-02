@@ -2734,7 +2734,7 @@ func (m *Model) launchExternalEditor() tea.Cmd {
 	}
 	if _, err := f.WriteString(*m.fs.notesFieldPtr); err != nil {
 		_ = f.Close()
-		_ = os.Remove(f.Name())
+		_ = os.Remove(f.Name()) //nolint:gosec // temp file we just created
 		m.setStatusError(fmt.Sprintf("write temp file: %s", err))
 		return nil
 	}
