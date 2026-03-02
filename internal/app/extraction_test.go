@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
+	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1098,4 +1099,60 @@ func TestFindExtraction_ReturnsNilForUnknownID(t *testing.T) {
 	})
 	found := m.findExtraction(999999)
 	assert.Nil(t, found)
+}
+
+func TestWaitForExtractProgressOpenChannel(t *testing.T) {
+	ch := make(chan extract.ExtractProgress, 1)
+	ch <- extract.ExtractProgress{Phase: "rasterize", Page: 1, Total: 3}
+
+	cmd := waitForExtractProgress(42, ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	result, ok := msg.(extractionProgressMsg)
+	require.True(t, ok)
+	assert.Equal(t, uint64(42), result.ID)
+	assert.Equal(t, "rasterize", result.Progress.Phase)
+}
+
+func TestWaitForExtractProgressClosedChannel(t *testing.T) {
+	ch := make(chan extract.ExtractProgress)
+	close(ch)
+
+	cmd := waitForExtractProgress(7, ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	result, ok := msg.(extractionProgressMsg)
+	require.True(t, ok)
+	assert.Equal(t, uint64(7), result.ID)
+	assert.True(t, result.Progress.Done)
+}
+
+func TestWaitForLLMChunkOpenChannel(t *testing.T) {
+	ch := make(chan llm.StreamChunk, 1)
+	ch <- llm.StreamChunk{Content: "hello", Done: false}
+
+	cmd := waitForLLMChunk(10, ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	result, ok := msg.(extractionLLMChunkMsg)
+	require.True(t, ok)
+	assert.Equal(t, uint64(10), result.ID)
+	assert.Equal(t, "hello", result.Content)
+	assert.False(t, result.Done)
+}
+
+func TestWaitForLLMChunkClosedChannel(t *testing.T) {
+	ch := make(chan llm.StreamChunk)
+	close(ch)
+
+	cmd := waitForLLMChunk(10, ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	result, ok := msg.(extractionLLMChunkMsg)
+	require.True(t, ok)
+	assert.True(t, result.Done)
 }

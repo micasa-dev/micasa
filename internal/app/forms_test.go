@@ -35,6 +35,47 @@ func TestFormDataAsNilFormData(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestParseFormDataWrongType(t *testing.T) {
+	m := newTestModel()
+	wrong := &houseFormData{}
+
+	m.formData = wrong
+	_, err := m.parseProjectFormData()
+	assert.Error(t, err, "parseProjectFormData")
+
+	m.formData = wrong
+	_, err = m.parseIncidentFormData()
+	assert.Error(t, err, "parseIncidentFormData")
+
+	m.formData = wrong
+	_, err = m.parseApplianceFormData()
+	assert.Error(t, err, "parseApplianceFormData")
+
+	m.formData = wrong
+	_, err = m.parseVendorFormData()
+	assert.Error(t, err, "parseVendorFormData")
+
+	m.formData = wrong
+	_, _, err = m.parseServiceLogFormData()
+	assert.Error(t, err, "parseServiceLogFormData")
+
+	m.formData = wrong
+	_, _, err = m.parseQuoteFormData()
+	assert.Error(t, err, "parseQuoteFormData")
+
+	m.formData = wrong
+	_, err = m.parseMaintenanceFormData()
+	assert.Error(t, err, "parseMaintenanceFormData")
+
+	m.formData = &projectFormData{}
+	err = m.submitHouseForm()
+	assert.Error(t, err, "submitHouseForm")
+
+	m.formData = wrong
+	_, err = m.parseDocumentFormData()
+	assert.Error(t, err, "parseDocumentFormData")
+}
+
 func TestOptionalFilePathExpandsTilde(t *testing.T) {
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)

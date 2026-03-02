@@ -1459,6 +1459,58 @@ func TestReplaceAssistantWithErrorEmptyMessages(t *testing.T) {
 	assert.Equal(t, roleError, m.chat.Messages[0].Role)
 }
 
+// --- waitForSQLChunk / waitForChunk ---
+
+func TestWaitForSQLChunkOpenChannel(t *testing.T) {
+	ch := make(chan llm.StreamChunk, 1)
+	ch <- llm.StreamChunk{Content: "SELECT ", Done: false}
+
+	cmd := waitForSQLChunk(ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	result, ok := msg.(sqlChunkMsg)
+	require.True(t, ok)
+	assert.Equal(t, "SELECT ", result.Content)
+	assert.False(t, result.Done)
+}
+
+func TestWaitForSQLChunkClosedChannel(t *testing.T) {
+	ch := make(chan llm.StreamChunk)
+	close(ch)
+
+	cmd := waitForSQLChunk(ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	assert.Nil(t, msg, "closed channel should return nil sentinel")
+}
+
+func TestWaitForChunkOpenChannel(t *testing.T) {
+	ch := make(chan llm.StreamChunk, 1)
+	ch <- llm.StreamChunk{Content: "Hello", Done: false}
+
+	cmd := waitForChunk(ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	result, ok := msg.(chatChunkMsg)
+	require.True(t, ok)
+	assert.Equal(t, "Hello", result.Content)
+	assert.False(t, result.Done)
+}
+
+func TestWaitForChunkClosedChannel(t *testing.T) {
+	ch := make(chan llm.StreamChunk)
+	close(ch)
+
+	cmd := waitForChunk(ch)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	assert.Nil(t, msg, "closed channel should return nil sentinel")
+}
+
 func TestActivateCompleterLive(t *testing.T) {
 	requireOllama(t)
 	m := newTestModel()

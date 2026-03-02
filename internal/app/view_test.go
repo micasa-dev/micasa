@@ -1143,6 +1143,24 @@ func TestEditHouseFormHidesHint(t *testing.T) {
 		"editing existing house profile should not show first-run hint")
 }
 
+func TestPluralCoversAllTabKinds(t *testing.T) {
+	tests := []struct {
+		kind TabKind
+		want string
+	}{
+		{tabProjects, "projects"},
+		{tabQuotes, "quotes"},
+		{tabMaintenance, "maintenance items"},
+		{tabIncidents, "incidents"},
+		{tabAppliances, "appliances"},
+		{tabVendors, "vendors"},
+		{tabDocuments, "documents"},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, tt.kind.plural())
+	}
+}
+
 func TestOverlayMaxHeightClampsSmallTerminal(t *testing.T) {
 	m := newTestModel()
 	m.height = 10
