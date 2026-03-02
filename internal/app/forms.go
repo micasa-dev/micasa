@@ -695,9 +695,9 @@ func (m *Model) submitIncidentForm() error {
 }
 
 func (m *Model) parseIncidentFormData() (data.Incident, error) {
-	values, ok := m.formData.(*incidentFormData)
-	if !ok {
-		return data.Incident{}, fmt.Errorf("unexpected incident form data")
+	values, err := formDataAs[incidentFormData](m)
+	if err != nil {
+		return data.Incident{}, err
 	}
 	noticed, err := data.ParseRequiredDate(values.DateNoticed)
 	if err != nil {
@@ -957,9 +957,9 @@ func (m *Model) submitApplianceForm() error {
 }
 
 func (m *Model) parseApplianceFormData() (data.Appliance, error) {
-	values, ok := m.formData.(*applianceFormData)
-	if !ok {
-		return data.Appliance{}, fmt.Errorf("unexpected appliance form data")
+	values, err := formDataAs[applianceFormData](m)
+	if err != nil {
+		return data.Appliance{}, err
 	}
 	purchaseDate, err := data.ParseOptionalDate(values.PurchaseDate)
 	if err != nil {
@@ -1047,9 +1047,9 @@ func (m *Model) submitVendorForm() error {
 }
 
 func (m *Model) parseVendorFormData() (data.Vendor, error) {
-	values, ok := m.formData.(*vendorFormData)
-	if !ok {
-		return data.Vendor{}, fmt.Errorf("unexpected vendor form data")
+	values, err := formDataAs[vendorFormData](m)
+	if err != nil {
+		return data.Vendor{}, err
 	}
 	return data.Vendor{
 		Name:        strings.TrimSpace(values.Name),
@@ -1399,9 +1399,9 @@ func (m *Model) submitServiceLogForm() error {
 }
 
 func (m *Model) parseServiceLogFormData() (data.ServiceLogEntry, data.Vendor, error) {
-	values, ok := m.formData.(*serviceLogFormData)
-	if !ok {
-		return data.ServiceLogEntry{}, data.Vendor{}, fmt.Errorf("unexpected service log form data")
+	values, err := formDataAs[serviceLogFormData](m)
+	if err != nil {
+		return data.ServiceLogEntry{}, data.Vendor{}, err
 	}
 	servicedAt, err := data.ParseRequiredDate(values.ServicedAt)
 	if err != nil {
@@ -1794,9 +1794,9 @@ func (m *Model) handleFormSubmit() error {
 }
 
 func (m *Model) submitHouseForm() error {
-	values, ok := m.formData.(*houseFormData)
-	if !ok {
-		return fmt.Errorf("unexpected house form data")
+	values, err := formDataAs[houseFormData](m)
+	if err != nil {
+		return err
 	}
 	yearBuilt, err := data.ParseOptionalInt(values.YearBuilt)
 	if err != nil {
@@ -1893,9 +1893,9 @@ func (m *Model) submitProjectForm() error {
 }
 
 func (m *Model) parseProjectFormData() (data.Project, error) {
-	values, ok := m.formData.(*projectFormData)
-	if !ok {
-		return data.Project{}, fmt.Errorf("unexpected project form data")
+	values, err := formDataAs[projectFormData](m)
+	if err != nil {
+		return data.Project{}, err
 	}
 	budget, err := m.cur.ParseOptionalCents(values.Budget)
 	if err != nil {
@@ -1943,9 +1943,9 @@ func (m *Model) submitQuoteForm() error {
 }
 
 func (m *Model) parseQuoteFormData() (data.Quote, data.Vendor, error) {
-	values, ok := m.formData.(*quoteFormData)
-	if !ok {
-		return data.Quote{}, data.Vendor{}, fmt.Errorf("unexpected quote form data")
+	values, err := formDataAs[quoteFormData](m)
+	if err != nil {
+		return data.Quote{}, data.Vendor{}, err
 	}
 	total, err := m.cur.ParseRequiredCents(values.Total)
 	if err != nil {
@@ -2005,9 +2005,9 @@ func (m *Model) submitMaintenanceForm() error {
 }
 
 func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
-	values, ok := m.formData.(*maintenanceFormData)
-	if !ok {
-		return data.MaintenanceItem{}, fmt.Errorf("unexpected maintenance form data")
+	values, err := formDataAs[maintenanceFormData](m)
+	if err != nil {
+		return data.MaintenanceItem{}, err
 	}
 	lastServiced, err := data.ParseOptionalDate(values.LastServiced)
 	if err != nil {
@@ -2312,6 +2312,18 @@ func (m *Model) houseFormValues(profile data.HouseProfile) *houseFormData {
 }
 
 // requiredTitle appends a colored ∗ (U+2217) to a form field label.
+// formDataAs asserts m.formData to the given pointer type, returning a
+// typed error on mismatch. Eliminates the repeated type-assertion boilerplate
+// in every parse* function.
+func formDataAs[T any](m *Model) (*T, error) {
+	v, ok := m.formData.(*T)
+	if !ok {
+		var zero T
+		return nil, fmt.Errorf("unexpected form data: want *%T, got %T", zero, m.formData)
+	}
+	return v, nil
+}
+
 func requiredTitle(label string) string {
 	return label + appStyles.SecondaryText().Render(" ∗")
 }
@@ -2514,9 +2526,9 @@ func (m *Model) submitScopedDocumentForm(entityKind string, entityID uint) error
 }
 
 func (m *Model) parseDocumentFormData() (documentParseResult, error) {
-	values, ok := m.formData.(*documentFormData)
-	if !ok {
-		return documentParseResult{}, fmt.Errorf("unexpected document form data")
+	values, err := formDataAs[documentFormData](m)
+	if err != nil {
+		return documentParseResult{}, err
 	}
 	doc := data.Document{
 		Title:      strings.TrimSpace(values.Title),

@@ -56,7 +56,7 @@ func TestSortFuzzyMatches_ScoreDescending(t *testing.T) {
 		{Entry: columnFinderEntry{FullIndex: 1, Title: "B"}, Score: 30},
 		{Entry: columnFinderEntry{FullIndex: 2, Title: "C"}, Score: 20},
 	}
-	sortFuzzyMatches(matches)
+	sortFuzzyScored(matches)
 	assert.Equal(t, 30, matches[0].Score)
 	assert.Equal(t, 20, matches[1].Score)
 	assert.Equal(t, 10, matches[2].Score)
@@ -67,7 +67,7 @@ func TestSortFuzzyMatches_TiebreakByIndex(t *testing.T) {
 		{Entry: columnFinderEntry{FullIndex: 5, Title: "E"}, Score: 10},
 		{Entry: columnFinderEntry{FullIndex: 2, Title: "B"}, Score: 10},
 	}
-	sortFuzzyMatches(matches)
+	sortFuzzyScored(matches)
 	assert.Equal(t, 2, matches[0].Entry.FullIndex)
 	assert.Equal(t, 5, matches[1].Entry.FullIndex)
 }

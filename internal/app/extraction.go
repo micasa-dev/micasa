@@ -387,16 +387,9 @@ func asyncExtractCmd(ctx context.Context, state *extractionLogState) tea.Cmd {
 
 // waitForExtractProgress blocks until the next extraction progress update.
 func waitForExtractProgress(id uint64, ch <-chan extract.ExtractProgress) tea.Cmd {
-	return func() tea.Msg {
-		p, ok := <-ch
-		if !ok {
-			return extractionProgressMsg{
-				ID:       id,
-				Progress: extract.ExtractProgress{Done: true},
-			}
-		}
+	return waitForStream(ch, func(p extract.ExtractProgress) tea.Msg {
 		return extractionProgressMsg{ID: id, Progress: p}
-	}
+	}, extractionProgressMsg{ID: id, Progress: extract.ExtractProgress{Done: true}})
 }
 
 // llmExtractCmd starts LLM document analysis with streaming.
@@ -461,18 +454,9 @@ func toExtractRows(rows []data.EntityRow) []extract.EntityRow {
 
 // waitForLLMChunk blocks until the next LLM token.
 func waitForLLMChunk(id uint64, ch <-chan llm.StreamChunk) tea.Cmd {
-	return func() tea.Msg {
-		chunk, ok := <-ch
-		if !ok {
-			return extractionLLMChunkMsg{ID: id, Done: true}
-		}
-		return extractionLLMChunkMsg{
-			ID:      id,
-			Content: chunk.Content,
-			Done:    chunk.Done,
-			Err:     chunk.Err,
-		}
-	}
+	return waitForStream(ch, func(c llm.StreamChunk) tea.Msg {
+		return extractionLLMChunkMsg{ID: id, Content: c.Content, Done: c.Done, Err: c.Err}
+	}, extractionLLMChunkMsg{ID: id, Done: true})
 }
 
 // --- Message handlers ---

@@ -113,18 +113,8 @@ func magTextReForSymbol(symbol string) *regexp.Regexp {
 // replaced by their order-of-magnitude representation. Currency symbols are
 // stripped because the column header carries the unit annotation instead.
 func magTransformCells(rows [][]cell, currencySymbol string) [][]cell {
-	out := make([][]cell, len(rows))
-	for i, row := range rows {
-		transformed := make([]cell, len(row))
-		for j, c := range row {
-			transformed[j] = cell{
-				Value:  magFormat(c, false, currencySymbol),
-				Kind:   c.Kind,
-				Null:   c.Null,
-				LinkID: c.LinkID,
-			}
-		}
-		out[i] = transformed
-	}
-	return out
+	return transformCells(rows, func(c cell) cell {
+		c.Value = magFormat(c, false, currencySymbol)
+		return c
+	})
 }

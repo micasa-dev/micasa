@@ -5,7 +5,6 @@ package app
 
 import (
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,6 +33,9 @@ type columnFinderMatch struct {
 	Score     int
 	Positions []int // indices of matched characters in Entry.Title
 }
+
+func (m columnFinderMatch) fuzzyScore() int { return m.Score }
+func (m columnFinderMatch) fuzzyIndex() int { return m.Entry.FullIndex }
 
 // openColumnFinder initializes the column finder overlay for the effective tab.
 func (m *Model) openColumnFinder() {
@@ -107,8 +109,7 @@ func (cf *columnFinderState) refilter() {
 		}
 	}
 
-	// Sort by score descending, then by original column order.
-	sortFuzzyMatches(cf.Matches)
+	sortFuzzyScored(cf.Matches)
 	cf.clampCursor()
 }
 
@@ -119,83 +120,6 @@ func (cf *columnFinderState) clampCursor() {
 	if cf.Cursor < 0 {
 		cf.Cursor = 0
 	}
-}
-
-// fuzzyMatch scores how well query matches target (case-insensitive).
-// Returns 0 if the query doesn't match. Higher scores are better.
-// Bonuses: consecutive chars, word-boundary matches, prefix match.
-func fuzzyMatch(query, target string) (int, []int) {
-	qRunes := []rune(strings.ToLower(query))
-	tRunes := []rune(strings.ToLower(target))
-
-	if len(qRunes) == 0 {
-		return 1, nil
-	}
-	if len(qRunes) > len(tRunes) {
-		return 0, nil
-	}
-
-	positions := make([]int, 0, len(qRunes))
-	score := 0
-	qi := 0
-	prevMatchIdx := -1
-
-	for ti := 0; ti < len(tRunes) && qi < len(qRunes); ti++ {
-		if tRunes[ti] == qRunes[qi] {
-			positions = append(positions, ti)
-			score += 10 // base match point
-
-			// Consecutive bonus.
-			if prevMatchIdx == ti-1 {
-				score += 15
-			}
-
-			// Word boundary bonus: start of string or preceded by
-			// a non-letter (space, underscore, etc.).
-			if ti == 0 || !unicode.IsLetter(tRunes[ti-1]) {
-				score += 20
-			}
-
-			// Exact prefix bonus.
-			if ti == qi {
-				score += 25
-			}
-
-			prevMatchIdx = ti
-			qi++
-		}
-	}
-
-	if qi < len(qRunes) {
-		return 0, nil // not all query chars matched
-	}
-
-	// Bonus for matching a larger fraction of the target.
-	score += (len(qRunes) * 10) / len(tRunes)
-
-	return score, positions
-}
-
-// sortFuzzyMatches sorts matches by score descending, breaking ties by
-// original column order (FullIndex ascending).
-func sortFuzzyMatches(matches []columnFinderMatch) {
-	// Simple insertion sort -- column count is always small.
-	for i := 1; i < len(matches); i++ {
-		key := matches[i]
-		j := i - 1
-		for j >= 0 && fuzzyLess(key, matches[j]) {
-			matches[j+1] = matches[j]
-			j--
-		}
-		matches[j+1] = key
-	}
-}
-
-func fuzzyLess(a, b columnFinderMatch) bool {
-	if a.Score != b.Score {
-		return a.Score > b.Score
-	}
-	return a.Entry.FullIndex < b.Entry.FullIndex
 }
 
 // handleColumnFinderKey processes keys while the column finder is open.
@@ -344,45 +268,10 @@ func (m *Model) buildColumnFinderOverlay() string {
 // highlightFuzzyMatch renders a column title with matched characters
 // in the accent color and bold.
 func highlightFuzzyMatch(match columnFinderMatch) string {
-	title := match.Entry.Title
-	if len(match.Positions) == 0 {
-		return appStyles.HeaderHint().Render(title)
-	}
-
-	posSet := make(map[int]bool, len(match.Positions))
-	for _, p := range match.Positions {
-		posSet[p] = true
-	}
-
-	matchStyle := appStyles.AccentBold()
-	dimStyle := appStyles.HeaderHint()
-
-	runes := []rune(title)
-	var b strings.Builder
-	inMatch := false
-	var run []rune
-
-	flush := func() {
-		if len(run) == 0 {
-			return
-		}
-		if inMatch {
-			b.WriteString(matchStyle.Render(string(run)))
-		} else {
-			b.WriteString(dimStyle.Render(string(run)))
-		}
-		run = run[:0]
-	}
-
-	for i, r := range runes {
-		matched := posSet[i]
-		if matched != inMatch {
-			flush()
-			inMatch = matched
-		}
-		run = append(run, r)
-	}
-	flush()
-
-	return b.String()
+	return highlightFuzzyPositions(
+		match.Entry.Title,
+		match.Positions,
+		appStyles.HeaderHint(),
+		appStyles.AccentBold(),
+	)
 }

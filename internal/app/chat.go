@@ -70,10 +70,14 @@ type modelCompleterEntry struct {
 type modelCompleterMatch struct {
 	Name      string
 	Score     int
+	Index     int // original position for tiebreaking
 	Positions []int
 	Active    bool // true if this is the currently selected model
 	Local     bool // true if already available on the server
 }
+
+func (m modelCompleterMatch) fuzzyScore() int { return m.Score }
+func (m modelCompleterMatch) fuzzyIndex() int { return m.Index }
 
 const modelCommandPrefix = "/model "
 
@@ -545,7 +549,7 @@ func refilterModelCompleter(mc *modelCompleter, query, current string) {
 		mc.Matches = make([]modelCompleterMatch, len(mc.All))
 		for i, entry := range mc.All {
 			mc.Matches[i] = modelCompleterMatch{
-				Name: entry.Name, Local: entry.Local,
+				Name: entry.Name, Index: i, Local: entry.Local,
 				Active: entry.Name == current,
 			}
 		}
@@ -554,24 +558,15 @@ func refilterModelCompleter(mc *modelCompleter, query, current string) {
 	}
 
 	mc.Matches = mc.Matches[:0]
-	for _, entry := range mc.All {
+	for i, entry := range mc.All {
 		if score, positions := fuzzyMatch(query, entry.Name); score > 0 {
 			mc.Matches = append(mc.Matches, modelCompleterMatch{
-				Name: entry.Name, Score: score, Positions: positions,
+				Name: entry.Name, Score: score, Index: i, Positions: positions,
 				Active: entry.Name == current, Local: entry.Local,
 			})
 		}
 	}
-	// Sort by score descending.
-	for i := 1; i < len(mc.Matches); i++ {
-		key := mc.Matches[i]
-		j := i - 1
-		for j >= 0 && key.Score > mc.Matches[j].Score {
-			mc.Matches[j+1] = mc.Matches[j]
-			j--
-		}
-		mc.Matches[j+1] = key
-	}
+	sortFuzzyScored(mc.Matches)
 	mc.clampCursor()
 }
 
@@ -885,19 +880,9 @@ func (m *Model) handleSQLStreamStarted(msg sqlStreamStartedMsg) tea.Cmd {
 
 // waitForSQLChunk returns a Cmd that reads the next SQL chunk from the stream.
 func waitForSQLChunk(ch <-chan llm.StreamChunk) tea.Cmd {
-	return func() tea.Msg {
-		chunk, ok := <-ch
-		if !ok {
-			// Channel closed (likely due to cancellation or error).
-			// Return nil to stop the message loop without triggering Done handler.
-			return nil
-		}
-		return sqlChunkMsg{
-			Content: chunk.Content,
-			Done:    chunk.Done,
-			Err:     chunk.Err,
-		}
-	}
+	return waitForStream(ch, func(c llm.StreamChunk) tea.Msg {
+		return sqlChunkMsg{Content: c.Content, Done: c.Done, Err: c.Err}
+	}, nil)
 }
 
 // handleSQLChunk processes a single SQL token from the stream.
@@ -1120,19 +1105,9 @@ func buildTableInfoFrom(store *data.Store) []llm.TableInfo {
 // waitForChunk returns a Cmd that blocks until the next chunk arrives on the
 // channel, then delivers it as a chatChunkMsg.
 func waitForChunk(ch <-chan llm.StreamChunk) tea.Cmd {
-	return func() tea.Msg {
-		chunk, ok := <-ch
-		if !ok {
-			// Channel closed (likely due to cancellation or error).
-			// Return nil to stop the message loop without triggering Done handler.
-			return nil
-		}
-		return chatChunkMsg{
-			Content: chunk.Content,
-			Done:    chunk.Done,
-			Err:     chunk.Err,
-		}
-	}
+	return waitForStream(ch, func(c llm.StreamChunk) tea.Msg {
+		return chatChunkMsg{Content: c.Content, Done: c.Done, Err: c.Err}
+	}, nil)
 }
 
 // refreshChatViewport rebuilds the viewport content from the message history.
@@ -1501,7 +1476,6 @@ func (m *Model) renderModelCompleterFor(mc *modelCompleter, query string, innerW
 //
 // Fuzzy-matched characters get the accent highlight regardless.
 func (m *Model) highlightModelMatch(match modelCompleterMatch) string {
-	// Determine base and highlight styles from model state.
 	var baseStyle, highlightStyle lipgloss.Style
 	switch {
 	case match.Active:
@@ -1514,44 +1488,7 @@ func (m *Model) highlightModelMatch(match modelCompleterMatch) string {
 		baseStyle = m.styles.ModelRemote()
 		highlightStyle = m.styles.ModelRemoteHL()
 	}
-
-	if len(match.Positions) == 0 {
-		return baseStyle.Render(match.Name)
-	}
-
-	posSet := make(map[int]bool, len(match.Positions))
-	for _, p := range match.Positions {
-		posSet[p] = true
-	}
-
-	runes := []rune(match.Name)
-	var b strings.Builder
-	inMatch := false
-	var run []rune
-
-	flush := func() {
-		if len(run) == 0 {
-			return
-		}
-		if inMatch {
-			b.WriteString(highlightStyle.Render(string(run)))
-		} else {
-			b.WriteString(baseStyle.Render(string(run)))
-		}
-		run = run[:0]
-	}
-
-	for i, r := range runes {
-		matched := posSet[i]
-		if matched != inMatch {
-			flush()
-			inMatch = matched
-		}
-		run = append(run, r)
-	}
-	flush()
-
-	return b.String()
+	return highlightFuzzyPositions(match.Name, match.Positions, baseStyle, highlightStyle)
 }
 
 // --- Layout helpers ---

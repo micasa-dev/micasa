@@ -55,24 +55,13 @@ func annotateMoneyHeaders(specs []columnSpec, cur locale.Currency) []columnSpec 
 // currency symbol (which lives in the column header). The original cells
 // are not modified so sorting continues to work on full-precision values.
 func compactMoneyCells(rows [][]cell, cur locale.Currency) [][]cell {
-	out := make([][]cell, len(rows))
-	for i, row := range rows {
-		transformed := make([]cell, len(row))
-		for j, c := range row {
-			if c.Kind == cellMoney {
-				transformed[j] = cell{
-					Value:  compactMoneyValue(c.Value, cur),
-					Kind:   c.Kind,
-					Null:   c.Null,
-					LinkID: c.LinkID,
-				}
-			} else {
-				transformed[j] = c
-			}
+	return transformCells(rows, func(c cell) cell {
+		if c.Kind != cellMoney {
+			return c
 		}
-		out[i] = transformed
-	}
-	return out
+		c.Value = compactMoneyValue(c.Value, cur)
+		return c
+	})
 }
 
 // compactMoneyValue converts a full-precision money string to compact form
