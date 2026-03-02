@@ -175,10 +175,7 @@ func (m *Model) buildDashboardOverlay() string {
 	// Budget for dashboardView content: outer box height minus chrome.
 	// Chrome: border (2) + padding (2) + header (1) + rule (1) + blank (1)
 	// + hints (1) = 8 lines.
-	maxH := m.effectiveHeight() - 4
-	if maxH < 10 {
-		maxH = 10
-	}
+	maxH := m.overlayMaxHeight()
 	contentBudget := maxH - 8
 	if contentBudget < 3 {
 		contentBudget = 3
@@ -686,14 +683,9 @@ func (m *Model) buildNotePreviewOverlay() string {
 
 	b.WriteString(m.styles.HeaderHint().Render("Press any key to close"))
 
-	maxH := m.effectiveHeight() - 4
-	if maxH < 10 {
-		maxH = 10
-	}
-
 	return m.styles.OverlayBox().
 		Width(contentW).
-		MaxHeight(maxH).
+		MaxHeight(m.overlayMaxHeight()).
 		Render(b.String())
 }
 
@@ -1193,24 +1185,19 @@ func (m *Model) emptyHint(tab *Tab) string {
 }
 
 // topLevelEmptyHint returns the empty-state message for a top-level tab.
+var emptyHintOverrides = map[TabKind]string{
+	tabQuotes:    "No quotes yet. Create a project first, then drill in and add a quote.",
+	tabDocuments: "No documents yet.",
+}
+
 func topLevelEmptyHint(kind TabKind) string {
-	switch kind {
-	case tabProjects:
-		return "No projects yet. Press i for edit mode, then a to add one. ? for help."
-	case tabQuotes:
-		return "No quotes yet. Create a project first, then drill in and add a quote."
-	case tabMaintenance:
-		return "No maintenance items yet. Press i for edit mode, then a to add one. ? for help."
-	case tabIncidents:
-		return "No incidents yet. Press i for edit mode, then a to add one. ? for help."
-	case tabAppliances:
-		return "No appliances yet. Press i for edit mode, then a to add one. ? for help."
-	case tabVendors:
-		return "No vendors yet. Press i for edit mode, then a to add one. ? for help."
-	case tabDocuments:
-		return "No documents yet."
+	if hint, ok := emptyHintOverrides[kind]; ok {
+		return hint
 	}
-	panic(fmt.Sprintf("unhandled TabKind: %d", kind))
+	return fmt.Sprintf(
+		"No %s yet. Press i for edit mode, then a to add one. ? for help.",
+		kind.plural(),
+	)
 }
 
 // markdownRenderer caches a glamour terminal renderer keyed by width.

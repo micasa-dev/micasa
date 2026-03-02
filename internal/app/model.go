@@ -2421,6 +2421,15 @@ func (m *Model) overlayContentWidth() int {
 	return w
 }
 
+// overlayMaxHeight returns the clamped maximum height for overlay boxes.
+func (m *Model) overlayMaxHeight() int {
+	h := m.effectiveHeight() - 4
+	if h < 10 {
+		h = 10
+	}
+	return h
+}
+
 // scrollRule renders a horizontal rule with an embedded Vim-style scroll
 // indicator (Top/Bot/N%) when content overflows the viewport.
 func (m *Model) scrollRule(

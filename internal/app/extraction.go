@@ -1694,7 +1694,7 @@ func (m *Model) renderExtractionStep(
 		if err := json.Indent(&buf, []byte(extract.StripCodeFences(raw)), "", "  "); err == nil {
 			formatted = buf.String()
 		}
-		md := "```json\n" + formatted + "\n```"
+		md := fmt.Sprintf("```json\n%s\n```", formatted)
 		rendered = strings.TrimSpace(ex.renderMarkdown(md, logW))
 	} else {
 		rendered = m.styles.HeaderHint().Render(wordWrap(raw, logW))

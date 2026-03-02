@@ -742,7 +742,7 @@ func (m *Model) dashExpiringRows() []dashRow {
 		overdue := ins.DaysFromNow < 0
 		label := "Insurance renewal"
 		if ins.Carrier != "" {
-			label += " (" + ins.Carrier + ")"
+			label = fmt.Sprintf("%s (%s)", label, ins.Carrier)
 		}
 		rows = append(rows, dashRow{
 			Cells: []dashCell{

@@ -233,11 +233,9 @@ func (m *Model) cancelChatOperations() {
 		m.chat.CancelFn = nil
 
 		if m.chat.Visible {
-			// Remove the "generating query" notice and incomplete assistant message.
 			m.removeLastNotice()
-			if len(m.chat.Messages) > 0 &&
-				m.chat.Messages[len(m.chat.Messages)-1].Role == roleAssistant {
-				m.chat.Messages = m.chat.Messages[:len(m.chat.Messages)-1]
+			if msgs := m.chat.Messages; len(msgs) > 0 && msgs[len(msgs)-1].Role == roleAssistant {
+				m.chat.Messages = msgs[:len(msgs)-1]
 			}
 			m.chat.Messages = append(m.chat.Messages, chatMessage{
 				Role: roleNotice, Content: "Interrupted",
@@ -402,7 +400,7 @@ func (m *Model) handleSlashCommand(input string) tea.Cmd {
 		return nil
 	default:
 		m.chat.Messages = append(m.chat.Messages, chatMessage{
-			Role: roleError, Content: "unknown command: " + cmd + " (try /help)",
+			Role: roleError, Content: fmt.Sprintf("unknown command: %s (try /help)", cmd),
 		})
 		m.refreshChatViewport()
 		return nil
@@ -853,21 +851,27 @@ func (m *Model) removeLastNotice() {
 	}
 }
 
+// replaceAssistantWithError removes the last assistant message (if present),
+// appends an error message, and refreshes the viewport. Used by stream error
+// handlers where the incomplete assistant message should be discarded.
+func (m *Model) replaceAssistantWithError(errMsg string) {
+	msgs := m.chat.Messages
+	if n := len(msgs); n > 0 && msgs[n-1].Role == roleAssistant {
+		m.chat.Messages = msgs[:n-1]
+	}
+	m.chat.Messages = append(m.chat.Messages, chatMessage{
+		Role: roleError, Content: errMsg,
+	})
+	m.refreshChatViewport()
+}
+
 // handleSQLStreamStarted processes the initial SQL stream setup.
 func (m *Model) handleSQLStreamStarted(msg sqlStreamStartedMsg) tea.Cmd {
 	if msg.Err != nil {
 		m.chat.Streaming = false
 		m.chat.StreamingSQL = false
-		m.removeLastNotice() // Remove "generating query"
-		// Remove empty assistant message we added.
-		if len(m.chat.Messages) > 0 &&
-			m.chat.Messages[len(m.chat.Messages)-1].Role == roleAssistant {
-			m.chat.Messages = m.chat.Messages[:len(m.chat.Messages)-1]
-		}
-		m.chat.Messages = append(m.chat.Messages, chatMessage{
-			Role: roleError, Content: msg.Err.Error(),
-		})
-		m.refreshChatViewport()
+		m.removeLastNotice()
+		m.replaceAssistantWithError(msg.Err.Error())
 		return nil
 	}
 
@@ -897,15 +901,7 @@ func (m *Model) handleSQLChunk(msg sqlChunkMsg) tea.Cmd {
 		m.chat.StreamingSQL = false
 		m.chat.CancelFn = nil
 		m.removeLastNotice()
-		// Remove incomplete assistant message.
-		if len(m.chat.Messages) > 0 &&
-			m.chat.Messages[len(m.chat.Messages)-1].Role == roleAssistant {
-			m.chat.Messages = m.chat.Messages[:len(m.chat.Messages)-1]
-		}
-		m.chat.Messages = append(m.chat.Messages, chatMessage{
-			Role: roleError, Content: msg.Err.Error(),
-		})
-		m.refreshChatViewport()
+		m.replaceAssistantWithError(msg.Err.Error())
 		return nil
 	}
 
@@ -931,15 +927,7 @@ func (m *Model) handleSQLChunk(msg sqlChunkMsg) tea.Cmd {
 
 		if sql == "" {
 			m.chat.Streaming = false
-			// Remove incomplete assistant message.
-			if len(m.chat.Messages) > 0 &&
-				m.chat.Messages[len(m.chat.Messages)-1].Role == roleAssistant {
-				m.chat.Messages = m.chat.Messages[:len(m.chat.Messages)-1]
-			}
-			m.chat.Messages = append(m.chat.Messages, chatMessage{
-				Role: roleError, Content: "LLM returned empty SQL",
-			})
-			m.refreshChatViewport()
+			m.replaceAssistantWithError("LLM returned empty SQL")
 			return nil
 		}
 

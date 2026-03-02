@@ -908,9 +908,37 @@ func columnWidths(
 // naturalWidths returns the content-driven width for each column (header,
 // fixed values, and actual cell values) floored by Min but NOT capped by Max.
 func naturalWidths(specs []columnSpec, rows [][]cell, currencySymbol string) []int {
+	return computeNaturalWidths(specs, rows, func(i int) int { return i }, currencySymbol)
+}
+
+// naturalWidthsIndirect computes natural widths using fullRows indexed
+// through visToFull, avoiding a temporary projected [][]cell allocation.
+func naturalWidthsIndirect(
+	specs []columnSpec,
+	fullRows [][]cell,
+	visToFull []int,
+	currencySymbol string,
+) []int {
+	return computeNaturalWidths(
+		specs,
+		fullRows,
+		func(vi int) int { return visToFull[vi] },
+		currencySymbol,
+	)
+}
+
+// computeNaturalWidths is the shared core for naturalWidths and
+// naturalWidthsIndirect. colIndex maps the spec index to the row cell index.
+func computeNaturalWidths(
+	specs []columnSpec,
+	rows [][]cell,
+	colIndex func(int) int,
+	currencySymbol string,
+) []int {
 	widths := make([]int, len(specs))
 	colCount := len(specs)
 	for i, spec := range specs {
+		ci := colIndex(i)
 		w := headerTitleWidth(spec, colCount, currencySymbol)
 		for _, fv := range spec.FixedValues {
 			if fw := lipgloss.Width(fv); fw > w {
@@ -918,17 +946,16 @@ func naturalWidths(specs []columnSpec, rows [][]cell, currencySymbol string) []i
 			}
 		}
 		for _, row := range rows {
-			if i >= len(row) {
+			if ci >= len(row) {
 				continue
 			}
-			value := firstLine(row[i].Value)
+			value := firstLine(row[ci].Value)
 			if value == "" {
 				continue
 			}
 			cw := lipgloss.Width(value)
 			if spec.Kind == cellNotes {
-				if n := extraLineCount(row[i].Value); n > 0 {
-					// Account for "…" + gap + right-aligned "+N" indicator.
+				if n := extraLineCount(row[ci].Value); n > 0 {
 					cw += 1 + 1 + noteSuffixWidth(n)
 				}
 			}
@@ -940,50 +967,6 @@ func naturalWidths(specs []columnSpec, rows [][]cell, currencySymbol string) []i
 			w = spec.Min
 		}
 		widths[i] = w
-	}
-	return widths
-}
-
-// naturalWidthsIndirect computes natural widths using fullRows indexed
-// through visToFull, avoiding a temporary projected [][]cell allocation.
-func naturalWidthsIndirect(
-	specs []columnSpec,
-	fullRows [][]cell,
-	visToFull []int,
-	currencySymbol string,
-) []int {
-	widths := make([]int, len(specs))
-	colCount := len(specs)
-	for vi, spec := range specs {
-		fi := visToFull[vi]
-		w := headerTitleWidth(spec, colCount, currencySymbol)
-		for _, fv := range spec.FixedValues {
-			if fw := lipgloss.Width(fv); fw > w {
-				w = fw
-			}
-		}
-		for _, row := range fullRows {
-			if fi >= len(row) {
-				continue
-			}
-			value := firstLine(row[fi].Value)
-			if value == "" {
-				continue
-			}
-			cw := lipgloss.Width(value)
-			if spec.Kind == cellNotes {
-				if n := extraLineCount(row[fi].Value); n > 0 {
-					cw += 1 + 1 + noteSuffixWidth(n)
-				}
-			}
-			if cw > w {
-				w = cw
-			}
-		}
-		if w < spec.Min {
-			w = spec.Min
-		}
-		widths[vi] = w
 	}
 	return widths
 }

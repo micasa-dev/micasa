@@ -89,6 +89,27 @@ func (k TabKind) singular() string {
 	panic(fmt.Sprintf("unhandled TabKind: %d", k))
 }
 
+// plural returns the lowercase plural noun for a tab kind.
+func (k TabKind) plural() string {
+	switch k {
+	case tabProjects:
+		return "projects"
+	case tabQuotes:
+		return "quotes"
+	case tabMaintenance:
+		return "maintenance items"
+	case tabIncidents:
+		return "incidents"
+	case tabAppliances:
+		return "appliances"
+	case tabVendors:
+		return "vendors"
+	case tabDocuments:
+		return "documents"
+	}
+	panic(fmt.Sprintf("unhandled TabKind: %d", k))
+}
+
 type rowMeta struct {
 	ID      uint
 	Deleted bool

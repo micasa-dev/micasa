@@ -1530,7 +1530,7 @@ func (m *Model) documentEntityOptions() ([]huh.Option[entityRef], error) {
 	for _, a := range appliances {
 		label := a.Name
 		if a.Brand != "" {
-			label += " (" + a.Brand + ")"
+			label = fmt.Sprintf("%s (%s)", label, a.Brand)
 		}
 		opts = append(opts, huh.NewOption(
 			entityOptionLabel(data.DocumentEntityAppliance, label),
@@ -1591,7 +1591,7 @@ func (m *Model) documentEntityOptions() ([]huh.Option[entityRef], error) {
 	for _, v := range m.vendors {
 		label := v.Name
 		if v.ContactName != "" {
-			label += " (" + v.ContactName + ")"
+			label = fmt.Sprintf("%s (%s)", label, v.ContactName)
 		}
 		opts = append(opts, huh.NewOption(
 			entityOptionLabel(data.DocumentEntityVendor, label),
