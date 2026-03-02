@@ -29,6 +29,8 @@ type Store struct {
 	currency        locale.Currency
 }
 
+var unscopedPreload = func(q *gorm.DB) *gorm.DB { return q.Unscoped() }
+
 func Open(path string) (*Store, error) {
 	if err := ValidateDBPath(path); err != nil {
 		return nil, err
@@ -612,12 +614,8 @@ func (s *Store) ListQuotesByVendor(
 ) ([]Quote, error) {
 	var quotes []Quote
 	db := s.db.Where(ColVendorID+" = ?", vendorID).
-		Preload("Vendor", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
-		Preload("Project", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
+		Preload("Vendor", unscopedPreload).
+		Preload("Project", unscopedPreload).
 		Order(ColReceivedDate + " desc, " + ColID + " desc")
 	if includeDeleted {
 		db = db.Unscoped()
@@ -635,12 +633,8 @@ func (s *Store) ListQuotesByProject(
 ) ([]Quote, error) {
 	var quotes []Quote
 	db := s.db.Where(ColProjectID+" = ?", projectID).
-		Preload("Vendor", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
-		Preload("Project", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
+		Preload("Vendor", unscopedPreload).
+		Preload("Project", unscopedPreload).
 		Order(ColReceivedDate + " desc, " + ColID + " desc")
 	if includeDeleted {
 		db = db.Unscoped()
@@ -658,12 +652,8 @@ func (s *Store) ListServiceLogsByVendor(
 ) ([]ServiceLogEntry, error) {
 	var entries []ServiceLogEntry
 	db := s.db.Where(ColVendorID+" = ?", vendorID).
-		Preload("Vendor", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
-		Preload("MaintenanceItem", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
+		Preload("Vendor", unscopedPreload).
+		Preload("MaintenanceItem", unscopedPreload).
 		Order(ColServicedAt + " desc, " + ColID + " desc")
 	if includeDeleted {
 		db = db.Unscoped()
@@ -688,9 +678,7 @@ func (s *Store) ListProjects(includeDeleted bool) ([]Project, error) {
 
 func (s *Store) ListQuotes(includeDeleted bool) ([]Quote, error) {
 	var quotes []Quote
-	db := s.db.Preload("Vendor", func(q *gorm.DB) *gorm.DB {
-		return q.Unscoped()
-	})
+	db := s.db.Preload("Vendor", unscopedPreload)
 	db = db.Preload("Project", func(q *gorm.DB) *gorm.DB {
 		return q.Unscoped().Preload("ProjectType")
 	})
@@ -707,9 +695,7 @@ func (s *Store) ListQuotes(includeDeleted bool) ([]Quote, error) {
 func (s *Store) ListMaintenance(includeDeleted bool) ([]MaintenanceItem, error) {
 	var items []MaintenanceItem
 	db := s.db.Preload("Category")
-	db = db.Preload("Appliance", func(q *gorm.DB) *gorm.DB {
-		return q.Unscoped()
-	})
+	db = db.Preload("Appliance", unscopedPreload)
 	db = db.Order(ColUpdatedAt + " desc, " + ColID + " desc")
 	if includeDeleted {
 		db = db.Unscoped()
@@ -753,9 +739,7 @@ func (s *Store) UpdateProject(project Project) error {
 
 func (s *Store) GetQuote(id uint) (Quote, error) {
 	var quote Quote
-	err := s.db.Preload("Vendor", func(q *gorm.DB) *gorm.DB {
-		return q.Unscoped()
-	}).Preload("Project", func(q *gorm.DB) *gorm.DB {
+	err := s.db.Preload("Vendor", unscopedPreload).Preload("Project", func(q *gorm.DB) *gorm.DB {
 		return q.Unscoped().Preload("ProjectType")
 	}).
 		First(&quote, id).Error
@@ -787,9 +771,7 @@ func (s *Store) UpdateQuote(quote Quote, vendor Vendor) error {
 func (s *Store) GetMaintenance(id uint) (MaintenanceItem, error) {
 	var item MaintenanceItem
 	err := s.db.Preload("Category").
-		Preload("Appliance", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
+		Preload("Appliance", unscopedPreload).
 		First(&item, id).Error
 	return item, err
 }
@@ -838,9 +820,7 @@ func (s *Store) ListServiceLog(
 ) ([]ServiceLogEntry, error) {
 	var entries []ServiceLogEntry
 	db := s.db.Where(ColMaintenanceItemID+" = ?", maintenanceItemID).
-		Preload("Vendor", func(q *gorm.DB) *gorm.DB {
-			return q.Unscoped()
-		}).
+		Preload("Vendor", unscopedPreload).
 		Order(ColServicedAt + " desc, " + ColID + " desc")
 	if includeDeleted {
 		db = db.Unscoped()
@@ -853,9 +833,7 @@ func (s *Store) ListServiceLog(
 
 func (s *Store) GetServiceLog(id uint) (ServiceLogEntry, error) {
 	var entry ServiceLogEntry
-	err := s.db.Preload("Vendor", func(q *gorm.DB) *gorm.DB {
-		return q.Unscoped()
-	}).First(&entry, id).Error
+	err := s.db.Preload("Vendor", unscopedPreload).First(&entry, id).Error
 	return entry, err
 }
 
@@ -926,8 +904,8 @@ func (s *Store) CountMaintenanceByAppliance(applianceIDs []uint) (map[uint]int, 
 func (s *Store) ListIncidents(includeDeleted bool) ([]Incident, error) {
 	var items []Incident
 	db := s.db.
-		Preload("Appliance", func(db *gorm.DB) *gorm.DB { return db.Unscoped() }).
-		Preload("Vendor", func(db *gorm.DB) *gorm.DB { return db.Unscoped() }).
+		Preload("Appliance", unscopedPreload).
+		Preload("Vendor", unscopedPreload).
 		Order(ColUpdatedAt + " desc, " + ColID + " desc")
 	if includeDeleted {
 		db = db.Unscoped()
@@ -938,8 +916,8 @@ func (s *Store) ListIncidents(includeDeleted bool) ([]Incident, error) {
 func (s *Store) GetIncident(id uint) (Incident, error) {
 	var item Incident
 	err := s.db.
-		Preload("Appliance", func(db *gorm.DB) *gorm.DB { return db.Unscoped() }).
-		Preload("Vendor", func(db *gorm.DB) *gorm.DB { return db.Unscoped() }).
+		Preload("Appliance", unscopedPreload).
+		Preload("Vendor", unscopedPreload).
 		First(&item, id).Error
 	return item, err
 }
