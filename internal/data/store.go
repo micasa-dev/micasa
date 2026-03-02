@@ -31,6 +31,47 @@ type Store struct {
 
 func unscopedPreload(q *gorm.DB) *gorm.DB { return q.Unscoped() }
 
+func listQuery[T any](
+	s *Store,
+	includeDeleted bool,
+	prepare func(*gorm.DB) *gorm.DB,
+) ([]T, error) {
+	var items []T
+	db := prepare(s.db)
+	if includeDeleted {
+		db = db.Unscoped()
+	}
+	if err := db.Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func getByID[T any](s *Store, id uint, prepare func(*gorm.DB) *gorm.DB) (T, error) {
+	var item T
+	err := prepare(s.db).First(&item, id).Error
+	return item, err
+}
+
+type dependencyCheck struct {
+	model  any
+	fkCol  string
+	errFmt string
+}
+
+func (s *Store) checkDependencies(id uint, checks []dependencyCheck) error {
+	for _, c := range checks {
+		n, err := s.countDependents(c.model, c.fkCol, id)
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			return fmt.Errorf(c.errFmt, n)
+		}
+	}
+	return nil
+}
+
 func Open(path string) (*Store, error) {
 	if err := ValidateDBPath(path); err != nil {
 		return nil, err
@@ -565,23 +606,13 @@ func (s *Store) MaintenanceCategories() ([]MaintenanceCategory, error) {
 }
 
 func (s *Store) ListVendors(includeDeleted bool) ([]Vendor, error) {
-	var vendors []Vendor
-	db := s.db.Order(ColName + " ASC, " + ColID + " DESC")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&vendors).Error; err != nil {
-		return nil, err
-	}
-	return vendors, nil
+	return listQuery[Vendor](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Order(ColName + " ASC, " + ColID + " DESC")
+	})
 }
 
 func (s *Store) GetVendor(id uint) (Vendor, error) {
-	var vendor Vendor
-	if err := s.db.First(&vendor, id).Error; err != nil {
-		return Vendor{}, err
-	}
-	return vendor, nil
+	return getByID[Vendor](s, id, func(db *gorm.DB) *gorm.DB { return db })
 }
 
 func (s *Store) CreateVendor(vendor *Vendor) error {
@@ -608,41 +639,23 @@ func (s *Store) CountQuotesByProject(projectIDs []uint) (map[uint]int, error) {
 }
 
 // ListQuotesByVendor returns all quotes for a specific vendor.
-func (s *Store) ListQuotesByVendor(
-	vendorID uint,
-	includeDeleted bool,
-) ([]Quote, error) {
-	var quotes []Quote
-	db := s.db.Where(ColVendorID+" = ?", vendorID).
-		Preload("Vendor", unscopedPreload).
-		Preload("Project", unscopedPreload).
-		Order(ColReceivedDate + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&quotes).Error; err != nil {
-		return nil, err
-	}
-	return quotes, nil
+func (s *Store) ListQuotesByVendor(vendorID uint, includeDeleted bool) ([]Quote, error) {
+	return listQuery[Quote](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Where(ColVendorID+" = ?", vendorID).
+			Preload("Vendor", unscopedPreload).
+			Preload("Project", unscopedPreload).
+			Order(ColReceivedDate + " desc, " + ColID + " desc")
+	})
 }
 
 // ListQuotesByProject returns all quotes for a specific project.
-func (s *Store) ListQuotesByProject(
-	projectID uint,
-	includeDeleted bool,
-) ([]Quote, error) {
-	var quotes []Quote
-	db := s.db.Where(ColProjectID+" = ?", projectID).
-		Preload("Vendor", unscopedPreload).
-		Preload("Project", unscopedPreload).
-		Order(ColReceivedDate + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&quotes).Error; err != nil {
-		return nil, err
-	}
-	return quotes, nil
+func (s *Store) ListQuotesByProject(projectID uint, includeDeleted bool) ([]Quote, error) {
+	return listQuery[Quote](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Where(ColProjectID+" = ?", projectID).
+			Preload("Vendor", unscopedPreload).
+			Preload("Project", unscopedPreload).
+			Order(ColReceivedDate + " desc, " + ColID + " desc")
+	})
 }
 
 // ListServiceLogsByVendor returns all service log entries for a specific vendor.
@@ -650,83 +663,53 @@ func (s *Store) ListServiceLogsByVendor(
 	vendorID uint,
 	includeDeleted bool,
 ) ([]ServiceLogEntry, error) {
-	var entries []ServiceLogEntry
-	db := s.db.Where(ColVendorID+" = ?", vendorID).
-		Preload("Vendor", unscopedPreload).
-		Preload("MaintenanceItem", unscopedPreload).
-		Order(ColServicedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&entries).Error; err != nil {
-		return nil, err
-	}
-	return entries, nil
+	return listQuery[ServiceLogEntry](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Where(ColVendorID+" = ?", vendorID).
+			Preload("Vendor", unscopedPreload).
+			Preload("MaintenanceItem", unscopedPreload).
+			Order(ColServicedAt + " desc, " + ColID + " desc")
+	})
 }
 
 func (s *Store) ListProjects(includeDeleted bool) ([]Project, error) {
-	var projects []Project
-	db := s.db.Preload("ProjectType").Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&projects).Error; err != nil {
-		return nil, err
-	}
-	return projects, nil
+	return listQuery[Project](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("ProjectType").Order(ColUpdatedAt + " desc, " + ColID + " desc")
+	})
 }
 
 func (s *Store) ListQuotes(includeDeleted bool) ([]Quote, error) {
-	var quotes []Quote
-	db := s.db.Preload("Vendor", unscopedPreload)
-	db = db.Preload("Project", func(q *gorm.DB) *gorm.DB {
-		return q.Unscoped().Preload("ProjectType")
+	return listQuery[Quote](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Vendor", unscopedPreload).
+			Preload("Project", func(q *gorm.DB) *gorm.DB {
+				return q.Unscoped().Preload("ProjectType")
+			}).
+			Order(ColUpdatedAt + " desc, " + ColID + " desc")
 	})
-	db = db.Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&quotes).Error; err != nil {
-		return nil, err
-	}
-	return quotes, nil
 }
 
 func (s *Store) ListMaintenance(includeDeleted bool) ([]MaintenanceItem, error) {
-	var items []MaintenanceItem
-	db := s.db.Preload("Category")
-	db = db.Preload("Appliance", unscopedPreload)
-	db = db.Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&items).Error; err != nil {
-		return nil, err
-	}
-	return items, nil
+	return listQuery[MaintenanceItem](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Category").
+			Preload("Appliance", unscopedPreload).
+			Order(ColUpdatedAt + " desc, " + ColID + " desc")
+	})
 }
 
 func (s *Store) ListMaintenanceByAppliance(
 	applianceID uint,
 	includeDeleted bool,
 ) ([]MaintenanceItem, error) {
-	var items []MaintenanceItem
-	db := s.db.Preload("Category").
-		Where(ColApplianceID+" = ?", applianceID).
-		Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&items).Error; err != nil {
-		return nil, err
-	}
-	return items, nil
+	return listQuery[MaintenanceItem](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Category").
+			Where(ColApplianceID+" = ?", applianceID).
+			Order(ColUpdatedAt + " desc, " + ColID + " desc")
+	})
 }
 
 func (s *Store) GetProject(id uint) (Project, error) {
-	var project Project
-	err := s.db.Preload("ProjectType").First(&project, id).Error
-	return project, err
+	return getByID[Project](s, id, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("ProjectType")
+	})
 }
 
 func (s *Store) CreateProject(project *Project) error {
@@ -738,12 +721,12 @@ func (s *Store) UpdateProject(project Project) error {
 }
 
 func (s *Store) GetQuote(id uint) (Quote, error) {
-	var quote Quote
-	err := s.db.Preload("Vendor", unscopedPreload).Preload("Project", func(q *gorm.DB) *gorm.DB {
-		return q.Unscoped().Preload("ProjectType")
-	}).
-		First(&quote, id).Error
-	return quote, err
+	return getByID[Quote](s, id, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Vendor", unscopedPreload).
+			Preload("Project", func(q *gorm.DB) *gorm.DB {
+				return q.Unscoped().Preload("ProjectType")
+			})
+	})
 }
 
 func (s *Store) CreateQuote(quote *Quote, vendor Vendor) error {
@@ -769,11 +752,9 @@ func (s *Store) UpdateQuote(quote Quote, vendor Vendor) error {
 }
 
 func (s *Store) GetMaintenance(id uint) (MaintenanceItem, error) {
-	var item MaintenanceItem
-	err := s.db.Preload("Category").
-		Preload("Appliance", unscopedPreload).
-		First(&item, id).Error
-	return item, err
+	return getByID[MaintenanceItem](s, id, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Category").Preload("Appliance", unscopedPreload)
+	})
 }
 
 func (s *Store) CreateMaintenance(item *MaintenanceItem) error {
@@ -785,21 +766,13 @@ func (s *Store) UpdateMaintenance(item MaintenanceItem) error {
 }
 
 func (s *Store) ListAppliances(includeDeleted bool) ([]Appliance, error) {
-	var items []Appliance
-	db := s.db.Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&items).Error; err != nil {
-		return nil, err
-	}
-	return items, nil
+	return listQuery[Appliance](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Order(ColUpdatedAt + " desc, " + ColID + " desc")
+	})
 }
 
 func (s *Store) GetAppliance(id uint) (Appliance, error) {
-	var item Appliance
-	err := s.db.First(&item, id).Error
-	return item, err
+	return getByID[Appliance](s, id, func(db *gorm.DB) *gorm.DB { return db })
 }
 
 func (s *Store) CreateAppliance(item *Appliance) error {
@@ -818,23 +791,17 @@ func (s *Store) ListServiceLog(
 	maintenanceItemID uint,
 	includeDeleted bool,
 ) ([]ServiceLogEntry, error) {
-	var entries []ServiceLogEntry
-	db := s.db.Where(ColMaintenanceItemID+" = ?", maintenanceItemID).
-		Preload("Vendor", unscopedPreload).
-		Order(ColServicedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&entries).Error; err != nil {
-		return nil, err
-	}
-	return entries, nil
+	return listQuery[ServiceLogEntry](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Where(ColMaintenanceItemID+" = ?", maintenanceItemID).
+			Preload("Vendor", unscopedPreload).
+			Order(ColServicedAt + " desc, " + ColID + " desc")
+	})
 }
 
 func (s *Store) GetServiceLog(id uint) (ServiceLogEntry, error) {
-	var entry ServiceLogEntry
-	err := s.db.Preload("Vendor", unscopedPreload).First(&entry, id).Error
-	return entry, err
+	return getByID[ServiceLogEntry](s, id, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Vendor", unscopedPreload)
+	})
 }
 
 func (s *Store) CreateServiceLog(entry *ServiceLogEntry, vendor Vendor) error {
@@ -902,24 +869,17 @@ func (s *Store) CountMaintenanceByAppliance(applianceIDs []uint) (map[uint]int, 
 // ---------------------------------------------------------------------------
 
 func (s *Store) ListIncidents(includeDeleted bool) ([]Incident, error) {
-	var items []Incident
-	db := s.db.
-		Preload("Appliance", unscopedPreload).
-		Preload("Vendor", unscopedPreload).
-		Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	return items, db.Find(&items).Error
+	return listQuery[Incident](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Appliance", unscopedPreload).
+			Preload("Vendor", unscopedPreload).
+			Order(ColUpdatedAt + " desc, " + ColID + " desc")
+	})
 }
 
 func (s *Store) GetIncident(id uint) (Incident, error) {
-	var item Incident
-	err := s.db.
-		Preload("Appliance", unscopedPreload).
-		Preload("Vendor", unscopedPreload).
-		First(&item, id).Error
-	return item, err
+	return getByID[Incident](s, id, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Appliance", unscopedPreload).Preload("Vendor", unscopedPreload)
+	})
 }
 
 func (s *Store) CreateIncident(item *Incident) error {
@@ -973,15 +933,9 @@ var listDocumentColumns = []string{
 }
 
 func (s *Store) ListDocuments(includeDeleted bool) ([]Document, error) {
-	var docs []Document
-	db := s.db.Select(listDocumentColumns).Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&docs).Error; err != nil {
-		return nil, err
-	}
-	return docs, nil
+	return listQuery[Document](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Select(listDocumentColumns).Order(ColUpdatedAt + " desc, " + ColID + " desc")
+	})
 }
 
 // ListDocumentsByEntity returns documents scoped to a specific entity,
@@ -991,17 +945,11 @@ func (s *Store) ListDocumentsByEntity(
 	entityID uint,
 	includeDeleted bool,
 ) ([]Document, error) {
-	var docs []Document
-	db := s.db.Select(listDocumentColumns).
-		Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?", entityKind, entityID).
-		Order(ColUpdatedAt + " desc, " + ColID + " desc")
-	if includeDeleted {
-		db = db.Unscoped()
-	}
-	if err := db.Find(&docs).Error; err != nil {
-		return nil, err
-	}
-	return docs, nil
+	return listQuery[Document](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Select(listDocumentColumns).
+			Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?", entityKind, entityID).
+			Order(ColUpdatedAt + " desc, " + ColID + " desc")
+	})
 }
 
 // CountDocumentsByEntity counts non-deleted documents grouped by entity_id
@@ -1035,11 +983,7 @@ func (s *Store) CountDocumentsByEntity(
 }
 
 func (s *Store) GetDocument(id uint) (Document, error) {
-	var doc Document
-	if err := s.db.First(&doc, id).Error; err != nil {
-		return Document{}, err
-	}
-	return doc, nil
+	return getByID[Document](s, id, func(db *gorm.DB) *gorm.DB { return db })
 }
 
 func (s *Store) CreateDocument(doc *Document) error {
@@ -1183,19 +1127,11 @@ func TitleFromFilename(name string) string {
 }
 
 func (s *Store) DeleteVendor(id uint) error {
-	n, err := s.countDependents(&Quote{}, ColVendorID, id)
-	if err != nil {
+	if err := s.checkDependencies(id, []dependencyCheck{
+		{&Quote{}, ColVendorID, "vendor has %d active quote(s) -- delete them first"},
+		{&Incident{}, ColVendorID, "vendor has %d active incident(s) -- delete them first"},
+	}); err != nil {
 		return err
-	}
-	if n > 0 {
-		return fmt.Errorf("vendor has %d active quote(s) -- delete them first", n)
-	}
-	ni, err := s.countDependents(&Incident{}, ColVendorID, id)
-	if err != nil {
-		return err
-	}
-	if ni > 0 {
-		return fmt.Errorf("vendor has %d active incident(s) -- delete them first", ni)
 	}
 	return s.softDelete(&Vendor{}, DeletionEntityVendor, id)
 }
@@ -1205,12 +1141,10 @@ func (s *Store) RestoreVendor(id uint) error {
 }
 
 func (s *Store) DeleteProject(id uint) error {
-	n, err := s.countDependents(&Quote{}, ColProjectID, id)
-	if err != nil {
+	if err := s.checkDependencies(id, []dependencyCheck{
+		{&Quote{}, ColProjectID, "project has %d active quote(s) -- delete them first"},
+	}); err != nil {
 		return err
-	}
-	if n > 0 {
-		return fmt.Errorf("project has %d active quote(s) -- delete them first", n)
 	}
 	return s.softDelete(&Project{}, DeletionEntityProject, id)
 }
@@ -1220,33 +1154,20 @@ func (s *Store) DeleteQuote(id uint) error {
 }
 
 func (s *Store) DeleteMaintenance(id uint) error {
-	n, err := s.countDependents(&ServiceLogEntry{}, ColMaintenanceItemID, id)
-	if err != nil {
+	if err := s.checkDependencies(id, []dependencyCheck{
+		{&ServiceLogEntry{}, ColMaintenanceItemID, "maintenance item has %d service log(s) -- delete them first"},
+	}); err != nil {
 		return err
-	}
-	if n > 0 {
-		return fmt.Errorf("maintenance item has %d service log(s) -- delete them first", n)
 	}
 	return s.softDelete(&MaintenanceItem{}, DeletionEntityMaintenance, id)
 }
 
 func (s *Store) DeleteAppliance(id uint) error {
-	n, err := s.countDependents(&MaintenanceItem{}, ColApplianceID, id)
-	if err != nil {
+	if err := s.checkDependencies(id, []dependencyCheck{
+		{&MaintenanceItem{}, ColApplianceID, "appliance has %d active maintenance item(s) -- delete or reassign them first"},
+		{&Incident{}, ColApplianceID, "appliance has %d active incident(s) -- delete them first"},
+	}); err != nil {
 		return err
-	}
-	if n > 0 {
-		return fmt.Errorf(
-			"appliance has %d active maintenance item(s) -- delete or reassign them first",
-			n,
-		)
-	}
-	ni, err := s.countDependents(&Incident{}, ColApplianceID, id)
-	if err != nil {
-		return err
-	}
-	if ni > 0 {
-		return fmt.Errorf("appliance has %d active incident(s) -- delete them first", ni)
 	}
 	return s.softDelete(&Appliance{}, DeletionEntityAppliance, id)
 }
