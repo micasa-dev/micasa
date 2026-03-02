@@ -72,6 +72,16 @@ func TestPingServerDown(t *testing.T) {
 	assert.Contains(t, err.Error(), "cannot reach")
 }
 
+// TestPingAnthropicNoOp verifies that Ping is a no-op for providers that
+// don't implement ModelLister (like Anthropic).
+func TestPingAnthropicNoOp(t *testing.T) {
+	client, err := NewClient(
+		"anthropic", "http://localhost:8080", "claude-sonnet-4-5-latest", "test-key", testTimeout,
+	)
+	require.NoError(t, err)
+	assert.NoError(t, client.Ping(context.Background()))
+}
+
 func TestChatCompleteSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"choices":[{"message":{"content":"SELECT COUNT(*) FROM projects"}}]}`)
@@ -255,7 +265,9 @@ func TestSupportsModelListing(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.provider, func(t *testing.T) {
-			c, err := NewClient(tt.provider, "http://localhost:8080", "m", "k", testTimeout)
+			c, err := NewClient(
+				tt.provider, "http://localhost:8080", "m", "k", testTimeout,
+			)
 			require.NoError(t, err)
 			assert.Equal(t, tt.supports, c.SupportsModelListing())
 		})
@@ -364,8 +376,17 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient("openai", srv.URL+"/v1", "gpt-4o", "sk-test", testTimeout)
+	// Build the client directly so the loopback-URL guard in NewClient
+	// does not strip the httptest server address.
+	opts := buildOpts(srv.URL+"/v1", "sk-test", testTimeout)
+	p, err := createProvider("openai", opts)
 	require.NoError(t, err)
+	client := &Client{
+		provider:     p,
+		providerName: "openai",
+		model:        "gpt-4o",
+		timeout:      testTimeout,
+	}
 	err = client.Ping(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not available")
@@ -375,7 +396,7 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 func TestPingServerDownCloud(t *testing.T) {
 	client, err := NewClient(
 		"openai",
-		"http://127.0.0.1:1/v1",
+		"http://192.0.2.1:1/v1",
 		"claude-sonnet-4-5-20250929",
 		"sk-test",
 		testTimeout,
@@ -385,7 +406,9 @@ func TestPingServerDownCloud(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot reach")
 	assert.Contains(t, err.Error(), "check your base_url")
-	assert.NotContains(t, err.Error(), "ollama", "cloud error should not mention ollama")
+	assert.NotContains(
+		t, err.Error(), "ollama", "cloud error should not mention ollama",
+	)
 }
 
 // TestPingModelNotFoundLlamacpp verifies that when a local server
@@ -424,7 +447,9 @@ func TestCreateProviderAllSupported(t *testing.T) {
 	}
 	for _, p := range providers {
 		t.Run(p, func(t *testing.T) {
-			_, err := NewClient(p, "http://localhost:8080", "model", "key", testTimeout)
+			_, err := NewClient(
+				p, "http://localhost:8080", "model", "key", testTimeout,
+			)
 			assert.NoError(t, err)
 		})
 	}
@@ -447,7 +472,9 @@ func TestWrapErrorProviderError(t *testing.T) {
 		t.Run(tt.provider, func(t *testing.T) {
 			c := &Client{providerName: tt.provider}
 			err := c.wrapError(
-				anyllmerrors.NewProviderError(tt.provider, fmt.Errorf("connection refused")),
+				anyllmerrors.NewProviderError(
+					tt.provider, fmt.Errorf("connection refused"),
+				),
 			)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantMsg)
@@ -460,14 +487,18 @@ func TestWrapErrorProviderError(t *testing.T) {
 func TestWrapErrorModelNotFound(t *testing.T) {
 	t.Run("ollama suggests pull", func(t *testing.T) {
 		c := &Client{providerName: "ollama", model: "qwen3"}
-		err := c.wrapError(anyllmerrors.NewModelNotFoundError("ollama", fmt.Errorf("not found")))
+		err := c.wrapError(
+			anyllmerrors.NewModelNotFoundError("ollama", fmt.Errorf("not found")),
+		)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "ollama pull qwen3")
 	})
 	t.Run("cloud suggests config check", func(t *testing.T) {
 		c := &Client{providerName: "anthropic", model: "claude-opus-4-6"}
 		err := c.wrapError(
-			anyllmerrors.NewModelNotFoundError("anthropic", fmt.Errorf("not found")),
+			anyllmerrors.NewModelNotFoundError(
+				"anthropic", fmt.Errorf("not found"),
+			),
 		)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "check the model name")
@@ -479,7 +510,9 @@ func TestWrapErrorModelNotFound(t *testing.T) {
 // the wrong API key for a cloud provider.
 func TestWrapErrorAuthenticationError(t *testing.T) {
 	c := &Client{providerName: "anthropic"}
-	err := c.wrapError(anyllmerrors.NewAuthenticationError("anthropic", fmt.Errorf("invalid key")))
+	err := c.wrapError(
+		anyllmerrors.NewAuthenticationError("anthropic", fmt.Errorf("invalid key")),
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "authentication failed")
 	assert.Contains(t, err.Error(), "check your api_key")
@@ -489,7 +522,9 @@ func TestWrapErrorAuthenticationError(t *testing.T) {
 // provider's rate limit.
 func TestWrapErrorRateLimitError(t *testing.T) {
 	c := &Client{providerName: "openai"}
-	err := c.wrapError(anyllmerrors.NewRateLimitError("openai", fmt.Errorf("429")))
+	err := c.wrapError(
+		anyllmerrors.NewRateLimitError("openai", fmt.Errorf("429")),
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "rate limited")
 	assert.Contains(t, err.Error(), "try again")
@@ -518,7 +553,9 @@ func TestChatCompleteWithThinking(t *testing.T) {
 		// The reasoning_effort field should be present when thinking is set.
 		// The exact field name depends on the provider SDK, but we verify the
 		// client at least sets it on the params.
-		jsonResponse(w, `{"choices":[{"message":{"content":"thought about it"}}]}`)
+		jsonResponse(
+			w, `{"choices":[{"message":{"content":"thought about it"}}]}`,
+		)
 	}))
 	defer srv.Close()
 
@@ -536,7 +573,10 @@ func TestChatCompleteWithThinking(t *testing.T) {
 func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = fmt.Fprintln(w, `data: {"choices":[{"delta":{"content":"hi"},"finish_reason":""}]}`)
+		_, _ = fmt.Fprintln(
+			w,
+			`data: {"choices":[{"delta":{"content":"hi"},"finish_reason":""}]}`,
+		)
 	}))
 	defer srv.Close()
 
@@ -544,11 +584,71 @@ func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
 	cancel() // cancel immediately
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	ch, err := client.ChatStream(ctx, []Message{{Role: "user", Content: "hi"}})
+	ch, err := client.ChatStream(
+		ctx, []Message{{Role: "user", Content: "hi"}},
+	)
 	if err != nil {
 		return // provider may reject immediately
 	}
 	// Drain -- should complete quickly without hanging.
 	for range ch { //nolint:revive // drain channel
+	}
+}
+
+// TestIsLoopbackURL verifies the helper that detects loopback addresses.
+func TestIsLoopbackURL(t *testing.T) {
+	tests := []struct {
+		url      string
+		loopback bool
+	}{
+		{"http://localhost:11434", true},
+		{"http://127.0.0.1:11434", true},
+		{"http://[::1]:11434", true},
+		{"https://localhost/v1", true},
+		{"https://api.anthropic.com", false},
+		{"https://api.openai.com/v1", false},
+		{"http://192.168.1.100:8080", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			assert.Equal(t, tt.loopback, isLoopbackURL(tt.url))
+		})
+	}
+}
+
+// TestNewClientCloudProviderIgnoresLoopbackURL verifies that cloud providers
+// silently ignore a loopback base URL (left over from Ollama config) and use
+// their own default instead.
+func TestNewClientCloudProviderIgnoresLoopbackURL(t *testing.T) {
+	providers := []string{
+		"anthropic", "openai", "deepseek", "gemini", "groq", "mistral",
+	}
+	for _, p := range providers {
+		t.Run(p, func(t *testing.T) {
+			c, err := NewClient(
+				p, "http://localhost:11434", "model", "key", testTimeout,
+			)
+			require.NoError(t, err)
+			assert.False(t, c.IsLocalServer())
+			// The stored baseURL is the original value (for display),
+			// but the provider was created without it.
+			assert.Equal(t, "http://localhost:11434", c.BaseURL())
+		})
+	}
+}
+
+// TestNewClientLocalProviderKeepsLoopbackURL verifies that local providers
+// keep the loopback base URL.
+func TestNewClientLocalProviderKeepsLoopbackURL(t *testing.T) {
+	providers := []string{"ollama", "llamacpp", "llamafile"}
+	for _, p := range providers {
+		t.Run(p, func(t *testing.T) {
+			c, err := NewClient(
+				p, "http://localhost:11434", "model", "", testTimeout,
+			)
+			require.NoError(t, err)
+			assert.True(t, c.IsLocalServer())
+		})
 	}
 }

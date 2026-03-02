@@ -265,7 +265,16 @@ RULES:
 5. Soft-deleted rows have deleted_at IS NOT NULL. Exclude them unless asked about deleted items.
 6. For date math, use SQLite date functions (date, julianday, etc.). Use the current date from the "Current date" section -- do NOT hardcode dates.
 7. When comparing dates (past vs future, oldest, newest, overdue), always compare against the current date provided above.
-8. If the question cannot be answered from the schema, output: SELECT 'I cannot answer that from the available data' AS answer`
+8. If the question cannot be answered from the schema, output: SELECT 'I cannot answer that from the available data' AS answer
+
+COST SEMANTICS -- these distinctions matter:
+- "quotes" are contractor/vendor ESTIMATES (bids). They represent proposed costs, not actual spending.
+- "projects.actual_cents" tracks real money spent on a project.
+- "projects.budget_cents" is the planned budget.
+- "service_log_entries.cost_cents" tracks the actual cost of maintenance work performed.
+- "incidents.cost_cents" tracks the actual cost to resolve an incident.
+- "appliances.cost_cents" is the purchase price.
+- When the user asks about spending, costs, or "how much" something cost, prefer actual_cents, service_log cost_cents, incident cost_cents, or appliance cost_cents over quotes -- unless the user specifically asks about quotes, bids, or estimates.`
 
 const sqlSchemaNotes = `
 Notes:
@@ -292,7 +301,10 @@ User: Which appliances have expiring warranties in the next 90 days?
 SQL: SELECT name, warranty_expiry FROM appliances WHERE warranty_expiry IS NOT NULL AND warranty_expiry BETWEEN date('now') AND date('now', '+90 days') AND deleted_at IS NULL
 
 User: How much have I spent on plumbing?
-SQL: SELECT SUM(q.total_cents) / 100.0 AS total_dollars FROM quotes q JOIN projects p ON q.project_id = p.id JOIN project_types pt ON p.project_type_id = pt.id WHERE LOWER(pt.name) = LOWER('plumbing') AND p.deleted_at IS NULL AND q.deleted_at IS NULL
+SQL: SELECT SUM(p.actual_cents) / 100.0 AS total_dollars FROM projects p JOIN project_types pt ON p.project_type_id = pt.id WHERE LOWER(pt.name) = LOWER('plumbing') AND p.deleted_at IS NULL
+
+User: What quotes have I received for plumbing?
+SQL: SELECT v.name AS vendor, q.total_cents / 100.0 AS quote_dollars, p.title AS project FROM quotes q JOIN projects p ON q.project_id = p.id JOIN vendors v ON q.vendor_id = v.id JOIN project_types pt ON p.project_type_id = pt.id WHERE LOWER(pt.name) = LOWER('plumbing') AND p.deleted_at IS NULL AND q.deleted_at IS NULL ORDER BY q.total_cents DESC
 
 User: Show me all maintenance items and when they're next due
 SQL: SELECT name, last_serviced_at, interval_months, date(last_serviced_at, '+' || interval_months || ' months') AS next_due FROM maintenance_items WHERE deleted_at IS NULL ORDER BY next_due
@@ -348,7 +360,8 @@ Schema notes:
 - Maintenance scheduling: next_due = last_serviced + interval_months.
 - Project statuses: ideating, planned, quoted, underway, delayed, completed, abandoned (UI abbreviations: idea, plan, bid, wip, hold, done, drop).
 - Incident statuses: open, in_progress. Resolved incidents have deleted_at set.
-- Incident severities: urgent, soon, whenever.`
+- Incident severities: urgent, soon, whenever.
+- "Quotes" are contractor/vendor estimates (bids), not actual spending. For actual costs, use project actual_cents, service log cost_cents, incident cost_cents, or appliance cost_cents.`
 
 const fallbackGuidelines = `## How to answer
 Look at the data above, find the relevant rows, and answer the question directly.

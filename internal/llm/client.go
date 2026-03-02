@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -68,11 +69,13 @@ func WithJSONSchema(name string, schema map[string]any) ChatOption {
 	}
 }
 
+const providerOllama = "ollama"
+
 // localProviders are providers that run on the user's machine.
 var localProviders = map[string]bool{
-	"ollama":    true,
-	"llamacpp":  true,
-	"llamafile": true,
+	providerOllama: true,
+	"llamacpp":     true,
+	"llamafile":    true,
 }
 
 // NewClient creates an LLM client for the named provider. Returns an error
@@ -81,7 +84,14 @@ func NewClient(
 	providerName, baseURL, model, apiKey string,
 	timeout time.Duration,
 ) (*Client, error) {
-	opts := buildOpts(baseURL, apiKey, timeout)
+	// Cloud providers should not inherit a local base URL left over from
+	// a different provider's config (e.g. Ollama's localhost URL).
+	effectiveBase := baseURL
+	if !localProviders[providerName] && isLoopbackURL(baseURL) {
+		effectiveBase = ""
+	}
+
+	opts := buildOpts(effectiveBase, apiKey, timeout)
 	p, err := createProvider(providerName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("create %s provider: %w", providerName, err)
@@ -111,7 +121,7 @@ func buildOpts(baseURL, apiKey string, timeout time.Duration) []anyllm.Option {
 
 func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) {
 	switch name {
-	case "ollama":
+	case providerOllama:
 		return ollama.New(opts...)
 	case "anthropic":
 		return anthropic.New(opts...)
@@ -170,6 +180,13 @@ func (c *Client) Timeout() time.Duration {
 	return c.timeout
 }
 
+// SupportsModelListing returns true if the provider implements the
+// ModelLister interface. Cloud providers like Anthropic do not.
+func (c *Client) SupportsModelListing() bool {
+	_, ok := c.provider.(anyllm.ModelLister)
+	return ok
+}
+
 // toMessages converts internal Message types to any-llm-go Messages.
 func toMessages(msgs []Message) []anyllm.Message {
 	out := make([]anyllm.Message, len(msgs))
@@ -201,13 +218,6 @@ func (c *Client) completionParams(messages []Message, opts []ChatOption) anyllm.
 	return params
 }
 
-// SupportsModelListing returns true if the provider implements the
-// ModelLister interface. Cloud providers like Anthropic do not.
-func (c *Client) SupportsModelListing() bool {
-	_, ok := c.provider.(anyllm.ModelLister)
-	return ok
-}
-
 // ListModels fetches the available model IDs. Returns an error if the
 // provider does not support model listing.
 func (c *Client) ListModels(ctx context.Context) ([]string, error) {
@@ -216,7 +226,10 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 
 	lister, ok := c.provider.(anyllm.ModelLister)
 	if !ok {
-		return nil, fmt.Errorf("%s provider does not support listing models", c.providerName)
+		return nil, fmt.Errorf(
+			"%s provider does not support listing models",
+			c.providerName,
+		)
 	}
 
 	resp, err := lister.ListModels(ctx)
@@ -252,7 +265,7 @@ func (c *Client) Ping(ctx context.Context) error {
 			return nil
 		}
 	}
-	if c.providerName == "ollama" {
+	if c.providerName == providerOllama {
 		return fmt.Errorf(
 			"model %q not found -- pull it with `ollama pull %s`",
 			c.model, c.model,
@@ -342,18 +355,26 @@ func (c *Client) wrapError(err error) error {
 
 	var providerErr *anyllmerrors.ProviderError
 	if errors.As(err, &providerErr) {
-		if c.providerName == "ollama" {
-			return fmt.Errorf("cannot reach ollama -- start it with `ollama serve`")
+		if c.providerName == providerOllama {
+			return fmt.Errorf(
+				"cannot reach ollama -- start it with `ollama serve`",
+			)
 		}
 		if c.IsLocalServer() {
-			return fmt.Errorf("cannot reach %s server -- is it running?", c.providerName)
+			return fmt.Errorf(
+				"cannot reach %s server -- is it running?",
+				c.providerName,
+			)
 		}
-		return fmt.Errorf("cannot reach %s -- check your base_url and network", c.providerName)
+		return fmt.Errorf(
+			"cannot reach %s -- check your base_url and network",
+			c.providerName,
+		)
 	}
 
 	var modelErr *anyllmerrors.ModelNotFoundError
 	if errors.As(err, &modelErr) {
-		if c.providerName == "ollama" {
+		if c.providerName == providerOllama {
 			return fmt.Errorf(
 				"model %q not found -- pull it with `ollama pull %s`",
 				c.model, c.model,
@@ -375,8 +396,27 @@ func (c *Client) wrapError(err error) error {
 
 	var rateLimitErr *anyllmerrors.RateLimitError
 	if errors.As(err, &rateLimitErr) {
-		return fmt.Errorf("rate limited by %s -- try again shortly", c.providerName)
+		return fmt.Errorf(
+			"rate limited by %s -- try again shortly",
+			c.providerName,
+		)
 	}
 
 	return err
+}
+
+// isLoopbackURL returns true if the URL points to a loopback address.
+func isLoopbackURL(rawURL string) bool {
+	if rawURL == "" {
+		return false
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" ||
+		host == "127.0.0.1" ||
+		host == "::1" ||
+		host == "[::1]"
 }

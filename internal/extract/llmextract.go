@@ -79,6 +79,8 @@ func operationExtractionUserMessage(in ExtractionPromptInput) string {
 
 const operationExtractionPreamble = `You are a document extraction assistant for a home management application. Given a document's metadata and extracted text, output a JSON array of operations to store the extracted information in the database.
 
+Note: In this application, "quotes" means contractor/vendor cost estimates (bids for home projects), not quoted text or quotation marks. Create a quotes row when a document contains a cost estimate from a contractor or vendor, but not when dollar amounts appear in other contexts (e.g. receipts, manuals, general text).
+
 You may receive text from multiple extraction sources. Each source is labeled with its tool and a description. When multiple sources are present, prefer digital text extraction for clean output, and use OCR output for scanned content. Reconcile any conflicts by trusting the more plausible reading.`
 
 const operationExtractionRules = `## Output format
@@ -109,7 +111,7 @@ Example:
 7. When a Document ID is provided, use "update" for that document and include "id" in data. When no document exists yet, use "create".
 8. To link a document to an entity, set "entity_kind" and "entity_id" in the document operation.
 9. For maintenance schedules (from manuals), create maintenance_items.
-10. For quotes/invoices, create quotes with the correct project_id and vendor_id.
+10. For contractor/vendor cost estimates (bids, proposals), create quotes with the correct project_id and vendor_id. Incidental dollar amounts (e.g. in receipts or manuals) are not quotes.
 11. Only use "create" and "update". No other actions.
 
 ## Allowed operations per table (STRICT -- any violation is rejected)
