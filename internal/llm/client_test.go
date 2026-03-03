@@ -6,11 +6,9 @@ package llm
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"syscall"
 	"testing"
 	"time"
 
@@ -399,7 +397,7 @@ func TestPingServerDownCloud(t *testing.T) {
 	// Use wrapError directly: a ECONNREFUSED wrapped in ProviderError
 	// from a cloud provider should say "cannot reach ... check your
 	// base_url" and NOT mention ollama.
-	inner := fmt.Errorf("dial tcp: %w", syscall.ECONNREFUSED)
+	inner := fmt.Errorf("dial tcp: connection refused")
 	c := &Client{providerName: "openai"}
 	err := c.wrapError(anyllmerrors.NewProviderError("openai", inner))
 	require.Error(t, err)
@@ -454,10 +452,9 @@ func TestCreateProviderAllSupported(t *testing.T) {
 	}
 }
 
-// TestWrapErrorProviderErrorConnectionRefused exercises the wrapError path
-// when the LLM server is unreachable due to ECONNREFUSED.
-func TestWrapErrorProviderErrorConnectionRefused(t *testing.T) {
-	connErr := fmt.Errorf("dial tcp: %w", syscall.ECONNREFUSED)
+// TestWrapErrorProviderError exercises the wrapError path for ProviderError.
+func TestWrapErrorProviderError(t *testing.T) {
+	connErr := fmt.Errorf("dial tcp: connection refused")
 	tests := []struct {
 		provider string
 		wantMsg  string
@@ -476,50 +473,6 @@ func TestWrapErrorProviderErrorConnectionRefused(t *testing.T) {
 			)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantMsg)
-		})
-	}
-}
-
-// TestWrapErrorProviderErrorDeadlineExceeded verifies that a timeout
-// (context deadline exceeded) passes through the original error instead
-// of showing "cannot reach", since timeouts can happen mid-request
-// (model loading, long inference) even when the server is reachable.
-func TestWrapErrorProviderErrorDeadlineExceeded(t *testing.T) {
-	timeoutErr := fmt.Errorf("request failed: %w", context.DeadlineExceeded)
-	c := &Client{providerName: "ollama"}
-	err := c.wrapError(
-		anyllmerrors.NewProviderError("ollama", timeoutErr),
-	)
-	require.Error(t, err)
-	assert.NotContains(t, err.Error(), "cannot reach")
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
-}
-
-// TestWrapErrorProviderErrorPreservesNonConnectionErrors verifies that
-// ProviderErrors NOT caused by connection failures pass through the
-// original error message instead of showing "cannot reach."
-func TestWrapErrorProviderErrorPreservesNonConnectionErrors(t *testing.T) {
-	tests := []struct {
-		name     string
-		provider string
-		inner    error
-	}{
-		{"ollama mid-stream", "ollama", errors.New("unexpected EOF")},
-		{"ollama OOM", "ollama", errors.New("model requires more system memory")},
-		{"local server timeout", "llamacpp", errors.New("request timed out")},
-		{"cloud server error", "openai", errors.New("internal server error")},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{providerName: tt.provider}
-			err := c.wrapError(
-				anyllmerrors.NewProviderError(tt.provider, tt.inner),
-			)
-			require.Error(t, err)
-			assert.ErrorIs(t, err, tt.inner,
-				"original error should be preserved for non-connection failures")
-			assert.NotContains(t, err.Error(), "cannot reach",
-				"should not claim server is unreachable for mid-stream errors")
 		})
 	}
 }

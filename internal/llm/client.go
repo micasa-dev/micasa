@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"syscall"
 	"time"
 
 	anyllm "github.com/mozilla-ai/any-llm-go"
@@ -410,24 +409,21 @@ func (c *Client) wrapError(err error) error {
 
 	var providerErr *anyllmerrors.ProviderError
 	if errors.As(err, &providerErr) {
-		if isNetworkError(err) {
-			if c.providerName == providerOllama {
-				return fmt.Errorf(
-					"cannot reach ollama -- start it with `ollama serve`",
-				)
-			}
-			if c.IsLocalServer() {
-				return fmt.Errorf(
-					"cannot reach %s server -- is it running?",
-					c.providerName,
-				)
-			}
+		if c.providerName == providerOllama {
 			return fmt.Errorf(
-				"cannot reach %s -- check your base_url and network",
+				"cannot reach ollama -- start it with `ollama serve`",
+			)
+		}
+		if c.IsLocalServer() {
+			return fmt.Errorf(
+				"cannot reach %s server -- is it running?",
 				c.providerName,
 			)
 		}
-		return fmt.Errorf("%s: %w", c.providerName, providerErr.Err)
+		return fmt.Errorf(
+			"cannot reach %s -- check your base_url and network",
+			c.providerName,
+		)
 	}
 
 	var modelErr *anyllmerrors.ModelNotFoundError
@@ -461,20 +457,6 @@ func (c *Client) wrapError(err error) error {
 	}
 
 	return err
-}
-
-// isNetworkError reports whether err represents a connection-level failure
-// (connection refused, unreachable host) as opposed to an application-level
-// error from a server that was reachable. Timeouts are NOT included because
-// they can occur mid-request (e.g. model loading, long inference).
-func isNetworkError(err error) bool {
-	if errors.Is(err, syscall.ECONNREFUSED) {
-		return true
-	}
-	if errors.Is(err, syscall.EHOSTUNREACH) || errors.Is(err, syscall.ENETUNREACH) {
-		return true
-	}
-	return false
 }
 
 // isLoopbackURL returns true if the URL points to a loopback address.
