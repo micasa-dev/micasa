@@ -380,7 +380,7 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 
 	// Build the client directly so the loopback-URL guard in NewClient
 	// does not strip the httptest server address.
-	opts := buildOpts(srv.URL+"/v1", "sk-test")
+	opts := buildOpts(srv.URL+"/v1", "sk-test", testTimeout)
 	p, err := createProvider("openai", opts)
 	require.NoError(t, err)
 	client := &Client{

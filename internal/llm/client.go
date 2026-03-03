@@ -15,6 +15,7 @@ import (
 
 	anyllm "github.com/mozilla-ai/any-llm-go"
 	anyllmerrors "github.com/mozilla-ai/any-llm-go/errors"
+	anyllmproviders "github.com/mozilla-ai/any-llm-go/providers"
 	"github.com/mozilla-ai/any-llm-go/providers/anthropic"
 	"github.com/mozilla-ai/any-llm-go/providers/deepseek"
 	"github.com/mozilla-ai/any-llm-go/providers/gemini"
@@ -22,7 +23,6 @@ import (
 	"github.com/mozilla-ai/any-llm-go/providers/llamacpp"
 	"github.com/mozilla-ai/any-llm-go/providers/llamafile"
 	"github.com/mozilla-ai/any-llm-go/providers/mistral"
-	"github.com/mozilla-ai/any-llm-go/providers/ollama"
 	"github.com/mozilla-ai/any-llm-go/providers/openai"
 )
 
@@ -72,11 +72,6 @@ func WithJSONSchema(name string, schema map[string]any) ChatOption {
 }
 
 const providerOllama = "ollama"
-
-// inferenceTimeout is the HTTP-client-level safety net for LLM inference
-// requests. Individual quick operations (Ping, ListModels) apply their
-// own shorter context timeouts; this only caps truly runaway requests.
-const inferenceTimeout = 10 * time.Minute
 
 // localProviders are providers that run on the user's machine.
 var localProviders = map[string]bool{
@@ -159,7 +154,12 @@ func newHTTPClient(responseHeaderTimeout time.Duration) *http.Client {
 func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) {
 	switch name {
 	case providerOllama:
-		return ollama.New(opts...)
+		return openai.NewCompatible(openai.CompatibleConfig{
+			Capabilities:   ollamaCapabilities(),
+			DefaultBaseURL: "http://localhost:11434/v1",
+			Name:           providerOllama,
+			RequireAPIKey:  false,
+		}, opts...)
 	case "anthropic":
 		return anthropic.New(opts...)
 	case "openai", "openrouter":
@@ -178,6 +178,18 @@ func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) 
 		return llamafile.New(opts...)
 	default:
 		return nil, fmt.Errorf("unknown provider %q", name)
+	}
+}
+
+func ollamaCapabilities() anyllmproviders.Capabilities {
+	return anyllmproviders.Capabilities{
+		Completion:          true,
+		CompletionImage:     true,
+		CompletionReasoning: true,
+		CompletionStreaming: true,
+		CompletionTools:     true,
+		Embedding:           true,
+		ListModels:          true,
 	}
 }
 
