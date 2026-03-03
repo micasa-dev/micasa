@@ -238,6 +238,8 @@ details; do not duplicate that detail here.
   preconditions, `assert` for assertions. No bare `t.Fatal`/`t.Error`.
 - **Test every error path**: Every function that can fail needs at least
   one test exercising that failure.
+- **Tests over test plans**: Write actual tests that ship with the PR.
+  Never substitute a prose "test plan" for automated coverage.
 
 ### Architecture and code style
 

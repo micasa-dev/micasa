@@ -17,8 +17,7 @@ Create a pull request for the current branch.
   commits, no squash merges.
 - **No "Test plan" section**: CI covers tests, lint, vet, and build.
   Only include a test plan for genuinely manual-only verification steps
-  (e.g. visual UI/UX checks). Instead of listing test plans, write actual
-  tests that ship with the PR.
+  (e.g. visual UI/UX checks).
 - **Keep descriptions in sync**: After pushing additional commits, re-read
   the PR title and body (`gh pr view`) and update them if they no longer
   match the actual changes.
