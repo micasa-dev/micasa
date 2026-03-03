@@ -445,7 +445,9 @@ func commitMaintenance(store *data.Store, row map[string]any) (uint, error) {
 	if v := toUint(row[data.ColApplianceID]); v != 0 {
 		m.ApplianceID = &v
 	}
-	m.IntervalMonths = int(toInt64(row[data.ColIntervalMonths]))
+	if v := toInt64(row[data.ColIntervalMonths]); v >= 0 && v <= math.MaxInt {
+		m.IntervalMonths = int(v)
+	}
 	if v := toInt64Ptr(row[data.ColCostCents]); v != nil {
 		m.CostCents = v
 	}
@@ -523,7 +525,7 @@ func commitUpdateMaintenance(store *data.Store, op Operation) error {
 		}
 	}
 	if v, ok := op.Data["interval_months"]; ok {
-		if n := ParseInt64(v); n > 0 {
+		if n := ParseInt64(v); n > 0 && n <= math.MaxInt {
 			item.IntervalMonths = int(n)
 		}
 	}
