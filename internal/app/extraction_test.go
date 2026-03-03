@@ -493,17 +493,24 @@ func TestExploreMode_BFSwitchesTabs(t *testing.T) {
 }
 
 func TestExploreMode_AcceptWorksInExploreMode(t *testing.T) {
-	m := newPreviewModel([]extract.Operation{
+	ops := []extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
-	})
+	}
+	m := newPreviewModel(ops)
 	ex := m.ex.extraction
+
+	// Stage through shadow DB so accept has staged operations.
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+	ex.shadowDB = sdb
+
 	sendExtractionKey(m, "x")
 	require.True(t, ex.exploring)
 
-	// a should accept even in explore mode. Without a store, dispatch is
-	// a silent no-op, so accept succeeds and clears extraction state.
+	// a should accept even in explore mode.
 	sendExtractionKey(m, "a")
-	assert.Nil(t, m.ex.extraction, "accept without store succeeds and clears state")
+	assert.Nil(t, m.ex.extraction, "accept in explore mode clears state")
 }
 
 // --- Model picker ---
@@ -1342,6 +1349,11 @@ func TestDispatch_VendorCrossReference(t *testing.T) {
 		}},
 	}
 
+	// Stage through shadow DB.
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ex := &extractionLogState{
@@ -1353,6 +1365,7 @@ func TestDispatch_VendorCrossReference(t *testing.T) {
 		Done:       true,
 		DocID:      doc.ID,
 		operations: ops,
+		shadowDB:   sdb,
 	}
 	ex.Steps[stepLLM] = extractionStepInfo{Status: stepDone}
 	ex.hasLLM = true
@@ -1403,6 +1416,11 @@ func TestDispatch_InvalidProjectIDShowsError(t *testing.T) {
 		}},
 	}
 
+	// Stage through shadow DB.
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ex := &extractionLogState{
@@ -1414,13 +1432,296 @@ func TestDispatch_InvalidProjectIDShowsError(t *testing.T) {
 		Done:       true,
 		DocID:      doc.ID,
 		operations: ops,
+		shadowDB:   sdb,
 	}
 	ex.Steps[stepLLM] = extractionStepInfo{Status: stepDone}
 	ex.hasLLM = true
 	m.ex.extraction = ex
 
-	// Accept should fail with a clear error about the invalid project.
+	// Accept should fail with an error (FK constraint on project_id).
 	sendExtractionKey(m, "a")
 	assert.NotNil(t, m.ex.extraction, "extraction stays open on dispatch error")
-	assert.Contains(t, m.status.Text, "project 9999")
+	assert.Contains(t, m.status.Text, "FOREIGN KEY constraint failed")
+}
+
+// TestDispatch_OffsetCrossReference verifies that when the real DB already
+// contains vendors, shadow auto-increment IDs start after the max real ID,
+// and cross-references between batch-created entities resolve correctly.
+func TestDispatch_OffsetCrossReference(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	// Create a project for the quote FK.
+	types, err := m.store.ProjectTypes()
+	require.NoError(t, err)
+	project := data.Project{
+		Title:         "Offset Test",
+		ProjectTypeID: types[0].ID,
+		Status:        data.ProjectStatusPlanned,
+	}
+	require.NoError(t, m.store.CreateProject(&project))
+
+	doc := data.Document{Title: "Invoice", FileName: "inv.pdf"}
+	require.NoError(t, m.store.CreateDocument(&doc))
+
+	// Pre-populate 3 vendors so real IDs are 1-3.
+	for _, name := range []string{"Alpha", "Beta", "Gamma"} {
+		require.NoError(t, m.store.CreateVendor(&data.Vendor{Name: name}))
+	}
+
+	// LLM creates a new vendor and a quote referencing it.
+	// The LLM sees max vendor ID = 3, so it emits vendor_id: 4.
+	ops := []extract.Operation{
+		{Action: "create", Table: "vendors", Data: map[string]any{
+			"name": "Delta Electric",
+		}},
+		{Action: "create", Table: "quotes", Data: map[string]any{
+			"vendor_id":   float64(4),
+			"project_id":  float64(project.ID),
+			"total_cents": float64(200000),
+		}},
+	}
+
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ex := &extractionLogState{
+		ID:         nextExtractionID.Add(1),
+		ctx:        ctx,
+		CancelFn:   cancel,
+		Visible:    true,
+		expanded:   make(map[extractionStep]bool),
+		Done:       true,
+		DocID:      doc.ID,
+		operations: ops,
+		shadowDB:   sdb,
+	}
+	ex.Steps[stepLLM] = extractionStepInfo{Status: stepDone}
+	ex.hasLLM = true
+	m.ex.extraction = ex
+
+	sendExtractionKey(m, "a")
+	assert.Nil(t, m.ex.extraction, "extraction cleared after accept")
+
+	// Verify the new vendor was created.
+	vendors, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	var delta *data.Vendor
+	for i := range vendors {
+		if vendors[i].Name == "Delta Electric" {
+			delta = &vendors[i]
+			break
+		}
+	}
+	require.NotNil(t, delta, "new vendor should exist")
+
+	// Verify the quote points to the real ID of the new vendor.
+	quotes, err := m.store.ListQuotes(false)
+	require.NoError(t, err)
+	require.Len(t, quotes, 1)
+	assert.Equal(t, delta.ID, quotes[0].VendorID)
+	assert.Equal(t, int64(200000), quotes[0].TotalCents)
+}
+
+// TestDispatch_DuplicateVendorDedup verifies that accepting an extraction
+// that creates a vendor with the same name as an existing one deduplicates
+// via FindOrCreate instead of creating a duplicate.
+func TestDispatch_DuplicateVendorDedup(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	types, err := m.store.ProjectTypes()
+	require.NoError(t, err)
+	project := data.Project{
+		Title:         "Dedup Test",
+		ProjectTypeID: types[0].ID,
+		Status:        data.ProjectStatusPlanned,
+	}
+	require.NoError(t, m.store.CreateProject(&project))
+
+	doc := data.Document{Title: "Invoice", FileName: "inv.pdf"}
+	require.NoError(t, m.store.CreateDocument(&doc))
+
+	// Pre-create a vendor.
+	require.NoError(t, m.store.CreateVendor(&data.Vendor{Name: "Acme Plumbing"}))
+	vendorsBefore, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	require.Len(t, vendorsBefore, 1)
+	existingID := vendorsBefore[0].ID
+
+	// LLM creates a vendor with the same name and a quote referencing it.
+	ops := []extract.Operation{
+		{Action: "create", Table: "vendors", Data: map[string]any{
+			"name": "Acme Plumbing",
+		}},
+		{Action: "create", Table: "quotes", Data: map[string]any{
+			"vendor_id":   float64(2),
+			"project_id":  float64(project.ID),
+			"total_cents": float64(75000),
+		}},
+	}
+
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ex := &extractionLogState{
+		ID:         nextExtractionID.Add(1),
+		ctx:        ctx,
+		CancelFn:   cancel,
+		Visible:    true,
+		expanded:   make(map[extractionStep]bool),
+		Done:       true,
+		DocID:      doc.ID,
+		operations: ops,
+		shadowDB:   sdb,
+	}
+	ex.Steps[stepLLM] = extractionStepInfo{Status: stepDone}
+	ex.hasLLM = true
+	m.ex.extraction = ex
+
+	sendExtractionKey(m, "a")
+	assert.Nil(t, m.ex.extraction, "extraction cleared after accept")
+
+	// No duplicate vendor created.
+	vendorsAfter, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	assert.Len(t, vendorsAfter, 1, "should still have exactly one vendor")
+	assert.Equal(t, existingID, vendorsAfter[0].ID, "should be the same vendor")
+
+	// Quote linked to the existing vendor.
+	quotes, err := m.store.ListQuotes(false)
+	require.NoError(t, err)
+	require.Len(t, quotes, 1)
+	assert.Equal(t, existingID, quotes[0].VendorID)
+}
+
+// TestDispatch_DuplicateApplianceDedup verifies that batch-created appliances
+// with names matching existing ones are deduplicated.
+func TestDispatch_DuplicateApplianceDedup(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	doc := data.Document{Title: "Manual", FileName: "man.pdf"}
+	require.NoError(t, m.store.CreateDocument(&doc))
+
+	// Pre-create an appliance.
+	require.NoError(t, m.store.CreateAppliance(&data.Appliance{Name: "Water Heater"}))
+	before, err := m.store.ListAppliances(false)
+	require.NoError(t, err)
+	require.Len(t, before, 1)
+	existingID := before[0].ID
+
+	categories, err := m.store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, categories)
+	catID := categories[0].ID
+
+	// LLM creates an appliance with the same name and a maintenance item.
+	ops := []extract.Operation{
+		{Action: "create", Table: "appliances", Data: map[string]any{
+			"name": "Water Heater",
+		}},
+		{Action: "create", Table: "maintenance_items", Data: map[string]any{
+			"name":         "Flush Tank",
+			"appliance_id": float64(2),
+			"category_id":  float64(catID),
+		}},
+	}
+
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ex := &extractionLogState{
+		ID:         nextExtractionID.Add(1),
+		ctx:        ctx,
+		CancelFn:   cancel,
+		Visible:    true,
+		expanded:   make(map[extractionStep]bool),
+		Done:       true,
+		DocID:      doc.ID,
+		operations: ops,
+		shadowDB:   sdb,
+	}
+	ex.Steps[stepLLM] = extractionStepInfo{Status: stepDone}
+	ex.hasLLM = true
+	m.ex.extraction = ex
+
+	sendExtractionKey(m, "a")
+	assert.Nil(t, m.ex.extraction, "extraction cleared after accept")
+
+	// No duplicate appliance.
+	after, err := m.store.ListAppliances(false)
+	require.NoError(t, err)
+	assert.Len(t, after, 1, "should still have exactly one appliance")
+	assert.Equal(t, existingID, after[0].ID)
+
+	// Maintenance item linked to the existing appliance.
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.NotNil(t, items[0].ApplianceID)
+	assert.Equal(t, existingID, *items[0].ApplianceID)
+	assert.Equal(t, "Flush Tank", items[0].Name)
+}
+
+// TestDispatch_TransactionRollbackOnFailure verifies that if one operation
+// in a batch fails, the entire batch is rolled back atomically.
+func TestDispatch_TransactionRollbackOnFailure(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	doc := data.Document{Title: "Quote", FileName: "q.pdf"}
+	require.NoError(t, m.store.CreateDocument(&doc))
+
+	// Batch: create a vendor, then a quote with an invalid project_id.
+	// The vendor should NOT persist because the transaction rolls back.
+	ops := []extract.Operation{
+		{Action: "create", Table: "vendors", Data: map[string]any{
+			"name": "Ghost Vendor",
+		}},
+		{Action: "create", Table: "quotes", Data: map[string]any{
+			"vendor_id":   float64(1),
+			"project_id":  float64(9999),
+			"total_cents": float64(50000),
+		}},
+	}
+
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ex := &extractionLogState{
+		ID:         nextExtractionID.Add(1),
+		ctx:        ctx,
+		CancelFn:   cancel,
+		Visible:    true,
+		expanded:   make(map[extractionStep]bool),
+		Done:       true,
+		DocID:      doc.ID,
+		operations: ops,
+		shadowDB:   sdb,
+	}
+	ex.Steps[stepLLM] = extractionStepInfo{Status: stepDone}
+	ex.hasLLM = true
+	m.ex.extraction = ex
+
+	sendExtractionKey(m, "a")
+	assert.NotNil(t, m.ex.extraction, "extraction stays open on error")
+
+	// Verify no vendor was created (transaction rolled back).
+	vendors, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	assert.Empty(t, vendors, "vendor should not persist after rollback")
+
+	// Verify no quote was created either.
+	quotes, err := m.store.ListQuotes(false)
+	require.NoError(t, err)
+	assert.Empty(t, quotes, "quote should not persist after rollback")
 }

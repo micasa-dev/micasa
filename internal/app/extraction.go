@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -105,6 +104,7 @@ type extractionLogState struct {
 
 	// Pending results held until user accepts.
 	operations []extract.Operation // validated operations (not yet executed)
+	shadowDB   *extract.ShadowDB   // staged operations for cross-reference resolution
 	accepted   bool                // true once user accepted results
 	pendingDoc *data.Document      // deferred creation: unpersisted document (magic-add)
 
@@ -122,6 +122,14 @@ type extractionLogState struct {
 	// Model picker: inline model selection before rerunning LLM step.
 	modelPicker *modelCompleter // non-nil when picker is showing
 	modelFilter string          // current filter text for fuzzy matching
+}
+
+// closeShadowDB closes and nils the shadow DB if present.
+func (ex *extractionLogState) closeShadowDB() {
+	if ex.shadowDB != nil {
+		_ = ex.shadowDB.Close()
+		ex.shadowDB = nil
+	}
 }
 
 // activeSteps returns the ordered list of steps that are shown.
@@ -348,6 +356,7 @@ func (m *Model) cancelExtraction() {
 	if m.ex.extraction.CancelFn != nil {
 		m.ex.extraction.CancelFn()
 	}
+	m.ex.extraction.closeShadowDB()
 	m.ex.extraction = nil
 }
 
@@ -380,6 +389,7 @@ func (m *Model) cancelAllExtractions() {
 		if ex.CancelFn != nil {
 			ex.CancelFn()
 		}
+		ex.closeShadowDB()
 	}
 	m.ex.bgExtractions = nil
 }
@@ -644,9 +654,18 @@ func (m *Model) handleExtractionLLMChunk(msg extractionLLMChunkMsg) tea.Cmd {
 			step.Status = stepFailed
 			step.Logs = append(step.Logs, "validation error: "+err.Error())
 			ex.HasError = true
+		} else if sdb, err := extract.NewShadowDB(m.store); err != nil {
+			step.Status = stepFailed
+			step.Logs = append(step.Logs, "shadow db: "+err.Error())
+			ex.HasError = true
+		} else if err := sdb.Stage(ops); err != nil {
+			step.Status = stepFailed
+			step.Logs = append(step.Logs, "stage ops: "+err.Error())
+			ex.HasError = true
 		} else {
 			step.Status = stepDone
 			ex.operations = ops
+			ex.shadowDB = sdb
 		}
 		step.Metric = fmt.Sprintf("%d ops", len(ex.operations))
 
@@ -666,188 +685,6 @@ func (m *Model) handleExtractionLLMChunk(msg extractionLLMChunkMsg) tea.Cmd {
 	return waitForLLMChunk(ex.ID, ex.llmCh)
 }
 
-// dispatchContext tracks entities created across operations in a single batch
-// so that cross-references (e.g. a quote referencing a just-created vendor)
-// resolve correctly even when the LLM uses fictional IDs.
-type dispatchContext struct {
-	createdVendors []string // vendor names in creation order
-}
-
-// dispatchOperations executes validated operations through the Store API.
-func (m *Model) dispatchOperations(ops []extract.Operation) error {
-	if m.store == nil || len(ops) == 0 {
-		return nil
-	}
-	var dctx dispatchContext
-	for _, op := range ops {
-		if err := m.dispatchOneOperation(op, &dctx); err != nil {
-			return fmt.Errorf("%s %s: %w", op.Action, op.Table, err)
-		}
-	}
-	m.reloadAfterMutation()
-	return nil
-}
-
-// dispatchOneOperation routes a single operation to the appropriate Store method.
-func (m *Model) dispatchOneOperation(op extract.Operation, dctx *dispatchContext) error {
-	switch {
-	case op.Action == extract.ActionCreate && op.Table == tableDocuments:
-		return m.dispatchCreateDocument(op)
-	case op.Action == extract.ActionUpdate && op.Table == tableDocuments:
-		return m.dispatchUpdateDocument(op)
-	case op.Action == extract.ActionCreate && op.Table == "vendors":
-		return m.dispatchCreateVendor(op, dctx)
-	case op.Action == extract.ActionCreate && op.Table == "quotes":
-		return m.dispatchCreateQuote(op, dctx)
-	case op.Action == extract.ActionCreate && op.Table == "maintenance_items":
-		return m.dispatchCreateMaintenance(op)
-	case op.Action == extract.ActionCreate && op.Table == "appliances":
-		return m.dispatchCreateAppliance(op)
-	default:
-		return fmt.Errorf("unsupported operation: %s on %s", op.Action, op.Table)
-	}
-}
-
-func (m *Model) dispatchCreateDocument(op extract.Operation) error {
-	doc := data.Document{}
-	applyStringField(op.Data, "title", &doc.Title)
-	applyStringField(op.Data, "file_name", &doc.FileName)
-	applyStringField(op.Data, "notes", &doc.Notes)
-	applyStringField(op.Data, "entity_kind", &doc.EntityKind)
-	if v, ok := op.Data["entity_id"]; ok {
-		if n := extract.ParseUint(v); n > 0 {
-			doc.EntityID = n
-		}
-	}
-	return m.store.CreateDocument(&doc)
-}
-
-func (m *Model) dispatchUpdateDocument(op extract.Operation) error {
-	rowID := extract.ParseUint(op.Data["id"])
-	if rowID == 0 {
-		return fmt.Errorf("update documents requires id in data")
-	}
-	doc, err := m.store.GetDocument(rowID)
-	if err != nil {
-		return fmt.Errorf("get document %d: %w", rowID, err)
-	}
-	applyStringField(op.Data, "title", &doc.Title)
-	applyStringField(op.Data, "notes", &doc.Notes)
-	applyStringField(op.Data, "entity_kind", &doc.EntityKind)
-	if v, ok := op.Data["entity_id"]; ok {
-		if n := extract.ParseUint(v); n > 0 {
-			doc.EntityID = n
-		}
-	}
-	return m.store.UpdateDocument(doc)
-}
-
-func (m *Model) dispatchCreateVendor(op extract.Operation, dctx *dispatchContext) error {
-	vendor := data.Vendor{}
-	applyStringField(op.Data, "name", &vendor.Name)
-	if strings.TrimSpace(vendor.Name) == "" {
-		return fmt.Errorf("vendor name is required")
-	}
-	applyStringField(op.Data, "contact_name", &vendor.ContactName)
-	applyStringField(op.Data, "email", &vendor.Email)
-	applyStringField(op.Data, "phone", &vendor.Phone)
-	applyStringField(op.Data, "website", &vendor.Website)
-	applyStringField(op.Data, "notes", &vendor.Notes)
-	if err := m.store.CreateVendor(&vendor); err != nil {
-		return err
-	}
-	dctx.createdVendors = append(dctx.createdVendors, vendor.Name)
-	return nil
-}
-
-func (m *Model) dispatchCreateQuote(op extract.Operation, dctx *dispatchContext) error {
-	quote := data.Quote{}
-	if v, ok := op.Data["project_id"]; ok {
-		if n := extract.ParseUint(v); n > 0 {
-			if _, err := m.store.GetProject(n); err != nil {
-				return fmt.Errorf("project %d: %w", n, err)
-			}
-			quote.ProjectID = n
-		}
-	}
-	if v, ok := op.Data["total_cents"]; ok {
-		quote.TotalCents = parseInt64FromData(v)
-	}
-	if v, ok := op.Data["labor_cents"]; ok {
-		n := parseInt64FromData(v)
-		quote.LaborCents = &n
-	}
-	if v, ok := op.Data["materials_cents"]; ok {
-		n := parseInt64FromData(v)
-		quote.MaterialsCents = &n
-	}
-	applyStringField(op.Data, "notes", &quote.Notes)
-
-	// Resolve vendor: try vendor_id as a real DB ID first. If that fails,
-	// fall through to vendor_name or batch-created vendors. The LLM often
-	// invents sequential IDs as cross-references to vendors it created in
-	// earlier operations rather than using real DB IDs.
-	var vendor data.Vendor
-	if v, ok := op.Data["vendor_id"]; ok {
-		if n := extract.ParseUint(v); n > 0 {
-			if got, err := m.store.GetVendor(n); err == nil {
-				vendor = got
-			}
-		}
-	}
-	if vendor.ID == 0 {
-		var vendorName string
-		applyStringField(op.Data, "vendor_name", &vendorName)
-		if vendorName == "" && len(dctx.createdVendors) > 0 {
-			vendorName = dctx.createdVendors[len(dctx.createdVendors)-1]
-		}
-		if vendorName != "" {
-			vendor.Name = vendorName
-		}
-	}
-
-	return m.store.CreateQuote(&quote, vendor)
-}
-
-func (m *Model) dispatchCreateMaintenance(op extract.Operation) error {
-	item := data.MaintenanceItem{}
-	applyStringField(op.Data, "name", &item.Name)
-	if v, ok := op.Data["category_id"]; ok {
-		if n := extract.ParseUint(v); n > 0 {
-			item.CategoryID = n
-		}
-	}
-	if v, ok := op.Data["appliance_id"]; ok {
-		if n := extract.ParseUint(v); n > 0 {
-			item.ApplianceID = &n
-		}
-	}
-	if v, ok := op.Data["interval_months"]; ok {
-		item.IntervalMonths = parseIntFromData(v)
-	}
-	applyStringField(op.Data, "notes", &item.Notes)
-	if v, ok := op.Data["cost_cents"]; ok {
-		n := parseInt64FromData(v)
-		item.CostCents = &n
-	}
-	return m.store.CreateMaintenance(&item)
-}
-
-func (m *Model) dispatchCreateAppliance(op extract.Operation) error {
-	item := data.Appliance{}
-	applyStringField(op.Data, "name", &item.Name)
-	applyStringField(op.Data, "brand", &item.Brand)
-	applyStringField(op.Data, "model_number", &item.ModelNumber)
-	applyStringField(op.Data, "serial_number", &item.SerialNumber)
-	applyStringField(op.Data, "location", &item.Location)
-	applyStringField(op.Data, "notes", &item.Notes)
-	if v, ok := op.Data["cost_cents"]; ok {
-		n := parseInt64FromData(v)
-		item.CostCents = &n
-	}
-	return m.store.CreateAppliance(&item)
-}
-
 // applyStringField sets *dst to the string value at data[key] if present.
 func applyStringField(data map[string]any, key string, dst *string) {
 	if v, ok := data[key]; ok {
@@ -855,42 +692,6 @@ func applyStringField(data map[string]any, key string, dst *string) {
 			*dst = s
 		}
 	}
-}
-
-// parseIntFromData extracts an int from a JSON value.
-func parseIntFromData(v any) int {
-	switch val := v.(type) {
-	case json.Number:
-		if n, err := strconv.ParseInt(val.String(), 10, strconv.IntSize); err == nil {
-			return int(n)
-		}
-	case float64:
-		if val >= math.MinInt && val <= math.MaxInt {
-			return int(val)
-		}
-	case string:
-		if n, err := strconv.ParseInt(strings.TrimSpace(val), 10, strconv.IntSize); err == nil {
-			return int(n)
-		}
-	}
-	return 0
-}
-
-// parseInt64FromData extracts an int64 from a JSON value.
-func parseInt64FromData(v any) int64 {
-	switch val := v.(type) {
-	case json.Number:
-		if n, err := strconv.ParseInt(val.String(), 10, 64); err == nil {
-			return n
-		}
-	case float64:
-		return int64(val)
-	case string:
-		if n, err := strconv.ParseInt(strings.TrimSpace(val), 10, 64); err == nil {
-			return n
-		}
-	}
-	return 0
 }
 
 // acceptExtraction persists all pending results and closes the overlay.
@@ -950,19 +751,15 @@ func (m *Model) acceptDeferredExtraction() error {
 		return fmt.Errorf("create document: %w", err)
 	}
 
-	// Dispatch non-document operations (vendors, quotes, etc.).
+	// Commit non-document operations via shadow DB (vendors, quotes, etc.).
 	var nonDocOps []extract.Operation
 	for _, op := range ex.operations {
 		if op.Table != tableDocuments {
 			nonDocOps = append(nonDocOps, op)
 		}
 	}
-	if len(nonDocOps) > 0 {
-		if err := m.dispatchOperations(nonDocOps); err != nil {
-			return fmt.Errorf("dispatch operations: %w", err)
-		}
-	} else {
-		m.reloadAfterMutation()
+	if err := m.commitShadowOperations(ex, nonDocOps); err != nil {
+		return fmt.Errorf("dispatch operations: %w", err)
 	}
 	return nil
 }
@@ -983,12 +780,28 @@ func (m *Model) acceptExistingExtraction() error {
 		}
 	}
 
-	// Execute validated operations via Store API.
-	if len(ex.operations) > 0 {
-		if err := m.dispatchOperations(ex.operations); err != nil {
-			return fmt.Errorf("dispatch operations: %w", err)
-		}
+	// Commit validated operations via shadow DB.
+	if err := m.commitShadowOperations(ex, ex.operations); err != nil {
+		return fmt.Errorf("dispatch operations: %w", err)
 	}
+	return nil
+}
+
+// commitShadowOperations commits staged operations through the shadow DB,
+// remapping cross-referenced IDs to real database IDs.
+func (m *Model) commitShadowOperations(ex *extractionLogState, ops []extract.Operation) error {
+	if m.store == nil || len(ops) == 0 {
+		return nil
+	}
+	if ex.shadowDB == nil {
+		return fmt.Errorf("no shadow DB: operations were not staged")
+	}
+	err := ex.shadowDB.Commit(m.store, ops)
+	ex.closeShadowDB()
+	if err != nil {
+		return err
+	}
+	m.reloadAfterMutation()
 	return nil
 }
 
@@ -1009,6 +822,7 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 	// Reset LLM state.
 	ex.llmAccum.Reset()
 	ex.operations = nil
+	ex.closeShadowDB()
 	ex.previewGroups = nil
 	ex.exploring = false
 	ex.Steps[stepLLM] = extractionStepInfo{

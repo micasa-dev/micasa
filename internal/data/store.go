@@ -234,6 +234,21 @@ func (s *Store) Close() error {
 	return sqlDB.Close()
 }
 
+// Transaction executes fn inside a database transaction. The callback
+// receives a transactional Store that shares all methods but operates on the
+// transaction. If fn returns an error the transaction is rolled back;
+// otherwise it is committed.
+func (s *Store) Transaction(fn func(tx *Store) error) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		txStore := &Store{
+			db:              tx,
+			maxDocumentSize: s.maxDocumentSize,
+			currency:        s.currency,
+		}
+		return fn(txStore)
+	})
+}
+
 // IsMicasaDB returns true if the database contains the core micasa tables.
 func (s *Store) IsMicasaDB() (bool, error) {
 	var count int64
@@ -621,6 +636,29 @@ func (s *Store) CreateVendor(vendor *Vendor) error {
 	return s.db.Create(vendor).Error
 }
 
+// FindOrCreateVendor looks up a vendor by name. If found, updates its contact
+// fields and returns it. If not found, creates a new one. Soft-deleted vendors
+// with the same name are restored.
+func (s *Store) FindOrCreateVendor(vendor Vendor) (Vendor, error) {
+	return findOrCreateVendor(s.db, vendor)
+}
+
+// MaxIDs returns the current maximum auto-increment ID for each of the
+// named tables. Tables with no rows are omitted from the result.
+func (s *Store) MaxIDs(tables ...string) (map[string]uint, error) {
+	result := make(map[string]uint, len(tables))
+	for _, table := range tables {
+		var maxID *uint
+		if err := s.db.Table(table).Select("MAX(id)").Scan(&maxID).Error; err != nil {
+			return nil, fmt.Errorf("max id for %s: %w", table, err)
+		}
+		if maxID != nil {
+			result[table] = *maxID
+		}
+	}
+	return result, nil
+}
+
 func (s *Store) UpdateVendor(vendor Vendor) error {
 	return s.updateByID(&Vendor{}, vendor.ID, vendor)
 }
@@ -763,6 +801,41 @@ func (s *Store) CreateMaintenance(item *MaintenanceItem) error {
 	return s.db.Create(item).Error
 }
 
+// FindOrCreateMaintenance looks up a maintenance item by name and category.
+// If found, returns it. If not found, creates a new one. Soft-deleted items
+// with the same name+category are restored.
+func (s *Store) FindOrCreateMaintenance(item MaintenanceItem) (MaintenanceItem, error) {
+	if strings.TrimSpace(item.Name) == "" {
+		return MaintenanceItem{}, fmt.Errorf("maintenance item name is required")
+	}
+	var existing MaintenanceItem
+	q := s.db.Unscoped().Where(ColName+" = ? AND category_id = ?", item.Name, item.CategoryID)
+	err := q.First(&existing).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if err := s.db.Create(&item).Error; err != nil {
+			return MaintenanceItem{}, err
+		}
+		return item, nil
+	}
+	if err != nil {
+		return MaintenanceItem{}, err
+	}
+	if existing.DeletedAt.Valid {
+		if err := s.db.Unscoped().Model(&existing).Update(ColDeletedAt, nil).Error; err != nil {
+			return MaintenanceItem{}, err
+		}
+		existing.DeletedAt.Valid = false
+		restoredAt := time.Now()
+		_ = s.db.Model(&DeletionRecord{}).
+			Where(
+				ColEntity+" = ? AND "+ColTargetID+" = ? AND "+ColRestoredAt+" IS NULL",
+				DeletionEntityMaintenance, existing.ID,
+			).
+			Update(ColRestoredAt, restoredAt).Error
+	}
+	return existing, nil
+}
+
 func (s *Store) UpdateMaintenance(item MaintenanceItem) error {
 	return s.updateByID(&MaintenanceItem{}, item.ID, item)
 }
@@ -779,6 +852,40 @@ func (s *Store) GetAppliance(id uint) (Appliance, error) {
 
 func (s *Store) CreateAppliance(item *Appliance) error {
 	return s.db.Create(item).Error
+}
+
+// FindOrCreateAppliance looks up an appliance by name. If found, returns it.
+// If not found, creates a new one. Soft-deleted appliances with the same name
+// are restored.
+func (s *Store) FindOrCreateAppliance(item Appliance) (Appliance, error) {
+	if strings.TrimSpace(item.Name) == "" {
+		return Appliance{}, fmt.Errorf("appliance name is required")
+	}
+	var existing Appliance
+	err := s.db.Unscoped().Where(ColName+" = ?", item.Name).First(&existing).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if err := s.db.Create(&item).Error; err != nil {
+			return Appliance{}, err
+		}
+		return item, nil
+	}
+	if err != nil {
+		return Appliance{}, err
+	}
+	if existing.DeletedAt.Valid {
+		if err := s.db.Unscoped().Model(&existing).Update(ColDeletedAt, nil).Error; err != nil {
+			return Appliance{}, err
+		}
+		existing.DeletedAt.Valid = false
+		restoredAt := time.Now()
+		_ = s.db.Model(&DeletionRecord{}).
+			Where(
+				ColEntity+" = ? AND "+ColTargetID+" = ? AND "+ColRestoredAt+" IS NULL",
+				DeletionEntityAppliance, existing.ID,
+			).
+			Update(ColRestoredAt, restoredAt).Error
+	}
+	return existing, nil
 }
 
 func (s *Store) UpdateAppliance(item Appliance) error {
