@@ -203,6 +203,8 @@ type Model struct {
 	undoStack             []undoEntry
 	redoStack             []undoEntry
 	magMode               bool // easter egg: display numbers as order-of-magnitude
+	confirmHardDelete     bool // true while waiting for y/n on permanent delete
+	hardDeleteID          uint // entity ID pending permanent deletion
 	cur                   locale.Currency
 	status                statusMsg
 	projectTypes          []data.ProjectType
@@ -414,6 +416,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch typed := msg.(type) {
 	case tea.KeyMsg:
+		if m.confirmHardDelete {
+			m.handleConfirmHardDelete(typed)
+			return m, nil
+		}
 		// Dashboard intercepts nav keys before other handlers.
 		if m.dashboardVisible() {
 			if cmd, handled := m.handleDashboardKeys(typed); handled {
@@ -849,6 +855,9 @@ func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 		return m.formInitCmd(), true
 	case keyD:
 		m.toggleDeleteSelected()
+		return nil, true
+	case keyShiftD:
+		m.promptHardDelete()
 		return nil, true
 	case keyU:
 		if err := m.popUndo(); err != nil {
@@ -1617,7 +1626,11 @@ func (m *Model) toggleDeleteSelected() {
 		if tab.LastDeleted != nil && *tab.LastDeleted == meta.ID {
 			tab.LastDeleted = nil
 		}
-		m.setStatusInfo("Restored.")
+		if tab.Kind == tabIncidents {
+			m.setStatusInfo("Reopened.")
+		} else {
+			m.setStatusInfo("Restored.")
+		}
 		m.surfaceError(m.reloadEffectiveTab())
 		return
 	}
@@ -1627,8 +1640,45 @@ func (m *Model) toggleDeleteSelected() {
 	}
 	tab.LastDeleted = &meta.ID
 	tab.ShowDeleted = true
-	m.setStatusInfo("Deleted. Press d to restore.")
+	if tab.Kind == tabIncidents {
+		m.setStatusInfo("Resolved. Press d to reopen.")
+	} else {
+		m.setStatusInfo("Deleted. Press d to restore.")
+	}
 	m.surfaceError(m.reloadEffectiveTab())
+}
+
+func (m *Model) promptHardDelete() {
+	tab := m.effectiveTab()
+	if tab == nil || tab.Kind != tabIncidents {
+		return
+	}
+	meta, ok := m.selectedRowMeta()
+	if !ok {
+		m.setStatusError("Nothing selected.")
+		return
+	}
+	if !meta.Deleted {
+		m.setStatusError("Resolve the incident first (d), then permanently delete (D).")
+		return
+	}
+	m.confirmHardDelete = true
+	m.hardDeleteID = meta.ID
+}
+
+func (m *Model) handleConfirmHardDelete(key tea.KeyMsg) {
+	switch key.String() {
+	case keyY:
+		m.confirmHardDelete = false
+		if err := m.store.HardDeleteIncident(m.hardDeleteID); err != nil {
+			m.setStatusError(err.Error())
+			return
+		}
+		m.setStatusInfo("Permanently deleted.")
+		m.surfaceError(m.reloadEffectiveTab())
+	case keyN, keyEsc:
+		m.confirmHardDelete = false
+	}
 }
 
 func (m *Model) toggleShowDeleted() {

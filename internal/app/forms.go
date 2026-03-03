@@ -687,10 +687,17 @@ func (m *Model) submitIncidentForm() error {
 	if err != nil {
 		return err
 	}
-	return m.createOrUpdate(&item.ID,
+	if err := m.createOrUpdate(&item.ID,
 		func() error { return m.store.CreateIncident(&item) },
 		func() error { return m.store.UpdateIncident(item) },
-	)
+	); err != nil {
+		return err
+	}
+	// Setting status to resolved via the picker should also soft-delete.
+	if m.fs.editID != nil && item.Status == data.IncidentStatusResolved {
+		return m.store.DeleteIncident(item.ID)
+	}
+	return nil
 }
 
 func (m *Model) parseIncidentFormData() (data.Incident, error) {
@@ -830,6 +837,7 @@ func incidentStatusOptions() []huh.Option[string] {
 	statuses := []entry{
 		{data.IncidentStatusOpen, accent},
 		{data.IncidentStatusInProgress, success},
+		{data.IncidentStatusResolved, textDim},
 	}
 	opts := make([]huh.Option[string], len(statuses))
 	for i, s := range statuses {

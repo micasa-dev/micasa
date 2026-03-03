@@ -23,7 +23,7 @@ Only `Title`, `Status`, and `Severity` are required.
 |-------:|------|-------------|-------|
 | `ID` | auto | Auto-assigned | Read-only |
 | `Title` | text | Short description | Required |
-| `Status` | select | Current state | `open` or `in_progress` |
+| `Status` | select | Current state | `open`, `in_progress`, or `resolved` |
 | `Severity` | select | How urgent | `urgent`, `soon`, or `whenever` |
 | `Location` | text | Where in the house | E.g., "Kitchen", "Roof" |
 | `Appliance` | link | Related appliance | Optional. Press `enter` to jump to the appliance |
@@ -35,12 +35,18 @@ Only `Title`, `Status`, and `Severity` are required.
 
 ## Resolving incidents
 
-Incidents use soft delete as the resolution mechanism: deleting an incident
-marks it resolved. The Incidents tab defaults to showing deleted (resolved)
-items so you can see your full history. Resolved incidents appear with
-strikethrough styling.
+Press `d` in Edit mode to resolve an incident. This sets the status to
+`resolved` and marks the row as deleted. Resolved incidents appear with
+strikethrough styling. The Incidents tab shows resolved items by default so
+you can see your full history.
 
-To restore a resolved incident, press `d` on it in Edit mode.
+To reopen a resolved incident, press `d` on it again.
+
+## Permanently deleting incidents
+
+Press `D` in Edit mode to permanently delete an incident. A confirmation
+prompt appears before the row and its linked documents are removed from the
+database. This cannot be undone.
 
 ## Dashboard
 

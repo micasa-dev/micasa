@@ -22,6 +22,7 @@ var statusLabels = map[string]string{
 	// Incident statuses.
 	"open":        "open",
 	"in_progress": "act",
+	"resolved":    "res",
 	// Incident severities.
 	"urgent":   "urg",
 	"soon":     "soon",

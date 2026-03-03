@@ -2453,3 +2453,94 @@ func TestRestoreDocumentBlockedByDeletedIncident(t *testing.T) {
 	require.NoError(t, store.RestoreIncident(incID))
 	require.NoError(t, store.RestoreDocument(docID))
 }
+
+func TestDeleteIncidentSetsStatusResolved(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Broken window", Status: IncidentStatusOpen, Severity: IncidentSeverityUrgent,
+	}))
+	items, _ := store.ListIncidents(false)
+	id := items[0].ID
+
+	require.NoError(t, store.DeleteIncident(id))
+
+	// Fetch with Unscoped to see the soft-deleted row.
+	var inc Incident
+	require.NoError(t, store.db.Unscoped().First(&inc, id).Error)
+	assert.Equal(t, IncidentStatusResolved, inc.Status)
+}
+
+func TestRestoreIncidentRestoresPreviousStatus(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Cracked tile", Status: IncidentStatusInProgress, Severity: IncidentSeveritySoon,
+	}))
+	items, _ := store.ListIncidents(false)
+	id := items[0].ID
+
+	require.NoError(t, store.DeleteIncident(id))
+	require.NoError(t, store.RestoreIncident(id))
+
+	inc, err := store.GetIncident(id)
+	require.NoError(t, err)
+	assert.Equal(t, IncidentStatusInProgress, inc.Status, "should restore to previous status")
+	assert.Empty(t, inc.PreviousStatus, "previous_status should be cleared")
+}
+
+func TestRestoreIncidentFallsBackToOpen(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Old incident", Status: IncidentStatusOpen, Severity: IncidentSeverityWhenever,
+	}))
+	items, _ := store.ListIncidents(false)
+	id := items[0].ID
+
+	// Simulate a legacy soft-delete with no previous_status saved.
+	require.NoError(t, store.db.Delete(&Incident{}, id).Error)
+	require.NoError(t, store.RestoreIncident(id))
+
+	inc, err := store.GetIncident(id)
+	require.NoError(t, err)
+	assert.Equal(t, IncidentStatusOpen, inc.Status, "should fall back to open")
+}
+
+func TestHardDeleteIncidentRemovesRow(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Doomed", Status: IncidentStatusOpen, Severity: IncidentSeverityWhenever,
+	}))
+	items, _ := store.ListIncidents(false)
+	id := items[0].ID
+
+	require.NoError(t, store.HardDeleteIncident(id))
+
+	// Not visible even with Unscoped.
+	var inc Incident
+	err := store.db.Unscoped().First(&inc, id).Error
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
+
+func TestHardDeleteIncidentRemovesLinkedDocuments(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Leaky roof", Status: IncidentStatusOpen, Severity: IncidentSeveritySoon,
+	}))
+	items, _ := store.ListIncidents(false)
+	id := items[0].ID
+
+	require.NoError(t, store.CreateDocument(&Document{
+		Title: "Photo", EntityKind: DocumentEntityIncident, EntityID: id,
+	}))
+
+	require.NoError(t, store.HardDeleteIncident(id))
+
+	docs, err := store.ListDocumentsByEntity(DocumentEntityIncident, id, true)
+	require.NoError(t, err)
+	assert.Empty(t, docs)
+}
+
+func TestHardDeleteIncidentNotFound(t *testing.T) {
+	store := newTestStore(t)
+	err := store.HardDeleteIncident(999)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}

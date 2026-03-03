@@ -746,6 +746,216 @@ func TestIncidentTabShowsDeletedByDefault(t *testing.T) {
 	assert.True(t, found, "expected to find the resolved incident in tab rows")
 }
 
+func TestIncidentDeleteSetsResolvedStatus(t *testing.T) {
+	m := newTestModelWithStore(t)
+	h := incidentHandler{}
+
+	m.fs.formData = &incidentFormData{
+		Title:       "Flickering light",
+		Status:      data.IncidentStatusOpen,
+		Severity:    data.IncidentSeveritySoon,
+		DateNoticed: "2026-03-01",
+	}
+	require.NoError(t, h.SubmitForm(m))
+
+	_, meta, _, err := h.Load(m.store, false)
+	require.NoError(t, err)
+	id := meta[0].ID
+
+	// Delete sets status to resolved.
+	require.NoError(t, h.Delete(m.store, id))
+	items, err := m.store.ListIncidents(true)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, data.IncidentStatusResolved, items[0].Status)
+
+	// Restore resets status to open.
+	require.NoError(t, h.Restore(m.store, id))
+	inc, err := m.store.GetIncident(id)
+	require.NoError(t, err)
+	assert.Equal(t, data.IncidentStatusOpen, inc.Status)
+}
+
+func TestIncidentRestorePreservesPreviousStatus(t *testing.T) {
+	m := newTestModelWithStore(t)
+	h := incidentHandler{}
+
+	m.fs.formData = &incidentFormData{
+		Title:       "Active repair",
+		Status:      data.IncidentStatusInProgress,
+		Severity:    data.IncidentSeverityUrgent,
+		DateNoticed: "2026-03-01",
+	}
+	require.NoError(t, h.SubmitForm(m))
+
+	_, meta, _, err := h.Load(m.store, false)
+	require.NoError(t, err)
+	id := meta[0].ID
+
+	require.NoError(t, h.Delete(m.store, id))
+	require.NoError(t, h.Restore(m.store, id))
+
+	inc, err := m.store.GetIncident(id)
+	require.NoError(t, err)
+	assert.Equal(
+		t,
+		data.IncidentStatusInProgress,
+		inc.Status,
+		"should restore to in_progress, not open",
+	)
+}
+
+func TestIncidentResolveRestoreUserFlow(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	// Create an incident via the store.
+	require.NoError(t, m.store.CreateIncident(&data.Incident{
+		Title:    "Burst pipe",
+		Status:   data.IncidentStatusOpen,
+		Severity: data.IncidentSeverityUrgent,
+	}))
+
+	// Navigate to incidents tab.
+	m.active = tabIndex(tabIncidents)
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotNil(t, tab)
+	require.Len(t, tab.Rows, 1)
+
+	// Enter edit mode, press d to resolve.
+	sendKey(m, "i")
+	require.Equal(t, modeEdit, m.mode)
+	sendKey(m, "d")
+	assert.Contains(t, m.statusView(), "Resolved")
+
+	// Verify status changed to resolved (must list with deleted to see it).
+	id := tab.Rows[0].ID
+	items, err := m.store.ListIncidents(true)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, data.IncidentStatusResolved, items[0].Status)
+
+	// Press d again to reopen.
+	sendKey(m, "d")
+	assert.Contains(t, m.statusView(), "Reopened")
+
+	inc, err := m.store.GetIncident(id)
+	require.NoError(t, err)
+	assert.Equal(t, data.IncidentStatusOpen, inc.Status)
+}
+
+func TestIncidentHardDeleteUserFlow(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	require.NoError(t, m.store.CreateIncident(&data.Incident{
+		Title:    "Temporary issue",
+		Status:   data.IncidentStatusOpen,
+		Severity: data.IncidentSeverityWhenever,
+	}))
+
+	m.active = tabIndex(tabIncidents)
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.Len(t, tab.Rows, 1)
+	id := tab.Rows[0].ID
+
+	// Enter edit mode, D on a live row should be rejected.
+	sendKey(m, "i")
+	sendKey(m, "D")
+	assert.False(t, m.confirmHardDelete, "should not prompt on non-deleted row")
+	assert.Contains(t, m.statusView(), "Resolve the incident first")
+
+	// Soft-delete first, then hard delete.
+	sendKey(m, "d")
+	require.NoError(t, m.reloadActiveTab())
+
+	sendKey(m, "D")
+	assert.True(t, m.confirmHardDelete, "should be in confirm state")
+	assert.Contains(t, m.statusView(), "Permanently delete")
+
+	// Press n to cancel.
+	sendKey(m, "n")
+	assert.False(t, m.confirmHardDelete, "confirm should be dismissed")
+
+	// Row should still exist.
+	require.NoError(t, m.reloadActiveTab())
+	assert.Len(t, tab.Rows, 1)
+
+	// Press D then y to confirm.
+	sendKey(m, "D")
+	sendKey(m, "y")
+	assert.False(t, m.confirmHardDelete)
+	assert.Contains(t, m.statusView(), "Permanently deleted")
+
+	// Row is gone even with showDeleted.
+	tab.ShowDeleted = true
+	require.NoError(t, m.reloadActiveTab())
+	assert.Empty(t, tab.Rows)
+
+	// Verify at the DB level.
+	_, err := m.store.GetIncident(id)
+	assert.Error(t, err)
+}
+
+func TestIncidentStatusResolvedViaFormSoftDeletes(t *testing.T) {
+	m := newTestModelWithStore(t)
+	h := incidentHandler{}
+
+	// Create an incident.
+	m.fs.formData = &incidentFormData{
+		Title:       "Noisy pipe",
+		Status:      data.IncidentStatusOpen,
+		Severity:    data.IncidentSeveritySoon,
+		DateNoticed: "2026-03-01",
+	}
+	require.NoError(t, h.SubmitForm(m))
+
+	_, meta, _, err := h.Load(m.store, false)
+	require.NoError(t, err)
+	id := meta[0].ID
+
+	// Edit the incident, setting status to resolved via form.
+	editID := id
+	m.fs.editID = &editID
+	m.fs.formData = &incidentFormData{
+		Title:       "Noisy pipe",
+		Status:      data.IncidentStatusResolved,
+		Severity:    data.IncidentSeveritySoon,
+		DateNoticed: "2026-03-01",
+	}
+	require.NoError(t, h.SubmitForm(m))
+	m.fs.editID = nil
+
+	// Should be soft-deleted.
+	rows, _, _, err := h.Load(m.store, false)
+	require.NoError(t, err)
+	assert.Empty(t, rows, "resolved incident should be soft-deleted")
+
+	// Should still be visible with showDeleted.
+	rows, rowMeta, _, err := h.Load(m.store, true)
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	assert.True(t, rowMeta[0].Deleted)
+}
+
+func TestIncidentHardDeleteOnlyWorksOnIncidents(t *testing.T) {
+	m := newTestModelWithStore(t)
+
+	// Create a project via form submission so FK constraints are satisfied.
+	m.fs.formData = &projectFormData{
+		Title:         "Paint fence",
+		ProjectTypeID: m.projectTypes[0].ID,
+	}
+	require.NoError(t, projectHandler{}.SubmitForm(m))
+
+	m.active = tabIndex(tabProjects)
+	require.NoError(t, m.reloadActiveTab())
+
+	sendKey(m, "i")
+	sendKey(m, "D")
+	assert.False(t, m.confirmHardDelete, "hard delete should not activate on projects tab")
+}
+
 // ---------------------------------------------------------------------------
 // applianceMaintenanceHandler (detail view)
 // ---------------------------------------------------------------------------

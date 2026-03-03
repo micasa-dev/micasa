@@ -408,6 +408,7 @@ func (incidentHandler) SyncFixedValues(_ *Model, specs []columnSpec) {
 	setFixedValues(specs, "Status", []string{
 		data.IncidentStatusOpen,
 		data.IncidentStatusInProgress,
+		data.IncidentStatusResolved,
 	})
 	setFixedValues(specs, "Severity", []string{
 		data.IncidentSeverityUrgent,

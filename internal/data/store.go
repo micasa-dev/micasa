@@ -893,7 +893,33 @@ func (s *Store) UpdateIncident(item Incident) error {
 }
 
 func (s *Store) DeleteIncident(id uint) error {
-	return s.softDelete(&Incident{}, DeletionEntityIncident, id)
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Read the current status so we can restore it later.
+		var current Incident
+		if err := tx.Select(ColStatus).First(&current, id).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&Incident{}).
+			Where(ColID+" = ?", id).
+			Updates(map[string]any{
+				ColPreviousStatus: current.Status,
+				ColStatus:         IncidentStatusResolved,
+			}).Error; err != nil {
+			return err
+		}
+		result := tx.Delete(&Incident{}, id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return tx.Create(&DeletionRecord{
+			Entity:    DeletionEntityIncident,
+			TargetID:  id,
+			DeletedAt: time.Now(),
+		}).Error
+	})
 }
 
 func (s *Store) RestoreIncident(id uint) error {
@@ -911,7 +937,54 @@ func (s *Store) RestoreIncident(id uint) error {
 			return parentRestoreError("vendor", err)
 		}
 	}
-	return s.restoreEntity(&Incident{}, DeletionEntityIncident, id)
+	restoreStatus := item.PreviousStatus
+	if restoreStatus == "" {
+		restoreStatus = IncidentStatusOpen
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Model(&Incident{}).
+			Where(ColID+" = ?", id).
+			Updates(map[string]any{
+				ColDeletedAt:      nil,
+				ColStatus:         restoreStatus,
+				ColPreviousStatus: "",
+			}).Error; err != nil {
+			return err
+		}
+		restoredAt := time.Now()
+		return tx.Model(&DeletionRecord{}).
+			Where(
+				ColEntity+" = ? AND "+ColTargetID+" = ? AND "+ColRestoredAt+" IS NULL",
+				DeletionEntityIncident, id,
+			).
+			Update(ColRestoredAt, restoredAt).Error
+	})
+}
+
+func (s *Store) HardDeleteIncident(id uint) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Delete linked documents (including soft-deleted ones).
+		if err := tx.Unscoped().
+			Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?", DocumentEntityIncident, id).
+			Delete(&Document{}).Error; err != nil {
+			return err
+		}
+		// Delete deletion records for this incident.
+		if err := tx.
+			Where(ColEntity+" = ? AND "+ColTargetID+" = ?", DeletionEntityIncident, id).
+			Delete(&DeletionRecord{}).Error; err != nil {
+			return err
+		}
+		// Permanently remove the incident row.
+		result := tx.Unscoped().Delete(&Incident{}, id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
 }
 
 func (s *Store) CountIncidentsByAppliance(applianceIDs []uint) (map[uint]int, error) {

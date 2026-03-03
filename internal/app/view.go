@@ -270,6 +270,15 @@ func (m *Model) statusView() string {
 	if m.inlineInput != nil {
 		return m.withPullProgress(m.inlineInputStatusView())
 	}
+	if m.confirmHardDelete {
+		prompt := m.styles.FormDirty().Render("Permanently delete this incident?")
+		hints := joinWithSeparator(
+			m.helpSeparator(),
+			m.helpItem(keyY, "delete forever"),
+			m.helpItem(keyN, "cancel"),
+		)
+		return m.withPullProgress(prompt + "  " + hints)
+	}
 	if m.mode == modeForm {
 		if m.fs.confirmDiscard {
 			prompt := m.styles.FormDirty().Render("Discard unsaved changes?")
@@ -780,6 +789,7 @@ func (m *Model) helpContent() string {
 				{keyE, "Edit cell or row"},
 				{keyShiftE, "Edit row (full form)"},
 				{keyD, "Delete / restore"},
+				{keyShiftD, "Permanently delete (incidents)"},
 				{keyU + "/" + keyR, "Undo / redo"},
 				{keyCtrlD + "/" + keyCtrlU, "Half page down/up"},
 				{keyX, "Show deleted"},
