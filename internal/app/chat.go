@@ -552,7 +552,7 @@ func refilterModelCompleter(mc *modelCompleter, query, current string) {
 				Active: entry.Name == current,
 			}
 		}
-		mc.clampCursor()
+		mc.selectActive()
 		return
 	}
 
@@ -576,6 +576,18 @@ func (mc *modelCompleter) clampCursor() {
 	if mc.Cursor < 0 {
 		mc.Cursor = 0
 	}
+}
+
+// selectActive moves the cursor to the first match marked Active (the current
+// model). Falls back to clampCursor if none is active.
+func (mc *modelCompleter) selectActive() {
+	for i, m := range mc.Matches {
+		if m.Active {
+			mc.Cursor = i
+			return
+		}
+	}
+	mc.clampCursor()
 }
 
 // cmdSwitchModel switches to a model, pulling it via the Ollama API if needed.

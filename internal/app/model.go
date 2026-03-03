@@ -316,6 +316,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		if typed.String() == keyCtrlC {
+			// When the extraction overlay is open and running,
+			// interrupt just that extraction instead of canceling
+			// everything. The overlay stays visible so the user can
+			// inspect partial results.
+			if ex := m.ex.extraction; ex != nil && ex.Visible && !ex.Done {
+				m.interruptExtraction()
+				return m, nil
+			}
 			// Cancel any ongoing LLM operations but don't quit.
 			m.cancelChatOperations()
 			m.cancelAllExtractions()

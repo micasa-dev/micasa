@@ -6,9 +6,11 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"syscall"
 	"testing"
 	"time"
 
@@ -378,7 +380,7 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 
 	// Build the client directly so the loopback-URL guard in NewClient
 	// does not strip the httptest server address.
-	opts := buildOpts(srv.URL+"/v1", "sk-test", testTimeout)
+	opts := buildOpts(srv.URL+"/v1", "sk-test")
 	p, err := createProvider("openai", opts)
 	require.NoError(t, err)
 	client := &Client{
@@ -394,15 +396,12 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 }
 
 func TestPingServerDownCloud(t *testing.T) {
-	client, err := NewClient(
-		"openai",
-		"http://192.0.2.1:1/v1",
-		"claude-sonnet-4-5-20250929",
-		"sk-test",
-		testTimeout,
-	)
-	require.NoError(t, err)
-	err = client.Ping(context.Background())
+	// Use wrapError directly: a ECONNREFUSED wrapped in ProviderError
+	// from a cloud provider should say "cannot reach ... check your
+	// base_url" and NOT mention ollama.
+	inner := fmt.Errorf("dial tcp: %w", syscall.ECONNREFUSED)
+	c := &Client{providerName: "openai"}
+	err := c.wrapError(anyllmerrors.NewProviderError("openai", inner))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot reach")
 	assert.Contains(t, err.Error(), "check your base_url")
@@ -455,9 +454,10 @@ func TestCreateProviderAllSupported(t *testing.T) {
 	}
 }
 
-// TestWrapErrorProviderError exercises the wrapError path a user hits when
-// their LLM server is unreachable. Each provider type gets a different message.
-func TestWrapErrorProviderError(t *testing.T) {
+// TestWrapErrorProviderErrorConnectionRefused exercises the wrapError path
+// when the LLM server is unreachable due to ECONNREFUSED.
+func TestWrapErrorProviderErrorConnectionRefused(t *testing.T) {
+	connErr := fmt.Errorf("dial tcp: %w", syscall.ECONNREFUSED)
 	tests := []struct {
 		provider string
 		wantMsg  string
@@ -472,12 +472,54 @@ func TestWrapErrorProviderError(t *testing.T) {
 		t.Run(tt.provider, func(t *testing.T) {
 			c := &Client{providerName: tt.provider}
 			err := c.wrapError(
-				anyllmerrors.NewProviderError(
-					tt.provider, fmt.Errorf("connection refused"),
-				),
+				anyllmerrors.NewProviderError(tt.provider, connErr),
 			)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantMsg)
+		})
+	}
+}
+
+// TestWrapErrorProviderErrorDeadlineExceeded verifies that a timeout
+// (context deadline exceeded) passes through the original error instead
+// of showing "cannot reach", since timeouts can happen mid-request
+// (model loading, long inference) even when the server is reachable.
+func TestWrapErrorProviderErrorDeadlineExceeded(t *testing.T) {
+	timeoutErr := fmt.Errorf("request failed: %w", context.DeadlineExceeded)
+	c := &Client{providerName: "ollama"}
+	err := c.wrapError(
+		anyllmerrors.NewProviderError("ollama", timeoutErr),
+	)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "cannot reach")
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+// TestWrapErrorProviderErrorPreservesNonConnectionErrors verifies that
+// ProviderErrors NOT caused by connection failures pass through the
+// original error message instead of showing "cannot reach."
+func TestWrapErrorProviderErrorPreservesNonConnectionErrors(t *testing.T) {
+	tests := []struct {
+		name     string
+		provider string
+		inner    error
+	}{
+		{"ollama mid-stream", "ollama", errors.New("unexpected EOF")},
+		{"ollama OOM", "ollama", errors.New("model requires more system memory")},
+		{"local server timeout", "llamacpp", errors.New("request timed out")},
+		{"cloud server error", "openai", errors.New("internal server error")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{providerName: tt.provider}
+			err := c.wrapError(
+				anyllmerrors.NewProviderError(tt.provider, tt.inner),
+			)
+			require.Error(t, err)
+			assert.ErrorIs(t, err, tt.inner,
+				"original error should be preserved for non-connection failures")
+			assert.NotContains(t, err.Error(), "cannot reach",
+				"should not claim server is unreachable for mid-stream errors")
 		})
 	}
 }
@@ -566,6 +608,50 @@ func TestChatCompleteWithThinking(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "thought about it", result)
+}
+
+// TestChatStreamMidStreamDisconnect verifies that when a server sends partial
+// data and then drops the connection, the caller receives an error chunk
+// rather than a silent Done with truncated content.
+func TestChatStreamMidStreamDisconnect(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, _ := w.(http.Flusher)
+		// Send one partial chunk then drop the connection.
+		_, _ = fmt.Fprintln(
+			w,
+			`data: {"choices":[{"delta":{"content":"partial"},"finish_reason":""}]}`,
+		)
+		_, _ = fmt.Fprintln(w)
+		if flusher != nil {
+			flusher.Flush()
+		}
+		// Hijack the connection to force an unclean close.
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			return
+		}
+		conn, _, _ := hj.Hijack()
+		_ = conn.Close()
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv.URL+"/v1", "test-model")
+	ch, err := client.ChatStream(context.Background(), []Message{
+		{Role: "user", Content: "hi"},
+	})
+	require.NoError(t, err)
+
+	var chunks []StreamChunk
+	for chunk := range ch {
+		chunks = append(chunks, chunk)
+	}
+	require.NotEmpty(t, chunks, "should receive at least one chunk")
+
+	last := chunks[len(chunks)-1]
+	// The last chunk must carry the error, not silently report Done.
+	assert.Error(t, last.Err,
+		"mid-stream disconnect should deliver an error, not a silent Done")
 }
 
 // TestChatStreamContextCancelledBeforeSend verifies that starting a stream

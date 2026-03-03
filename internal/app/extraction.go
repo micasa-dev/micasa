@@ -89,6 +89,9 @@ type extractionLogState struct {
 	mime       string
 	extractors []extract.Extractor
 
+	// Per-tool image acquisition state (non-nil during acquisition phase).
+	acquireTools []extract.AcquireToolState
+
 	// Channel references for the waitFor loop pattern.
 	extractCh <-chan extract.ExtractProgress
 	llmCh     <-chan llm.StreamChunk
@@ -145,18 +148,30 @@ func (ex *extractionLogState) cursorStep() extractionStep {
 	return stepText
 }
 
-// cursorExpanded returns true when the focused step is expanded and the
-// viewport content overflows. Used to decide whether j/k scroll the viewport
-// instead of moving between steps.
-func (ex *extractionLogState) cursorExpanded() bool {
-	si := ex.cursorStep()
+// stepDefaultExpanded returns the default expanded state for a step before
+// any user toggle. Running and failed steps auto-expand; LLM stays expanded
+// after Done; ext stays expanded when tool states are present.
+func (ex *extractionLogState) stepDefaultExpanded(si extractionStep) bool {
 	info := ex.Steps[si]
-	expanded := info.Status == stepRunning || info.Status == stepFailed ||
-		(si == stepLLM && info.Status == stepDone)
-	if toggled, ok := ex.expanded[si]; ok {
-		expanded = toggled
+	if info.Status == stepRunning || info.Status == stepFailed {
+		return true
 	}
-	return expanded && ex.Viewport.TotalLineCount() > ex.Viewport.Height
+	if si == stepLLM && info.Status == stepDone {
+		return true
+	}
+	if si == stepExtract && info.Status == stepDone && len(ex.acquireTools) > 0 {
+		return true
+	}
+	return false
+}
+
+// stepExpanded returns whether a step is currently expanded, accounting
+// for both the default and any user toggle.
+func (ex *extractionLogState) stepExpanded(si extractionStep) bool {
+	if toggled, ok := ex.expanded[si]; ok {
+		return toggled
+	}
+	return ex.stepDefaultExpanded(si)
 }
 
 // advanceCursor moves the cursor to the latest settled (done/failed) step.
@@ -336,6 +351,28 @@ func (m *Model) cancelExtraction() {
 	m.ex.extraction = nil
 }
 
+// interruptExtraction cancels the running step but keeps the overlay open so
+// the user can inspect partial results, rerun, or dismiss with ESC.
+func (m *Model) interruptExtraction() {
+	ex := m.ex.extraction
+	if ex == nil || ex.Done {
+		return
+	}
+	if ex.CancelFn != nil {
+		ex.CancelFn()
+	}
+	for i := range ex.Steps {
+		if ex.Steps[i].Status == stepRunning {
+			ex.Steps[i].Status = stepFailed
+			ex.Steps[i].Elapsed = time.Since(ex.Steps[i].Started)
+			ex.Steps[i].Logs = append(ex.Steps[i].Logs, "interrupted")
+		}
+	}
+	ex.Done = true
+	ex.HasError = true
+	ex.advanceCursor()
+}
+
 // cancelAllExtractions cancels the foreground and all background extractions.
 func (m *Model) cancelAllExtractions() {
 	m.cancelExtraction()
@@ -495,13 +532,13 @@ func (m *Model) handleExtractionProgress(msg extractionProgressMsg) tea.Cmd {
 	}
 
 	if !p.Done {
+		// Per-tool acquisition state update.
+		if len(p.AcquireTools) > 0 {
+			ex.acquireTools = p.AcquireTools
+			return waitForExtractProgress(ex.ID, ex.extractCh)
+		}
+		// OCR phase: show page progress (tool states persist for rendering).
 		switch p.Phase {
-		case "pdfimages":
-			step.Detail = fmt.Sprintf("pdfimages: %d images", p.Total)
-		case "pdftohtml":
-			step.Detail = fmt.Sprintf("pdftohtml: %d images", p.Total)
-		case "pdftoppm":
-			step.Detail = fmt.Sprintf("pdftoppm: %d images", p.Total)
 		case "extract":
 			step.Detail = fmt.Sprintf("page %d/%d", p.Page, p.Total)
 		}
@@ -944,6 +981,13 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 		return nil
 	}
 
+	// Replace a cancelled context so the rerun has a live one.
+	if ex.ctx.Err() != nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		ex.ctx = ctx
+		ex.CancelFn = cancel
+	}
+
 	// Reset LLM state.
 	ex.llmAccum.Reset()
 	ex.operations = nil
@@ -965,13 +1009,10 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 		}
 	}
 
-	// Move cursor to the nearest earlier settled step so it stays visible
-	// while LLM re-runs (running steps hide the triangle indicator).
-	ex.cursor = 0
+	// Position cursor on the LLM step being rerun.
 	active := ex.activeSteps()
-	for i := len(active) - 1; i >= 0; i-- {
-		s := ex.Steps[active[i]].Status
-		if s == stepDone || s == stepFailed {
+	for i, s := range active {
+		if s == stepLLM {
 			ex.cursor = i
 			break
 		}
@@ -1000,8 +1041,12 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case keyEsc:
 		m.cancelExtraction()
+	case keyCtrlC:
+		m.interruptExtraction()
 	case keyJ, keyDown:
-		if ex.cursorExpanded() && !ex.Viewport.AtBottom() {
+		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height
+		scrollable := !ex.Done || ex.stepExpanded(ex.cursorStep())
+		if overflow && scrollable && !ex.Viewport.AtBottom() {
 			vp, cmd := ex.Viewport.Update(msg)
 			ex.Viewport = vp
 			return cmd
@@ -1009,13 +1054,15 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		active := ex.activeSteps()
 		for next := ex.cursor + 1; next < len(active); next++ {
 			s := ex.Steps[active[next]].Status
-			if ex.Done || s == stepDone || s == stepFailed {
+			if s != stepPending {
 				ex.cursor = next
 				break
 			}
 		}
 	case keyK, keyUp:
-		if ex.cursorExpanded() && !ex.Viewport.AtTop() {
+		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height
+		scrollable := !ex.Done || ex.stepExpanded(ex.cursorStep())
+		if overflow && scrollable && !ex.Viewport.AtTop() {
 			vp, cmd := ex.Viewport.Update(msg)
 			ex.Viewport = vp
 			return cmd
@@ -1023,7 +1070,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		active := ex.activeSteps()
 		for prev := ex.cursor - 1; prev >= 0; prev-- {
 			s := ex.Steps[active[prev]].Status
-			if ex.Done || s == stepDone || s == stepFailed {
+			if s != stepPending {
 				ex.cursor = prev
 				break
 			}
@@ -1032,12 +1079,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		si := ex.cursorStep()
 		status := ex.Steps[si].Status
 		if status == stepDone || status == stepFailed {
-			effective := status == stepFailed ||
-				(si == stepLLM && status == stepDone)
-			if toggled, ok := ex.expanded[si]; ok {
-				effective = toggled
-			}
-			ex.expanded[si] = !effective
+			ex.expanded[si] = !ex.stepExpanded(si)
 		}
 	case keyR:
 		if ex.Done && ex.hasLLM && ex.cursorStep() == stepLLM {
@@ -1410,9 +1452,8 @@ func (m *Model) buildExtractionPipelineOverlay(
 		case streaming:
 			// Follow the growing output so the user sees new tokens.
 			ex.Viewport.GotoBottom()
-		case ex.cursorExpanded():
-			// Step is expanded and overflows: user may be scrolling with
-			// j/k, so don't reposition to the header.
+		case ex.stepExpanded(si):
+			// Cursor step expanded: user may be scrolling, don't reposition.
 		default:
 			// Keep the cursor step header in view.
 			yOff := ex.Viewport.YOffset
@@ -1475,6 +1516,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 			hints = append(hints, m.helpItem(keyEsc, "discard"))
 		} else {
 			hints = append(hints,
+				m.helpItem(keyCtrlC, "interrupt"),
 				m.helpItem(keyCtrlB, "background"),
 				m.helpItem(keyEsc, "cancel"),
 			)
@@ -1635,19 +1677,13 @@ func (m *Model) renderExtractionStep(
 		nameStyle = m.styles.ExtFailed()
 	}
 
-	// Determine if expanded: auto-expand running/failed, and keep LLM expanded
-	// after streaming completes so the result doesn't flash and collapse.
-	expanded := info.Status == stepRunning || info.Status == stepFailed ||
-		(si == stepLLM && info.Status == stepDone)
-	if toggled, ok := ex.expanded[si]; ok {
-		expanded = toggled
-	}
+	hasTools := si == stepExtract && len(ex.acquireTools) > 0
+	expanded := ex.stepExpanded(si)
 
-	// Cursor indicator: show as soon as the step itself is done/failed,
-	// so users can inspect completed steps while later steps still run.
+	// Cursor indicator: show on any non-pending step so the user can
+	// track focus during streaming and inspect completed steps.
 	cursor := "  "
-	stepSettled := info.Status == stepDone || info.Status == stepFailed
-	if focused && (ex.Done || stepSettled) {
+	if focused && info.Status != stepPending {
 		if expanded {
 			cursor = m.styles.ExtCursor().Render(symTriDownSm + " ")
 		} else {
@@ -1660,9 +1696,18 @@ func (m *Model) renderExtractionStep(
 	hdr.WriteString(cursor)
 	hdr.WriteString(icon)
 	hdr.WriteString(nameStyle.Render(fmt.Sprintf("%-4s", name)))
+	// Suppress detail in the ext step header only while running (when it
+	// would duplicate the "page X/Y" sub-line). Once done, the detail is
+	// the OCR tool name ("tesseract") which belongs in the header.
+	showDetailInHeader := si != stepExtract || len(ex.acquireTools) == 0 ||
+		info.Status != stepRunning
 	if cols.Detail > 0 {
+		detail := info.Detail
+		if !showDetailInHeader {
+			detail = ""
+		}
 		hdr.WriteString("  ")
-		hdr.WriteString(hint.Render(fmt.Sprintf("%-*s", cols.Detail, info.Detail)))
+		hdr.WriteString(hint.Render(fmt.Sprintf("%-*s", cols.Detail, detail)))
 	}
 	if cols.Metric > 0 {
 		hdr.WriteString("  ")
@@ -1684,6 +1729,55 @@ func (m *Model) renderExtractionStep(
 		hdr.WriteString(m.styles.ExtRerun().Render("r model"))
 	}
 	header := hdr.String()
+
+	// Render per-tool acquisition lines for the ext step. These persist
+	// after the step completes so the user always sees what ran.
+	// When collapsed, just return the header.
+	if hasTools && !expanded {
+		return header
+	}
+	if hasTools {
+		var b strings.Builder
+		b.WriteString(header)
+		pipeIndent := "     " // align pipe under step name
+		pipe := m.styles.TableSeparator().Render(symVLine) + " "
+		for _, ts := range ex.acquireTools {
+			b.WriteByte('\n')
+			b.WriteString(pipeIndent)
+			b.WriteString(pipe)
+			if ts.Running {
+				b.WriteString(ex.Spinner.View())
+				b.WriteString(" ")
+				b.WriteString(m.styles.ExtRunning().Render(
+					fmt.Sprintf("%-10s", ts.Tool),
+				))
+			} else if ts.Err != nil {
+				b.WriteString(m.styles.ExtFail().Render("xx"))
+				b.WriteString(" ")
+				b.WriteString(m.styles.ExtFailed().Render(
+					fmt.Sprintf("%-10s", ts.Tool),
+				))
+			} else {
+				b.WriteString(m.styles.ExtOk().Render("ok"))
+				b.WriteString(" ")
+				b.WriteString(m.styles.ExtDone().Render(
+					fmt.Sprintf("%-10s", ts.Tool),
+				))
+				b.WriteString("  ")
+				b.WriteString(hint.Render(fmt.Sprintf("%d images", ts.Count)))
+			}
+		}
+		// Show page progress while OCR is running.
+		if info.Status == stepRunning && info.Detail != "" {
+			b.WriteByte('\n')
+			b.WriteString(pipeIndent)
+			b.WriteString(pipe)
+			b.WriteString(ex.Spinner.View())
+			b.WriteString(" ")
+			b.WriteString(m.styles.ExtRunning().Render(info.Detail))
+		}
+		return b.String()
+	}
 
 	if !expanded || len(info.Logs) == 0 {
 		return header

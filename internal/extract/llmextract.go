@@ -81,7 +81,7 @@ const operationExtractionPreamble = `You are a document extraction assistant for
 
 Note: In this application, "quotes" means contractor/vendor cost estimates (bids for home projects), not quoted text or quotation marks. Create a quotes row when a document contains a cost estimate from a contractor or vendor, but not when dollar amounts appear in other contexts (e.g. receipts, manuals, general text).
 
-You may receive text from multiple extraction sources. Each source is labeled with its tool and a description. When multiple sources are present, prefer digital text extraction for clean output, and use OCR output for scanned content. Reconcile any conflicts by trusting the more plausible reading.`
+You may receive text from multiple extraction sources. Each source is labeled with its tool and a description. Multiple OCR sources may contain overlapping or duplicate text because different image extraction tools (pdfimages, pdftohtml, pdftoppm) process the same pages independently. Deduplicate the information: extract each fact once regardless of how many sources mention it. When multiple sources are present, prefer digital text extraction for clean output, and use OCR output for scanned content. Reconcile any conflicts by trusting the more plausible reading.`
 
 const operationExtractionRules = `## Output format
 
@@ -119,7 +119,7 @@ Example:
 - documents: create or update. Include "id" in data when updating an existing document.
 - vendors: create only.
 - quotes: create only.
-- maintenance_items: create only.
+- maintenance_items: create or update. Include "id" in data when updating an existing maintenance item.
 - appliances: create only.
 
 No other tables may be written to.`

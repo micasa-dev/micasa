@@ -51,7 +51,7 @@ var ExtractionAllowedOps = map[string]AllowedOps{
 	"documents":         {Insert: true, Update: true},
 	"vendors":           {Insert: true},
 	"quotes":            {Insert: true},
-	"maintenance_items": {Insert: true},
+	"maintenance_items": {Insert: true, Update: true},
 	"appliances":        {Insert: true},
 }
 

@@ -75,7 +75,7 @@ func TestOcrPDF_InvalidData(t *testing.T) {
 
 	_, _, err := ocrPDF(context.Background(), []byte("not a pdf at all"), 5)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "pdftoppm")
+	assert.Contains(t, err.Error(), "all image extraction tools failed")
 }
 
 func TestOcrPDF_ContextCancelled(t *testing.T) {
@@ -417,10 +417,10 @@ func TestOcrPDFWithProgress_InvalidPDF(t *testing.T) {
 		if msg.Err != nil {
 			gotErr = true
 			assert.True(t, msg.Done)
-			assert.Contains(t, msg.Err.Error(), "pdftoppm")
+			assert.Contains(t, msg.Err.Error(), "all image extraction tools failed")
 		}
 	}
-	assert.True(t, gotErr, "should get a pdftoppm error for invalid PDF data")
+	assert.True(t, gotErr, "should get an error for invalid PDF data")
 }
 
 func TestOcrPDFWithProgress_ContextCancelled(t *testing.T) {
@@ -702,6 +702,44 @@ func TestExtractWithProgress_PDF_InvalidData(t *testing.T) {
 		}
 	}
 	assert.True(t, gotErr, "should report error for invalid PDF data")
+}
+
+// ---------------------------------------------------------------------------
+// mergeAcquiredImages -- deduplication logic
+// ---------------------------------------------------------------------------
+
+func TestMergeAcquiredImages_PrefersPdftoppm(t *testing.T) {
+	results := []acquireResult{
+		{tool: "pdfimages", images: []string{"a.png", "b.png"}},
+		{tool: "pdftohtml", images: []string{"c.png"}},
+		{tool: "pdftoppm", images: []string{"page-01.png", "page-02.png", "page-03.png"}},
+	}
+	got := mergeAcquiredImages(results)
+	assert.Equal(t, []string{"page-01.png", "page-02.png", "page-03.png"}, got,
+		"should use pdftoppm when available")
+}
+
+func TestMergeAcquiredImages_FallsBackToTargeted(t *testing.T) {
+	results := []acquireResult{
+		{tool: "pdfimages", images: []string{"a.png", "b.png"}},
+		{tool: "pdftohtml", images: []string{"c.png"}},
+	}
+	got := mergeAcquiredImages(results)
+	assert.Equal(t, []string{"a.png", "b.png", "c.png"}, got,
+		"should use targeted tools when pdftoppm absent")
+}
+
+func TestMergeAcquiredImages_PdftoppmOnly(t *testing.T) {
+	results := []acquireResult{
+		{tool: "pdftoppm", images: []string{"page-01.png"}},
+	}
+	got := mergeAcquiredImages(results)
+	assert.Equal(t, []string{"page-01.png"}, got)
+}
+
+func TestMergeAcquiredImages_Empty(t *testing.T) {
+	assert.Nil(t, mergeAcquiredImages(nil))
+	assert.Nil(t, mergeAcquiredImages([]acquireResult{}))
 }
 
 func TestExtractWithProgress_Image_InvalidData(t *testing.T) {

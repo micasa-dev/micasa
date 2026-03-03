@@ -13,17 +13,29 @@ import (
 	"strings"
 )
 
+// AcquireToolState tracks a single image extraction tool during acquisition.
+type AcquireToolState struct {
+	Tool    string
+	Running bool // true while the tool is executing
+	Count   int  // images produced (valid when !Running)
+	Err     error
+}
+
 // ExtractProgress reports incremental progress from ExtractWithProgress.
 type ExtractProgress struct {
 	Tool  string // extractor tool name (set on Done)
 	Desc  string // human description (set on Done)
-	Phase string // e.g. "rasterize", "extract"
+	Phase string // e.g. "pdfimages", "extract"
 	Page  int    // current page (1-indexed)
 	Total int    // total pages (0 until known)
 	Done  bool   // all phases finished
 	Text  string // accumulated text (set on Done)
 	Data  []byte // structured data (set on Done)
 	Err   error  // set on failure
+
+	// AcquireTools carries per-tool state during the image acquisition
+	// phase. Non-nil only while poppler tools are running/completing.
+	AcquireTools []AcquireToolState
 }
 
 // ExtractWithProgress runs async extraction with per-page progress updates
@@ -117,12 +129,83 @@ func ocrPDFWithProgress(
 		return
 	}
 
-	// Acquire images: pdfimages → pdftohtml → pdftoppm.
-	images, acquireTool, err := acquireImages(ctx, pdfPath, tmpDir, maxPages)
-	if err != nil {
-		ch <- ExtractProgress{Err: err, Done: true}
+	// Determine which tools are available and build initial "all running" state.
+	toolStates := make(map[string]*AcquireToolState, len(toolOrder))
+	for _, tool := range toolOrder {
+		switch tool {
+		case "pdfimages":
+			if HasPDFImages() {
+				toolStates[tool] = &AcquireToolState{Tool: tool, Running: true}
+			}
+		case "pdftohtml":
+			if HasPDFToHTML() {
+				toolStates[tool] = &AcquireToolState{Tool: tool, Running: true}
+			}
+		case "pdftoppm":
+			if HasPDFToPPM() {
+				toolStates[tool] = &AcquireToolState{Tool: tool, Running: true}
+			}
+		}
+	}
+
+	// Send initial state showing all tools as running.
+	if len(toolStates) > 0 {
+		select {
+		case ch <- ExtractProgress{AcquireTools: snapshotToolStates(toolStates)}:
+		case <-ctx.Done():
+			ch <- ExtractProgress{Err: ctx.Err(), Done: true}
+			return
+		}
+	}
+
+	// Per-tool completion channel: acquireImages notifies here as each tool
+	// finishes, so we can update the UI while acquisition is still in flight.
+	type toolDoneMsg struct {
+		tool  string
+		count int
+		err   error
+	}
+	toolDoneCh := make(chan toolDoneMsg, len(toolStates))
+
+	type acquireOut struct {
+		results []acquireResult
+		err     error
+	}
+	resultCh := make(chan acquireOut, 1)
+
+	go func() {
+		results, acqErr := acquireImages(ctx, pdfPath, tmpDir, maxPages,
+			func(tool string, count int, toolErr error) {
+				toolDoneCh <- toolDoneMsg{tool, count, toolErr}
+			},
+		)
+		close(toolDoneCh)
+		resultCh <- acquireOut{results, acqErr}
+	}()
+
+	// Forward per-tool completion to the ExtractProgress channel.
+	for msg := range toolDoneCh {
+		if ts, ok := toolStates[msg.tool]; ok {
+			ts.Running = false
+			ts.Count = msg.count
+			ts.Err = msg.err
+		}
+		select {
+		case ch <- ExtractProgress{AcquireTools: snapshotToolStates(toolStates)}:
+		case <-ctx.Done():
+			ch <- ExtractProgress{Err: ctx.Err(), Done: true}
+			return
+		}
+	}
+
+	result := <-resultCh
+	if result.err != nil {
+		ch <- ExtractProgress{Err: result.err, Done: true}
 		return
 	}
+
+	// Merge images, preferring targeted tools over pdftoppm fallback.
+	images := mergeAcquiredImages(result.results)
 
 	if len(images) == 0 {
 		ch <- ExtractProgress{Done: true}
@@ -131,20 +214,12 @@ func ocrPDFWithProgress(
 
 	total := len(images)
 
-	// Send image acquisition complete with the tool that produced them.
-	select {
-	case ch <- ExtractProgress{Phase: acquireTool, Page: total, Total: total}:
-	case <-ctx.Done():
-		ch <- ExtractProgress{Err: ctx.Err(), Done: true}
-		return
-	}
-
 	// OCR pages in parallel with per-page progress.
 	pageDone := make(chan struct{}, total)
-	var results []ocrPageResult
+	var ocrResults []ocrPageResult
 	done := make(chan struct{})
 	go func() {
-		results = ocrPagesParallel(ctx, images, pageDone)
+		ocrResults = ocrPagesParallel(ctx, images, pageDone)
 		close(done)
 	}()
 
@@ -168,7 +243,7 @@ func ocrPDFWithProgress(
 	}
 	<-done
 
-	text, tsv := collectOCRResults(results)
+	text, tsv := collectOCRResults(ocrResults)
 	ch <- ExtractProgress{
 		Tool: "tesseract",
 		Desc: "Text recognized from rasterized page images.",
@@ -176,6 +251,18 @@ func ocrPDFWithProgress(
 		Text: text,
 		Data: tsv,
 	}
+}
+
+// snapshotToolStates returns a slice of AcquireToolState in tool priority
+// order, suitable for embedding in an ExtractProgress message.
+func snapshotToolStates(states map[string]*AcquireToolState) []AcquireToolState {
+	var out []AcquireToolState
+	for _, tool := range toolOrder {
+		if s, ok := states[tool]; ok {
+			out = append(out, *s)
+		}
+	}
+	return out
 }
 
 // rasterize calls pdftoppm to convert PDF pages to PNG images.

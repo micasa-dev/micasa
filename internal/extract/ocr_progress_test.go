@@ -95,8 +95,8 @@ func TestExtractWithProgress_Image_Integration(t *testing.T) {
 }
 
 // TestExtractWithProgress_PDF_Integration exercises the real path a user
-// hits when uploading a scanned PDF: pdfimages extracts embedded images (or
-// pdftoppm rasterizes as fallback), then tesseract OCRs them in parallel.
+// hits when uploading a scanned PDF: all poppler tools run in parallel to
+// extract images, then tesseract OCRs them.
 func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or image extraction tools not available")
@@ -116,27 +116,23 @@ func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 	)
 
 	var phases []string
+	var hasAcquireTools bool
 	var finalText string
 	for msg := range ch {
 		require.NoError(t, msg.Err)
-		if !msg.Done {
-			phases = append(phases, msg.Phase)
-		} else {
+		if msg.Done {
 			finalText = msg.Text
+			continue
 		}
+		if len(msg.AcquireTools) > 0 {
+			hasAcquireTools = true
+			continue
+		}
+		phases = append(phases, msg.Phase)
 	}
 
-	// Should see an image acquisition phase and an extract phase.
-	// The acquisition phase is the tool name: "pdfimages", "pdftohtml", or "pdftoppm".
-	acquirePhases := map[string]bool{"pdfimages": true, "pdftohtml": true, "pdftoppm": true}
-	hasAcquire := false
-	for _, p := range phases {
-		if acquirePhases[p] {
-			hasAcquire = true
-			break
-		}
-	}
-	assert.True(t, hasAcquire, "should see an acquire phase, got: %v", phases)
+	// Should see per-tool acquisition state and OCR page progress.
+	assert.True(t, hasAcquireTools, "should see AcquireTools progress messages")
 	assert.Contains(t, phases, "extract")
 	assert.NotEmpty(t, finalText, "should extract text from the scanned PDF")
 }

@@ -69,7 +69,7 @@ func sendExtractionKey(m *Model, key string) {
 
 // --- Cursor navigation ---
 
-func TestExtractionCursor_JK_SkipsRunningSteps(t *testing.T) {
+func TestExtractionCursor_JK_NavigatesToRunningSteps(t *testing.T) {
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepRunning,
@@ -78,11 +78,15 @@ func TestExtractionCursor_JK_SkipsRunningSteps(t *testing.T) {
 	ex := m.ex.extraction
 	assert.Equal(t, 0, ex.cursor)
 
-	// j should not move to the running extract step.
+	// j should move to the running extract step.
 	sendExtractionKey(m, "j")
-	assert.Equal(t, 0, ex.cursor, "j should not land on running step")
+	assert.Equal(t, 1, ex.cursor, "j should land on running step")
 
-	// k at 0 stays at 0.
+	// j should not move to the pending LLM step.
+	sendExtractionKey(m, "j")
+	assert.Equal(t, 1, ex.cursor, "j should not land on pending step")
+
+	// k moves back to text.
 	sendExtractionKey(m, "k")
 	assert.Equal(t, 0, ex.cursor)
 }
@@ -182,7 +186,7 @@ func TestExtractionEnter_NoOpOnRunningStep(t *testing.T) {
 
 // --- Rerun cursor relocation ---
 
-func TestRerunLLM_MovesCursorToSettledStep(t *testing.T) {
+func TestRerunLLM_MovesCursorToLLMStep(t *testing.T) {
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepDone,
@@ -190,15 +194,15 @@ func TestRerunLLM_MovesCursorToSettledStep(t *testing.T) {
 	})
 	ex := m.ex.extraction
 	ex.Done = true
-	ex.cursor = 2 // on LLM step
+	ex.cursor = 1 // on extract step
 
 	m.rerunLLMExtraction()
 
-	// Cursor should move back to the nearest settled step before LLM.
-	assert.Equal(t, 1, ex.cursor, "cursor should move to extract step")
+	// Cursor should move to the LLM step being rerun.
+	assert.Equal(t, 2, ex.cursor, "cursor should move to LLM step")
 }
 
-func TestRerunLLM_CursorFallbackToZero(t *testing.T) {
+func TestRerunLLM_CursorOnLLMWhenOnlyStep(t *testing.T) {
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -208,7 +212,7 @@ func TestRerunLLM_CursorFallbackToZero(t *testing.T) {
 
 	m.rerunLLMExtraction()
 
-	// Only LLM is active and it's now running -- cursor falls back to 0.
+	// Only LLM is active -- cursor stays on index 0 (the LLM step).
 	assert.Equal(t, 0, ex.cursor)
 }
 
@@ -1031,7 +1035,16 @@ func TestCtrlQ_CancelsAllBgExtractions(t *testing.T) {
 	require.Len(t, m.ex.bgExtractions, 1)
 	require.NotNil(t, m.ex.extraction)
 
-	// ctrl+c should cancel all.
+	// First ctrl+c interrupts the foreground extraction (overlay stays).
+	sendKey(m, "ctrl+c")
+
+	require.NotNil(t, m.ex.extraction, "overlay should stay visible after interrupt")
+	assert.True(t, m.ex.extraction.Done)
+	assert.True(t, m.ex.extraction.HasError)
+	assert.Equal(t, stepFailed, m.ex.extraction.Steps[stepExtract].Status)
+	assert.Len(t, m.ex.bgExtractions, 1, "bg extractions untouched after interrupt")
+
+	// Second ctrl+c cancels everything.
 	sendKey(m, "ctrl+c")
 
 	assert.Nil(t, m.ex.extraction)
@@ -1127,6 +1140,146 @@ func TestWaitForExtractProgressClosedChannel(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, uint64(7), result.ID)
 	assert.True(t, result.Progress.Done)
+}
+
+// ---------------------------------------------------------------------------
+// acquireTools rendering persistence
+// ---------------------------------------------------------------------------
+
+func TestAcquireTools_PersistAfterStepDone(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	ex.Steps[stepExtract] = extractionStepInfo{
+		Status: stepDone,
+		Detail: "tesseract",
+		Metric: "1234 chars",
+	}
+	ex.acquireTools = []extract.AcquireToolState{
+		{Tool: "pdfimages", Running: false, Count: 5},
+		{Tool: "pdftohtml", Running: false, Count: 3},
+		{Tool: "pdftoppm", Running: false, Count: 10},
+	}
+	m.width = 120
+	m.height = 40
+
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "pdfimages", "completed tool lines should persist after step done")
+	assert.Contains(t, out, "pdftohtml", "completed tool lines should persist after step done")
+	assert.Contains(t, out, "pdftoppm", "completed tool lines should persist after step done")
+	assert.Contains(t, out, "5 images")
+	assert.Contains(t, out, "3 images")
+	assert.Contains(t, out, "10 images")
+}
+
+func TestAcquireTools_ShowDuringRunning(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepRunning,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	ex.Steps[stepExtract] = extractionStepInfo{
+		Status: stepRunning,
+		Detail: "page 3/10",
+	}
+	ex.acquireTools = []extract.AcquireToolState{
+		{Tool: "pdfimages", Running: false, Count: 2},
+		{Tool: "pdftoppm", Running: false, Count: 10},
+	}
+	m.width = 120
+	m.height = 40
+
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "pdfimages", "tool lines should show during OCR")
+	assert.Contains(t, out, "pdftoppm", "tool lines should show during OCR")
+	assert.Contains(t, out, "page 3/10", "page progress should show during OCR")
+}
+
+func TestAcquireTools_PartialRunning(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepExtract: stepRunning,
+	})
+	ex := m.ex.extraction
+	ex.Steps[stepExtract] = extractionStepInfo{Status: stepRunning}
+	ex.acquireTools = []extract.AcquireToolState{
+		{Tool: "pdfimages", Running: false, Count: 5},
+		{Tool: "pdftohtml", Running: true},
+		{Tool: "pdftoppm", Running: true},
+	}
+	m.width = 120
+	m.height = 40
+
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "pdfimages", "completed tool should show")
+	assert.Contains(t, out, "5 images", "image count should show for completed tool")
+	assert.Contains(t, out, "pdftohtml", "running tool should show")
+	assert.Contains(t, out, "pdftoppm", "running tool should show")
+}
+
+func TestAcquireTools_DetailSuppressedInHeader(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepExtract: stepRunning,
+	})
+	ex := m.ex.extraction
+	ex.Steps[stepExtract] = extractionStepInfo{
+		Status: stepRunning,
+		Detail: "page 1/5",
+	}
+	ex.acquireTools = []extract.AcquireToolState{
+		{Tool: "pdftoppm", Running: false, Count: 5},
+	}
+	m.width = 120
+	m.height = 40
+
+	out := m.buildExtractionOverlay()
+	// Page progress should appear in the sub-spinner section, not duplicated
+	// in the header alongside the step name.
+	assert.Contains(t, out, "page 1/5")
+	assert.Contains(t, out, "pdftoppm")
+}
+
+func TestAcquireTools_CollapseHidesToolLines(t *testing.T) {
+	m := newExtractionModel(map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	ex.Steps[stepExtract] = extractionStepInfo{
+		Status: stepDone,
+		Detail: "tesseract",
+		Metric: "1234 chars",
+	}
+	ex.acquireTools = []extract.AcquireToolState{
+		{Tool: "pdfimages", Running: false, Count: 5},
+		{Tool: "pdftoppm", Running: false, Count: 10},
+	}
+	m.width = 120
+	m.height = 40
+
+	// Default: tools expanded.
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "pdfimages", "tools should be expanded by default when done")
+	assert.Contains(t, out, "pdftoppm")
+
+	// User collapses the ext step.
+	ex.expanded[stepExtract] = false
+	out = m.buildExtractionOverlay()
+	assert.NotContains(t, out, "pdfimages", "tools should be hidden when collapsed")
+	assert.NotContains(t, out, "pdftoppm", "tools should be hidden when collapsed")
+	assert.Contains(t, out, "tesseract", "header detail should still show when collapsed")
+
+	// User re-expands.
+	ex.expanded[stepExtract] = true
+	out = m.buildExtractionOverlay()
+	assert.Contains(t, out, "pdfimages", "tools should reappear when re-expanded")
+	assert.Contains(t, out, "pdftoppm", "tools should reappear when re-expanded")
 }
 
 func TestWaitForLLMChunkOpenChannel(t *testing.T) {

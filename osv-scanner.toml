@@ -16,3 +16,44 @@ reason = "minor TLS 1.3 info disclosure requiring network-local attacker; defaul
 [[IgnoredVulns]]
 id = "GO-2026-4342"
 reason = "archive/zip DoS via crafted ZIP filenames; micasa never opens or processes ZIP archives"
+
+# ollama server-side vulnerabilities: micasa is a client that makes HTTP
+# requests to an Ollama server; it does not embed, host, or run the Ollama
+# server, GGUF parser, or model-serving endpoints. These code paths are
+# unreachable from micasa.
+
+[[IgnoredVulns]]
+id = "GO-2025-3548"
+reason = "ollama server DoS via crafted GZIP; micasa is an HTTP client, not a server"
+
+[[IgnoredVulns]]
+id = "GO-2025-3557"
+reason = "ollama server resource exhaustion; micasa is an HTTP client, not a server"
+
+[[IgnoredVulns]]
+id = "GO-2025-3558"
+reason = "ollama server OOB read in GGUF parsing; micasa never parses GGUF files"
+
+[[IgnoredVulns]]
+id = "GO-2025-3559"
+reason = "ollama server divide-by-zero in GGUF parsing; micasa never parses GGUF files"
+
+[[IgnoredVulns]]
+id = "GO-2025-3582"
+reason = "ollama server nil-pointer DoS; micasa is an HTTP client, not a server"
+
+[[IgnoredVulns]]
+id = "GO-2025-3689"
+reason = "ollama server divide-by-zero; micasa is an HTTP client, not a server"
+
+[[IgnoredVulns]]
+id = "GO-2025-3695"
+reason = "ollama server DoS; micasa is an HTTP client, not a server"
+
+[[IgnoredVulns]]
+id = "GO-2025-3824"
+reason = "ollama server cross-domain token exposure; micasa is an HTTP client, not a server"
+
+[[IgnoredVulns]]
+id = "GO-2025-4251"
+reason = "ollama server missing auth; micasa is an HTTP client, not a server"
