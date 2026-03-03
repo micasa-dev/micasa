@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -117,27 +116,7 @@ func buildOpts(baseURL, apiKey string, timeout time.Duration) []anyllm.Option {
 	if timeout > 0 {
 		opts = append(opts, anyllm.WithTimeout(timeout))
 	}
-	opts = append(opts, anyllm.WithHTTPClient(newHTTPClient(timeout)))
 	return opts
-}
-
-// newHTTPClient builds an *http.Client with ResponseHeaderTimeout set on the
-// transport. This catches LLM servers that accept the connection but hang
-// before sending response headers, without limiting the total body-read time
-// (which would kill long-running streaming responses). Per-request context
-// deadlines (e.g. in ListModels, Ping) handle overall timeouts.
-func newHTTPClient(responseHeaderTimeout time.Duration) *http.Client {
-	t, ok := http.DefaultTransport.(*http.Transport)
-	if !ok {
-		return &http.Client{
-			Transport: &http.Transport{
-				ResponseHeaderTimeout: responseHeaderTimeout,
-			},
-		}
-	}
-	clone := t.Clone()
-	clone.ResponseHeaderTimeout = responseHeaderTimeout
-	return &http.Client{Transport: clone}
 }
 
 func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) {
