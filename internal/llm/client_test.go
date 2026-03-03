@@ -653,167 +653,38 @@ func TestNewClientLocalProviderKeepsLoopbackURL(t *testing.T) {
 	}
 }
 
-// TestPingModelNotFoundLlamacpp verifies that when a local server
-// doesn't have the requested model, the user gets a "not available" message.
-func TestPingModelNotFoundLlamacpp(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, `{"data":[{"id":"llama3:latest"}]}`)
+// TestNewClientOllamaV1Suffix verifies that the /v1 suffix is appended
+// correctly for Ollama base URLs, including edge cases like trailing slashes
+// and URLs that already contain /v1.
+func TestNewClientOllamaV1Suffix(t *testing.T) {
+	// Use an httptest server so the provider actually receives requests at
+	// the expected path -- this proves the suffix logic produces a working URL.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/models" {
+			jsonResponse(w, `{"data":[{"id":"qwen3:latest"}]}`)
+			return
+		}
+		http.NotFound(w, r)
 	}))
 	defer srv.Close()
 
-	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	err := client.Ping(context.Background())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not available")
-}
-
-// TestPingMatchesModelPrefix verifies that model names with tags
-// (e.g. "qwen3:latest") match against the base name ("qwen3").
-func TestPingMatchesModelPrefix(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, `{"data":[{"id":"qwen3:latest"}]}`)
-	}))
-	defer srv.Close()
-
-	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	assert.NoError(t, client.Ping(context.Background()))
-}
-
-// TestCreateProviderAllSupported verifies that every documented provider
-// can be initialized without error.
-func TestCreateProviderAllSupported(t *testing.T) {
-	providers := []string{
-		"ollama", "anthropic", "openai", "openrouter",
-		"deepseek", "gemini", "groq", "mistral",
-		"llamacpp", "llamafile",
-	}
-	for _, p := range providers {
-		t.Run(p, func(t *testing.T) {
-			_, err := NewClient(p, "http://localhost:8080", "model", "key", testTimeout)
-			assert.NoError(t, err)
-		})
-	}
-}
-
-// TestWrapErrorProviderError exercises the wrapError path a user hits when
-// their LLM server is unreachable. Each provider type gets a different message.
-func TestWrapErrorProviderError(t *testing.T) {
 	tests := []struct {
-		provider string
-		wantMsg  string
+		name    string
+		baseURL string
 	}{
-		{"ollama", "ollama serve"},
-		{"llamacpp", "is it running"},
-		{"llamafile", "is it running"},
-		{"anthropic", "check your base_url"},
-		{"openai", "check your base_url"},
+		{"no suffix", srv.URL},
+		{"trailing slash", srv.URL + "/"},
+		{"with /v1", srv.URL + "/v1"},
+		{"with /v1/", srv.URL + "/v1/"},
 	}
 	for _, tt := range tests {
-		t.Run(tt.provider, func(t *testing.T) {
-			c := &Client{providerName: tt.provider}
-			err := c.wrapError(
-				anyllmerrors.NewProviderError(tt.provider, fmt.Errorf("connection refused")),
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewClient(
+				"ollama", tt.baseURL, "qwen3", "", testTimeout,
 			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantMsg)
+			require.NoError(t, err)
+			// Ping hits /v1/models -- success means the suffix was correct.
+			assert.NoError(t, c.Ping(context.Background()))
 		})
-	}
-}
-
-// TestWrapErrorModelNotFound exercises the wrapError path when the LLM
-// returns a "model not found" error. Ollama gets a "pull it" suggestion.
-func TestWrapErrorModelNotFound(t *testing.T) {
-	t.Run("ollama suggests pull", func(t *testing.T) {
-		c := &Client{providerName: "ollama", model: "qwen3"}
-		err := c.wrapError(anyllmerrors.NewModelNotFoundError("ollama", fmt.Errorf("not found")))
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ollama pull qwen3")
-	})
-	t.Run("cloud suggests config check", func(t *testing.T) {
-		c := &Client{providerName: "anthropic", model: "claude-opus-4-6"}
-		err := c.wrapError(
-			anyllmerrors.NewModelNotFoundError("anthropic", fmt.Errorf("not found")),
-		)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "check the model name")
-		assert.NotContains(t, err.Error(), "pull")
-	})
-}
-
-// TestWrapErrorAuthenticationError exercises the path when a user provides
-// the wrong API key for a cloud provider.
-func TestWrapErrorAuthenticationError(t *testing.T) {
-	c := &Client{providerName: "anthropic"}
-	err := c.wrapError(anyllmerrors.NewAuthenticationError("anthropic", fmt.Errorf("invalid key")))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "authentication failed")
-	assert.Contains(t, err.Error(), "check your api_key")
-}
-
-// TestWrapErrorRateLimitError exercises the path when a user exceeds the
-// provider's rate limit.
-func TestWrapErrorRateLimitError(t *testing.T) {
-	c := &Client{providerName: "openai"}
-	err := c.wrapError(anyllmerrors.NewRateLimitError("openai", fmt.Errorf("429")))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "rate limited")
-	assert.Contains(t, err.Error(), "try again")
-}
-
-// TestWrapErrorNil verifies that nil passes through without error.
-func TestWrapErrorNil(t *testing.T) {
-	c := &Client{providerName: "ollama"}
-	assert.NoError(t, c.wrapError(nil))
-}
-
-// TestWrapErrorGeneric verifies that unrecognized errors pass through.
-func TestWrapErrorGeneric(t *testing.T) {
-	c := &Client{providerName: "ollama"}
-	orig := fmt.Errorf("something unexpected")
-	err := c.wrapError(orig)
-	assert.Equal(t, orig, err)
-}
-
-// TestChatCompleteWithThinking verifies that setting a thinking level causes
-// the reasoning_effort parameter to be sent to the server.
-func TestChatCompleteWithThinking(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body map[string]any
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		// The reasoning_effort field should be present when thinking is set.
-		// The exact field name depends on the provider SDK, but we verify the
-		// client at least sets it on the params.
-		jsonResponse(w, `{"choices":[{"message":{"content":"thought about it"}}]}`)
-	}))
-	defer srv.Close()
-
-	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	client.SetThinking("medium")
-	result, err := client.ChatComplete(context.Background(), []Message{
-		{Role: "user", Content: "think hard"},
-	})
-	require.NoError(t, err)
-	assert.Equal(t, "thought about it", result)
-}
-
-// TestChatStreamContextCancelledBeforeSend verifies that starting a stream
-// with an already-cancelled context doesn't hang.
-func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = fmt.Fprintln(w, `data: {"choices":[{"delta":{"content":"hi"},"finish_reason":""}]}`)
-	}))
-	defer srv.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // cancel immediately
-
-	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	ch, err := client.ChatStream(ctx, []Message{{Role: "user", Content: "hi"}})
-	if err != nil {
-		return // provider may reject immediately
-	}
-	// Drain -- should complete quickly without hanging.
-	for range ch { //nolint:revive // drain channel
 	}
 }

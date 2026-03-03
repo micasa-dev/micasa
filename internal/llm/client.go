@@ -94,9 +94,11 @@ func NewClient(
 	// Ollama uses OpenAI-compatible endpoints at /v1; ensure the suffix
 	// is present when a custom base URL is provided so the provider
 	// constructs correct paths (e.g. /v1/chat/completions).
-	if providerName == providerOllama && effectiveBase != "" &&
-		!strings.HasSuffix(effectiveBase, "/v1") {
-		effectiveBase = strings.TrimRight(effectiveBase, "/") + "/v1"
+	if providerName == providerOllama && effectiveBase != "" {
+		effectiveBase = strings.TrimRight(effectiveBase, "/")
+		if !strings.HasSuffix(effectiveBase, "/v1") {
+			effectiveBase += "/v1"
+		}
 	}
 
 	opts := buildOpts(effectiveBase, apiKey, timeout)
@@ -241,13 +243,6 @@ func (c *Client) completionParams(messages []Message, opts []ChatOption) anyllm.
 		params.ResponseFormat = cp.responseFormat
 	}
 	return params
-}
-
-// SupportsModelListing returns true if the provider implements the
-// ModelLister interface. Cloud providers like Anthropic do not.
-func (c *Client) SupportsModelListing() bool {
-	_, ok := c.provider.(anyllm.ModelLister)
-	return ok
 }
 
 // ListModels fetches the available model IDs. Returns an error if the

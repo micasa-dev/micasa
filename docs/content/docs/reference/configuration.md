@@ -86,7 +86,7 @@ micasa backup --source /path/to/micasa.db ~/backups/snapshot.db
 |----------|---------|-------------------|-------------|
 | `MICASA_DB_PATH` | [Platform default](#platform-data-directory) | -- | Database file path |
 | `MICASA_LLM_PROVIDER` | `ollama` | `llm.provider` | LLM provider name |
-| `OLLAMA_HOST` | `http://localhost:11434/v1` | `llm.base_url` | LLM API base URL |
+| `OLLAMA_HOST` | `http://localhost:11434` | `llm.base_url` | LLM API base URL |
 | `MICASA_LLM_BASE_URL` | `http://localhost:11434` | `llm.base_url` | LLM API base URL (alias for `OLLAMA_HOST`) |
 | `MICASA_LLM_MODEL` | `qwen3` | `llm.model` | LLM model name |
 | `MICASA_LLM_API_KEY` | (empty) | `llm.api_key` | LLM API key for cloud providers |
