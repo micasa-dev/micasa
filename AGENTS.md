@@ -245,6 +245,9 @@ details; do not duplicate that detail here.
   `iota` constants. The `exhaustive` linter catches missing cases.
 - **Use stdlib/codebase constants**: No magic numbers when `math.MaxInt64`
   or a codebase constant exists.
+- **Safe integer narrowing**: Never cast `int64` to `int` directly. Use
+  `safeconv.Int` (`internal/safeconv`) which returns an error on overflow.
+  Callers decide how to handle it (return error, clamp, etc.).
 - **Single-file backup principle**: `micasa backup backup.db` must be a
   complete backup. Never store app state outside SQLite.
 - **LLM is opt-in, not a crutch**: Every feature must work fully without

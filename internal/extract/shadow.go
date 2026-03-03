@@ -11,6 +11,7 @@ import (
 
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/data/sqlite"
+	"github.com/cpcloud/micasa/internal/safeconv"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -445,8 +446,12 @@ func commitMaintenance(store *data.Store, row map[string]any) (uint, error) {
 	if v := toUint(row[data.ColApplianceID]); v != 0 {
 		m.ApplianceID = &v
 	}
-	if v := toInt64(row[data.ColIntervalMonths]); v >= 0 && v <= math.MaxInt {
-		m.IntervalMonths = int(v)
+	if v := toInt64(row[data.ColIntervalMonths]); v != 0 {
+		n, err := safeconv.Int(v)
+		if err != nil {
+			return 0, fmt.Errorf("interval_months: %w", err)
+		}
+		m.IntervalMonths = n
 	}
 	if v := toInt64Ptr(row[data.ColCostCents]); v != nil {
 		m.CostCents = v
@@ -525,8 +530,12 @@ func commitUpdateMaintenance(store *data.Store, op Operation) error {
 		}
 	}
 	if v, ok := op.Data["interval_months"]; ok {
-		if n := ParseInt64(v); n > 0 && n <= math.MaxInt {
-			item.IntervalMonths = int(n)
+		if raw := ParseInt64(v); raw > 0 {
+			n, err := safeconv.Int(raw)
+			if err != nil {
+				return fmt.Errorf("interval_months: %w", err)
+			}
+			item.IntervalMonths = n
 		}
 	}
 	if v, ok := op.Data["cost_cents"]; ok {
