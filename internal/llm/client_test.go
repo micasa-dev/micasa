@@ -595,6 +595,43 @@ func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
 	}
 }
 
+// TestNewHTTPClientSetsResponseHeaderTimeout verifies that the custom HTTP
+// client returned by newHTTPClient has ResponseHeaderTimeout configured on
+// its transport.
+func TestNewHTTPClientSetsResponseHeaderTimeout(t *testing.T) {
+	timeout := 7 * time.Second
+	c := newHTTPClient(timeout)
+	require.NotNil(t, c)
+
+	transport, ok := c.Transport.(*http.Transport)
+	require.True(t, ok, "expected *http.Transport")
+	assert.Equal(t, timeout, transport.ResponseHeaderTimeout)
+	assert.Zero(t, c.Timeout, "Client.Timeout should be zero to avoid killing streaming responses")
+}
+
+// TestResponseHeaderTimeoutCatchesHangingServer verifies that a server which
+// accepts the connection but never sends response headers triggers a timeout
+// error within the ResponseHeaderTimeout window.
+func TestResponseHeaderTimeoutCatchesHangingServer(t *testing.T) {
+	done := make(chan struct{})
+
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		<-done // hang until unblocked
+	}))
+	// Unblock handler first so srv.Close can drain active connections.
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(done) })
+
+	c, err := NewClient("llamacpp", srv.URL+"/v1", "test-model", "", 500*time.Millisecond)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, chatErr := c.ChatComplete(ctx, []Message{{Role: "user", Content: "hi"}})
+	require.Error(t, chatErr, "should fail when server hangs before sending headers")
+}
+
 // TestIsLoopbackURL verifies the helper that detects loopback addresses.
 func TestIsLoopbackURL(t *testing.T) {
 	tests := []struct {
