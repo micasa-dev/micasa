@@ -47,9 +47,8 @@ func mustMarshalJSON(t *testing.T, s string) string {
 // receives the text and returns JSON operations.
 func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 	opsJSON := `{"operations": [
-		{"action": "update", "table": "documents", "data": {"id": 42, "title": "Garcia Plumbing Invoice", "notes": "Plumbing repair invoice"}},
 		{"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing"}}
-	]}`
+	], "document": {"action": "update", "data": {"id": 42, "title": "Garcia Plumbing Invoice", "notes": "Plumbing repair invoice"}}}`
 	_, client := newTestLLMServer(t, opsJSON)
 
 	p := &Pipeline{
@@ -69,10 +68,10 @@ func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 	assert.True(t, r.LLMUsed)
 
 	require.Len(t, r.Operations, 2)
-	assert.Equal(t, ActionUpdate, r.Operations[0].Action)
-	assert.Equal(t, "documents", r.Operations[0].Table)
-	assert.Equal(t, ActionCreate, r.Operations[1].Action)
-	assert.Equal(t, "vendors", r.Operations[1].Table)
+	assert.Equal(t, ActionCreate, r.Operations[0].Action)
+	assert.Equal(t, "vendors", r.Operations[0].Table)
+	assert.Equal(t, ActionUpdate, r.Operations[1].Action)
+	assert.Equal(t, documentsTable, r.Operations[1].Table)
 }
 
 // TestPipeline_LLMServerDown verifies that when the LLM server is

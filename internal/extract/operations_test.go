@@ -14,9 +14,8 @@ import (
 
 func TestParseOperations_Valid(t *testing.T) {
 	raw := `{"operations": [
-		{"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing"}},
-		{"action": "update", "table": "documents", "data": {"title": "Invoice", "notes": "Repair"}}
-	]}`
+		{"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing"}}
+	], "document": {"action": "update", "data": {"id": 42, "title": "Invoice", "notes": "Repair"}}}`
 	ops, err := ParseOperations(raw)
 	require.NoError(t, err)
 	require.Len(t, ops, 2)
@@ -26,8 +25,29 @@ func TestParseOperations_Valid(t *testing.T) {
 	assert.Equal(t, "Garcia Plumbing", ops[0].Data["name"])
 
 	assert.Equal(t, ActionUpdate, ops[1].Action)
-	assert.Equal(t, "documents", ops[1].Table)
+	assert.Equal(t, documentsTable, ops[1].Table)
 	assert.Equal(t, "Invoice", ops[1].Data["title"])
+}
+
+func TestParseOperations_DocumentOnly(t *testing.T) {
+	raw := `{"operations": [], "document": {"action": "update", "data": {"id": 1, "title": "Receipt"}}}`
+	ops, err := ParseOperations(raw)
+	require.NoError(t, err)
+	require.Len(t, ops, 1)
+	assert.Equal(t, ActionUpdate, ops[0].Action)
+	assert.Equal(t, documentsTable, ops[0].Table)
+	assert.Equal(t, "Receipt", ops[0].Data["title"])
+}
+
+func TestParseOperations_NoDocument(t *testing.T) {
+	raw := `{"operations": [
+		{"action": "create", "table": "vendors", "data": {"name": "Test Vendor"}}
+	]}`
+	ops, err := ParseOperations(raw)
+	require.NoError(t, err)
+	require.Len(t, ops, 1)
+	assert.Equal(t, ActionCreate, ops[0].Action)
+	assert.Equal(t, "vendors", ops[0].Table)
 }
 
 func TestParseOperations_RejectsCodeFences(t *testing.T) {
@@ -84,7 +104,14 @@ func TestOperationsSchema_TopLevel(t *testing.T) {
 
 	variants, ok := items["anyOf"].([]any)
 	require.True(t, ok)
-	assert.Len(t, variants, 7, "expected 7 variants: 5 create + 2 update")
+	assert.Len(t, variants, 5, "expected 5 non-document variants")
+
+	docProp, ok := props["document"].(map[string]any)
+	require.True(t, ok)
+
+	docVariants, ok := docProp["anyOf"].([]any)
+	require.True(t, ok)
+	assert.Len(t, docVariants, 2, "expected 2 document variants (create + update)")
 }
 
 func TestOperationsSchema_VariantStructure(t *testing.T) {
@@ -125,32 +152,100 @@ func TestOperationsSchema_VariantStructure(t *testing.T) {
 	}
 }
 
+func TestOperationsSchema_DocumentVariantStructure(t *testing.T) {
+	variants := documentVariants()
+	require.Len(t, variants, 2)
+
+	for i, v := range variants {
+		variant, ok := v.(map[string]any)
+		require.True(t, ok, "document variant %d is not a map", i)
+		assert.Equal(t, "object", variant["type"])
+		assert.Equal(t, false, variant["additionalProperties"])
+
+		required, ok := variant["required"].([]any)
+		require.True(t, ok, "document variant %d missing required", i)
+		assert.Contains(t, required, "action")
+		assert.Contains(t, required, "data")
+		assert.NotContains(t, required, "table")
+
+		props, ok := variant["properties"].(map[string]any)
+		require.True(t, ok)
+
+		_, hasTable := props["table"]
+		assert.False(t, hasTable, "document variant %d should not have table property", i)
+
+		actionProp, ok := props["action"].(map[string]any)
+		require.True(t, ok)
+		actionEnum, ok := actionProp["enum"].([]any)
+		require.True(t, ok)
+		assert.Len(t, actionEnum, 1)
+
+		dataProp, ok := props["data"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, "object", dataProp["type"])
+		assert.Equal(t, false, dataProp["additionalProperties"])
+	}
+}
+
 func TestOperationsSchema_CoversTables(t *testing.T) {
 	type tableAction struct {
 		table  string
 		action Action
 	}
 
-	// Verify variants match ExtractionOps 1:1.
-	variants := operationVariants()
-	require.Len(t, variants, len(ExtractionOps))
-
-	expected := []tableAction{
+	// Non-document operation variants.
+	opVariants := operationVariants()
+	expectedOps := []tableAction{
 		{"vendors", ActionCreate},
 		{"appliances", ActionCreate},
 		{"quotes", ActionCreate},
 		{"maintenance_items", ActionCreate},
 		{"maintenance_items", ActionUpdate},
-		{"documents", ActionCreate},
-		{"documents", ActionUpdate},
+	}
+	require.Len(t, opVariants, len(expectedOps))
+
+	seenOps := make(map[tableAction]bool)
+	for _, op := range ExtractionOps {
+		if op.Table == documentsTable {
+			continue
+		}
+		seenOps[tableAction{op.Table, op.Action}] = true
+	}
+	for _, ta := range expectedOps {
+		assert.True(t, seenOps[ta], "missing op variant for %s/%s", ta.action, ta.table)
 	}
 
-	seen := make(map[tableAction]bool, len(ExtractionOps))
-	for _, op := range ExtractionOps {
-		seen[tableAction{op.Table, op.Action}] = true
+	// Document variants.
+	docVars := documentVariants()
+	expectedDocs := []tableAction{
+		{documentsTable, ActionCreate},
+		{documentsTable, ActionUpdate},
 	}
-	for _, ta := range expected {
-		assert.True(t, seen[ta], "missing variant for %s/%s", ta.action, ta.table)
+	require.Len(t, docVars, len(expectedDocs))
+
+	seenDocs := make(map[tableAction]bool)
+	for _, op := range ExtractionOps {
+		if op.Table == documentsTable {
+			seenDocs[tableAction{op.Table, op.Action}] = true
+		}
+	}
+	for _, ta := range expectedDocs {
+		assert.True(t, seenDocs[ta], "missing doc variant for %s/%s", ta.action, ta.table)
+	}
+}
+
+func TestOperationsSchema_NoDocumentInOperations(t *testing.T) {
+	for i, v := range operationVariants() {
+		variant, ok := v.(map[string]any)
+		require.True(t, ok)
+		props, ok := variant["properties"].(map[string]any)
+		require.True(t, ok, "variant %d missing properties", i)
+		tableProp, ok := props["table"].(map[string]any)
+		require.True(t, ok, "variant %d missing table", i)
+		tableEnum, ok := tableProp["enum"].([]any)
+		require.True(t, ok, "variant %d missing table enum", i)
+		assert.NotEqual(t, documentsTable, tableEnum[0],
+			"operation variant %d should not be for documents", i)
 	}
 }
 
@@ -170,7 +265,7 @@ func TestOperationsSchema_VendorsCreateColumns(t *testing.T) {
 }
 
 func TestOperationsSchema_DocumentsUpdateRequiresID(t *testing.T) {
-	variant := findVariant(t, ActionUpdate, "documents")
+	variant := findDocumentVariant(t, ActionUpdate)
 	dataRequired := variantDataRequired(t, variant)
 	assert.Contains(t, dataRequired, "id")
 }
@@ -182,7 +277,7 @@ func TestOperationsSchema_MaintenanceUpdateRequiresID(t *testing.T) {
 }
 
 func TestOperationsSchema_EntityKindEnum(t *testing.T) {
-	variant := findVariant(t, ActionUpdate, "documents")
+	variant := findDocumentVariant(t, ActionUpdate)
 	dataProps := variantDataProps(t, variant)
 
 	ekProp, ok := dataProps["entity_kind"].(map[string]any)
@@ -227,6 +322,19 @@ func findVariant(t *testing.T, action Action, table string) map[string]any {
 	return nil
 }
 
+// findDocumentVariant builds the document schema variant for the given action
+// by looking up ExtractionOps and calling buildDocumentVariant directly.
+func findDocumentVariant(t *testing.T, action Action) map[string]any {
+	t.Helper()
+	for _, op := range ExtractionOps {
+		if op.Action == action && op.Table == documentsTable {
+			return buildDocumentVariant(op)
+		}
+	}
+	t.Fatalf("no document variant for %s", action)
+	return nil
+}
+
 func variantDataProps(t *testing.T, variant map[string]any) map[string]any {
 	t.Helper()
 	props, ok := variant["properties"].(map[string]any)
@@ -251,7 +359,7 @@ func variantDataRequired(t *testing.T, variant map[string]any) []any {
 // --- ValidateOperations ---
 
 var testAllowedOps = map[string]AllowedOps{
-	"documents":         {Update: true},
+	documentsTable:      {Update: true},
 	"vendors":           {Insert: true},
 	"quotes":            {Insert: true},
 	"maintenance_items": {Insert: true},
@@ -261,7 +369,7 @@ var testAllowedOps = map[string]AllowedOps{
 func TestValidateOperations_Valid(t *testing.T) {
 	ops := []Operation{
 		{Action: ActionCreate, Table: "vendors", Data: map[string]any{"name": "Test"}},
-		{Action: ActionUpdate, Table: "documents", Data: map[string]any{"title": "Doc"}},
+		{Action: ActionUpdate, Table: documentsTable, Data: map[string]any{"title": "Doc"}},
 	}
 	err := ValidateOperations(ops, testAllowedOps)
 	assert.NoError(t, err)
@@ -291,7 +399,7 @@ func TestValidateOperations_UnknownTable(t *testing.T) {
 
 func TestValidateOperations_CreateOnUpdateOnlyTable(t *testing.T) {
 	ops := []Operation{
-		{Action: ActionCreate, Table: "documents", Data: map[string]any{"title": "X"}},
+		{Action: ActionCreate, Table: documentsTable, Data: map[string]any{"title": "X"}},
 	}
 	err := ValidateOperations(ops, testAllowedOps)
 	require.Error(t, err)

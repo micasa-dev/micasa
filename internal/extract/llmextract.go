@@ -85,20 +85,18 @@ You may receive text from multiple extraction sources. Each source is labeled wi
 
 const operationExtractionRules = `## Output format
 
-Output ONLY a JSON object with an "operations" key containing an array. No code fences, no markdown, no commentary.
+Output ONLY a JSON object. No code fences, no markdown, no commentary.
 
-Each operation has:
-- "action": "create" or "update"
-- "table": one of the allowed tables below
-- "data": object mapping column names to values
+The object has two top-level fields:
+- "operations" (required): array of entity operations (vendors, quotes, maintenance_items, appliances). Each element has "action", "table", and "data".
+- "document" (optional): a single object for document create/update. Has "action" and "data" only (no "table" -- it is always "documents").
 
 Example:
 
 {"operations": [
   {"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing"}},
-  {"action": "update", "table": "documents", "data": {"id": 42, "title": "Invoice", "notes": "Repair"}},
   {"action": "create", "table": "quotes", "data": {"total_cents": 150000, "vendor_id": 1}}
-]}
+], "document": {"action": "update", "data": {"id": 42, "title": "Invoice", "notes": "Repair"}}}
 
 ## Rules
 
@@ -108,19 +106,22 @@ Example:
 4. Dates are ISO 8601: YYYY-MM-DD.
 5. Use real IDs from the existing rows above for all foreign keys. Do not invent IDs.
 6. If a vendor is mentioned but does not exist, create it.
-7. When a Document ID is provided, use "update" for that document and include "id" in data. When no document exists yet, use "create".
-8. To link a document to an entity, set "entity_kind" and "entity_id" in the document operation.
+7. When a Document ID is provided, use "update" in the "document" field and include "id" in data. When no document exists yet, use "create".
+8. To link a document to an entity, set "entity_kind" and "entity_id" in the "document" field.
 9. For maintenance schedules (from manuals), create maintenance_items.
 10. For contractor/vendor cost estimates (bids, proposals), create quotes with the correct project_id and vendor_id. Incidental dollar amounts (e.g. in receipts or manuals) are not quotes.
 11. Only use "create" and "update". No other actions.
 
-## Allowed operations per table (STRICT -- any violation is rejected)
+## Allowed operations
 
-- documents: create or update. Include "id" in data when updating an existing document.
+Operations array (vendors, quotes, maintenance_items, appliances):
 - vendors: create only.
 - quotes: create only.
-- maintenance_items: create or update. Include "id" in data when updating an existing maintenance item.
+- maintenance_items: create or update. Include "id" in data when updating.
 - appliances: create only.
+
+Document field (separate from operations array):
+- create or update. Include "id" in data when updating an existing document.
 
 No other tables may be written to.`
 
