@@ -21,10 +21,10 @@ import (
 
 // Config is the top-level application configuration, loaded from a TOML file.
 type Config struct {
-	LLM        LLM        `toml:"llm"`
-	Documents  Documents  `toml:"documents"`
-	Extraction Extraction `toml:"extraction"`
-	Locale     Locale     `toml:"locale"`
+	LLM        LLM        `toml:"llm"        doc:"LLM provider, model, and connection settings."`
+	Documents  Documents  `toml:"documents"  doc:"Document attachment limits and caching."`
+	Extraction Extraction `toml:"extraction" doc:"Document extraction pipeline (OCR, pdftotext, LLM pre-fill)."`
+	Locale     Locale     `toml:"locale"     doc:"Locale and currency settings."`
 
 	// Warnings collects non-fatal messages (e.g. deprecations) during load.
 	// Not serialized; the caller decides how to display them.
@@ -35,8 +35,7 @@ type Config struct {
 type Locale struct {
 	// Currency is the ISO 4217 code (e.g. "USD", "EUR", "GBP").
 	// Used as the default when the database has no currency set yet.
-	// Override with MICASA_CURRENCY env var.
-	Currency string `toml:"currency"`
+	Currency string `toml:"currency" env:"MICASA_CURRENCY"`
 }
 
 // LLM holds settings for the LLM inference backend.
@@ -63,7 +62,7 @@ type LLM struct {
 	// ExtraContext is custom text appended to all system prompts.
 	// Useful for domain-specific details: house style, location, etc.
 	// Currency is handled by [locale] section. Optional; defaults to empty.
-	ExtraContext string `toml:"extra_context"`
+	ExtraContext string `toml:"extra_context" env:"MICASA_LLM_EXTRA_CONTEXT"`
 
 	// Timeout is the maximum time to wait for quick LLM server operations
 	// (ping, model listing, auto-detect). Go duration string, e.g. "5s",
@@ -76,11 +75,11 @@ type LLM struct {
 
 	// Chat holds per-pipeline overrides for the chat (NL-to-SQL) pipeline.
 	// Non-empty fields take precedence over the base values above.
-	Chat LLMChatOverride `toml:"chat"`
+	Chat LLMChatOverride `toml:"chat" doc:"Per-pipeline LLM overrides for chat. Inherits from [llm]."`
 
 	// Extraction holds per-pipeline overrides for the document extraction
 	// pipeline. Non-empty fields take precedence over the base values above.
-	Extraction LLMExtractionOverride `toml:"extraction"`
+	Extraction LLMExtractionOverride `toml:"extraction" doc:"Per-pipeline LLM overrides for extraction. Inherits from [llm]."`
 }
 
 // LLMChatOverride holds optional per-pipeline overrides for the chat
@@ -526,10 +525,6 @@ func LoadFromPath(path string) (Config, error) {
 	}
 	if cfg.Extraction.MaxExtractPages == 0 {
 		cfg.Extraction.MaxExtractPages = DefaultMaxExtractPages
-	}
-
-	if cur := os.Getenv("MICASA_CURRENCY"); cur != "" {
-		cfg.Locale.Currency = cur
 	}
 
 	return cfg, nil

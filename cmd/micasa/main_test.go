@@ -170,7 +170,7 @@ func TestConfigCmd(t *testing.T) {
 		cmd := exec.CommandContext(t.Context(), bin, "config")
 		out, err := cmd.CombinedOutput()
 		require.Error(t, err)
-		assert.Contains(t, string(out), "expected \"<key>\"")
+		assert.Contains(t, string(out), "provide a config key or use --dump")
 	})
 }
 

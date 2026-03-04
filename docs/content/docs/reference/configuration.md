@@ -50,7 +50,7 @@ micasa /tmp/my-demo.db          # reopens with the demo data
 ### `config`
 
 ```
-micasa config <key>
+micasa config [<key>] [--dump]
 ```
 
 Print the resolved value of a configuration key (dot-delimited TOML path):
@@ -59,6 +59,16 @@ Print the resolved value of a configuration key (dot-delimited TOML path):
 micasa config llm.model             # current model name
 micasa config llm.base_url          # LLM API endpoint
 micasa config documents.max_file_size  # max doc size in bytes
+```
+
+Use `--dump` to print the entire resolved configuration as valid TOML.
+Each field is annotated with its environment variable: `# env: VAR` as a
+hint, or `# src(env): VAR` when that variable is actively overriding the
+value. API keys are omitted to avoid accidentally leaking secrets (e.g.
+pasting output into a chat or issue).
+
+```sh
+micasa config --dump
 ```
 
 ### `backup`
@@ -90,6 +100,7 @@ micasa backup --source /path/to/micasa.db ~/backups/snapshot.db
 | `MICASA_LLM_BASE_URL` | `http://localhost:11434` | `llm.base_url` | LLM API base URL (alias for `OLLAMA_HOST`) |
 | `MICASA_LLM_MODEL` | `qwen3` | `llm.model` | LLM model name |
 | `MICASA_LLM_API_KEY` | (empty) | `llm.api_key` | LLM API key for cloud providers |
+| `MICASA_LLM_EXTRA_CONTEXT` | (empty) | `llm.extra_context` | Custom context appended to LLM system prompts |
 | `MICASA_LLM_TIMEOUT` | `5s` | `llm.timeout` | LLM operation timeout |
 | `MICASA_MAX_DOCUMENT_SIZE` | `50 MiB` | `documents.max_file_size` | Max document import size |
 | `MICASA_CACHE_TTL` | `30d` | `documents.cache_ttl` | Document cache lifetime |
@@ -283,6 +294,10 @@ model = "qwen3"
 
 ### `[llm]` section
 
+LLM provider, model, and connection settings. These are the shared defaults
+for all LLM pipelines (chat and extraction). Per-pipeline overrides can be
+set in `[llm.chat]` and `[llm.extraction]`.
+
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `provider` | string | `ollama` | LLM provider. Supported: `ollama`, `anthropic`, `openai`, `openrouter`, `deepseek`, `gemini`, `groq`, `mistral`, `llamacpp`, `llamafile`. Auto-detected from `base_url` and `api_key` when not set. |
@@ -293,7 +308,39 @@ model = "qwen3"
 | `timeout` | string | `"5s"` | Max wait time for quick LLM operations (ping, model listing). Go duration syntax, e.g. `"10s"`, `"500ms"`. Increase for slow servers. |
 | `thinking` | bool | (unset) | Enable model thinking mode (e.g. qwen3 `<think>` blocks). Unset = don't send the option (server default). |
 
+### `[llm.chat]` section
+
+Per-pipeline LLM overrides for the chat (NL-to-SQL) pipeline. Empty fields
+inherit from `[llm]`. Use this to run chat on a different provider or model
+than the default.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `provider` | string | (inherits) | Override LLM provider for chat. |
+| `base_url` | string | (inherits) | Override API base URL for chat. |
+| `model` | string | (inherits) | Override model for chat. |
+| `api_key` | string | (inherits) | Override API key for chat. |
+| `timeout` | string | (inherits) | Override timeout for chat. |
+| `thinking` | string | (inherits) | Override thinking mode for chat. |
+
+### `[llm.extraction]` section
+
+Per-pipeline LLM overrides for document extraction. Empty fields inherit
+from `[llm]`. Use this to run extraction on a smaller, faster model while
+keeping a more capable model for chat.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `provider` | string | (inherits) | Override LLM provider for extraction. |
+| `base_url` | string | (inherits) | Override API base URL for extraction. |
+| `model` | string | (inherits) | Override model for extraction. |
+| `api_key` | string | (inherits) | Override API key for extraction. |
+| `timeout` | string | (inherits) | Override timeout for extraction. |
+| `thinking` | string | (inherits) | Override thinking mode for extraction. |
+
 ### `[documents]` section
+
+Document attachment limits and caching.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
@@ -303,21 +350,23 @@ model = "qwen3"
 
 ### `[extraction]` section
 
-Controls the document extraction pipeline. Text extraction and OCR are
-independent and always available when their tools are installed. The LLM layer
-adds structured data extraction (document type, costs, dates, vendor matching).
+Document extraction pipeline settings. Controls OCR, pdftotext, and
+LLM-powered structured pre-fill. Text extraction and OCR are independent
+and always available when their tools are installed. The LLM layer adds
+structured data extraction (document type, costs, dates, vendor matching).
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `model` | string | (chat model) | Model for document extraction. Falls back to `llm.model` if empty. A small, fast model (e.g. `qwen2.5:7b`) works well. |
+| `model` | string | (chat model) | **Deprecated.** Use `[llm.extraction] model` instead. Falls back to `llm.model` if empty. |
 | `text_timeout` | string | `"30s"` | Max time for `pdftotext` to run. Go duration syntax, e.g. `"1m"`. Increase for very large PDFs. |
 | `max_extract_pages` | int | `20` | Maximum pages to OCR per scanned document. Front-loaded info is typically in the first pages. |
 | `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. Text extraction and OCR still run. |
-| `thinking` | bool | `false` | Enable model thinking mode for extraction. Disable for faster structured output. |
+| `thinking` | bool | `false` | **Deprecated.** Use `[llm.extraction] thinking` instead. |
 
 ### `[locale]` section
 
-Controls currency formatting across all money fields in the application.
+Locale and currency settings. Controls currency formatting across all money
+fields in the application.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|

@@ -26,8 +26,8 @@ var version = "dev"
 type cli struct {
 	Run     runCmd           `cmd:"" default:"withargs" help:"Launch the TUI (default)."`
 	Backup  backupCmd        `cmd:""                    help:"Back up the database to a file."`
-	Config  configCmd        `cmd:""                    help:"Print the value of a config key."`
-	Version kong.VersionFlag `                          help:"Show version and exit."           name:"version"`
+	Config  configCmd        `cmd:""                    help:"Print config values or dump the full resolved config."`
+	Version kong.VersionFlag `                          help:"Show version and exit."                                name:"version"`
 }
 
 type runCmd struct {
@@ -43,7 +43,8 @@ type backupCmd struct {
 }
 
 type configCmd struct {
-	Key string `arg:"" help:"Dot-delimited config key (e.g. llm.model, documents.max_file_size)."`
+	Key  string `arg:"" optional:"" help:"Dot-delimited config key (e.g. llm.model, documents.max_file_size)."`
+	Dump bool   `                   help:"Print the fully resolved config as TOML and exit."`
 }
 
 func main() {
@@ -199,9 +200,15 @@ func (cmd *runCmd) resolveDBPath() (string, error) {
 }
 
 func (cmd *configCmd) Run() error {
+	if !cmd.Dump && cmd.Key == "" {
+		return fmt.Errorf("provide a config key or use --dump to print the full config")
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
+	}
+	if cmd.Dump {
+		return cfg.ShowConfig(os.Stdout)
 	}
 	val, err := cfg.Get(cmd.Key)
 	if err != nil {

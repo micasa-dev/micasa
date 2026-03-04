@@ -27,12 +27,26 @@ Create a pull request for the current branch.
 - **Avoid CI trigger phrases**: Never put `[skip ci]`, `[ci skip]`, etc.
   in the PR title or body unless you intend to suppress CI.
 
+## Closing issues
+
+Before creating the PR, search for open issues that would be closed by it:
+
+```
+gh issue list --repo cpcloud/micasa --search "<relevant keywords>" --state open
+```
+
+Add `closes #<number>` lines to the PR body for each matching issue so
+GitHub auto-closes them on merge. Use the commit message `closes` syntax
+too when applicable.
+
 ## PR body format
 
 ```markdown
 ## Summary
 
 - Concise bullet points describing what changed and why
+
+closes #<issue>
 ```
 
 Keep it short. The diff tells the story.

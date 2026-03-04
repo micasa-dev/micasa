@@ -14,6 +14,12 @@ import (
 // strings ("30d") and bare integers (interpreted as seconds).
 type Duration struct{ time.Duration }
 
+// MarshalText implements encoding.TextMarshaler, using day notation for
+// whole-day multiples (e.g. "30d") and Go duration syntax otherwise.
+func (d Duration) MarshalText() ([]byte, error) {
+	return []byte(FormatDuration(d.Duration)), nil
+}
+
 // UnmarshalTOML implements toml.Unmarshaler for Duration,
 // accepting TOML integers (seconds) and strings ("30d", "720h").
 func (d *Duration) UnmarshalTOML(v any) error {

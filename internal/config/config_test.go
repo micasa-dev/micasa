@@ -617,6 +617,7 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_LLM_BASE_URL":           "llm.base_url",
 		"MICASA_LLM_API_KEY":            "llm.api_key",
 		"MICASA_LLM_MODEL":              "llm.model",
+		"MICASA_LLM_EXTRA_CONTEXT":      "llm.extra_context",
 		"MICASA_LLM_TIMEOUT":            "llm.timeout",
 		"MICASA_LLM_THINKING":           "llm.thinking",
 		"MICASA_MAX_DOCUMENT_SIZE":      "documents.max_file_size",
@@ -628,6 +629,7 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_TEXT_TIMEOUT":           "extraction.text_timeout",
 		"MICASA_EXTRACTION_LLM_TIMEOUT": "extraction.llm_timeout",
 		"MICASA_EXTRACTION_THINKING":    "extraction.thinking",
+		"MICASA_CURRENCY":               "locale.currency",
 
 		// Per-pipeline chat overrides.
 		"MICASA_LLM_CHAT_PROVIDER": "llm.chat.provider",
