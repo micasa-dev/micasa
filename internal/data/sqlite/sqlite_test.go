@@ -12,6 +12,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -25,17 +27,23 @@ import (
 	modernsqlite "modernc.org/sqlite"
 )
 
-// testDSN returns a unique shared in-memory DSN per test to avoid
+var testSeq atomic.Uint64
+
+// testDSN returns a unique shared in-memory DSN per test invocation to avoid
 // cross-test lock contention on the same shared cache database.
 func testDSN(t *testing.T) string {
 	t.Helper()
-	return fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	return fmt.Sprintf("file:%s_%d?mode=memory&cache=shared", t.Name(), testSeq.Add(1))
 }
+
+var registerCustomDriver sync.Once
 
 func TestDialector(t *testing.T) {
 	const customDriverName = "test_custom_driver"
 
-	sql.Register(customDriverName, &modernsqlite.Driver{})
+	registerCustomDriver.Do(func() {
+		sql.Register(customDriverName, &modernsqlite.Driver{})
+	})
 
 	dsn := testDSN(t)
 	tests := []struct {
