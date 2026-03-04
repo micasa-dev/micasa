@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewDeterministicSeed(t *testing.T) {
+	t.Parallel()
 	h1 := New(42)
 	h2 := New(42)
 
@@ -20,6 +21,7 @@ func TestNewDeterministicSeed(t *testing.T) {
 }
 
 func TestHouseProfile(t *testing.T) {
+	t.Parallel()
 	h := New(1)
 	house := h.HouseProfile()
 
@@ -35,6 +37,7 @@ func TestHouseProfile(t *testing.T) {
 }
 
 func TestVendor(t *testing.T) {
+	t.Parallel()
 	h := New(2)
 	v := h.Vendor()
 
@@ -45,12 +48,14 @@ func TestVendor(t *testing.T) {
 }
 
 func TestVendorForTrade(t *testing.T) {
+	t.Parallel()
 	h := New(3)
 	v := h.VendorForTrade("Plumbing")
 	assert.NotEmpty(t, v.Name)
 }
 
 func TestProject(t *testing.T) {
+	t.Parallel()
 	h := New(4)
 
 	for _, typeName := range ProjectTypes() {
@@ -62,6 +67,7 @@ func TestProject(t *testing.T) {
 }
 
 func TestProjectCompletedHasEndDateAndActual(t *testing.T) {
+	t.Parallel()
 	for seed := range uint64(100) {
 		h := New(seed)
 		p := h.Project("Plumbing")
@@ -75,12 +81,14 @@ func TestProjectCompletedHasEndDateAndActual(t *testing.T) {
 }
 
 func TestProjectUnknownType(t *testing.T) {
+	t.Parallel()
 	h := New(5)
 	p := h.Project("Unknown")
 	assert.NotEmpty(t, p.Title, "expected fallback title for unknown type")
 }
 
 func TestAppliance(t *testing.T) {
+	t.Parallel()
 	h := New(6)
 	a := h.Appliance()
 
@@ -94,6 +102,7 @@ func TestAppliance(t *testing.T) {
 }
 
 func TestBrandPrefix(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		brand string
 		want  string
@@ -109,6 +118,7 @@ func TestBrandPrefix(t *testing.T) {
 }
 
 func TestMaintenanceItem(t *testing.T) {
+	t.Parallel()
 	h := New(7)
 
 	for _, cat := range MaintenanceCategories() {
@@ -119,6 +129,7 @@ func TestMaintenanceItem(t *testing.T) {
 }
 
 func TestMaintenanceItemUnknownCategory(t *testing.T) {
+	t.Parallel()
 	h := New(8)
 	m := h.MaintenanceItem("Unknown")
 	assert.NotEmpty(t, m.Name)
@@ -126,6 +137,7 @@ func TestMaintenanceItemUnknownCategory(t *testing.T) {
 }
 
 func TestServiceLogEntry(t *testing.T) {
+	t.Parallel()
 	h := New(9)
 	e := h.ServiceLogEntry()
 
@@ -135,6 +147,7 @@ func TestServiceLogEntry(t *testing.T) {
 }
 
 func TestQuote(t *testing.T) {
+	t.Parallel()
 	h := New(10)
 	q := h.Quote()
 
@@ -146,6 +159,7 @@ func TestQuote(t *testing.T) {
 }
 
 func TestVarietyAcrossSeeds(t *testing.T) {
+	t.Parallel()
 	names := map[string]bool{}
 	for seed := range uint64(20) {
 		h := New(seed)
@@ -156,11 +170,13 @@ func TestVarietyAcrossSeeds(t *testing.T) {
 }
 
 func TestVendorTrades(t *testing.T) {
+	t.Parallel()
 	trades := VendorTrades()
 	assert.NotEmpty(t, trades)
 }
 
 func TestIntN(t *testing.T) {
+	t.Parallel()
 	h := New(42)
 	for range 100 {
 		v := h.IntN(5)

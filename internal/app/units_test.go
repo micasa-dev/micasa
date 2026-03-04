@@ -12,6 +12,7 @@ import (
 )
 
 func TestToggleUnitSystemViaKeypress(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.hasHouse = true
 	require.Equal(t, data.UnitsImperial, m.unitSystem, "should default to imperial")
@@ -26,6 +27,7 @@ func TestToggleUnitSystemViaKeypress(t *testing.T) {
 }
 
 func TestToggleUnitSystemPersistsToStore(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	sendKey(m, "U")
@@ -45,6 +47,7 @@ func TestToggleUnitSystemPersistsToStore(t *testing.T) {
 }
 
 func TestHouseDisplayUsesMetricUnits(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Set up a house with known area.
@@ -67,6 +70,7 @@ func TestHouseDisplayUsesMetricUnits(t *testing.T) {
 }
 
 func TestHouseFormMetricSavesAsSqFt(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Switch to metric first.
@@ -97,6 +101,7 @@ func TestHouseFormMetricSavesAsSqFt(t *testing.T) {
 }
 
 func TestHouseFormShowsConvertedValues(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Set house with known sq ft values.
@@ -120,6 +125,7 @@ func TestHouseFormShowsConvertedValues(t *testing.T) {
 }
 
 func TestHelpContentIncludesToggleUnits(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.Contains(t, help, "Toggle units")

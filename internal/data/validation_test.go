@@ -12,6 +12,7 @@ import (
 )
 
 func TestParseOptionalDate(t *testing.T) {
+	t.Parallel()
 	date, err := ParseOptionalDate("2025-06-11")
 	require.NoError(t, err)
 	require.NotNil(t, date)
@@ -22,6 +23,7 @@ func TestParseOptionalDate(t *testing.T) {
 }
 
 func TestParseOptionalInt(t *testing.T) {
+	t.Parallel()
 	value, err := ParseOptionalInt("12")
 	require.NoError(t, err)
 	assert.Equal(t, 12, value)
@@ -31,6 +33,7 @@ func TestParseOptionalInt(t *testing.T) {
 }
 
 func TestParseOptionalFloat(t *testing.T) {
+	t.Parallel()
 	value, err := ParseOptionalFloat("2.5")
 	require.NoError(t, err)
 	assert.InDelta(t, 2.5, value, 0.001)
@@ -40,6 +43,7 @@ func TestParseOptionalFloat(t *testing.T) {
 }
 
 func TestParseRequiredDate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -55,6 +59,7 @@ func TestParseRequiredDate(t *testing.T) {
 }
 
 func TestParseRequiredDateInvalid(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{"", "2025-13-01"} {
 		_, err := ParseRequiredDate(input)
 		assert.Error(t, err, "input=%q", input)
@@ -62,6 +67,7 @@ func TestParseRequiredDateInvalid(t *testing.T) {
 }
 
 func TestParseRequiredDateAtNaturalLanguage(t *testing.T) {
+	t.Parallel()
 	ref := time.Date(2026, 2, 25, 14, 30, 0, 0, time.UTC)
 	tests := []struct {
 		input string
@@ -84,6 +90,7 @@ func TestParseRequiredDateAtNaturalLanguage(t *testing.T) {
 }
 
 func TestParseRequiredDateAtTruncatesTime(t *testing.T) {
+	t.Parallel()
 	ref := time.Date(2026, 2, 25, 14, 30, 45, 123, time.UTC)
 	got, err := ParseRequiredDateAt("today", ref)
 	require.NoError(t, err)
@@ -94,6 +101,7 @@ func TestParseRequiredDateAtTruncatesTime(t *testing.T) {
 }
 
 func TestParseRequiredDateAtInvalid(t *testing.T) {
+	t.Parallel()
 	ref := time.Date(2026, 2, 25, 14, 30, 0, 0, time.UTC)
 	for _, input := range []string{"", "nope", "abc", "not a date"} {
 		_, err := ParseRequiredDateAt(input, ref)
@@ -102,6 +110,7 @@ func TestParseRequiredDateAtInvalid(t *testing.T) {
 }
 
 func TestParseOptionalDateAtNaturalLanguage(t *testing.T) {
+	t.Parallel()
 	ref := time.Date(2026, 2, 25, 14, 30, 0, 0, time.UTC)
 	tests := []struct {
 		input string
@@ -119,6 +128,7 @@ func TestParseOptionalDateAtNaturalLanguage(t *testing.T) {
 }
 
 func TestParseOptionalDateAtEmpty(t *testing.T) {
+	t.Parallel()
 	ref := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
 	got, err := ParseOptionalDateAt("", ref)
 	require.NoError(t, err)
@@ -126,12 +136,14 @@ func TestParseOptionalDateAtEmpty(t *testing.T) {
 }
 
 func TestFormatDate(t *testing.T) {
+	t.Parallel()
 	assert.Empty(t, FormatDate(nil))
 	d := time.Date(2025, 6, 11, 0, 0, 0, 0, time.UTC)
 	assert.Equal(t, "2025-06-11", FormatDate(&d))
 }
 
 func TestParseRequiredInt(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  int
@@ -148,6 +160,7 @@ func TestParseRequiredInt(t *testing.T) {
 }
 
 func TestParseRequiredIntInvalid(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{"", "abc", "-5", "1.5"} {
 		_, err := ParseRequiredInt(input)
 		assert.Error(t, err, "input=%q", input)
@@ -155,6 +168,7 @@ func TestParseRequiredIntInvalid(t *testing.T) {
 }
 
 func TestParseRequiredFloat(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  float64
@@ -171,6 +185,7 @@ func TestParseRequiredFloat(t *testing.T) {
 }
 
 func TestParseRequiredFloatInvalid(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{"", "abc", "-1.5"} {
 		_, err := ParseRequiredFloat(input)
 		assert.Error(t, err, "input=%q", input)
@@ -178,24 +193,28 @@ func TestParseRequiredFloatInvalid(t *testing.T) {
 }
 
 func TestParseOptionalIntEmpty(t *testing.T) {
+	t.Parallel()
 	got, err := ParseOptionalInt("")
 	require.NoError(t, err)
 	assert.Zero(t, got)
 }
 
 func TestParseOptionalFloatEmpty(t *testing.T) {
+	t.Parallel()
 	got, err := ParseOptionalFloat("")
 	require.NoError(t, err)
 	assert.Zero(t, got)
 }
 
 func TestParseOptionalDateEmpty(t *testing.T) {
+	t.Parallel()
 	got, err := ParseOptionalDate("")
 	require.NoError(t, err)
 	assert.Nil(t, got)
 }
 
 func TestComputeNextDue(t *testing.T) {
+	t.Parallel()
 	last := time.Date(2024, 10, 10, 0, 0, 0, 0, time.UTC)
 	next := ComputeNextDue(&last, 6, nil)
 	require.NotNil(t, next)
@@ -203,15 +222,18 @@ func TestComputeNextDue(t *testing.T) {
 }
 
 func TestComputeNextDueNilDate(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, ComputeNextDue(nil, 6, nil))
 }
 
 func TestComputeNextDueZeroInterval(t *testing.T) {
+	t.Parallel()
 	d := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	assert.Nil(t, ComputeNextDue(&d, 0, nil))
 }
 
 func TestComputeNextDueExplicitDueDate(t *testing.T) {
+	t.Parallel()
 	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
 	next := ComputeNextDue(nil, 0, &due)
 	require.NotNil(t, next)
@@ -219,6 +241,7 @@ func TestComputeNextDueExplicitDueDate(t *testing.T) {
 }
 
 func TestComputeNextDueDateOverridesInterval(t *testing.T) {
+	t.Parallel()
 	last := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
 	due := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
 	next := ComputeNextDue(&last, 6, &due)
@@ -227,10 +250,12 @@ func TestComputeNextDueDateOverridesInterval(t *testing.T) {
 }
 
 func TestComputeNextDueNeitherSet(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, ComputeNextDue(nil, 0, nil))
 }
 
 func TestAddMonths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		start  time.Time
@@ -282,6 +307,7 @@ func TestAddMonths(t *testing.T) {
 }
 
 func TestParseIntervalMonths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  int
@@ -315,6 +341,7 @@ func TestParseIntervalMonths(t *testing.T) {
 }
 
 func TestParseIntervalMonthsInvalid(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{"abc", "-1", "1.5m", "1x", "m", "y", "6m 1y"} {
 		_, err := ParseIntervalMonths(input)
 		assert.Error(t, err, "input=%q should be rejected", input)
@@ -322,6 +349,7 @@ func TestParseIntervalMonthsInvalid(t *testing.T) {
 }
 
 func TestComputeNextDueMonthEndClamping(t *testing.T) {
+	t.Parallel()
 	last := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
 	next := ComputeNextDue(&last, 1, nil)
 	require.NotNil(t, next)

@@ -15,6 +15,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestFormatInterval(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		months int
@@ -43,6 +44,7 @@ func TestFormatInterval(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestStatusLabels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		status string
 		want   string
@@ -64,6 +66,7 @@ func TestStatusLabels(t *testing.T) {
 }
 
 func TestStatusLabelsAreDistinct(t *testing.T) {
+	t.Parallel()
 	seen := make(map[string]string)
 	for status, label := range statusLabels {
 		if prev, ok := seen[label]; ok {
@@ -74,6 +77,7 @@ func TestStatusLabelsAreDistinct(t *testing.T) {
 }
 
 func TestStatusStylesExistForAll(t *testing.T) {
+	t.Parallel()
 	styles := DefaultStyles()
 	for status := range statusLabels {
 		_, ok := styles.StatusStyle(status)
@@ -86,6 +90,7 @@ func TestStatusStylesExistForAll(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCompactMoneyValue(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	tests := []struct {
 		name  string
@@ -108,6 +113,7 @@ func TestCompactMoneyValue(t *testing.T) {
 }
 
 func TestCompactMoneyCells(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	rows := [][]cell{
 		{
@@ -142,6 +148,7 @@ func TestCompactMoneyCells(t *testing.T) {
 }
 
 func TestCompactMoneyCellsPreservesNull(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	rows := [][]cell{
 		{
@@ -155,6 +162,7 @@ func TestCompactMoneyCellsPreservesNull(t *testing.T) {
 }
 
 func TestAnnotateMoneyHeaders(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	specs := []columnSpec{
 		{Title: "Name", Kind: cellText},

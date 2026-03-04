@@ -21,6 +21,7 @@ func formFieldLabels(m *Model) string {
 }
 
 func TestSaveFormFocusesNewItem(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create first project via user interaction.
@@ -53,6 +54,7 @@ func TestSaveFormFocusesNewItem(t *testing.T) {
 // creating an item via save-in-place, then closing the form, should leave
 // the cursor on the newly created item.
 func TestSaveFormInPlaceThenEscFocusesNewItem(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Seed an existing project so the cursor starts on something else.
@@ -88,6 +90,7 @@ func TestSaveFormInPlaceThenEscFocusesNewItem(t *testing.T) {
 // TestSaveFormInPlaceThenDiscardFocusesNewItem verifies the Ctrl+S -> edit
 // more -> Esc -> confirm discard "y" flow.
 func TestSaveFormInPlaceThenDiscardFocusesNewItem(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Seed an existing project.
@@ -125,6 +128,7 @@ func TestSaveFormInPlaceThenDiscardFocusesNewItem(t *testing.T) {
 // TestSaveFormInPlaceTwiceThenEscFocusesItem verifies that Ctrl+S twice
 // (create then update) followed by Esc still lands on the item.
 func TestSaveFormInPlaceTwiceThenEscFocusesItem(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	openAddForm(m)
@@ -152,6 +156,7 @@ func TestSaveFormInPlaceTwiceThenEscFocusesItem(t *testing.T) {
 // some arbitrary row. This guards against regressions from the exitForm
 // cursor-move logic.
 func TestEditExistingThenEscKeepsCursor(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create two projects via user interaction.
@@ -189,6 +194,7 @@ func TestEditExistingThenEscKeepsCursor(t *testing.T) {
 // (no save at all) does not move the cursor -- editID is nil so exitForm
 // should be a no-op for cursor positioning.
 func TestExitFormWithNoSaveNoCursorMove(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a project so we have a row to be on.
@@ -214,6 +220,7 @@ func TestExitFormWithNoSaveNoCursorMove(t *testing.T) {
 }
 
 func TestAddProjectFormHasOnlyEssentialFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openAddForm(m)
 
@@ -229,6 +236,7 @@ func TestAddProjectFormHasOnlyEssentialFields(t *testing.T) {
 }
 
 func TestEditProjectFormHasMoreFieldsThanAdd(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	// Create a project via user interaction.
 	openAddForm(m)
@@ -254,6 +262,7 @@ func TestEditProjectFormHasMoreFieldsThanAdd(t *testing.T) {
 }
 
 func TestAddVendorFormHasOnlyName(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabVendors)
 	openAddForm(m)
@@ -266,6 +275,7 @@ func TestAddVendorFormHasOnlyName(t *testing.T) {
 }
 
 func TestEditVendorFormHasAllFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabVendors)
 	// Create a vendor via user interaction.
@@ -290,6 +300,7 @@ func TestEditVendorFormHasAllFields(t *testing.T) {
 }
 
 func TestAddApplianceFormHasOnlyName(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabAppliances)
 	openAddForm(m)
@@ -302,6 +313,7 @@ func TestAddApplianceFormHasOnlyName(t *testing.T) {
 }
 
 func TestAddMaintenanceFormHasOnlyEssentialFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -316,6 +328,7 @@ func TestAddMaintenanceFormHasOnlyEssentialFields(t *testing.T) {
 }
 
 func TestAddQuoteFormHasOnlyEssentialFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	// Need a project first.
 	openAddForm(m)
@@ -338,6 +351,7 @@ func TestAddQuoteFormHasOnlyEssentialFields(t *testing.T) {
 }
 
 func TestAddServiceLogFormHasOnlyEssentialFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	require.NoError(t, m.startServiceLogForm(0))
 	view := formFieldLabels(m)

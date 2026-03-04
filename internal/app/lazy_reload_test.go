@@ -12,6 +12,7 @@ import (
 )
 
 func TestReloadAfterMutationMarksOtherTabsStale(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.width = 120
 	m.height = 40
@@ -36,6 +37,7 @@ func TestReloadAfterMutationMarksOtherTabsStale(t *testing.T) {
 }
 
 func TestNavigatingToStaleTabClearsStaleFlag(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.width = 120
 	m.height = 40
@@ -56,6 +58,7 @@ func TestNavigatingToStaleTabClearsStaleFlag(t *testing.T) {
 }
 
 func TestPrevTabClearsStaleFlag(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.width = 120
 	m.height = 40
@@ -71,6 +74,7 @@ func TestPrevTabClearsStaleFlag(t *testing.T) {
 }
 
 func TestReloadAllClearsAllStaleFlags(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.width = 120
 	m.height = 40
@@ -96,6 +100,7 @@ func TestReloadAllClearsAllStaleFlags(t *testing.T) {
 }
 
 func TestDashJumpClearsStaleFlag(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.width = 120
 	m.height = 40
@@ -150,6 +155,7 @@ func TestDashJumpClearsStaleFlag(t *testing.T) {
 }
 
 func TestNavigateToLinkClearsStaleFlag(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.width = 120
 	m.height = 40
@@ -177,6 +183,7 @@ func TestNavigateToLinkClearsStaleFlag(t *testing.T) {
 }
 
 func TestCloseDetailClearsStaleParentTab(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.width = 120
 	m.height = 40

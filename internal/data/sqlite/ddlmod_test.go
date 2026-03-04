@@ -18,6 +18,7 @@ import (
 )
 
 func TestParseDDL(t *testing.T) {
+	t.Parallel()
 	params := []struct {
 		name    string
 		sql     []string
@@ -291,6 +292,7 @@ func TestParseDDL(t *testing.T) {
 }
 
 func TestParseDDL_Whitespaces(t *testing.T) {
+	t.Parallel()
 	testColumns := []migrator.ColumnType{
 		{
 			NameValue:         sql.NullString{String: "id", Valid: true},
@@ -368,6 +370,7 @@ func TestParseDDL_Whitespaces(t *testing.T) {
 }
 
 func TestParseDDL_Error(t *testing.T) {
+	t.Parallel()
 	params := []struct {
 		name string
 		sql  string
@@ -386,6 +389,7 @@ func TestParseDDL_Error(t *testing.T) {
 }
 
 func TestAddConstraint(t *testing.T) {
+	t.Parallel()
 	params := []struct {
 		name   string
 		fields []string
@@ -456,6 +460,7 @@ func TestAddConstraint(t *testing.T) {
 }
 
 func TestRemoveConstraint(t *testing.T) {
+	t.Parallel()
 	params := []struct {
 		name    string
 		fields  []string
@@ -510,6 +515,7 @@ func TestRemoveConstraint(t *testing.T) {
 }
 
 func TestRemoveColumn(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		fields  []string
@@ -565,6 +571,7 @@ func TestRemoveColumn(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
+	t.Parallel()
 	original := &ddl{
 		head:   "CREATE TABLE `test`",
 		fields: []string{"`id` integer NOT NULL", "`name` text"},
@@ -586,6 +593,7 @@ func TestClone(t *testing.T) {
 }
 
 func TestRenameTable(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		head    string
@@ -635,6 +643,7 @@ func TestRenameTable(t *testing.T) {
 }
 
 func TestGetColumns(t *testing.T) {
+	t.Parallel()
 	params := []struct {
 		name    string
 		ddl     string

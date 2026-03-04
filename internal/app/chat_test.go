@@ -20,6 +20,7 @@ const testQuestion = "test question"
 // code tried to access messages[-3]. The chunk is delivered through
 // Model.Update, the same path a real Bubble Tea message takes.
 func TestSQLChunkCompletionDoesNotPanic(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -49,6 +50,7 @@ func TestSQLChunkCompletionDoesNotPanic(t *testing.T) {
 // chunk arriving when no assistant message exists (edge case) shows an
 // error instead of panicking. Delivered through Model.Update.
 func TestSQLChunkDoneWithNoAssistantMessageShowsError(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -73,6 +75,7 @@ func TestSQLChunkDoneWithNoAssistantMessageShowsError(t *testing.T) {
 // accumulate SQL visible in the rendered output (with ShowSQL toggled on
 // via ctrl+s, as a real user would). All messages flow through Model.Update.
 func TestSQLStreamStartedSetsUpStreaming(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -113,6 +116,7 @@ func TestSQLStreamStartedSetsUpStreaming(t *testing.T) {
 // (SQL generation) removes the spinner and partial assistant message,
 // showing only "Interrupted" in the rendered output.
 func TestCancellationDuringSQLGeneration(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -142,6 +146,7 @@ func TestCancellationDuringSQLGeneration(t *testing.T) {
 // TestCancellationDuringAnswerStreaming verifies that ctrl+c during stage 2
 // (answer streaming) removes the partial response and shows "Interrupted".
 func TestCancellationDuringAnswerStreaming(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -171,6 +176,7 @@ func TestCancellationDuringAnswerStreaming(t *testing.T) {
 // even in the window between submitChat and handleSQLStreamStarted where
 // the LLM stream hasn't been set up yet (CancelFn is nil).
 func TestCancellationBeforeStreamEstablished(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -200,6 +206,7 @@ func TestCancellationBeforeStreamEstablished(t *testing.T) {
 // This is a regression test for the bug where all assistant messages with
 // empty content/SQL would show spinners during streaming.
 func TestSpinnerOnlyShowsForLastMessage(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -228,6 +235,7 @@ func TestSpinnerOnlyShowsForLastMessage(t *testing.T) {
 // TestNoSpinnerAfterCancellation verifies that after ctrl+c the rendered
 // chat output contains no spinner text.
 func TestNoSpinnerAfterCancellation(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -261,6 +269,7 @@ func TestNoSpinnerAfterCancellation(t *testing.T) {
 // The test drives everything through Model.Update to exercise the real
 // dispatch path a user would trigger.
 func TestLateSQLChunkAfterCancellationIsDropped(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -296,6 +305,7 @@ func TestLateSQLChunkAfterCancellationIsDropped(t *testing.T) {
 // a streamed answer chunk arriving after cancellation should be ignored.
 // Driven through Model.Update like the real dispatch path.
 func TestLateChatChunkAfterCancellationIsDropped(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -322,6 +332,7 @@ func TestLateChatChunkAfterCancellationIsDropped(t *testing.T) {
 // TestChatMagModeToggle verifies that ctrl+o toggles the global mag mode
 // even when the chat overlay is active.
 func TestChatMagModeToggle(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openChat()
 
@@ -357,6 +368,7 @@ func TestChatMagModeToggle(t *testing.T) {
 // TestChatMagModeTogglesRenderedOutput verifies that toggling mag mode
 // updates dollar amounts in already-displayed LLM responses.
 func TestChatMagModeTogglesRenderedOutput(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 120
 	m.height = 40

@@ -12,6 +12,7 @@ import (
 )
 
 func TestModelWithDemoDataLoadsAllTabs(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, testSeed)
 
 	for i, tab := range m.tabs {
@@ -26,6 +27,7 @@ func TestModelWithDemoDataLoadsAllTabs(t *testing.T) {
 }
 
 func TestModelWithDemoDataDashboard(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, testSeed)
 	m.showDashboard = true
 	require.NoError(t, m.loadDashboardAt(time.Now()))
@@ -34,6 +36,7 @@ func TestModelWithDemoDataDashboard(t *testing.T) {
 }
 
 func TestModelWithDemoDataVariedSeeds(t *testing.T) {
+	t.Parallel()
 	for i := range uint64(5) {
 		seed := testSeed + i
 		m := newTestModelWithDemoData(t, seed)

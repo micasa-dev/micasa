@@ -15,6 +15,7 @@ import (
 // of the host's TZ setting. gofakeit.DateRange works on Unix timestamps
 // (timezone-independent), but using UTC bounds is defensive best practice.
 func TestGeneratedTimestampsUseUTC(t *testing.T) {
+	t.Parallel()
 	h := New(42)
 
 	t.Run("Appliance", func(t *testing.T) {

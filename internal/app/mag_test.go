@@ -13,6 +13,7 @@ import (
 )
 
 func TestMagFormatMoneyWithUnit(t *testing.T) {
+	t.Parallel()
 	// Used by magCents for dashboard (input still has $ from FormatCents).
 	// No internal padding; rendering layer handles alignment.
 	tests := []struct {
@@ -36,6 +37,7 @@ func TestMagFormatMoneyWithUnit(t *testing.T) {
 }
 
 func TestMagFormatBareMoney(t *testing.T) {
+	t.Parallel()
 	// Table cells carry $ from FormatCents. With includeUnit=false
 	// the mag output strips the $ (header carries the unit instead).
 	// No internal padding; table renderer handles alignment.
@@ -62,6 +64,7 @@ func TestMagFormatBareMoney(t *testing.T) {
 }
 
 func TestMagFormatDrilldown(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		value string
@@ -80,11 +83,13 @@ func TestMagFormatDrilldown(t *testing.T) {
 }
 
 func TestMagFormatSkipsReadonly(t *testing.T) {
+	t.Parallel()
 	c := cell{Value: "42", Kind: cellReadonly}
 	assert.Equal(t, "42", magFormat(c, false, "$"))
 }
 
 func TestMagFormatSkipsNonNumericKinds(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		value string
@@ -118,6 +123,7 @@ func TestMagFormatSkipsNonNumericKinds(t *testing.T) {
 }
 
 func TestMagTransformCells(t *testing.T) {
+	t.Parallel()
 	rows := [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -155,6 +161,7 @@ func TestMagTransformCells(t *testing.T) {
 }
 
 func TestMagTransformCellsPreservesNull(t *testing.T) {
+	t.Parallel()
 	rows := [][]cell{
 		{
 			{Value: "", Kind: cellMoney, Null: true},
@@ -167,6 +174,7 @@ func TestMagTransformCellsPreservesNull(t *testing.T) {
 }
 
 func TestMagTransformText(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -226,6 +234,7 @@ func TestMagTransformText(t *testing.T) {
 }
 
 func TestMagModeToggle(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	seedMoneyCells(m)
 
@@ -255,6 +264,7 @@ func TestMagModeToggle(t *testing.T) {
 }
 
 func TestMagModeWorksInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	seedMoneyCells(m)
 	sendKey(m, "i")
@@ -306,6 +316,7 @@ func seedTabMoneyCells(tab *Tab, amounts []string) {
 }
 
 func TestMagModeTranslatesPinsOnAllTabs(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.showDashboard = false
 
@@ -383,6 +394,7 @@ func seedMoneyCells(m *Model) {
 }
 
 func TestMagCentsIncludesUnit(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	assert.Equal(t, "$ \U0001F8214", magCents(523423, cur))
 	assert.Equal(t, "$ \U0001F8213", magCents(50000, cur))
@@ -390,11 +402,13 @@ func TestMagCentsIncludesUnit(t *testing.T) {
 }
 
 func TestMagOptionalCentsNil(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	assert.Empty(t, magOptionalCents(nil, cur))
 }
 
 func TestMagOptionalCentsPresent(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	cents := int64(100000)
 	assert.Equal(t, "$ \U0001F8213", magOptionalCents(&cents, cur))

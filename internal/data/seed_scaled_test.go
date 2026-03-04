@@ -4,6 +4,7 @@
 package data
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -22,6 +23,7 @@ func newTestStoreWithScaledData(t *testing.T, seed uint64, years int) (*Store, S
 }
 
 func TestSeedScaledDataPopulatesAllEntities(t *testing.T) {
+	t.Parallel()
 	store, summary := newTestStoreWithScaledData(t, testSeed, 3)
 
 	house, err := store.HouseProfile()
@@ -54,6 +56,7 @@ func TestSeedScaledDataPopulatesAllEntities(t *testing.T) {
 }
 
 func TestSeedScaledDataDeterministic(t *testing.T) {
+	t.Parallel()
 	store1, _ := newTestStoreWithScaledData(t, testSeed, 5)
 	store2, _ := newTestStoreWithScaledData(t, testSeed, 5)
 
@@ -66,6 +69,7 @@ func TestSeedScaledDataDeterministic(t *testing.T) {
 }
 
 func TestSeedScaledDataGrowsWithYears(t *testing.T) {
+	t.Parallel()
 	_, summary1 := newTestStoreWithScaledData(t, testSeed, 1)
 	_, summary5 := newTestStoreWithScaledData(t, testSeed, 5)
 	_, summary10 := newTestStoreWithScaledData(t, testSeed, 10)
@@ -82,6 +86,7 @@ func TestSeedScaledDataGrowsWithYears(t *testing.T) {
 }
 
 func TestSeedScaledDataServiceLogDateSpread(t *testing.T) {
+	t.Parallel()
 	store, _ := newTestStoreWithScaledData(t, testSeed, 5)
 
 	// Collect all service logs by querying maintenance items.
@@ -108,6 +113,7 @@ func TestSeedScaledDataServiceLogDateSpread(t *testing.T) {
 }
 
 func TestSeedScaledDataIdempotent(t *testing.T) {
+	t.Parallel()
 	store, summary1 := newTestStoreWithScaledData(t, testSeed, 3)
 
 	// Second call should be a no-op.
@@ -119,6 +125,7 @@ func TestSeedScaledDataIdempotent(t *testing.T) {
 }
 
 func TestSeedScaledDataFKIntegrity(t *testing.T) {
+	t.Parallel()
 	store, _ := newTestStoreWithScaledData(t, testSeed, 3)
 
 	// All projects should have valid project types.
@@ -165,12 +172,12 @@ func TestSeedScaledDataFKIntegrity(t *testing.T) {
 }
 
 func TestSeedScaledDataSummaryMatchesDB(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "test.db")
+	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
 	store, err := Open(path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
-	require.NoError(t, store.AutoMigrate())
-	require.NoError(t, store.SeedDefaults())
 
 	summary, err := store.SeedScaledDataFrom(fake.New(testSeed), 5)
 	require.NoError(t, err)

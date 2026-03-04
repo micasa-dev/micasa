@@ -4,6 +4,8 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -17,14 +19,16 @@ import (
 
 // newTestModel creates a minimal Model for lightweight mode tests.
 func newTestModel() *Model {
-	store, err := data.Open(":memory:")
+	dir, err := os.MkdirTemp("", "micasa-test-*")
 	if err != nil {
 		panic(err)
 	}
-	if err := store.AutoMigrate(); err != nil {
+	path := filepath.Join(dir, "test.db")
+	if err := os.WriteFile(path, templateBytes, 0o600); err != nil {
 		panic(err)
 	}
-	if err := store.SeedDefaults(); err != nil {
+	store, err := data.Open(path)
+	if err != nil {
 		panic(err)
 	}
 	store.SetCurrency(locale.DefaultCurrency())
@@ -75,12 +79,14 @@ func sendKey(m *Model, key string) {
 }
 
 func TestStartsInNormalMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	assert.Equal(t, modeNormal, m.mode)
 	assert.Contains(t, m.statusView(), "NAV")
 }
 
 func TestEnterEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "i")
 	assert.Equal(t, modeEdit, m.mode)
@@ -88,6 +94,7 @@ func TestEnterEditMode(t *testing.T) {
 }
 
 func TestEnterOnPlainColumnShowsGuidance(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.showDashboard = false
 	tab := m.effectiveTab()
@@ -104,6 +111,7 @@ func TestEnterOnPlainColumnShowsGuidance(t *testing.T) {
 }
 
 func TestEnterOnDocumentsTabShowsOpenHint(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.showDashboard = false
 	m.active = tabIndex(tabDocuments)
@@ -120,6 +128,7 @@ func TestEnterOnDocumentsTabShowsOpenHint(t *testing.T) {
 }
 
 func TestExitEditModeWithEsc(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "i")
 	sendKey(m, "esc")
@@ -128,6 +137,7 @@ func TestExitEditModeWithEsc(t *testing.T) {
 }
 
 func TestTableKeyMapNormalMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	// In normal mode, HalfPageDown should include "d".
 	tab := m.activeTab()
@@ -142,6 +152,7 @@ func TestTableKeyMapNormalMode(t *testing.T) {
 }
 
 func TestTableKeyMapEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "i")
 	tab := m.activeTab()
@@ -162,6 +173,7 @@ func TestTableKeyMapEditMode(t *testing.T) {
 }
 
 func TestTableKeyMapRestoredOnNormalReturn(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "i")
 	sendKey(m, "esc")
@@ -177,6 +189,7 @@ func TestTableKeyMapRestoredOnNormalReturn(t *testing.T) {
 }
 
 func TestColumnNavH(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := m.activeTab()
 	initial := tab.ColCursor
@@ -187,6 +200,7 @@ func TestColumnNavH(t *testing.T) {
 }
 
 func TestColumnNavClampsLeft(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := m.activeTab()
 	tab.ColCursor = 0
@@ -195,6 +209,7 @@ func TestColumnNavClampsLeft(t *testing.T) {
 }
 
 func TestCaretJumpsToFirstColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := m.activeTab()
 	tab.ColCursor = len(tab.Specs) - 1
@@ -203,6 +218,7 @@ func TestCaretJumpsToFirstColumn(t *testing.T) {
 }
 
 func TestDollarJumpsToLastColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := m.activeTab()
 	tab.ColCursor = 0
@@ -211,6 +227,7 @@ func TestDollarJumpsToLastColumn(t *testing.T) {
 }
 
 func TestNextTabAdvances(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	// Verify mode transitions via sendKey don't reset the active tab.
 	m.active = 0
@@ -226,6 +243,7 @@ func TestNextTabAdvances(t *testing.T) {
 }
 
 func TestQuitOnlyInNormalMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 
 	// In edit mode, 'ctrl+q' should quit (returns tea.Quit).
@@ -235,6 +253,7 @@ func TestQuitOnlyInNormalMode(t *testing.T) {
 }
 
 func TestIKeyDoesNothingInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "i")
 	require.Equal(t, modeEdit, m.mode)
@@ -246,6 +265,7 @@ func TestIKeyDoesNothingInEditMode(t *testing.T) {
 }
 
 func TestHouseToggle(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.hasHouse = true
 	assert.False(t, m.showHouse)
@@ -267,6 +287,7 @@ func TestHouseToggle(t *testing.T) {
 }
 
 func TestHelpToggle(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "?")
 	assert.NotNil(t, m.helpViewport)
@@ -282,6 +303,7 @@ func TestHelpToggle(t *testing.T) {
 }
 
 func TestHelpViewportScrolling(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport)
@@ -314,6 +336,7 @@ func TestHelpViewportScrolling(t *testing.T) {
 }
 
 func TestHelpOverlayFixedWidthOnScroll(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.height = 20 // Small height forces scrolling.
 	sendKey(m, "?")
@@ -340,6 +363,7 @@ func TestHelpOverlayFixedWidthOnScroll(t *testing.T) {
 }
 
 func TestHelpScrollIndicatorChanges(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.height = 20
 	sendKey(m, "?")
@@ -364,6 +388,7 @@ func TestHelpScrollIndicatorChanges(t *testing.T) {
 }
 
 func TestHelpAbsorbsOtherKeys(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport)
@@ -379,6 +404,7 @@ func TestHelpAbsorbsOtherKeys(t *testing.T) {
 }
 
 func TestDeleteRequiresEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	// In normal mode, 'd' is half-page-down (table handles it).
 	// It should NOT trigger delete.
@@ -389,6 +415,7 @@ func TestDeleteRequiresEditMode(t *testing.T) {
 }
 
 func TestEscClearsStatusInNormalMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.status = statusMsg{Text: "something", Kind: statusInfo}
 	require.Contains(t, m.statusView(), "something")
@@ -398,6 +425,7 @@ func TestEscClearsStatusInNormalMode(t *testing.T) {
 }
 
 func TestProjectStatusFilterToggleKeys(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := m.activeTab()
 	require.NotNil(t, tab)
@@ -421,6 +449,7 @@ func TestProjectStatusFilterToggleKeys(t *testing.T) {
 }
 
 func TestProjectStatusFilterToggleIgnoredOutsideProjects(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabQuotes)
 	tab := m.activeTab()
@@ -436,6 +465,7 @@ func TestProjectStatusFilterToggleIgnoredOutsideProjects(t *testing.T) {
 }
 
 func TestKeyDispatchEditModeOnly(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 
 	// 'p' should not change mode in normal mode.
@@ -453,6 +483,7 @@ func TestKeyDispatchEditModeOnly(t *testing.T) {
 }
 
 func TestModeAfterFormExit(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	// Enter edit mode via key, open a form, then exit.
 	sendKey(m, "i")
@@ -479,6 +510,7 @@ func TestModeAfterFormExit(t *testing.T) {
 }
 
 func TestTabTogglesHouseInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.hasHouse = true
 	sendKey(m, "i")
@@ -494,6 +526,7 @@ func TestTabTogglesHouseInEditMode(t *testing.T) {
 }
 
 func TestTabSwitchKeysBlockedInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "i")
 	require.Equal(t, modeEdit, m.mode)
@@ -507,6 +540,7 @@ func TestTabSwitchKeysBlockedInEditMode(t *testing.T) {
 }
 
 func TestModeBadgeFixedWidth(t *testing.T) {
+	t.Parallel()
 	styles := DefaultStyles()
 	normalBadge := styles.ModeNormal().Render("NAV")
 	normalWidth := lipgloss.Width(normalBadge)
@@ -521,6 +555,7 @@ func TestModeBadgeFixedWidth(t *testing.T) {
 }
 
 func TestKeycapPreservesCase(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	// Uppercase "H" stays as "H" (not "SHIFT+H").
 	rendered := m.keycap("H")
@@ -542,6 +577,7 @@ func containsKey(keys []string, target string) bool {
 }
 
 func TestDeleteAutoShowsDeletedAndRestoreWorks(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a vendor (no FK children to block deletion).

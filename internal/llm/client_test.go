@@ -36,12 +36,14 @@ func jsonResponse(w http.ResponseWriter, body string) {
 }
 
 func TestNewClientUnknownProvider(t *testing.T) {
+	t.Parallel()
 	_, err := NewClient("bogus", "", "model", "", testTimeout)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "bogus")
 }
 
 func TestPingSuccess(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/models" {
 			jsonResponse(w, `{"data":[{"id":"qwen3:latest"}]}`)
@@ -55,6 +57,7 @@ func TestPingSuccess(t *testing.T) {
 }
 
 func TestPingModelNotFound(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"data":[{"id":"llama3:latest"}]}`)
 	}))
@@ -67,6 +70,7 @@ func TestPingModelNotFound(t *testing.T) {
 }
 
 func TestPingServerDown(t *testing.T) {
+	t.Parallel()
 	client := newTestClient(t, "http://127.0.0.1:1/v1", "qwen3")
 	err := client.Ping(context.Background())
 	require.Error(t, err)
@@ -76,6 +80,7 @@ func TestPingServerDown(t *testing.T) {
 // TestPingAnthropicNoOp verifies that Ping is a no-op for providers that
 // don't implement ModelLister (like Anthropic).
 func TestPingAnthropicNoOp(t *testing.T) {
+	t.Parallel()
 	client, err := NewClient(
 		"anthropic", "http://localhost:8080", "claude-sonnet-4-5-latest", "test-key", testTimeout,
 	)
@@ -84,6 +89,7 @@ func TestPingAnthropicNoOp(t *testing.T) {
 }
 
 func TestChatCompleteSuccess(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"choices":[{"message":{"content":"SELECT COUNT(*) FROM projects"}}]}`)
 	}))
@@ -98,6 +104,7 @@ func TestChatCompleteSuccess(t *testing.T) {
 }
 
 func TestChatCompleteWithJSONSchema(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&body)) {
@@ -136,6 +143,7 @@ func TestChatCompleteWithJSONSchema(t *testing.T) {
 }
 
 func TestChatCompleteWithoutJSONSchema(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&body)) {
@@ -156,6 +164,7 @@ func TestChatCompleteWithoutJSONSchema(t *testing.T) {
 }
 
 func TestChatCompleteServerError(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -171,6 +180,7 @@ func TestChatCompleteServerError(t *testing.T) {
 }
 
 func TestChatCompleteEmptyChoices(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"choices":[]}`)
 	}))
@@ -185,6 +195,7 @@ func TestChatCompleteEmptyChoices(t *testing.T) {
 }
 
 func TestModelAndBaseURL(t *testing.T) {
+	t.Parallel()
 	client := newTestClient(t, "http://localhost:11434/v1/", "qwen3")
 	assert.Equal(t, "qwen3", client.Model())
 	assert.Equal(t, "http://localhost:11434/v1/", client.BaseURL())
@@ -192,6 +203,7 @@ func TestModelAndBaseURL(t *testing.T) {
 }
 
 func TestSetModel(t *testing.T) {
+	t.Parallel()
 	client := newTestClient(t, "http://localhost:11434/v1", "qwen3")
 	assert.Equal(t, "qwen3", client.Model())
 
@@ -200,12 +212,14 @@ func TestSetModel(t *testing.T) {
 }
 
 func TestSetThinking(t *testing.T) {
+	t.Parallel()
 	client := newTestClient(t, "http://localhost:11434/v1", "qwen3")
 	client.SetThinking("medium")
 	assert.Equal(t, "medium", client.thinking)
 }
 
 func TestListModelsSuccess(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"data":[{"id":"qwen3:latest"},{"id":"llama3:8b"},{"id":"mistral:7b"}]}`)
 	}))
@@ -218,6 +232,7 @@ func TestListModelsSuccess(t *testing.T) {
 }
 
 func TestListModelsServerDown(t *testing.T) {
+	t.Parallel()
 	client := newTestClient(t, "http://127.0.0.1:1/v1", "qwen3")
 	_, err := client.ListModels(context.Background())
 	require.Error(t, err)
@@ -225,6 +240,7 @@ func TestListModelsServerDown(t *testing.T) {
 }
 
 func TestListModelsEmpty(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"data":[]}`)
 	}))
@@ -237,6 +253,7 @@ func TestListModelsEmpty(t *testing.T) {
 }
 
 func TestIsLocalServer(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		provider string
 		local    bool
@@ -261,11 +278,13 @@ func TestIsLocalServer(t *testing.T) {
 }
 
 func TestProviderName(t *testing.T) {
+	t.Parallel()
 	client := newTestClient(t, "http://localhost:11434/v1", "qwen3")
 	assert.Equal(t, "llamacpp", client.ProviderName())
 }
 
 func TestSupportsModelListing(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		provider string
 		supports bool
@@ -286,6 +305,7 @@ func TestSupportsModelListing(t *testing.T) {
 }
 
 func TestChatStreamSuccess(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		flusher, _ := w.(http.Flusher)
@@ -322,6 +342,7 @@ func TestChatStreamSuccess(t *testing.T) {
 }
 
 func TestChatStreamCancellation(t *testing.T) {
+	t.Parallel()
 	handlerDone := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(handlerDone)
@@ -356,6 +377,7 @@ func TestChatStreamCancellation(t *testing.T) {
 }
 
 func TestChatStreamServerError(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -382,6 +404,7 @@ func TestChatStreamServerError(t *testing.T) {
 }
 
 func TestPingModelNotFoundCloud(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"data":[{"id":"claude-sonnet-4-5-20250929"}]}`)
 	}))
@@ -405,6 +428,7 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 }
 
 func TestPingServerDownCloud(t *testing.T) {
+	t.Parallel()
 	// Use wrapError directly: a ECONNREFUSED wrapped in ProviderError
 	// from a cloud provider should say "cannot reach ... check your
 	// base_url" and NOT mention ollama.
@@ -422,6 +446,7 @@ func TestPingServerDownCloud(t *testing.T) {
 // TestPingModelNotFoundLlamacpp verifies that when a local server
 // doesn't have the requested model, the user gets a "not available" message.
 func TestPingModelNotFoundLlamacpp(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"data":[{"id":"llama3:latest"}]}`)
 	}))
@@ -436,6 +461,7 @@ func TestPingModelNotFoundLlamacpp(t *testing.T) {
 // TestPingMatchesModelPrefix verifies that model names with tags
 // (e.g. "qwen3:latest") match against the base name ("qwen3").
 func TestPingMatchesModelPrefix(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		jsonResponse(w, `{"data":[{"id":"qwen3:latest"}]}`)
 	}))
@@ -448,6 +474,7 @@ func TestPingMatchesModelPrefix(t *testing.T) {
 // TestCreateProviderAllSupported verifies that every documented provider
 // can be initialized without error.
 func TestCreateProviderAllSupported(t *testing.T) {
+	t.Parallel()
 	providers := []string{
 		"ollama", "anthropic", "openai", "openrouter",
 		"deepseek", "gemini", "groq", "mistral",
@@ -465,6 +492,7 @@ func TestCreateProviderAllSupported(t *testing.T) {
 
 // TestWrapErrorProviderError exercises the wrapError path for ProviderError.
 func TestWrapErrorProviderError(t *testing.T) {
+	t.Parallel()
 	connErr := fmt.Errorf("dial tcp: connection refused")
 	tests := []struct {
 		provider string
@@ -493,6 +521,7 @@ func TestWrapErrorProviderError(t *testing.T) {
 // of showing "cannot reach", since timeouts can happen mid-request
 // (model loading, long inference) even when the server is reachable.
 func TestWrapErrorProviderErrorDeadlineExceeded(t *testing.T) {
+	t.Parallel()
 	timeoutErr := fmt.Errorf("request failed: %w", context.DeadlineExceeded)
 	c := &Client{providerName: "ollama"}
 	err := c.wrapError(
@@ -507,6 +536,7 @@ func TestWrapErrorProviderErrorDeadlineExceeded(t *testing.T) {
 // ProviderErrors NOT caused by connection failures pass through the
 // original error message instead of showing "cannot reach."
 func TestWrapErrorProviderErrorPreservesNonConnectionErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		provider string
@@ -535,6 +565,7 @@ func TestWrapErrorProviderErrorPreservesNonConnectionErrors(t *testing.T) {
 // TestWrapErrorModelNotFound exercises the wrapError path when the LLM
 // returns a "model not found" error. Ollama gets a "pull it" suggestion.
 func TestWrapErrorModelNotFound(t *testing.T) {
+	t.Parallel()
 	t.Run("ollama suggests pull", func(t *testing.T) {
 		c := &Client{providerName: "ollama", model: "qwen3"}
 		err := c.wrapError(
@@ -559,6 +590,7 @@ func TestWrapErrorModelNotFound(t *testing.T) {
 // TestWrapErrorAuthenticationError exercises the path when a user provides
 // the wrong API key for a cloud provider.
 func TestWrapErrorAuthenticationError(t *testing.T) {
+	t.Parallel()
 	c := &Client{providerName: "anthropic"}
 	err := c.wrapError(
 		anyllmerrors.NewAuthenticationError("anthropic", fmt.Errorf("invalid key")),
@@ -571,6 +603,7 @@ func TestWrapErrorAuthenticationError(t *testing.T) {
 // TestWrapErrorRateLimitError exercises the path when a user exceeds the
 // provider's rate limit.
 func TestWrapErrorRateLimitError(t *testing.T) {
+	t.Parallel()
 	c := &Client{providerName: "openai"}
 	err := c.wrapError(
 		anyllmerrors.NewRateLimitError("openai", fmt.Errorf("429")),
@@ -582,12 +615,14 @@ func TestWrapErrorRateLimitError(t *testing.T) {
 
 // TestWrapErrorNil verifies that nil passes through without error.
 func TestWrapErrorNil(t *testing.T) {
+	t.Parallel()
 	c := &Client{providerName: "ollama"}
 	assert.NoError(t, c.wrapError(nil))
 }
 
 // TestWrapErrorGeneric verifies that unrecognized errors pass through.
 func TestWrapErrorGeneric(t *testing.T) {
+	t.Parallel()
 	c := &Client{providerName: "ollama"}
 	orig := fmt.Errorf("something unexpected")
 	err := c.wrapError(orig)
@@ -597,6 +632,7 @@ func TestWrapErrorGeneric(t *testing.T) {
 // TestChatCompleteWithThinking verifies that setting a thinking level causes
 // the reasoning_effort parameter to be sent to the server.
 func TestChatCompleteWithThinking(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&body)) {
@@ -624,6 +660,7 @@ func TestChatCompleteWithThinking(t *testing.T) {
 // data and then drops the connection, the caller receives an error chunk
 // rather than a silent Done with truncated content.
 func TestChatStreamMidStreamDisconnect(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		flusher, _ := w.(http.Flusher)
@@ -667,6 +704,7 @@ func TestChatStreamMidStreamDisconnect(t *testing.T) {
 // TestChatStreamContextCancelledBeforeSend verifies that starting a stream
 // with an already-cancelled context doesn't hang.
 func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = fmt.Fprintln(
@@ -693,6 +731,7 @@ func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
 
 // TestIsLoopbackURL verifies the helper that detects loopback addresses.
 func TestIsLoopbackURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		url      string
 		loopback bool
@@ -717,6 +756,7 @@ func TestIsLoopbackURL(t *testing.T) {
 // silently ignore a loopback base URL (left over from Ollama config) and use
 // their own default instead.
 func TestNewClientCloudProviderIgnoresLoopbackURL(t *testing.T) {
+	t.Parallel()
 	providers := []string{
 		"anthropic", "openai", "deepseek", "gemini", "groq", "mistral",
 	}
@@ -737,6 +777,7 @@ func TestNewClientCloudProviderIgnoresLoopbackURL(t *testing.T) {
 // TestNewClientLocalProviderKeepsLoopbackURL verifies that local providers
 // keep the loopback base URL.
 func TestNewClientLocalProviderKeepsLoopbackURL(t *testing.T) {
+	t.Parallel()
 	providers := []string{"ollama", "llamacpp", "llamafile"}
 	for _, p := range providers {
 		t.Run(p, func(t *testing.T) {
@@ -752,6 +793,7 @@ func TestNewClientLocalProviderKeepsLoopbackURL(t *testing.T) {
 // TestNewClientOllamaCustomBaseURL verifies that the native ollama provider
 // correctly uses a custom base URL with its /api/* endpoints.
 func TestNewClientOllamaCustomBaseURL(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/tags" {
 			jsonResponse(w, `{"models":[{"model":"qwen3:latest"}]}`)

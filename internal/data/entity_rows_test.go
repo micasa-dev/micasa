@@ -11,6 +11,7 @@ import (
 )
 
 func TestEntityRows_Empty(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	ctx, err := store.EntityRows()
 	require.NoError(t, err)
@@ -23,6 +24,7 @@ func TestEntityRows_Empty(t *testing.T) {
 }
 
 func TestEntityRows_WithDemoData(t *testing.T) {
+	t.Parallel()
 	store := newTestStoreWithDemoData(t, testSeed)
 	ctx, err := store.EntityRows()
 	require.NoError(t, err)
@@ -49,6 +51,7 @@ func TestEntityRows_WithDemoData(t *testing.T) {
 }
 
 func TestEntityRows_ExcludesDeleted(t *testing.T) {
+	t.Parallel()
 	store := newTestStoreWithDemoData(t, testSeed)
 
 	// Get initial counts.
@@ -89,6 +92,7 @@ func TestEntityRows_ExcludesDeleted(t *testing.T) {
 }
 
 func TestEntityRows_SortedByName(t *testing.T) {
+	t.Parallel()
 	store := newTestStoreWithDemoData(t, testSeed)
 	ctx, err := store.EntityRows()
 	require.NoError(t, err)

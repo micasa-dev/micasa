@@ -12,17 +12,20 @@ import (
 )
 
 func TestFuzzyMatch_ExactPrefix(t *testing.T) {
+	t.Parallel()
 	score, positions := fuzzyMatch("Pro", "Projects")
 	assert.NotZero(t, score)
 	assert.Equal(t, []int{0, 1, 2}, positions)
 }
 
 func TestFuzzyMatch_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	score, _ := fuzzyMatch("pro", "Projects")
 	assert.NotZero(t, score)
 }
 
 func TestFuzzyMatch_NonContiguous(t *testing.T) {
+	t.Parallel()
 	score, positions := fuzzyMatch("pj", "Projects")
 	assert.NotZero(t, score)
 	require.Len(t, positions, 2)
@@ -30,27 +33,32 @@ func TestFuzzyMatch_NonContiguous(t *testing.T) {
 }
 
 func TestFuzzyMatch_NoMatch(t *testing.T) {
+	t.Parallel()
 	score, _ := fuzzyMatch("xyz", "Projects")
 	assert.Zero(t, score)
 }
 
 func TestFuzzyMatch_EmptyQuery(t *testing.T) {
+	t.Parallel()
 	score, _ := fuzzyMatch("", "Projects")
 	assert.NotZero(t, score, "empty query should match everything")
 }
 
 func TestFuzzyMatch_QueryLongerThanTarget(t *testing.T) {
+	t.Parallel()
 	score, _ := fuzzyMatch("very long query", "ID")
 	assert.Zero(t, score)
 }
 
 func TestFuzzyMatch_PrefixScoresHigher(t *testing.T) {
+	t.Parallel()
 	prefixScore, _ := fuzzyMatch("na", "Name")
 	midScore, _ := fuzzyMatch("na", "Maintenance")
 	assert.Greater(t, prefixScore, midScore)
 }
 
 func TestSortFuzzyMatches_ScoreDescending(t *testing.T) {
+	t.Parallel()
 	matches := []columnFinderMatch{
 		{Entry: columnFinderEntry{FullIndex: 0, Title: "A"}, Score: 10},
 		{Entry: columnFinderEntry{FullIndex: 1, Title: "B"}, Score: 30},
@@ -63,6 +71,7 @@ func TestSortFuzzyMatches_ScoreDescending(t *testing.T) {
 }
 
 func TestSortFuzzyMatches_TiebreakByIndex(t *testing.T) {
+	t.Parallel()
 	matches := []columnFinderMatch{
 		{Entry: columnFinderEntry{FullIndex: 5, Title: "E"}, Score: 10},
 		{Entry: columnFinderEntry{FullIndex: 2, Title: "B"}, Score: 10},
@@ -73,6 +82,7 @@ func TestSortFuzzyMatches_TiebreakByIndex(t *testing.T) {
 }
 
 func TestColumnFinderState_RefilterEmpty(t *testing.T) {
+	t.Parallel()
 	cf := &columnFinderState{
 		All: []columnFinderEntry{
 			{FullIndex: 0, Title: "ID"},
@@ -85,6 +95,7 @@ func TestColumnFinderState_RefilterEmpty(t *testing.T) {
 }
 
 func TestColumnFinderState_RefilterNarrows(t *testing.T) {
+	t.Parallel()
 	cf := &columnFinderState{
 		All: []columnFinderEntry{
 			{FullIndex: 0, Title: "ID"},
@@ -101,6 +112,7 @@ func TestColumnFinderState_RefilterNarrows(t *testing.T) {
 }
 
 func TestColumnFinderState_CursorClamps(t *testing.T) {
+	t.Parallel()
 	cf := &columnFinderState{
 		All: []columnFinderEntry{
 			{FullIndex: 0, Title: "ID"},
@@ -113,6 +125,7 @@ func TestColumnFinderState_CursorClamps(t *testing.T) {
 }
 
 func TestOpenColumnFinder(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	require.NotNil(t, m.columnFinder)
@@ -121,6 +134,7 @@ func TestOpenColumnFinder(t *testing.T) {
 }
 
 func TestColumnFinderJump(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := m.effectiveTab()
 	require.NotNil(t, tab)
@@ -141,6 +155,7 @@ func TestColumnFinderJump(t *testing.T) {
 }
 
 func TestColumnFinderJump_UnhidesHiddenColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := m.effectiveTab()
 	if tab == nil || len(tab.Specs) < 3 {
@@ -170,6 +185,7 @@ func TestColumnFinderJump_UnhidesHiddenColumn(t *testing.T) {
 }
 
 func TestHandleColumnFinderKey_EscCloses(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyEscape})
@@ -178,6 +194,7 @@ func TestHandleColumnFinderKey_EscCloses(t *testing.T) {
 }
 
 func TestHandleColumnFinderKey_Typing(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	cf := m.columnFinder
@@ -194,6 +211,7 @@ func TestHandleColumnFinderKey_Typing(t *testing.T) {
 }
 
 func TestHandleColumnFinderKey_Backspace(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	cf := m.columnFinder
@@ -207,6 +225,7 @@ func TestHandleColumnFinderKey_Backspace(t *testing.T) {
 }
 
 func TestHandleColumnFinderKey_BackspaceMultibyte(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	cf := m.columnFinder
@@ -226,6 +245,7 @@ func TestHandleColumnFinderKey_BackspaceMultibyte(t *testing.T) {
 }
 
 func TestHandleColumnFinderKey_CtrlU(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	cf := m.columnFinder
@@ -237,6 +257,7 @@ func TestHandleColumnFinderKey_CtrlU(t *testing.T) {
 }
 
 func TestHandleColumnFinderKey_Navigation(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	cf := m.columnFinder
@@ -258,6 +279,7 @@ func TestHandleColumnFinderKey_Navigation(t *testing.T) {
 }
 
 func TestBuildColumnFinderOverlay_ShowsColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 80
 	m.height = 24
@@ -268,6 +290,7 @@ func TestBuildColumnFinderOverlay_ShowsColumns(t *testing.T) {
 }
 
 func TestHighlightFuzzyMatch(t *testing.T) {
+	t.Parallel()
 	match := columnFinderMatch{
 		Entry:     columnFinderEntry{Title: "Status"},
 		Score:     50,
@@ -279,6 +302,7 @@ func TestHighlightFuzzyMatch(t *testing.T) {
 }
 
 func TestSlashBlockedOnDashboard(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.showDashboard = true
 	cmd, handled := m.handleDashboardKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
@@ -287,6 +311,7 @@ func TestSlashBlockedOnDashboard(t *testing.T) {
 }
 
 func TestSlashOpensColumnFinder(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	sendKey(m, "/")
 	assert.NotNil(t, m.columnFinder)
@@ -295,6 +320,7 @@ func TestSlashOpensColumnFinder(t *testing.T) {
 }
 
 func TestSlashBlockedInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeEdit
 	sendKey(m, "/")
@@ -304,6 +330,7 @@ func TestSlashBlockedInEditMode(t *testing.T) {
 }
 
 func TestColumnFinderEnterJumps(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.openColumnFinder()
 	cf := m.columnFinder

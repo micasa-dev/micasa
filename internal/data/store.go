@@ -225,6 +225,13 @@ func isLetterOnly(s string) bool {
 	return true
 }
 
+// WalCheckpoint runs a WAL checkpoint that flushes the WAL into the main
+// database file and truncates the WAL. This ensures the .db file is
+// self-contained with no -wal or -shm sidecars.
+func (s *Store) WalCheckpoint() error {
+	return s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)").Error
+}
+
 // Close closes the underlying database connection.
 func (s *Store) Close() error {
 	sqlDB, err := s.db.DB()

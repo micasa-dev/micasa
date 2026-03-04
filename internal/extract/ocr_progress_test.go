@@ -17,6 +17,7 @@ import (
 // a single Done message with no text -- the same path hit when a user
 // somehow saves a zero-byte document.
 func TestExtractWithProgress_EmptyData(t *testing.T) {
+	t.Parallel()
 	ch := ExtractWithProgress(
 		context.Background(),
 		nil,
@@ -35,6 +36,7 @@ func TestExtractWithProgress_EmptyData(t *testing.T) {
 
 // TestExtractWithProgress_EmptyImage verifies the image path with empty data.
 func TestExtractWithProgress_EmptyImage(t *testing.T) {
+	t.Parallel()
 	ch := ExtractWithProgress(context.Background(), nil, "image/png", DefaultExtractors(20, 0))
 	msg := <-ch
 	assert.True(t, msg.Done)
@@ -46,6 +48,7 @@ func TestExtractWithProgress_EmptyImage(t *testing.T) {
 // context during extraction sends an error and closes the channel. This
 // is the path hit when the user quits the app mid-extraction.
 func TestExtractWithProgress_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
 
@@ -64,6 +67,7 @@ func TestExtractWithProgress_ContextCancelled(t *testing.T) {
 // hits when uploading a PNG: tesseract runs on the image and the channel
 // delivers progress updates then the final text.
 func TestExtractWithProgress_Image_Integration(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -98,6 +102,7 @@ func TestExtractWithProgress_Image_Integration(t *testing.T) {
 // hits when uploading a scanned PDF: all poppler tools run in parallel to
 // extract images, then tesseract OCRs them.
 func TestExtractWithProgress_PDF_Integration(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or image extraction tools not available")
 	}

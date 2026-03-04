@@ -71,6 +71,7 @@ func sendExtractionKey(m *Model, key string) {
 // --- Cursor navigation ---
 
 func TestExtractionCursor_JK_NavigatesToRunningSteps(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepRunning,
@@ -93,6 +94,7 @@ func TestExtractionCursor_JK_NavigatesToRunningSteps(t *testing.T) {
 }
 
 func TestExtractionCursor_JK_LandsOnSettledSteps(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepDone,
@@ -115,6 +117,7 @@ func TestExtractionCursor_JK_LandsOnSettledSteps(t *testing.T) {
 }
 
 func TestExtractionCursor_JK_AllStepsWhenDone(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 		stepLLM:  stepDone,
@@ -129,6 +132,7 @@ func TestExtractionCursor_JK_AllStepsWhenDone(t *testing.T) {
 // --- Enter toggle ---
 
 func TestExtractionEnter_TogglesDoneStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 	})
@@ -145,6 +149,7 @@ func TestExtractionEnter_TogglesDoneStep(t *testing.T) {
 }
 
 func TestExtractionEnter_TogglesAutoExpandedLLMStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -161,6 +166,7 @@ func TestExtractionEnter_TogglesAutoExpandedLLMStep(t *testing.T) {
 }
 
 func TestExtractionEnter_TogglesFailedStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepFailed,
 	})
@@ -172,6 +178,7 @@ func TestExtractionEnter_TogglesFailedStep(t *testing.T) {
 }
 
 func TestExtractionEnter_NoOpOnRunningStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepRunning,
@@ -188,6 +195,7 @@ func TestExtractionEnter_NoOpOnRunningStep(t *testing.T) {
 // --- Rerun cursor relocation ---
 
 func TestRerunLLM_MovesCursorToLLMStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepDone,
@@ -204,6 +212,7 @@ func TestRerunLLM_MovesCursorToLLMStep(t *testing.T) {
 }
 
 func TestRerunLLM_CursorOnLLMWhenOnlyStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -231,6 +240,7 @@ func newPreviewModel(ops []extract.Operation) *Model {
 }
 
 func TestRenderOperationPreview_TabbedInterface(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{
 			Action: "create",
@@ -263,12 +273,14 @@ func TestRenderOperationPreview_TabbedInterface(t *testing.T) {
 }
 
 func TestRenderOperationPreview_EmptyOps(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel(nil)
 	out := m.renderOperationPreviewSection(60, false)
 	assert.Contains(t, out, "no operations")
 }
 
 func TestRenderOperationPreview_EmptyData(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "vendors", Data: nil},
 	})
@@ -277,6 +289,7 @@ func TestRenderOperationPreview_EmptyData(t *testing.T) {
 }
 
 func TestRenderOperationPreview_MoneyFormatting(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{
 			Action: "create",
@@ -300,6 +313,7 @@ func TestRenderOperationPreview_MoneyFormatting(t *testing.T) {
 }
 
 func TestRenderOperationPreview_MultipleRowsSameTable(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "Acme"}},
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "Beta Corp"}},
@@ -312,6 +326,7 @@ func TestRenderOperationPreview_MultipleRowsSameTable(t *testing.T) {
 }
 
 func TestRenderOperationPreview_UnknownTable(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "unknown_table", Data: map[string]any{"x": "y"}},
 	})
@@ -320,6 +335,7 @@ func TestRenderOperationPreview_UnknownTable(t *testing.T) {
 }
 
 func TestGroupOperationsByTable(t *testing.T) {
+	t.Parallel()
 	ops := []extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
 		{Action: "update", Table: "documents", Data: map[string]any{"title": "B"}},
@@ -348,6 +364,7 @@ func TestGroupOperationsByTable(t *testing.T) {
 // --- Deferred document creation (magic-add "A") ---
 
 func TestAcceptDeferredExtraction_CreatesDocument(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -379,6 +396,7 @@ func TestAcceptDeferredExtraction_CreatesDocument(t *testing.T) {
 }
 
 func TestCancelDeferredExtraction_NothingPersisted(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepRunning,
 	})
@@ -394,6 +412,7 @@ func TestCancelDeferredExtraction_NothingPersisted(t *testing.T) {
 }
 
 func TestDeferredExtraction_PendingDocFieldPresent(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -408,6 +427,7 @@ func TestDeferredExtraction_PendingDocFieldPresent(t *testing.T) {
 // --- Explore mode ---
 
 func TestExploreMode_XTogglesExploring(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
 	})
@@ -424,6 +444,7 @@ func TestExploreMode_XTogglesExploring(t *testing.T) {
 }
 
 func TestExploreMode_EscExitsExploring(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
 	})
@@ -438,6 +459,7 @@ func TestExploreMode_EscExitsExploring(t *testing.T) {
 }
 
 func TestExploreMode_JKNavigatesRows(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "B"}},
@@ -458,6 +480,7 @@ func TestExploreMode_JKNavigatesRows(t *testing.T) {
 }
 
 func TestExploreMode_HLNavigatesCols(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{
 			"name": "A", "email": "a@b.com",
@@ -476,6 +499,7 @@ func TestExploreMode_HLNavigatesCols(t *testing.T) {
 }
 
 func TestExploreMode_BFSwitchesTabs(t *testing.T) {
+	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
 		{Action: "create", Table: "quotes", Data: map[string]any{"total_cents": float64(100)}},
@@ -494,6 +518,7 @@ func TestExploreMode_BFSwitchesTabs(t *testing.T) {
 }
 
 func TestExploreMode_AcceptWorksInExploreMode(t *testing.T) {
+	t.Parallel()
 	ops := []extract.Operation{
 		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
 	}
@@ -517,6 +542,7 @@ func TestExploreMode_AcceptWorksInExploreMode(t *testing.T) {
 // --- Model picker ---
 
 func TestModelPicker_ROpensPickerOnDoneLLMStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 		stepLLM:  stepDone,
@@ -538,6 +564,7 @@ func TestModelPicker_ROpensPickerOnDoneLLMStep(t *testing.T) {
 }
 
 func TestModelPicker_EscDismissesWithoutRerun(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -560,6 +587,7 @@ func TestModelPicker_EscDismissesWithoutRerun(t *testing.T) {
 }
 
 func TestModelPicker_EnterSelectsModelAndReruns(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -589,6 +617,7 @@ func TestModelPicker_EnterSelectsModelAndReruns(t *testing.T) {
 }
 
 func TestModelPicker_FilterNarrowsMatches(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -619,6 +648,7 @@ func TestModelPicker_FilterNarrowsMatches(t *testing.T) {
 }
 
 func TestModelPicker_ArrowsNavigateCursor(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -650,6 +680,7 @@ func TestModelPicker_ArrowsNavigateCursor(t *testing.T) {
 }
 
 func TestModelPicker_JKTypeInsteadOfNavigate(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -673,6 +704,7 @@ func TestModelPicker_JKTypeInsteadOfNavigate(t *testing.T) {
 }
 
 func TestModelPicker_RerunPreservesAllSteps(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepDone,
@@ -721,6 +753,7 @@ func TestModelPicker_RerunPreservesAllSteps(t *testing.T) {
 }
 
 func TestModelPicker_RerunRendersAllSteps(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepDone,
@@ -756,6 +789,7 @@ func TestModelPicker_RerunRendersAllSteps(t *testing.T) {
 }
 
 func TestModelPicker_RNoOpWhenNotOnLLMStep(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 		stepLLM:  stepDone,
@@ -769,6 +803,7 @@ func TestModelPicker_RNoOpWhenNotOnLLMStep(t *testing.T) {
 }
 
 func TestModelPicker_RNoOpWhenNotDone(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepRunning,
 	})
@@ -781,6 +816,7 @@ func TestModelPicker_RNoOpWhenNotDone(t *testing.T) {
 // --- NeedsOCR integration ---
 
 func TestNeedsOCR_UsedInsteadOfHardcodedToolName(t *testing.T) {
+	t.Parallel()
 	// Verify that extraction.go and model.go use NeedsOCR (not HasMatchingExtractor
 	// with "tesseract"). This is a compile-time guarantee: if extract.NeedsOCR is
 	// removed, the build will break. This test documents the intent.
@@ -795,6 +831,7 @@ func TestNeedsOCR_UsedInsteadOfHardcodedToolName(t *testing.T) {
 // --- Background extraction ---
 
 func TestBackground_CtrlBMovesExtractionToBg(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepRunning,
@@ -810,6 +847,7 @@ func TestBackground_CtrlBMovesExtractionToBg(t *testing.T) {
 }
 
 func TestBackground_CtrlBNoOpWhenDone(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 	})
@@ -822,6 +860,7 @@ func TestBackground_CtrlBNoOpWhenDone(t *testing.T) {
 }
 
 func TestForeground_CtrlBBringsBgToFront(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepRunning,
@@ -843,6 +882,7 @@ func TestForeground_CtrlBBringsBgToFront(t *testing.T) {
 }
 
 func TestForeground_SwapsCurrentToBackground(t *testing.T) {
+	t.Parallel()
 	// Create two extractions: one foreground, one background.
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
@@ -880,6 +920,7 @@ func TestForeground_SwapsCurrentToBackground(t *testing.T) {
 }
 
 func TestBgExtraction_CompletionNotifiesNoAutoAccept(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 		stepLLM:  stepRunning,
@@ -909,6 +950,7 @@ func TestBgExtraction_CompletionNotifiesNoAutoAccept(t *testing.T) {
 }
 
 func TestBgExtraction_ErrorStaysInList(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepRunning,
 	})
@@ -934,6 +976,7 @@ func TestBgExtraction_ErrorStaysInList(t *testing.T) {
 }
 
 func TestLLMExtraction_TimeoutError(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepRunning,
 	})
@@ -957,6 +1000,7 @@ func TestLLMExtraction_TimeoutError(t *testing.T) {
 }
 
 func TestLLMExtraction_TimeoutError_NonDeadlinePreservesOriginal(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepRunning,
 	})
@@ -978,6 +1022,7 @@ func TestLLMExtraction_TimeoutError_NonDeadlinePreservesOriginal(t *testing.T) {
 }
 
 func TestMultipleBgExtractions(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1012,6 +1057,7 @@ func TestMultipleBgExtractions(t *testing.T) {
 }
 
 func TestStartExtraction_AutoBackgroundsExisting(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1042,6 +1088,7 @@ func TestStartExtraction_AutoBackgroundsExisting(t *testing.T) {
 }
 
 func TestSpinnerTick_UpdatesBgExtractions(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1058,6 +1105,7 @@ func TestSpinnerTick_UpdatesBgExtractions(t *testing.T) {
 }
 
 func TestCtrlQ_CancelsAllBgExtractions(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1099,6 +1147,7 @@ func TestCtrlQ_CancelsAllBgExtractions(t *testing.T) {
 }
 
 func TestStatusBar_ShowsBgExtractionIndicator(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1113,6 +1162,7 @@ func TestStatusBar_ShowsBgExtractionIndicator(t *testing.T) {
 }
 
 func TestStatusBar_ShowsReadyCount(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 	})
@@ -1129,6 +1179,7 @@ func TestStatusBar_ShowsReadyCount(t *testing.T) {
 }
 
 func TestFindExtraction_FindsForeground(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 	})
@@ -1139,6 +1190,7 @@ func TestFindExtraction_FindsForeground(t *testing.T) {
 }
 
 func TestFindExtraction_FindsBackground(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1154,6 +1206,7 @@ func TestFindExtraction_FindsBackground(t *testing.T) {
 }
 
 func TestFindExtraction_ReturnsNilForUnknownID(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText: stepDone,
 	})
@@ -1162,6 +1215,7 @@ func TestFindExtraction_ReturnsNilForUnknownID(t *testing.T) {
 }
 
 func TestWaitForExtractProgressOpenChannel(t *testing.T) {
+	t.Parallel()
 	ch := make(chan extract.ExtractProgress, 1)
 	ch <- extract.ExtractProgress{Phase: "rasterize", Page: 1, Total: 3}
 
@@ -1176,6 +1230,7 @@ func TestWaitForExtractProgressOpenChannel(t *testing.T) {
 }
 
 func TestWaitForExtractProgressClosedChannel(t *testing.T) {
+	t.Parallel()
 	ch := make(chan extract.ExtractProgress)
 	close(ch)
 
@@ -1194,6 +1249,7 @@ func TestWaitForExtractProgressClosedChannel(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestAcquireTools_PersistAfterStepDone(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepDone,
@@ -1224,6 +1280,7 @@ func TestAcquireTools_PersistAfterStepDone(t *testing.T) {
 }
 
 func TestAcquireTools_ShowDuringRunning(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepRunning,
@@ -1248,6 +1305,7 @@ func TestAcquireTools_ShowDuringRunning(t *testing.T) {
 }
 
 func TestAcquireTools_PartialRunning(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1269,6 +1327,7 @@ func TestAcquireTools_PartialRunning(t *testing.T) {
 }
 
 func TestAcquireTools_DetailSuppressedInHeader(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepExtract: stepRunning,
 	})
@@ -1291,6 +1350,7 @@ func TestAcquireTools_DetailSuppressedInHeader(t *testing.T) {
 }
 
 func TestAcquireTools_CollapseHidesToolLines(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepDone,
@@ -1330,6 +1390,7 @@ func TestAcquireTools_CollapseHidesToolLines(t *testing.T) {
 }
 
 func TestWaitForLLMChunkOpenChannel(t *testing.T) {
+	t.Parallel()
 	ch := make(chan llm.StreamChunk, 1)
 	ch <- llm.StreamChunk{Content: "hello", Done: false}
 
@@ -1345,6 +1406,7 @@ func TestWaitForLLMChunkOpenChannel(t *testing.T) {
 }
 
 func TestWaitForLLMChunkClosedChannel(t *testing.T) {
+	t.Parallel()
 	ch := make(chan llm.StreamChunk)
 	close(ch)
 
@@ -1360,6 +1422,7 @@ func TestWaitForLLMChunkClosedChannel(t *testing.T) {
 // --- Dispatch cross-reference ---
 
 func TestDispatch_VendorCrossReference(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a project so the quote has a valid FK target.
@@ -1436,6 +1499,7 @@ func TestDispatch_VendorCrossReference(t *testing.T) {
 }
 
 func TestDispatch_InvalidProjectIDShowsError(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a vendor and document but no project.
@@ -1488,6 +1552,7 @@ func TestDispatch_InvalidProjectIDShowsError(t *testing.T) {
 // contains vendors, shadow auto-increment IDs start after the max real ID,
 // and cross-references between batch-created entities resolve correctly.
 func TestDispatch_OffsetCrossReference(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a project for the quote FK.
@@ -1569,6 +1634,7 @@ func TestDispatch_OffsetCrossReference(t *testing.T) {
 // that creates a vendor with the same name as an existing one deduplicates
 // via FindOrCreate instead of creating a duplicate.
 func TestDispatch_DuplicateVendorDedup(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	types, err := m.store.ProjectTypes()
@@ -1642,6 +1708,7 @@ func TestDispatch_DuplicateVendorDedup(t *testing.T) {
 // TestDispatch_DuplicateApplianceDedup verifies that batch-created appliances
 // with names matching existing ones are deduplicated.
 func TestDispatch_DuplicateApplianceDedup(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	doc := data.Document{Title: "Manual", FileName: "man.pdf"}
@@ -1713,6 +1780,7 @@ func TestDispatch_DuplicateApplianceDedup(t *testing.T) {
 // TestDispatch_TransactionRollbackOnFailure verifies that if one operation
 // in a batch fails, the entire batch is rolled back atomically.
 func TestDispatch_TransactionRollbackOnFailure(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	doc := data.Document{Title: "Quote", FileName: "q.pdf"}
@@ -1781,6 +1849,7 @@ func testExtractionOllamaClient(t *testing.T, model string) *llm.Client {
 // displays the extraction-specific model when extraction has its own config,
 // not the chat model. The user opens the picker via 'r' on the LLM step.
 func TestModelPicker_ShowsExtractionModel(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -1802,6 +1871,7 @@ func TestModelPicker_ShowsExtractionModel(t *testing.T) {
 // TestModelPicker_FallsBackToChatModel verifies that when no extraction-specific
 // model is configured, the model picker label falls back to the chat model.
 func TestModelPicker_FallsBackToChatModel(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -1823,6 +1893,7 @@ func TestModelPicker_FallsBackToChatModel(t *testing.T) {
 // a new model via the picker correctly updates the extraction model and
 // invalidates the cached extraction client when extraction has its own provider.
 func TestModelPicker_SelectionWithIndependentProvider(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -1876,6 +1947,7 @@ func TestModelPicker_SelectionWithIndependentProvider(t *testing.T) {
 // its own provider/baseURL, extractionLLMClient() creates a client that is
 // independent from the chat client.
 func TestExtractionClient_IndependentFromChat(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -1913,6 +1985,7 @@ func TestExtractionClient_IndependentFromChat(t *testing.T) {
 // has no provider/baseURL of its own, extractionLLMClient() fills gaps
 // from the chat config.
 func TestExtractionClient_FallsBackToChatConfig(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
@@ -1943,6 +2016,7 @@ func TestExtractionClient_FallsBackToChatConfig(t *testing.T) {
 // TestExtractionClient_NilWhenNoConfig verifies that extractionLLMClient()
 // returns nil when neither extraction nor chat config provides a model.
 func TestExtractionClient_NilWhenNoConfig(t *testing.T) {
+	t.Parallel()
 	m := newExtractionModel(map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})

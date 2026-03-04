@@ -34,6 +34,7 @@ var testNow = time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
 // --- BuildSystemPrompt (fallback) ---
 
 func TestBuildSystemPromptIncludesSchema(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSystemPrompt(testTables, "", testNow, "")
 	assert.Contains(t, prompt, "projects")
 	assert.Contains(t, prompt, "id integer PK")
@@ -43,6 +44,7 @@ func TestBuildSystemPromptIncludesSchema(t *testing.T) {
 }
 
 func TestBuildSystemPromptIncludesData(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSystemPrompt(
 		nil,
 		"### projects (3 rows)\n\n- id: 1, title: Fix roof\n",
@@ -54,16 +56,19 @@ func TestBuildSystemPromptIncludesData(t *testing.T) {
 }
 
 func TestBuildSystemPromptOmitsDataWhenEmpty(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSystemPrompt(nil, "", testNow, "")
 	assert.NotContains(t, prompt, "Current Data")
 }
 
 func TestBuildSystemPromptIncludesCurrentDate(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSystemPrompt(nil, "", testNow, "")
 	assert.Contains(t, prompt, "Friday, February 13, 2026")
 }
 
 func TestBuildSystemPromptIncludesExtraContext(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSystemPrompt(nil, "", testNow, "House is a 1920s craftsman.")
 	assert.Contains(t, prompt, "Additional context")
 	assert.Contains(t, prompt, "1920s craftsman")
@@ -72,6 +77,7 @@ func TestBuildSystemPromptIncludesExtraContext(t *testing.T) {
 // --- BuildSQLPrompt ---
 
 func TestBuildSQLPromptIncludesDDL(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "CREATE TABLE projects")
 	assert.Contains(t, prompt, "id integer PRIMARY KEY")
@@ -81,6 +87,7 @@ func TestBuildSQLPromptIncludesDDL(t *testing.T) {
 }
 
 func TestBuildSQLPromptIncludesFewShotExamples(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "SELECT COUNT(*)")
 	assert.Contains(t, prompt, "budget_cents / 100.0")
@@ -88,17 +95,20 @@ func TestBuildSQLPromptIncludesFewShotExamples(t *testing.T) {
 }
 
 func TestBuildSQLPromptIncludesRules(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "single SELECT statement")
 	assert.Contains(t, prompt, "never INSERT")
 }
 
 func TestBuildSQLPromptIncludesCurrentDate(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "Friday, February 13, 2026")
 }
 
 func TestBuildSQLPromptIncludesExtraContext(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "Budgets are in CAD.")
 	assert.Contains(t, prompt, "Additional context")
 	assert.Contains(t, prompt, "Budgets are in CAD")
@@ -107,6 +117,7 @@ func TestBuildSQLPromptIncludesExtraContext(t *testing.T) {
 // --- BuildSummaryPrompt ---
 
 func TestBuildSummaryPromptIncludesAllParts(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSummaryPrompt(
 		"How many projects?",
 		"SELECT COUNT(*) AS count FROM projects",
@@ -121,11 +132,13 @@ func TestBuildSummaryPromptIncludesAllParts(t *testing.T) {
 }
 
 func TestBuildSummaryPromptIncludesCurrentDate(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSummaryPrompt("test", "SELECT 1", "1\n", testNow, "")
 	assert.Contains(t, prompt, "Friday, February 13, 2026")
 }
 
 func TestBuildSummaryPromptIncludesExtraContext(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSummaryPrompt("test", "SELECT 1", "1\n", testNow, "Currency is CAD.")
 	assert.Contains(t, prompt, "Additional context")
 	assert.Contains(t, prompt, "Currency is CAD")
@@ -134,6 +147,7 @@ func TestBuildSummaryPromptIncludesExtraContext(t *testing.T) {
 // --- FormatResultsTable ---
 
 func TestFormatResultsTableWithRows(t *testing.T) {
+	t.Parallel()
 	result := FormatResultsTable(
 		[]string{"name", "budget"},
 		[][]string{
@@ -147,6 +161,7 @@ func TestFormatResultsTableWithRows(t *testing.T) {
 }
 
 func TestFormatResultsTableEmpty(t *testing.T) {
+	t.Parallel()
 	result := FormatResultsTable([]string{"name"}, nil)
 	assert.Equal(t, "(no rows)\n", result)
 }
@@ -154,33 +169,39 @@ func TestFormatResultsTableEmpty(t *testing.T) {
 // --- ExtractSQL ---
 
 func TestExtractSQLBare(t *testing.T) {
+	t.Parallel()
 	sql := ExtractSQL("SELECT * FROM projects")
 	assert.Equal(t, "SELECT * FROM projects", sql)
 }
 
 func TestExtractSQLWithFences(t *testing.T) {
+	t.Parallel()
 	raw := "```sql\nSELECT * FROM projects;\n```"
 	sql := ExtractSQL(raw)
 	assert.Equal(t, "SELECT * FROM projects", sql)
 }
 
 func TestExtractSQLWithBareBackticks(t *testing.T) {
+	t.Parallel()
 	raw := "```\nSELECT COUNT(*) FROM appliances\n```"
 	sql := ExtractSQL(raw)
 	assert.Equal(t, "SELECT COUNT(*) FROM appliances", sql)
 }
 
 func TestExtractSQLStripsTrailingSemicolons(t *testing.T) {
+	t.Parallel()
 	sql := ExtractSQL("SELECT 1;;;")
 	assert.Equal(t, "SELECT 1", sql)
 }
 
 func TestExtractSQLTrimsWhitespace(t *testing.T) {
+	t.Parallel()
 	sql := ExtractSQL("  \n  SELECT 1  \n  ")
 	assert.Equal(t, "SELECT 1", sql)
 }
 
 func TestBuildSQLPromptIncludesEntityRelationships(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "## Entity Relationships")
 	assert.Contains(t, prompt, "Foreign key relationships")
@@ -192,6 +213,7 @@ func TestBuildSQLPromptIncludesEntityRelationships(t *testing.T) {
 }
 
 func TestBuildSystemPromptIncludesEntityRelationships(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSystemPrompt(testTables, "", testNow, "")
 	assert.Contains(t, prompt, "## Entity Relationships")
 	assert.Contains(t, prompt, "Foreign key relationships")
@@ -203,12 +225,14 @@ func TestBuildSystemPromptIncludesEntityRelationships(t *testing.T) {
 }
 
 func TestBuildSQLPromptIncludesCaseInsensitiveGuidance(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "case-insensitive matching")
 	assert.Contains(t, prompt, "LOWER()")
 }
 
 func TestBuildSQLPromptIncludesColumnHints(t *testing.T) {
+	t.Parallel()
 	hints := "- project types: electrical, flooring, plumbing\n"
 	prompt := BuildSQLPrompt(testTables, testNow, hints, "")
 	assert.Contains(t, prompt, "Known values in the database")
@@ -216,11 +240,13 @@ func TestBuildSQLPromptIncludesColumnHints(t *testing.T) {
 }
 
 func TestBuildSQLPromptOmitsColumnHintsWhenEmpty(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.NotContains(t, prompt, "Known values")
 }
 
 func TestBuildSQLPromptIncludesGroupByExamples(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "GROUP BY")
 	assert.Contains(t, prompt, "total spending by project status")
@@ -229,6 +255,7 @@ func TestBuildSQLPromptIncludesGroupByExamples(t *testing.T) {
 }
 
 func TestBuildSQLPromptIncludesIncidentExamples(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "What open incidents do I have?")
 	assert.Contains(t, prompt, "FROM incidents WHERE status IN ('open', 'in_progress')")
@@ -237,12 +264,14 @@ func TestBuildSQLPromptIncludesIncidentExamples(t *testing.T) {
 }
 
 func TestBuildSQLPromptIncludesIncidentSchemaNotes(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSQLPrompt(testTables, testNow, "", "")
 	assert.Contains(t, prompt, "Incident statuses: open, in_progress")
 	assert.Contains(t, prompt, "Incident severities: urgent, soon, whenever")
 }
 
 func TestBuildSystemPromptIncludesIncidentFallbackNotes(t *testing.T) {
+	t.Parallel()
 	prompt := BuildSystemPrompt(testTables, "", testNow, "")
 	assert.Contains(t, prompt, "Incident statuses: open, in_progress")
 	assert.Contains(t, prompt, "Incident severities: urgent, soon, whenever")

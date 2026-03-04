@@ -14,10 +14,12 @@ import (
 )
 
 func TestWithHintNil(t *testing.T) {
+	t.Parallel()
 	assert.NoError(t, WithHint(nil, "should not wrap"))
 }
 
 func TestWithHintPreservesChain(t *testing.T) {
+	t.Parallel()
 	sentinel := errors.New("base")
 	wrapped := fmt.Errorf("layer: %w", sentinel)
 	hinted := WithHint(wrapped, "user-friendly message")
@@ -29,22 +31,26 @@ func TestWithHintPreservesChain(t *testing.T) {
 }
 
 func TestHintExtraction(t *testing.T) {
+	t.Parallel()
 	err := WithHint(errors.New("raw"), "friendly")
 	assert.Equal(t, "friendly", Hint(err))
 }
 
 func TestHintExtractionNoHint(t *testing.T) {
+	t.Parallel()
 	assert.Empty(t, Hint(errors.New("no hint")))
 	assert.Empty(t, Hint(nil))
 }
 
 func TestHintNestedExtraction(t *testing.T) {
+	t.Parallel()
 	inner := WithHint(errors.New("raw"), "inner hint")
 	outer := fmt.Errorf("wrap: %w", inner)
 	assert.Equal(t, "inner hint", Hint(outer))
 }
 
 func TestFieldErrorMappings(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		label   string
 		err     error
@@ -86,6 +92,7 @@ func TestFieldErrorMappings(t *testing.T) {
 }
 
 func TestFieldErrorUnknownSentinel(t *testing.T) {
+	t.Parallel()
 	custom := errors.New("something unusual")
 	result := FieldError("Field", custom)
 	assert.Equal(t, "Field: something unusual", result.Error())

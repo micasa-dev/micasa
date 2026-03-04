@@ -13,6 +13,7 @@ import (
 )
 
 func TestDashMaintSplitRows(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.styles = appStyles
 
@@ -59,6 +60,7 @@ func TestDashMaintSplitRows(t *testing.T) {
 }
 
 func TestDashMaintSplitRowsEmpty(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.dash.data = dashboardData{}
 	overdue, upcoming := m.dashMaintSplitRows()
@@ -67,6 +69,7 @@ func TestDashMaintSplitRowsEmpty(t *testing.T) {
 }
 
 func TestDashProjectRowsColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.styles = appStyles
 
@@ -85,6 +88,7 @@ func TestDashProjectRowsColumns(t *testing.T) {
 }
 
 func TestDashExpiringRowsOverdueAndUpcoming(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.styles = appStyles
 
@@ -114,6 +118,7 @@ func TestDashExpiringRowsOverdueAndUpcoming(t *testing.T) {
 }
 
 func TestDashExpiringRowsEmpty(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.dash.data = dashboardData{}
 	rows := m.dashExpiringRows()

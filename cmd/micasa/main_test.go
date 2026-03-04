@@ -17,6 +17,7 @@ import (
 )
 
 func TestResolveDBPath_ExplicitPath(t *testing.T) {
+	t.Parallel()
 	cmd := runCmd{DBPath: "/custom/path.db"}
 	got, err := cmd.resolveDBPath()
 	require.NoError(t, err)
@@ -24,6 +25,7 @@ func TestResolveDBPath_ExplicitPath(t *testing.T) {
 }
 
 func TestResolveDBPath_ExplicitPathWithDemo(t *testing.T) {
+	t.Parallel()
 	// Explicit path takes precedence even when --demo is set.
 	cmd := runCmd{DBPath: "/tmp/demo.db", Demo: true}
 	got, err := cmd.resolveDBPath()
@@ -32,6 +34,7 @@ func TestResolveDBPath_ExplicitPathWithDemo(t *testing.T) {
 }
 
 func TestResolveDBPath_DemoNoPath(t *testing.T) {
+	t.Parallel()
 	cmd := runCmd{Demo: true}
 	got, err := cmd.resolveDBPath()
 	require.NoError(t, err)
@@ -97,6 +100,7 @@ func buildTestBinary(t *testing.T) string {
 }
 
 func TestVersion_DevShowsCommitHash(t *testing.T) {
+	t.Parallel()
 	// Skip when there is no .git directory (e.g. Nix sandbox builds from a
 	// source tarball), since Go won't embed VCS info without one.
 	if _, err := os.Stat(".git"); err != nil {
@@ -117,6 +121,7 @@ func TestVersion_DevShowsCommitHash(t *testing.T) {
 }
 
 func TestVersion_Injected(t *testing.T) {
+	t.Parallel()
 	ext := ""
 	if runtime.GOOS == "windows" {
 		ext = ".exe"
@@ -139,6 +144,7 @@ func TestVersion_Injected(t *testing.T) {
 }
 
 func TestConfigCmd(t *testing.T) {
+	t.Parallel()
 	bin := buildTestBinary(t)
 
 	t.Run("LLMModel", func(t *testing.T) {
@@ -188,6 +194,7 @@ func createTestDB(t *testing.T) string {
 }
 
 func TestBackupCmd(t *testing.T) {
+	t.Parallel()
 	bin := buildTestBinary(t)
 
 	t.Run("ExplicitDest", func(t *testing.T) {

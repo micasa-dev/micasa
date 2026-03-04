@@ -4,6 +4,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,11 +20,10 @@ import (
 func newTestModelWithDemoData(t *testing.T, seed uint64) *Model {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "test.db")
+	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
 	store, err := data.Open(path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
-	require.NoError(t, store.AutoMigrate())
-	require.NoError(t, store.SeedDefaults())
 	store.SetCurrency(locale.DefaultCurrency())
 	h := fake.New(seed)
 	require.NoError(t, store.SeedDemoDataFrom(h))

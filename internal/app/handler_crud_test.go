@@ -18,6 +18,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestProjectHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -57,6 +58,7 @@ func TestProjectHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 }
 
 func TestProjectHandlerEditRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -91,6 +93,7 @@ func TestProjectHandlerEditRoundTrip(t *testing.T) {
 }
 
 func TestProjectHandlerSnapshot(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -110,6 +113,7 @@ func TestProjectHandlerSnapshot(t *testing.T) {
 }
 
 func TestProjectTabStatusFiltersRows(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	types, _ := m.store.ProjectTypes()
 
@@ -176,6 +180,7 @@ func TestProjectTabStatusFiltersRows(t *testing.T) {
 }
 
 func TestProjectStatusFilterToggleKeysReloadRows(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	types, _ := m.store.ProjectTypes()
 
@@ -213,6 +218,7 @@ func TestProjectStatusFilterToggleKeysReloadRows(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestApplianceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := applianceHandler{}
 
@@ -234,6 +240,7 @@ func TestApplianceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 }
 
 func TestApplianceHandlerEditRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := applianceHandler{}
 
@@ -263,6 +270,7 @@ func TestApplianceHandlerEditRoundTrip(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestMaintenanceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := maintenanceHandler{}
 	cats, _ := m.store.MaintenanceCategories()
@@ -293,6 +301,7 @@ func TestMaintenanceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVendorHandlerLoadAndSubmit(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := vendorHandler{}
 
@@ -330,6 +339,7 @@ func TestVendorHandlerLoadAndSubmit(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestQuoteHandlerRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 
@@ -367,6 +377,7 @@ func TestQuoteHandlerRoundTrip(t *testing.T) {
 }
 
 func TestQuoteHandlerSnapshot(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 
@@ -397,6 +408,7 @@ func TestQuoteHandlerSnapshot(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestServiceLogHandlerRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -435,6 +447,7 @@ func TestServiceLogHandlerRoundTrip(t *testing.T) {
 }
 
 func TestServiceLogHandlerSnapshot(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -467,6 +480,7 @@ func TestServiceLogHandlerSnapshot(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestProjectHandlerSyncFixedValues(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 	specs := []columnSpec{
@@ -479,6 +493,7 @@ func TestProjectHandlerSyncFixedValues(t *testing.T) {
 }
 
 func TestMaintenanceHandlerSyncFixedValues(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := maintenanceHandler{}
 	specs := []columnSpec{
@@ -495,6 +510,7 @@ func TestMaintenanceHandlerSyncFixedValues(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestHandlerSnapshotNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	handlers := []struct {
 		name string
@@ -524,6 +540,7 @@ func TestHandlerSnapshotNonExistent(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVendorJobsInlineEditNotesOpensTextarea(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -563,6 +580,7 @@ func TestVendorJobsInlineEditNotesOpensTextarea(t *testing.T) {
 }
 
 func TestVendorJobsInlineEditItemShowsStatusMessage(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -600,6 +618,7 @@ func TestVendorJobsInlineEditItemShowsStatusMessage(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestIncidentHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -636,6 +655,7 @@ func TestIncidentHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 }
 
 func TestIncidentHandlerEditRoundTrip(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -670,6 +690,7 @@ func TestIncidentHandlerEditRoundTrip(t *testing.T) {
 }
 
 func TestIncidentHandlerSnapshot(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -690,6 +711,7 @@ func TestIncidentHandlerSnapshot(t *testing.T) {
 }
 
 func TestIncidentHandlerSyncFixedValues(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 	specs := []columnSpec{
@@ -709,6 +731,7 @@ func TestIncidentHandlerSyncFixedValues(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestIncidentTabShowsDeletedByDefault(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// User creates two incidents.
@@ -747,6 +770,7 @@ func TestIncidentTabShowsDeletedByDefault(t *testing.T) {
 }
 
 func TestIncidentDeleteSetsResolvedStatus(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -777,6 +801,7 @@ func TestIncidentDeleteSetsResolvedStatus(t *testing.T) {
 }
 
 func TestIncidentRestorePreservesPreviousStatus(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -806,6 +831,7 @@ func TestIncidentRestorePreservesPreviousStatus(t *testing.T) {
 }
 
 func TestIncidentResolveRestoreUserFlow(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create an incident via the store.
@@ -845,6 +871,7 @@ func TestIncidentResolveRestoreUserFlow(t *testing.T) {
 }
 
 func TestIncidentHardDeleteUserFlow(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	require.NoError(t, m.store.CreateIncident(&data.Incident{
@@ -898,6 +925,7 @@ func TestIncidentHardDeleteUserFlow(t *testing.T) {
 }
 
 func TestIncidentStatusResolvedViaFormSoftDeletes(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -939,6 +967,7 @@ func TestIncidentStatusResolvedViaFormSoftDeletes(t *testing.T) {
 }
 
 func TestIncidentHardDeleteOnlyWorksOnIncidents(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a project via form submission so FK constraints are satisfied.
@@ -961,6 +990,7 @@ func TestIncidentHardDeleteOnlyWorksOnIncidents(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestApplianceMaintenanceHandlerLoad(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -994,6 +1024,7 @@ func TestApplianceMaintenanceHandlerLoad(t *testing.T) {
 // form data modified between them must produce exactly one row whose
 // contents match the second save (proving the update path ran).
 func TestSaveFormInPlaceSetEditID(t *testing.T) {
+	t.Parallel()
 	// Assert that saveFormInPlace didn't surface a status-bar error.
 	requireNoStatusError := func(t *testing.T, m *Model, ctx string) {
 		t.Helper()

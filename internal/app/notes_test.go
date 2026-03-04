@@ -14,6 +14,7 @@ import (
 )
 
 func TestNotePreviewOpensOnEnter(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	// Open service log detail (has Notes column).
@@ -55,6 +56,7 @@ func TestNotePreviewOpensOnEnter(t *testing.T) {
 }
 
 func TestNotePreviewDismissesOnAnyKey(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.notePreview = &notePreviewState{text: "some note", title: "Notes"}
 
@@ -69,6 +71,7 @@ func TestNotePreviewDismissesOnAnyKey(t *testing.T) {
 }
 
 func TestNotePreviewDoesNotOpenOnEmptyNote(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -95,6 +98,7 @@ func TestNotePreviewDoesNotOpenOnEmptyNote(t *testing.T) {
 }
 
 func TestNotePreviewRendersInView(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.notePreview = &notePreviewState{
 		text:  "This is a test note with some content.",
@@ -107,6 +111,7 @@ func TestNotePreviewRendersInView(t *testing.T) {
 }
 
 func TestNotePreviewBlocksOtherKeys(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.notePreview = &notePreviewState{text: "test"}
 	initialTab := m.active
@@ -117,6 +122,7 @@ func TestNotePreviewBlocksOtherKeys(t *testing.T) {
 }
 
 func TestWordWrap(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -148,6 +154,7 @@ func TestWordWrap(t *testing.T) {
 }
 
 func TestEnterHintShowsPreviewOnNotesColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -170,6 +177,7 @@ func TestEnterHintShowsPreviewOnNotesColumn(t *testing.T) {
 }
 
 func TestFirstLine(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -192,6 +200,7 @@ func TestFirstLine(t *testing.T) {
 }
 
 func TestExtraLineCount(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -212,6 +221,7 @@ func TestExtraLineCount(t *testing.T) {
 }
 
 func TestMultilineNotesRenderedAsSingleLineInTable(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -249,6 +259,7 @@ func TestMultilineNotesRenderedAsSingleLineInTable(t *testing.T) {
 }
 
 func TestMultilineNotesPreservedInPreviewOverlay(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.notePreview = &notePreviewState{
 		text:  "Changed the filter\nand checked pressure",
@@ -261,6 +272,7 @@ func TestMultilineNotesPreservedInPreviewOverlay(t *testing.T) {
 }
 
 func TestNaturalWidthsMultilineNotesFirstLine(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "N", Min: 1, Max: 40, Flex: true, Kind: cellNotes},
 	}
@@ -277,6 +289,7 @@ func TestNaturalWidthsMultilineNotesFirstLine(t *testing.T) {
 // --- Notes textarea overlay tests ---
 
 func TestOpenNotesEditOpensTextareaOverlay(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	values := &serviceLogFormData{Notes: "existing note"}
 	m.openNotesEdit(1, formServiceLog, &values.Notes, values)
@@ -290,6 +303,7 @@ func TestOpenNotesEditOpensTextareaOverlay(t *testing.T) {
 }
 
 func TestNotesEditModeShowsEditorHint(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	values := &serviceLogFormData{Notes: "test"}
 	m.openNotesEdit(1, formServiceLog, &values.Notes, values)
@@ -299,6 +313,7 @@ func TestNotesEditModeShowsEditorHint(t *testing.T) {
 }
 
 func TestNotesEditModeClearedOnExitForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	values := &serviceLogFormData{Notes: "test"}
 	m.openNotesEdit(1, formServiceLog, &values.Notes, values)
@@ -326,6 +341,7 @@ func TestCtrlEWithoutEditorShowsError(t *testing.T) {
 }
 
 func TestEditorFinishedMsgUpdatesFieldAndReopensTextarea(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	values := &serviceLogFormData{Notes: "original"}
 
@@ -352,6 +368,7 @@ func TestEditorFinishedMsgUpdatesFieldAndReopensTextarea(t *testing.T) {
 }
 
 func TestEditorFinishedMsgStripsTrailingNewlines(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	values := &serviceLogFormData{Notes: "original"}
 
@@ -371,6 +388,7 @@ func TestEditorFinishedMsgStripsTrailingNewlines(t *testing.T) {
 }
 
 func TestEditorFinishedWithErrorReopensTextarea(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	values := &serviceLogFormData{Notes: "original"}
 
@@ -395,6 +413,7 @@ func TestEditorFinishedWithErrorReopensTextarea(t *testing.T) {
 }
 
 func TestNotePreviewStillWorksAfterNotesEditChanges(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")

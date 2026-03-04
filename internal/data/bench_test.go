@@ -4,6 +4,7 @@
 package data
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,11 +16,10 @@ import (
 func benchStore(b *testing.B, seed uint64) *Store {
 	b.Helper()
 	path := filepath.Join(b.TempDir(), "bench.db")
+	require.NoError(b, os.WriteFile(path, templateBytes, 0o600))
 	store, err := Open(path)
 	require.NoError(b, err)
 	b.Cleanup(func() { _ = store.Close() })
-	require.NoError(b, store.AutoMigrate())
-	require.NoError(b, store.SeedDefaults())
 	require.NoError(b, store.SeedDemoDataFrom(fake.New(seed)))
 	return store
 }

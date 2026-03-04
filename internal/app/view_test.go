@@ -19,6 +19,7 @@ import (
 )
 
 func TestBuildViewShowsFullHouseBox(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 120
 	m.height = 40
@@ -34,6 +35,7 @@ func TestBuildViewShowsFullHouseBox(t *testing.T) {
 }
 
 func TestBuildViewShowsTerminalTooSmallMessage(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = minUsableWidth - 1
 	m.height = minUsableHeight - 1
@@ -46,6 +48,7 @@ func TestBuildViewShowsTerminalTooSmallMessage(t *testing.T) {
 }
 
 func TestBuildViewDoesNotShowTerminalTooSmallMessageAtMinimumSize(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = minUsableWidth
 	m.height = minUsableHeight
@@ -55,6 +58,7 @@ func TestBuildViewDoesNotShowTerminalTooSmallMessageAtMinimumSize(t *testing.T) 
 }
 
 func TestNaturalWidthsIgnoreMax(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID", Min: 4, Max: 6},
 		{Title: "Name", Min: 8, Max: 12},
@@ -68,6 +72,7 @@ func TestNaturalWidthsIgnoreMax(t *testing.T) {
 }
 
 func TestColumnWidthsNoTruncationWhenRoomAvailable(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID", Min: 4, Max: 6},
 		{Title: "Name", Min: 8, Max: 12},
@@ -82,6 +87,7 @@ func TestColumnWidthsNoTruncationWhenRoomAvailable(t *testing.T) {
 }
 
 func TestColumnWidthsTruncatesWhenTerminalNarrow(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID", Min: 4, Max: 6},
 		{Title: "Name", Min: 8, Max: 12, Flex: true},
@@ -96,6 +102,7 @@ func TestColumnWidthsTruncatesWhenTerminalNarrow(t *testing.T) {
 }
 
 func TestColumnWidthsTruncatedColumnsGetExtraFirst(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID", Min: 4, Max: 6},
 		{Title: "Name", Min: 8, Max: 10},
@@ -109,6 +116,7 @@ func TestColumnWidthsTruncatedColumnsGetExtraFirst(t *testing.T) {
 }
 
 func TestWidenTruncated(t *testing.T) {
+	t.Parallel()
 	t.Run("distributes all extra space", func(t *testing.T) {
 		widths := []int{4, 10, 8}
 		remaining := widenTruncated(widths, []int{4, 15, 8}, 3)
@@ -126,6 +134,7 @@ func TestWidenTruncated(t *testing.T) {
 // --- Column visibility tests ---
 
 func TestNextVisibleCol(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		specs   []columnSpec
@@ -185,6 +194,7 @@ func TestNextVisibleCol(t *testing.T) {
 }
 
 func TestFirstVisibleCol(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "A", HideOrder: 1}, {Title: "B"}, {Title: "C"}, {Title: "D"},
 	}
@@ -192,6 +202,7 @@ func TestFirstVisibleCol(t *testing.T) {
 }
 
 func TestLastVisibleCol(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "A"}, {Title: "B"}, {Title: "C"}, {Title: "D", HideOrder: 1},
 	}
@@ -199,6 +210,7 @@ func TestLastVisibleCol(t *testing.T) {
 }
 
 func TestVisibleCount(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "A"}, {Title: "B", HideOrder: 1}, {Title: "C"},
 	}
@@ -206,6 +218,7 @@ func TestVisibleCount(t *testing.T) {
 }
 
 func TestVisibleProjectionSkipsHidden(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs: []columnSpec{
 			{Title: "ID"}, {Title: "Name", HideOrder: 1}, {Title: "Status"},
@@ -230,6 +243,7 @@ func TestVisibleProjectionSkipsHidden(t *testing.T) {
 }
 
 func TestVisibleProjectionHiddenCursor(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs:     []columnSpec{{Title: "A"}, {Title: "B", HideOrder: 1}},
 		CellRows:  [][]cell{{{Value: "1"}, {Value: "2"}}},
@@ -240,6 +254,7 @@ func TestVisibleProjectionHiddenCursor(t *testing.T) {
 }
 
 func TestVisibleProjectionHiddenSortOmitted(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs:    []columnSpec{{Title: "A"}, {Title: "B", HideOrder: 1}},
 		CellRows: [][]cell{{{Value: "1"}, {Value: "2"}}},
@@ -250,6 +265,7 @@ func TestVisibleProjectionHiddenSortOmitted(t *testing.T) {
 }
 
 func TestHideCurrentColumnPreventsLastVisible(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeNormal
 	m.showDashboard = false
@@ -265,6 +281,7 @@ func TestHideCurrentColumnPreventsLastVisible(t *testing.T) {
 }
 
 func TestHideCurrentColumnMovesToNext(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeNormal
 	m.showDashboard = false
@@ -281,6 +298,7 @@ func TestHideCurrentColumnMovesToNext(t *testing.T) {
 }
 
 func TestShowAllColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeNormal
 	m.showDashboard = false
@@ -294,6 +312,7 @@ func TestShowAllColumns(t *testing.T) {
 }
 
 func TestJoinCells(t *testing.T) {
+	t.Parallel()
 	t.Run("per-gap separators", func(t *testing.T) {
 		assert.Equal(
 			t,
@@ -307,6 +326,7 @@ func TestJoinCells(t *testing.T) {
 }
 
 func TestGapSeparators(t *testing.T) {
+	t.Parallel()
 	t.Run("detects collapsed gaps", func(t *testing.T) {
 		normal := "\u2502"
 		plainSeps, collapsedSeps := gapSeparators([]int{0, 3, 4}, 5, normal)
@@ -324,6 +344,7 @@ func TestGapSeparators(t *testing.T) {
 }
 
 func TestHiddenColumnNames(t *testing.T) {
+	t.Parallel()
 	t.Run("returns hidden names in order", func(t *testing.T) {
 		specs := []columnSpec{
 			{Title: "ID"},
@@ -339,6 +360,7 @@ func TestHiddenColumnNames(t *testing.T) {
 }
 
 func TestNextHideOrder(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "A", HideOrder: 3},
 		{Title: "B"},
@@ -348,6 +370,7 @@ func TestNextHideOrder(t *testing.T) {
 }
 
 func TestRenderHiddenBadges(t *testing.T) {
+	t.Parallel()
 	t.Run("empty when none hidden", func(t *testing.T) {
 		specs := []columnSpec{{Title: "A"}, {Title: "B"}}
 		assert.Empty(t, renderHiddenBadges(specs, 0))
@@ -373,6 +396,7 @@ func TestRenderHiddenBadges(t *testing.T) {
 }
 
 func TestRenderHiddenBadgesStableWidthAcrossCursorMoves(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID", HideOrder: 1},
 		{Title: "Name"},
@@ -392,6 +416,7 @@ func TestRenderHiddenBadgesStableWidthAcrossCursorMoves(t *testing.T) {
 }
 
 func TestColumnWidthsFixedValuesStillStabilize(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "Status", Min: 8, Max: 12, FixedValues: []string{
 			"ideating", "planned", "underway", "completed", "abandoned",
@@ -407,6 +432,7 @@ func TestColumnWidthsFixedValuesStillStabilize(t *testing.T) {
 // --- Line clamping tests ---
 
 func TestClampLines(t *testing.T) {
+	t.Parallel()
 	t.Run("truncates long line", func(t *testing.T) {
 		assert.Equal(t, "hell…", clampLines("hello world", 5))
 	})
@@ -424,6 +450,7 @@ func TestClampLines(t *testing.T) {
 }
 
 func TestTruncateLeft(t *testing.T) {
+	t.Parallel()
 	t.Run("truncates long path", func(t *testing.T) {
 		got := truncateLeft("/home/user/long/path/to/data.db", 15)
 		assert.True(t, strings.HasPrefix(got, "\u2026"))
@@ -445,6 +472,7 @@ func TestTruncateLeft(t *testing.T) {
 }
 
 func TestShortenHome(t *testing.T) {
+	t.Parallel()
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 
@@ -469,6 +497,7 @@ func TestShortenHome(t *testing.T) {
 // --- Viewport tests ---
 
 func TestViewportAllColumnsFit(t *testing.T) {
+	t.Parallel()
 	widths := []int{10, 15, 10}
 	start, end, hasL, hasR := viewportRange(widths, 3, 50, 0, 0)
 	assert.Equal(t, 0, start)
@@ -478,6 +507,7 @@ func TestViewportAllColumnsFit(t *testing.T) {
 }
 
 func TestViewportScrollsRight(t *testing.T) {
+	t.Parallel()
 	widths := []int{10, 10, 10, 10, 10}
 	start, end, hasL, _ := viewportRange(widths, 3, 30, 0, 3)
 	assert.LessOrEqual(t, start, 3, "start should be <= cursor")
@@ -486,6 +516,7 @@ func TestViewportScrollsRight(t *testing.T) {
 }
 
 func TestViewportScrollsLeftOnCursorMove(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{ViewOffset: 3}
 	ensureCursorVisible(tab, 1, 5)
 	widths := []int{10, 10, 10, 10, 10}
@@ -495,18 +526,21 @@ func TestViewportScrollsLeftOnCursorMove(t *testing.T) {
 }
 
 func TestEnsureCursorVisibleClamps(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{ViewOffset: 5}
 	ensureCursorVisible(tab, 2, 4)
 	assert.LessOrEqual(t, tab.ViewOffset, 2)
 }
 
 func TestEnsureCursorVisibleNoopWhenVisible(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{ViewOffset: 0}
 	ensureCursorVisible(tab, 2, 5)
 	assert.Equal(t, 0, tab.ViewOffset)
 }
 
 func TestViewportSorts(t *testing.T) {
+	t.Parallel()
 	t.Run("adjusts column indices by offset", func(t *testing.T) {
 		adjusted := viewportSorts([]sortEntry{{Col: 3, Dir: sortAsc}, {Col: 5, Dir: sortDesc}}, 2)
 		assert.Equal(t, 1, adjusted[0].Col)
@@ -520,6 +554,7 @@ func TestViewportSorts(t *testing.T) {
 }
 
 func TestApplianceAge(t *testing.T) {
+	t.Parallel()
 	now := time.Date(2026, 2, 10, 0, 0, 0, 0, time.UTC)
 	tests := []struct {
 		name     string
@@ -543,6 +578,7 @@ func TestApplianceAge(t *testing.T) {
 func ptr[T any](v T) *T { return &v }
 
 func TestNavBadgeLabel(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 120
 	m.height = 40
@@ -552,6 +588,7 @@ func TestNavBadgeLabel(t *testing.T) {
 }
 
 func TestStatusBarStableWidthWithFilters(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 200
 	m.height = 40
@@ -572,6 +609,7 @@ func TestStatusBarStableWidthWithFilters(t *testing.T) {
 }
 
 func TestStatusViewUsesMoreLabelWhenHintsCollapse(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.height = 40
 	// At very narrow width, the help hint compacts from "help" to "more".
@@ -591,12 +629,14 @@ func TestStatusViewUsesMoreLabelWhenHintsCollapse(t *testing.T) {
 }
 
 func TestHelpContentIncludesProjectStatusFilterShortcut(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.Contains(t, help, "Toggle settled projects")
 }
 
 func TestHelpContentHasGlobalSection(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.Contains(t, help, "Global")
@@ -605,6 +645,7 @@ func TestHelpContentHasGlobalSection(t *testing.T) {
 }
 
 func TestHelpContentEditModeHalfPage(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.Contains(t, help, "CTRL+D")
@@ -612,12 +653,14 @@ func TestHelpContentEditModeHalfPage(t *testing.T) {
 }
 
 func TestHelpContentNavModeEsc(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.Contains(t, help, "Close detail")
 }
 
 func TestHelpContentFormsShowsFieldNavigation(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.Contains(t, help, "Next field")
@@ -625,6 +668,7 @@ func TestHelpContentFormsShowsFieldNavigation(t *testing.T) {
 }
 
 func TestHelpContentExcludesDatePicker(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.NotContains(t, help, "Date Picker",
@@ -632,6 +676,7 @@ func TestHelpContentExcludesDatePicker(t *testing.T) {
 }
 
 func TestHelpContentShowsArrowKeyAlternatives(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	// Nav mode row/column bindings include arrow symbols (renderKeys splits
@@ -643,6 +688,7 @@ func TestHelpContentShowsArrowKeyAlternatives(t *testing.T) {
 }
 
 func TestHeaderTitleWidth(t *testing.T) {
+	t.Parallel()
 	// Single-column: sort indicator is " ▲" (2 chars).
 	siw := sortIndicatorWidth(1)
 	assert.Equal(t, 2, siw)
@@ -716,6 +762,7 @@ func renderTestHeader(
 // Regression: user reported "ID" truncated to "I" on the quotes table
 // when multi-column sort is active.
 func TestMultiSortDoesNotTruncateShortTitle(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID"},
 		{Title: "Project"},
@@ -733,6 +780,7 @@ func TestMultiSortDoesNotTruncateShortTitle(t *testing.T) {
 
 // Regression: user reported money "$" eaten by multi-column sort indicator.
 func TestMultiSortDoesNotEatDollarSign(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID"},
 		{Title: "Total", Kind: cellMoney},
@@ -749,6 +797,7 @@ func TestMultiSortDoesNotEatDollarSign(t *testing.T) {
 
 // Regression: user reported drilldown "↘" arrow eaten by sort indicator.
 func TestMultiSortDoesNotEatDrilldownArrow(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID"},
 		{Title: "Log", Kind: cellDrilldown},
@@ -765,12 +814,14 @@ func TestMultiSortDoesNotEatDrilldownArrow(t *testing.T) {
 
 // Sort indicator must always include a leading space.
 func TestSortIndicatorIncludesLeadingSpace(t *testing.T) {
+	t.Parallel()
 	indicator := sortIndicator([]sortEntry{{Col: 0, Dir: sortAsc}}, 0)
 	assert.True(t, strings.HasPrefix(indicator, " "),
 		"sort indicator must start with a space")
 }
 
 func TestColumnHasLinks(t *testing.T) {
+	t.Parallel()
 	rows := [][]cell{
 		{{Value: "Self", LinkID: 0}, {Value: "42"}},
 		{{Value: "Vendor A", LinkID: 5}, {Value: "43"}},
@@ -780,6 +831,7 @@ func TestColumnHasLinks(t *testing.T) {
 }
 
 func TestColumnHasLinks_AllZero(t *testing.T) {
+	t.Parallel()
 	rows := [][]cell{
 		{{Value: "Self", LinkID: 0}},
 		{{Value: "Self", LinkID: 0}},
@@ -788,11 +840,13 @@ func TestColumnHasLinks_AllZero(t *testing.T) {
 }
 
 func TestColumnHasLinks_Empty(t *testing.T) {
+	t.Parallel()
 	assert.False(t, columnHasLinks(nil, 0))
 	assert.False(t, columnHasLinks([][]cell{}, 0))
 }
 
 func TestDimBackgroundNeutralizesCancelFaint(t *testing.T) {
+	t.Parallel()
 	// Simulate a composited overlay: cancelFaint injects \033[22m (normal
 	// intensity) so the overlay content stays bright. A subsequent
 	// dimBackground pass must neutralize those markers so the entire
@@ -807,6 +861,7 @@ func TestDimBackgroundNeutralizesCancelFaint(t *testing.T) {
 }
 
 func TestNormalModeOmitsDiscoveryHints(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 200 // very wide so nothing gets dropped by priority
 	m.height = 40
@@ -829,6 +884,7 @@ func TestNormalModeOmitsDiscoveryHints(t *testing.T) {
 }
 
 func TestEditModeOmitsUndoRedoProfile(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 200
 	m.height = 40
@@ -848,6 +904,7 @@ func TestEditModeOmitsUndoRedoProfile(t *testing.T) {
 }
 
 func TestAskHintHiddenWithoutLLM(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 200
 	m.height = 40
@@ -858,6 +915,7 @@ func TestAskHintHiddenWithoutLLM(t *testing.T) {
 }
 
 func TestPinSummaryNotInStatusHints(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 200
 	m.height = 40
@@ -873,6 +931,7 @@ func TestPinSummaryNotInStatusHints(t *testing.T) {
 }
 
 func TestFilterIndicatorOnTabRow(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 	m.width = 120
 	m.height = 40
@@ -918,6 +977,7 @@ func TestFilterIndicatorOnTabRow(t *testing.T) {
 // TestTabsLockedInFormMode verifies that tabsLocked returns true in form
 // mode (inactive tabs struck through), matching edit-mode behavior.
 func TestTabsLockedInFormMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 
 	m.mode = modeNormal
@@ -931,12 +991,14 @@ func TestTabsLockedInFormMode(t *testing.T) {
 }
 
 func TestHelpContentIncludesInvertFilter(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	help := m.helpContent()
 	assert.Contains(t, help, "Invert filter")
 }
 
 func TestRowCountShowsDeletedCount(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 200
 	m.height = 40
@@ -952,6 +1014,7 @@ func TestRowCountShowsDeletedCount(t *testing.T) {
 }
 
 func TestEmptyHintPerTab(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		kind    TabKind
 		want    string
@@ -975,6 +1038,7 @@ func TestEmptyHintPerTab(t *testing.T) {
 }
 
 func TestEmptyHintDetailDrilldown(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		parentKind TabKind
 		subName    string
@@ -1004,6 +1068,7 @@ func TestEmptyHintDetailDrilldown(t *testing.T) {
 }
 
 func TestRowCountLabel(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, testSeed)
 	tab := m.activeTab()
 	require.NotNil(t, tab)
@@ -1028,6 +1093,7 @@ func TestRowCountLabel(t *testing.T) {
 }
 
 func TestRowCountHiddenWhenEmpty(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	tab := m.activeTab()
 	require.NotNil(t, tab)
@@ -1038,6 +1104,7 @@ func TestRowCountHiddenWhenEmpty(t *testing.T) {
 }
 
 func TestRowCountUpdatesAcrossTabs(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, testSeed)
 
 	// Check that every populated tab shows its own row count.
@@ -1057,6 +1124,7 @@ func TestRowCountUpdatesAcrossTabs(t *testing.T) {
 }
 
 func TestRequiredLegendShownOnMultiFieldForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.width = 120
 	m.height = 40
@@ -1069,6 +1137,7 @@ func TestRequiredLegendShownOnMultiFieldForm(t *testing.T) {
 }
 
 func TestRequiredLegendShownOnFullScreenHouseForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.width = 120
 	m.height = 40
@@ -1082,6 +1151,7 @@ func TestRequiredLegendShownOnFullScreenHouseForm(t *testing.T) {
 }
 
 func TestRequiredLegendHiddenOnInlineEdit(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.width = 120
 	m.height = 40
@@ -1107,6 +1177,7 @@ func TestRequiredLegendHiddenOnInlineEdit(t *testing.T) {
 }
 
 func TestSetStatusSavedWithUndo(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.undoStack = append(m.undoStack, undoEntry{Description: "test"})
 	m.setStatusSaved(true)
@@ -1114,6 +1185,7 @@ func TestSetStatusSavedWithUndo(t *testing.T) {
 }
 
 func TestSetStatusSavedNoUndo(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.setStatusSaved(false)
 	assert.Equal(t, "Saved.", m.status.Text)
@@ -1121,6 +1193,7 @@ func TestSetStatusSavedNoUndo(t *testing.T) {
 }
 
 func TestFirstRunHouseFormShowsHint(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	// Simulate first run: no house profile exists yet.
 	m.hasHouse = false
@@ -1133,6 +1206,7 @@ func TestFirstRunHouseFormShowsHint(t *testing.T) {
 }
 
 func TestEditHouseFormHidesHint(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	// Model already has a house from newTestModelWithStore.
 	openHouseForm(m)
@@ -1144,6 +1218,7 @@ func TestEditHouseFormHidesHint(t *testing.T) {
 }
 
 func TestPluralCoversAllTabKinds(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		kind TabKind
 		want string
@@ -1162,6 +1237,7 @@ func TestPluralCoversAllTabKinds(t *testing.T) {
 }
 
 func TestOverlayMaxHeightClampsSmallTerminal(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.height = 10
 	h := m.overlayMaxHeight()
@@ -1169,6 +1245,7 @@ func TestOverlayMaxHeightClampsSmallTerminal(t *testing.T) {
 }
 
 func TestOverlayMaxHeightNormalTerminal(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.height = 40
 	h := m.overlayMaxHeight()
@@ -1176,6 +1253,7 @@ func TestOverlayMaxHeightNormalTerminal(t *testing.T) {
 }
 
 func TestNaturalWidthsIndirectMatchesDirect(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "ID", Min: 2, Max: 6},
 		{Title: "Name", Min: 4, Max: 20},
@@ -1191,6 +1269,7 @@ func TestNaturalWidthsIndirectMatchesDirect(t *testing.T) {
 }
 
 func TestNaturalWidthsIndirectRemappedColumns(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "Name", Min: 4, Max: 20},
 	}
@@ -1204,6 +1283,7 @@ func TestNaturalWidthsIndirectRemappedColumns(t *testing.T) {
 }
 
 func TestComputeNaturalWidthsSkipsShortRows(t *testing.T) {
+	t.Parallel()
 	specs := []columnSpec{
 		{Title: "A", Min: 2, Max: 10},
 		{Title: "B", Min: 2, Max: 10},

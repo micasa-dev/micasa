@@ -13,6 +13,7 @@ import (
 )
 
 func TestWithOrdinals(t *testing.T) {
+	t.Parallel()
 	t.Run("prefixes string options", func(t *testing.T) {
 		opts := withOrdinals([]huh.Option[string]{
 			huh.NewOption("alpha", "a"),
@@ -46,6 +47,7 @@ func TestWithOrdinals(t *testing.T) {
 }
 
 func TestSelectOrdinal(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		msg    tea.KeyMsg
@@ -106,6 +108,7 @@ func TestSelectOrdinal(t *testing.T) {
 }
 
 func TestIsSelectField(t *testing.T) {
+	t.Parallel()
 	t.Run("select field returns true", func(t *testing.T) {
 		val := "a"
 		sel := huh.NewSelect[string]().
@@ -132,6 +135,7 @@ func TestIsSelectField(t *testing.T) {
 }
 
 func TestSelectOptionCount(t *testing.T) {
+	t.Parallel()
 	val := "a"
 	sel := huh.NewSelect[string]().
 		Options(
@@ -148,6 +152,7 @@ func TestSelectOptionCount(t *testing.T) {
 }
 
 func TestSelectOptionCountForInput(t *testing.T) {
+	t.Parallel()
 	val := ""
 	inp := huh.NewInput().Title("Name").Value(&val)
 	form := huh.NewForm(huh.NewGroup(inp))
@@ -158,6 +163,7 @@ func TestSelectOptionCountForInput(t *testing.T) {
 }
 
 func TestJumpSelectToOrdinal(t *testing.T) {
+	t.Parallel()
 	t.Run("jumps to correct option", func(t *testing.T) {
 		val := "a"
 		sel := huh.NewSelect[string]().

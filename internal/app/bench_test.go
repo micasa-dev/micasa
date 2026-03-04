@@ -4,6 +4,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -18,11 +19,10 @@ import (
 func benchModel(b *testing.B) *Model {
 	b.Helper()
 	path := filepath.Join(b.TempDir(), "bench.db")
+	require.NoError(b, os.WriteFile(path, templateBytes, 0o600))
 	store, err := data.Open(path)
 	require.NoError(b, err)
 	b.Cleanup(func() { _ = store.Close() })
-	require.NoError(b, store.AutoMigrate())
-	require.NoError(b, store.SeedDefaults())
 	require.NoError(b, store.SeedDemoDataFrom(fake.New(42)))
 	require.NoError(b, store.ResolveCurrency(""))
 	m, err := NewModel(store, Options{DBPath: path})

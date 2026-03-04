@@ -11,6 +11,7 @@ import (
 )
 
 func TestSeedDemoDataPopulatesAllEntities(t *testing.T) {
+	t.Parallel()
 	store := newTestStoreWithDemoData(t, testSeed)
 
 	house, err := store.HouseProfile()
@@ -36,6 +37,7 @@ func TestSeedDemoDataPopulatesAllEntities(t *testing.T) {
 }
 
 func TestSeedDemoDataDeterministic(t *testing.T) {
+	t.Parallel()
 	store1 := newTestStoreWithDemoData(t, testSeed)
 	store2 := newTestStoreWithDemoData(t, testSeed)
 
@@ -46,6 +48,7 @@ func TestSeedDemoDataDeterministic(t *testing.T) {
 }
 
 func TestSeedDemoDataVariety(t *testing.T) {
+	t.Parallel()
 	names := make(map[string]bool)
 	for i := range uint64(5) {
 		store := newTestStoreWithDemoData(t, testSeed+i)
@@ -56,6 +59,7 @@ func TestSeedDemoDataVariety(t *testing.T) {
 }
 
 func TestSeedDemoDataSkipsIfDataExists(t *testing.T) {
+	t.Parallel()
 	store := newTestStoreWithDemoData(t, testSeed)
 
 	vendors1, _ := store.ListVendors(false)

@@ -28,6 +28,7 @@ func newTestStore(t *testing.T) *data.Store {
 func jn(s string) json.Number { return json.Number(s) }
 
 func TestShadowDB_NewAndClose(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -36,6 +37,7 @@ func TestShadowDB_NewAndClose(t *testing.T) {
 }
 
 func TestShadowDB_StageCreateVendor(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -54,6 +56,7 @@ func TestShadowDB_StageCreateVendor(t *testing.T) {
 }
 
 func TestShadowDB_StageMultipleVendors(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -73,6 +76,7 @@ func TestShadowDB_StageMultipleVendors(t *testing.T) {
 }
 
 func TestShadowDB_StageSkipsUpdates(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -88,6 +92,7 @@ func TestShadowDB_StageSkipsUpdates(t *testing.T) {
 }
 
 func TestShadowDB_StageRejectsEmptyData(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -101,6 +106,7 @@ func TestShadowDB_StageRejectsEmptyData(t *testing.T) {
 }
 
 func TestShadowDB_CommitVendor(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -122,6 +128,7 @@ func TestShadowDB_CommitVendor(t *testing.T) {
 }
 
 func TestShadowDB_CommitVendorThenQuote_CrossReference(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Create a project for the quote to reference.
@@ -169,6 +176,7 @@ func TestShadowDB_CommitVendorThenQuote_CrossReference(t *testing.T) {
 }
 
 func TestShadowDB_CommitApplianceThenMaintenance_CrossReference(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Get a maintenance category for the item.
@@ -214,6 +222,7 @@ func TestShadowDB_CommitApplianceThenMaintenance_CrossReference(t *testing.T) {
 }
 
 func TestShadowDB_CommitMultipleVendorsAndQuotes(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	types, err := store.ProjectTypes()
@@ -270,6 +279,7 @@ func TestShadowDB_CommitMultipleVendorsAndQuotes(t *testing.T) {
 }
 
 func TestShadowDB_CommitDocumentUpdate(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Create a document to update.
@@ -296,6 +306,7 @@ func TestShadowDB_CommitDocumentUpdate(t *testing.T) {
 }
 
 func TestShadowDB_CommitEmptyBatch(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -305,6 +316,7 @@ func TestShadowDB_CommitEmptyBatch(t *testing.T) {
 }
 
 func TestShadowDB_CommitDuplicateVendorUsesExisting(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Pre-create a vendor.
@@ -329,6 +341,7 @@ func TestShadowDB_CommitDuplicateVendorUsesExisting(t *testing.T) {
 }
 
 func TestShadowDB_CommitDocumentWithEntityRemap(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	sdb, err := NewShadowDB(store)
@@ -360,6 +373,7 @@ func TestShadowDB_CommitDocumentWithEntityRemap(t *testing.T) {
 }
 
 func TestShadowDB_CommitQuoteWithExistingVendorByID(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Create a vendor and project.
@@ -401,6 +415,7 @@ func TestShadowDB_CommitQuoteWithExistingVendorByID(t *testing.T) {
 }
 
 func TestShadowDB_CommitQuoteWithVendorName(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	types, err := store.ProjectTypes()
@@ -441,6 +456,7 @@ func TestShadowDB_CommitQuoteWithVendorName(t *testing.T) {
 }
 
 func TestShadowDB_CommitMixedCreatesAndUpdates(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Create a document to update.
@@ -475,6 +491,7 @@ func TestShadowDB_CommitMixedCreatesAndUpdates(t *testing.T) {
 }
 
 func TestShadowDB_ReadShadowRow(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
@@ -495,6 +512,7 @@ func TestShadowDB_ReadShadowRow(t *testing.T) {
 }
 
 func TestShadowDB_AutoIncrementOffset(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Pre-create 3 vendors so max vendor ID = 3.
@@ -521,6 +539,7 @@ func TestShadowDB_AutoIncrementOffset(t *testing.T) {
 }
 
 func TestShadowDB_OffsetCrossReference(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Pre-create vendors so shadow IDs are offset.
@@ -575,6 +594,7 @@ func TestShadowDB_OffsetCrossReference(t *testing.T) {
 }
 
 func TestShadowDB_OffsetExistingVendorNotRemapped(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Pre-create 2 vendors (IDs 1 and 2).
@@ -613,6 +633,7 @@ func TestShadowDB_OffsetExistingVendorNotRemapped(t *testing.T) {
 }
 
 func TestShadowDB_CommitDuplicateApplianceUsesExisting(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	require.NoError(t, store.CreateAppliance(&data.Appliance{
@@ -640,6 +661,7 @@ func TestShadowDB_CommitDuplicateApplianceUsesExisting(t *testing.T) {
 }
 
 func TestShadowDB_CommitDuplicateMaintenanceUsesExisting(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	cats, err := store.MaintenanceCategories()
@@ -674,6 +696,7 @@ func TestShadowDB_CommitDuplicateMaintenanceUsesExisting(t *testing.T) {
 }
 
 func TestShadowDB_CommitRollsBackOnFailure(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	sdb, err := NewShadowDB(store)
@@ -701,6 +724,7 @@ func TestShadowDB_CommitRollsBackOnFailure(t *testing.T) {
 }
 
 func TestShadowDB_NormalizeValueHandlesJSONNumber(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    any
 		expected any
@@ -719,6 +743,7 @@ func TestShadowDB_NormalizeValueHandlesJSONNumber(t *testing.T) {
 }
 
 func TestRemapFK(t *testing.T) {
+	t.Parallel()
 	idMap := map[string]map[uint]uint{
 		"vendors": {1: 42, 2: 43},
 	}
@@ -741,6 +766,7 @@ func TestRemapFK(t *testing.T) {
 }
 
 func TestRemapDocumentEntity(t *testing.T) {
+	t.Parallel()
 	idMap := map[string]map[uint]uint{
 		"vendors": {1: 42},
 	}

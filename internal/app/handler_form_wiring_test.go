@@ -18,6 +18,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestProjectHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 	require.NoError(t, h.StartAddForm(m))
@@ -28,6 +29,7 @@ func TestProjectHandlerStartAddForm(t *testing.T) {
 }
 
 func TestQuoteHandlerStartAddFormRequiresProject(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 	err := h.StartAddForm(m)
@@ -36,6 +38,7 @@ func TestQuoteHandlerStartAddFormRequiresProject(t *testing.T) {
 }
 
 func TestQuoteHandlerStartAddFormWithProject(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 
@@ -54,6 +57,7 @@ func TestQuoteHandlerStartAddFormWithProject(t *testing.T) {
 }
 
 func TestMaintenanceHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := maintenanceHandler{}
 	require.NoError(t, h.StartAddForm(m))
@@ -63,6 +67,7 @@ func TestMaintenanceHandlerStartAddForm(t *testing.T) {
 }
 
 func TestApplianceHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := applianceHandler{}
 	require.NoError(t, h.StartAddForm(m))
@@ -72,6 +77,7 @@ func TestApplianceHandlerStartAddForm(t *testing.T) {
 }
 
 func TestVendorHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := vendorHandler{}
 	require.NoError(t, h.StartAddForm(m))
@@ -81,6 +87,7 @@ func TestVendorHandlerStartAddForm(t *testing.T) {
 }
 
 func TestIncidentHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 	require.NoError(t, h.StartAddForm(m))
@@ -90,6 +97,7 @@ func TestIncidentHandlerStartAddForm(t *testing.T) {
 }
 
 func TestServiceLogHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -111,6 +119,7 @@ func TestServiceLogHandlerStartAddForm(t *testing.T) {
 }
 
 func TestDocumentHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := documentHandler{}
 	require.NoError(t, h.StartAddForm(m))
@@ -124,6 +133,7 @@ func TestDocumentHandlerStartAddForm(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestProjectHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -148,6 +158,7 @@ func TestProjectHandlerStartEditForm(t *testing.T) {
 }
 
 func TestProjectHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 	err := h.StartEditForm(m, 99999)
@@ -155,6 +166,7 @@ func TestProjectHandlerStartEditFormNonExistent(t *testing.T) {
 }
 
 func TestQuoteHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 
@@ -187,6 +199,7 @@ func TestQuoteHandlerStartEditForm(t *testing.T) {
 }
 
 func TestQuoteHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 	err := h.StartEditForm(m, 99999)
@@ -194,6 +207,7 @@ func TestQuoteHandlerStartEditFormNonExistent(t *testing.T) {
 }
 
 func TestMaintenanceHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := maintenanceHandler{}
 	cats, _ := m.store.MaintenanceCategories()
@@ -219,6 +233,7 @@ func TestMaintenanceHandlerStartEditForm(t *testing.T) {
 }
 
 func TestMaintenanceHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := maintenanceHandler{}
 	err := h.StartEditForm(m, 99999)
@@ -226,6 +241,7 @@ func TestMaintenanceHandlerStartEditFormNonExistent(t *testing.T) {
 }
 
 func TestApplianceHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := applianceHandler{}
 
@@ -246,6 +262,7 @@ func TestApplianceHandlerStartEditForm(t *testing.T) {
 }
 
 func TestApplianceHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := applianceHandler{}
 	err := h.StartEditForm(m, 99999)
@@ -253,6 +270,7 @@ func TestApplianceHandlerStartEditFormNonExistent(t *testing.T) {
 }
 
 func TestVendorHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := vendorHandler{}
 
@@ -273,6 +291,7 @@ func TestVendorHandlerStartEditForm(t *testing.T) {
 }
 
 func TestVendorHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := vendorHandler{}
 	err := h.StartEditForm(m, 99999)
@@ -280,6 +299,7 @@ func TestVendorHandlerStartEditFormNonExistent(t *testing.T) {
 }
 
 func TestIncidentHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -305,6 +325,7 @@ func TestIncidentHandlerStartEditForm(t *testing.T) {
 }
 
 func TestIncidentHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 	err := h.StartEditForm(m, 99999)
@@ -312,6 +333,7 @@ func TestIncidentHandlerStartEditFormNonExistent(t *testing.T) {
 }
 
 func TestServiceLogHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -344,6 +366,7 @@ func TestServiceLogHandlerStartEditForm(t *testing.T) {
 }
 
 func TestServiceLogHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := serviceLogHandler{maintenanceItemID: 1}
 	err := h.StartEditForm(m, 99999)
@@ -351,6 +374,7 @@ func TestServiceLogHandlerStartEditFormNonExistent(t *testing.T) {
 }
 
 func TestDocumentHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := documentHandler{}
 
@@ -373,6 +397,7 @@ func TestDocumentHandlerStartEditForm(t *testing.T) {
 }
 
 func TestDocumentHandlerStartEditFormNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := documentHandler{}
 	err := h.StartEditForm(m, 99999)
@@ -384,6 +409,7 @@ func TestDocumentHandlerStartEditFormNonExistent(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestProjectHandlerInlineEditTextColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -405,6 +431,7 @@ func TestProjectHandlerInlineEditTextColumn(t *testing.T) {
 }
 
 func TestProjectHandlerInlineEditSelectColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -426,6 +453,7 @@ func TestProjectHandlerInlineEditSelectColumn(t *testing.T) {
 }
 
 func TestProjectHandlerInlineEditDateColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -446,6 +474,7 @@ func TestProjectHandlerInlineEditDateColumn(t *testing.T) {
 }
 
 func TestProjectHandlerInlineEditIDFallsBackToEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -468,6 +497,7 @@ func TestProjectHandlerInlineEditIDFallsBackToEditForm(t *testing.T) {
 }
 
 func TestProjectHandlerInlineEditMoneyColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 
@@ -490,6 +520,7 @@ func TestProjectHandlerInlineEditMoneyColumn(t *testing.T) {
 }
 
 func TestProjectHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := projectHandler{}
 	err := h.InlineEdit(m, 99999, int(projectColTitle))
@@ -497,6 +528,7 @@ func TestProjectHandlerInlineEditNonExistent(t *testing.T) {
 }
 
 func TestQuoteHandlerInlineEditColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 
@@ -568,6 +600,7 @@ func TestQuoteHandlerInlineEditColumns(t *testing.T) {
 }
 
 func TestQuoteHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := quoteHandler{}
 	err := h.InlineEdit(m, 99999, int(quoteColVendor))
@@ -575,6 +608,7 @@ func TestQuoteHandlerInlineEditNonExistent(t *testing.T) {
 }
 
 func TestMaintenanceHandlerInlineEditColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := maintenanceHandler{}
 	cats, _ := m.store.MaintenanceCategories()
@@ -635,6 +669,7 @@ func TestMaintenanceHandlerInlineEditColumns(t *testing.T) {
 // Step 7: Inline edit "Next" column sets due date via calendar, clears interval,
 // and persists the change to the database.
 func TestMaintenanceInlineEditNextSetsDueDateAndSaves(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a maintenance item with an interval via the form.
@@ -686,6 +721,7 @@ func TestMaintenanceInlineEditNextSetsDueDateAndSaves(t *testing.T) {
 // Step 8: Inline edit "Every" column sets interval, clears due date,
 // and persists the change to the database.
 func TestMaintenanceInlineEditEverySetIntervalAndSaves(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create a maintenance item with a due date via the form.
@@ -744,6 +780,7 @@ func TestMaintenanceInlineEditEverySetIntervalAndSaves(t *testing.T) {
 }
 
 func TestMaintenanceHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := maintenanceHandler{}
 	err := h.InlineEdit(m, 99999, int(maintenanceColItem))
@@ -751,6 +788,7 @@ func TestMaintenanceHandlerInlineEditNonExistent(t *testing.T) {
 }
 
 func TestApplianceHandlerInlineEditColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := applianceHandler{}
 
@@ -805,6 +843,7 @@ func TestApplianceHandlerInlineEditColumns(t *testing.T) {
 }
 
 func TestApplianceHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := applianceHandler{}
 	err := h.InlineEdit(m, 99999, int(applianceColName))
@@ -812,6 +851,7 @@ func TestApplianceHandlerInlineEditNonExistent(t *testing.T) {
 }
 
 func TestIncidentHandlerInlineEditColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 
@@ -895,6 +935,7 @@ func TestIncidentHandlerInlineEditColumns(t *testing.T) {
 }
 
 func TestIncidentHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := incidentHandler{}
 	err := h.InlineEdit(m, 99999, int(incidentColTitle))
@@ -902,6 +943,7 @@ func TestIncidentHandlerInlineEditNonExistent(t *testing.T) {
 }
 
 func TestServiceLogHandlerInlineEditColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -962,6 +1004,7 @@ func TestServiceLogHandlerInlineEditColumns(t *testing.T) {
 }
 
 func TestServiceLogHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := serviceLogHandler{maintenanceItemID: 1}
 	err := h.InlineEdit(m, 99999, int(serviceLogColCost))
@@ -969,6 +1012,7 @@ func TestServiceLogHandlerInlineEditNonExistent(t *testing.T) {
 }
 
 func TestVendorHandlerInlineEditColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := vendorHandler{}
 
@@ -1011,6 +1055,7 @@ func TestVendorHandlerInlineEditColumns(t *testing.T) {
 }
 
 func TestVendorHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := vendorHandler{}
 	err := h.InlineEdit(m, 99999, int(vendorColName))
@@ -1018,6 +1063,7 @@ func TestVendorHandlerInlineEditNonExistent(t *testing.T) {
 }
 
 func TestDocumentHandlerInlineEditColumns(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := documentHandler{}
 
@@ -1058,6 +1104,7 @@ func TestDocumentHandlerInlineEditColumns(t *testing.T) {
 }
 
 func TestDocumentHandlerInlineEditNonExistent(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := documentHandler{}
 	err := h.InlineEdit(m, 99999, int(documentColTitle))
@@ -1069,6 +1116,7 @@ func TestDocumentHandlerInlineEditNonExistent(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestEntityDocumentHandlerStartAddForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	types, _ := m.store.ProjectTypes()
 	require.NoError(t, m.store.CreateProject(&data.Project{
@@ -1086,6 +1134,7 @@ func TestEntityDocumentHandlerStartAddForm(t *testing.T) {
 }
 
 func TestEntityDocumentHandlerStartEditForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	types, _ := m.store.ProjectTypes()
 	require.NoError(t, m.store.CreateProject(&data.Project{
@@ -1113,6 +1162,7 @@ func TestEntityDocumentHandlerStartEditForm(t *testing.T) {
 }
 
 func TestEntityDocumentHandlerInlineEditSkipsEntityColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	types, _ := m.store.ProjectTypes()
 	require.NoError(t, m.store.CreateProject(&data.Project{
@@ -1145,6 +1195,7 @@ func TestEntityDocumentHandlerInlineEditSkipsEntityColumn(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSyncFixedValuesNoOp(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		h    TabHandler
@@ -1170,6 +1221,7 @@ func TestSyncFixedValuesNoOp(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVendorJobsHandlerStartAddFormReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := newVendorJobsHandler(1)
 	err := h.StartAddForm(m)
@@ -1178,6 +1230,7 @@ func TestVendorJobsHandlerStartAddFormReturnsError(t *testing.T) {
 }
 
 func TestSkipColEditRemapsIndices(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	types, _ := m.store.ProjectTypes()
 	require.NoError(t, m.store.CreateProject(&data.Project{
@@ -1214,6 +1267,7 @@ func TestSkipColEditRemapsIndices(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestStartEditIncidentFormPopulatesAllFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	require.NoError(t, m.store.CreateAppliance(&data.Appliance{Name: "Test App"}))
@@ -1263,6 +1317,7 @@ func TestStartEditIncidentFormPopulatesAllFields(t *testing.T) {
 }
 
 func TestStartEditServiceLogFormPopulatesAllFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -1301,6 +1356,7 @@ func TestStartEditServiceLogFormPopulatesAllFields(t *testing.T) {
 }
 
 func TestStartEditApplianceFormPopulatesAllFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	cost := int64(89900)
@@ -1336,6 +1392,7 @@ func TestStartEditApplianceFormPopulatesAllFields(t *testing.T) {
 }
 
 func TestStartEditMaintenanceFormPopulatesAllFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 

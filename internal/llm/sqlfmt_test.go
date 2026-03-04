@@ -11,18 +11,21 @@ import (
 )
 
 func TestFormatSQLSimpleSelect(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL("SELECT name, age FROM users WHERE age > 21", 0)
 	expected := "SELECT name,\n  age\nFROM users\nWHERE age > 21"
 	assert.Equal(t, expected, got)
 }
 
 func TestFormatSQLSingleColumn(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL("SELECT COUNT(*) FROM projects WHERE deleted_at IS NULL", 0)
 	expected := "SELECT COUNT(*)\nFROM projects\nWHERE deleted_at IS NULL"
 	assert.Equal(t, expected, got)
 }
 
 func TestFormatSQLMultipleClauses(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT name, budget_cents / 100.0 AS budget FROM projects "+
 			"WHERE status = 'underway' AND deleted_at IS NULL "+
@@ -40,6 +43,7 @@ func TestFormatSQLMultipleClauses(t *testing.T) {
 }
 
 func TestFormatSQLJoin(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT m.name, a.name FROM maintenance_items m "+
 			"LEFT JOIN appliances a ON m.appliance_id = a.id "+
@@ -55,6 +59,7 @@ func TestFormatSQLJoin(t *testing.T) {
 }
 
 func TestFormatSQLSubquery(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT name FROM projects WHERE id IN (SELECT project_id FROM quotes WHERE total_cents > 10000)",
 		0,
@@ -65,6 +70,7 @@ func TestFormatSQLSubquery(t *testing.T) {
 }
 
 func TestFormatSQLNestedSubquery(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT name, (SELECT COUNT(*) FROM quotes WHERE project_id = projects.id) AS quote_count FROM projects WHERE status = 'active'",
 		0,
@@ -83,6 +89,7 @@ func TestFormatSQLNestedSubquery(t *testing.T) {
 }
 
 func TestFormatSQLGroupBy(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT status, COUNT(*) AS cnt FROM projects "+
 			"WHERE deleted_at IS NULL "+
@@ -102,6 +109,7 @@ func TestFormatSQLGroupBy(t *testing.T) {
 }
 
 func TestFormatSQLKeywordsUppercased(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"select name from projects where status = 'underway' and deleted_at is null limit 1",
 		0,
@@ -119,11 +127,13 @@ func TestFormatSQLKeywordsUppercased(t *testing.T) {
 }
 
 func TestFormatSQLPreservesStrings(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL("SELECT * FROM projects WHERE name = 'Kitchen Remodel'", 0)
 	assert.Contains(t, got, "'Kitchen Remodel'")
 }
 
 func TestFormatSQLDateFunctions(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT name, date(last_serviced_at, '+' || interval_months || ' months') AS next_due "+
 			"FROM maintenance_items WHERE deleted_at IS NULL ORDER BY next_due",
@@ -140,10 +150,12 @@ func TestFormatSQLDateFunctions(t *testing.T) {
 }
 
 func TestFormatSQLEmpty(t *testing.T) {
+	t.Parallel()
 	assert.Empty(t, FormatSQL("", 0))
 }
 
 func TestFormatSQLAlreadyFormatted(t *testing.T) {
+	t.Parallel()
 	input := "SELECT name\nFROM projects\nWHERE id = 1"
 	got := FormatSQL(input, 0)
 	assert.Contains(t, got, "SELECT name")
@@ -152,6 +164,7 @@ func TestFormatSQLAlreadyFormatted(t *testing.T) {
 }
 
 func TestFormatSQLBetween(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT name FROM appliances WHERE warranty_expiry BETWEEN date('now') AND date('now', '+90 days')",
 		0,
@@ -161,6 +174,7 @@ func TestFormatSQLBetween(t *testing.T) {
 }
 
 func TestFormatSQLAggregateWithJoin(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT SUM(q.total_cents) / 100.0 AS total FROM quotes q "+
 			"JOIN projects p ON q.project_id = p.id "+
@@ -176,6 +190,7 @@ func TestFormatSQLAggregateWithJoin(t *testing.T) {
 }
 
 func TestFormatSQLWrapsLongLines(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT name, date(last_serviced_at, '+' || interval_months || ' months') AS next_due "+
 			"FROM maintenance_items WHERE deleted_at IS NULL ORDER BY next_due",
@@ -192,6 +207,7 @@ func TestFormatSQLWrapsLongLines(t *testing.T) {
 }
 
 func TestFormatSQLWrapPreservesIndent(t *testing.T) {
+	t.Parallel()
 	got := FormatSQL(
 		"SELECT a_very_long_column_name, another_really_long_column_name, yet_another_one "+
 			"FROM some_table",
@@ -210,24 +226,28 @@ func TestFormatSQLWrapPreservesIndent(t *testing.T) {
 // --- tokenizer tests ---
 
 func TestTokenizeSQLBasic(t *testing.T) {
+	t.Parallel()
 	tokens := tokenizeSQL("SELECT name FROM users")
 	words := filterKind(tokens, tokWord)
 	assert.Equal(t, []string{"SELECT", "name", "FROM", "users"}, words)
 }
 
 func TestTokenizeSQLString(t *testing.T) {
+	t.Parallel()
 	tokens := tokenizeSQL("WHERE name = 'O''Brien'")
 	strs := filterKind(tokens, tokString)
 	assert.Equal(t, []string{"'O''Brien'"}, strs)
 }
 
 func TestTokenizeSQLNumbers(t *testing.T) {
+	t.Parallel()
 	tokens := tokenizeSQL("LIMIT 10 OFFSET 3.5")
 	nums := filterKind(tokens, tokNumber)
 	assert.Equal(t, []string{"10", "3.5"}, nums)
 }
 
 func TestTokenizeSQLOperators(t *testing.T) {
+	t.Parallel()
 	tokens := tokenizeSQL("a >= 1 AND b <> 2")
 	syms := filterKind(tokens, tokSymbol)
 	assert.Contains(t, syms, ">=")

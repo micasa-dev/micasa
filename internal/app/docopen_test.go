@@ -13,6 +13,7 @@ import (
 )
 
 func TestWrapOpenerError_NotFound(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		opener   string
@@ -48,12 +49,14 @@ func TestWrapOpenerError_NotFound(t *testing.T) {
 }
 
 func TestWrapOpenerError_OtherError(t *testing.T) {
+	t.Parallel()
 	other := errors.New("exit status 1")
 	got := wrapOpenerError(other, "xdg-open")
 	assert.Equal(t, other, got, "non-ErrNotFound errors should pass through unchanged")
 }
 
 func TestIsDocumentTab(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		tab  *Tab

@@ -11,6 +11,7 @@ import (
 )
 
 func TestGetSettingMissing(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	val, err := store.GetSetting("nonexistent")
 	require.NoError(t, err)
@@ -18,6 +19,7 @@ func TestGetSettingMissing(t *testing.T) {
 }
 
 func TestPutAndGetSetting(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	require.NoError(t, store.PutSetting("color", "blue"))
 
@@ -27,6 +29,7 @@ func TestPutAndGetSetting(t *testing.T) {
 }
 
 func TestPutSettingUpserts(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	require.NoError(t, store.PutSetting("color", "blue"))
 	require.NoError(t, store.PutSetting("color", "red"))
@@ -37,6 +40,7 @@ func TestPutSettingUpserts(t *testing.T) {
 }
 
 func TestLastModelRoundTrip(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Initially empty.
@@ -58,6 +62,7 @@ func TestLastModelRoundTrip(t *testing.T) {
 }
 
 func TestCurrencyDefaultEmpty(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	code, err := store.GetCurrency()
 	require.NoError(t, err)
@@ -65,6 +70,7 @@ func TestCurrencyDefaultEmpty(t *testing.T) {
 }
 
 func TestCurrencyRoundTrip(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	require.NoError(t, store.PutCurrency("EUR"))
@@ -79,6 +85,7 @@ func TestCurrencyRoundTrip(t *testing.T) {
 }
 
 func TestAppendChatInputAndLoad(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	require.NoError(t, store.AppendChatInput("how many projects?"))
@@ -90,6 +97,7 @@ func TestAppendChatInputAndLoad(t *testing.T) {
 }
 
 func TestAppendChatInputDeduplicatesConsecutive(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	require.NoError(t, store.AppendChatInput("hello"))
@@ -102,6 +110,7 @@ func TestAppendChatInputDeduplicatesConsecutive(t *testing.T) {
 }
 
 func TestAppendChatInputAllowsNonConsecutiveDuplicates(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	require.NoError(t, store.AppendChatInput("a"))
@@ -114,6 +123,7 @@ func TestAppendChatInputAllowsNonConsecutiveDuplicates(t *testing.T) {
 }
 
 func TestLoadChatHistoryEmpty(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	history, err := store.LoadChatHistory()
@@ -122,6 +132,7 @@ func TestLoadChatHistoryEmpty(t *testing.T) {
 }
 
 func TestShowDashboardDefaultsToTrue(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	show, err := store.GetShowDashboard()
 	require.NoError(t, err)
@@ -129,6 +140,7 @@ func TestShowDashboardDefaultsToTrue(t *testing.T) {
 }
 
 func TestShowDashboardRoundTrip(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	require.NoError(t, store.PutShowDashboard(false))

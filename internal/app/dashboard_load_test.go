@@ -13,6 +13,7 @@ import (
 )
 
 func TestLoadDashboardAtClassifiesOverdueAndUpcoming(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	app := data.Appliance{Name: "Furnace"}
@@ -58,6 +59,7 @@ func TestLoadDashboardAtClassifiesOverdueAndUpcoming(t *testing.T) {
 }
 
 func TestLoadDashboardAtUpcomingWithin30Days(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -80,6 +82,7 @@ func TestLoadDashboardAtUpcomingWithin30Days(t *testing.T) {
 }
 
 func TestLoadDashboardAtActiveProjects(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	types, _ := m.store.ProjectTypes()
 
@@ -103,6 +106,7 @@ func TestLoadDashboardAtActiveProjects(t *testing.T) {
 }
 
 func TestLoadDashboardAtExpiringWarranties(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	expiry := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
@@ -119,6 +123,7 @@ func TestLoadDashboardAtExpiringWarranties(t *testing.T) {
 }
 
 func TestLoadDashboardAtInsuranceRenewal(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	renewal := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -135,6 +140,7 @@ func TestLoadDashboardAtInsuranceRenewal(t *testing.T) {
 }
 
 func TestLoadDashboardAtInsuranceRenewalOutOfRange(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Renewal 6 months away — outside the -30..+90 window.
@@ -150,6 +156,7 @@ func TestLoadDashboardAtInsuranceRenewalOutOfRange(t *testing.T) {
 }
 
 func TestLoadDashboardAtBuildsNav(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -172,6 +179,7 @@ func TestLoadDashboardAtBuildsNav(t *testing.T) {
 }
 
 func TestLoadDashboardAtOpenIncidents(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	require.NoError(t, m.store.CreateIncident(&data.Incident{
@@ -217,6 +225,7 @@ func TestLoadDashboardAtOpenIncidents(t *testing.T) {
 }
 
 func TestLoadDashboardAtDueDateOverdue(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -237,6 +246,7 @@ func TestLoadDashboardAtDueDateOverdue(t *testing.T) {
 }
 
 func TestLoadDashboardAtDueDateUpcoming(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -257,6 +267,7 @@ func TestLoadDashboardAtDueDateUpcoming(t *testing.T) {
 }
 
 func TestLoadDashboardAtDueDateFarFuture(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -277,6 +288,7 @@ func TestLoadDashboardAtDueDateFarFuture(t *testing.T) {
 
 // Step 11: Unscheduled items (no interval, no due date) never appear on dashboard.
 func TestLoadDashboardAtExcludesUnscheduledItems(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	cats, _ := m.store.MaintenanceCategories()
 
@@ -293,6 +305,7 @@ func TestLoadDashboardAtExcludesUnscheduledItems(t *testing.T) {
 }
 
 func TestLoadDashboardExcludesAppliancesWithoutWarranty(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// One appliance with warranty in range, one without any warranty.

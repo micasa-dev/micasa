@@ -125,6 +125,7 @@ func newFilterModel() (*Model, *Tab) {
 // --- Model-level tests (user actions via sendKey) ---
 
 func TestTogglePinAddsAndRemoves(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Cursor at row 0, col 1 -> pin "Plan".
@@ -138,6 +139,7 @@ func TestTogglePinAddsAndRemoves(t *testing.T) {
 }
 
 func TestTogglePinMultipleValuesInColumn(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Pin "Plan" at row 0.
@@ -155,6 +157,7 @@ func TestTogglePinMultipleValuesInColumn(t *testing.T) {
 }
 
 func TestClearPins(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	sendKey(m, "n") // Pin "Plan"
@@ -168,6 +171,7 @@ func TestClearPins(t *testing.T) {
 }
 
 func TestApplyRowFilterNoPin(t *testing.T) {
+	t.Parallel()
 	_, tab := newFilterModel()
 
 	// No pins: all rows present and undimmed.
@@ -179,6 +183,7 @@ func TestApplyRowFilterNoPin(t *testing.T) {
 }
 
 func TestApplyRowFilterPreview(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Pin "Plan" -> triggers preview mode (all rows visible, non-matches dimmed).
@@ -192,6 +197,7 @@ func TestApplyRowFilterPreview(t *testing.T) {
 }
 
 func TestApplyRowFilterActive(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	sendKey(m, "n") // Pin "Plan"
@@ -203,6 +209,7 @@ func TestApplyRowFilterActive(t *testing.T) {
 }
 
 func TestApplyRowFilterActiveAcrossColumns(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Pin "Plan" (row 0, col 1).
@@ -222,6 +229,7 @@ func TestApplyRowFilterActiveAcrossColumns(t *testing.T) {
 }
 
 func TestEagerModeToggleWithNoPins(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Activate filter with no pins ("eager mode").
@@ -236,6 +244,7 @@ func TestEagerModeToggleWithNoPins(t *testing.T) {
 }
 
 func TestEagerModeToggleOff(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Activate and pin.
@@ -250,6 +259,7 @@ func TestEagerModeToggleOff(t *testing.T) {
 }
 
 func TestPinsPersistAcrossTabSwitch(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 	startTab := m.active
 
@@ -271,6 +281,7 @@ func TestPinsPersistAcrossTabSwitch(t *testing.T) {
 }
 
 func TestHideColumnClearsPinsOnThatColumn(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Pin "Plan" on col 1 (Status).
@@ -308,6 +319,7 @@ func seedTabForPinning(m *Model) *Tab {
 }
 
 func TestCtrlNClearsAllPinsAndFilter(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeNormal
 	tab := seedTabForPinning(m)
@@ -325,6 +337,7 @@ func TestCtrlNClearsAllPinsAndFilter(t *testing.T) {
 }
 
 func TestCtrlNNoopWithoutPins(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeNormal
 	m.showDashboard = false
@@ -336,6 +349,7 @@ func TestCtrlNNoopWithoutPins(t *testing.T) {
 }
 
 func TestPinOnDashboardBlocked(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
@@ -351,6 +365,7 @@ func TestPinOnDashboardBlocked(t *testing.T) {
 // --- Pure unit tests of isolated filter logic ---
 
 func TestTogglePinCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	tab := newFilterTab()
 	togglePin(tab, 1, "plan")
 	assert.True(t, isPinned(tab, 1, "Plan"))
@@ -358,6 +373,7 @@ func TestTogglePinCaseInsensitive(t *testing.T) {
 }
 
 func TestClearPinsForColumn(t *testing.T) {
+	t.Parallel()
 	tab := newFilterTab()
 	togglePin(tab, 1, "Plan")
 	togglePin(tab, 2, "Alice")
@@ -369,6 +385,7 @@ func TestClearPinsForColumn(t *testing.T) {
 }
 
 func TestClearPinsForColumnClearsFilterWhenEmpty(t *testing.T) {
+	t.Parallel()
 	tab := newFilterTab()
 	togglePin(tab, 1, "Plan")
 	tab.FilterActive = true
@@ -377,6 +394,7 @@ func TestClearPinsForColumnClearsFilterWhenEmpty(t *testing.T) {
 }
 
 func TestMatchesAllPinsSingleColumn(t *testing.T) {
+	t.Parallel()
 	pins := []filterPin{{Col: 1, Values: map[string]bool{"plan": true, "active": true}}}
 	row1 := []cell{{Value: "1"}, {Value: "Plan"}, {Value: "Alice"}}
 	row2 := []cell{{Value: "4"}, {Value: "Done"}, {Value: "Alice"}}
@@ -386,6 +404,7 @@ func TestMatchesAllPinsSingleColumn(t *testing.T) {
 }
 
 func TestMatchesAllPinsCrossColumn(t *testing.T) {
+	t.Parallel()
 	pins := []filterPin{
 		{Col: 1, Values: map[string]bool{"plan": true}},
 		{Col: 2, Values: map[string]bool{"bob": true}},
@@ -400,6 +419,7 @@ func TestMatchesAllPinsCrossColumn(t *testing.T) {
 }
 
 func TestPinSummary(t *testing.T) {
+	t.Parallel()
 	tab := newFilterTab()
 	togglePin(tab, 1, "Plan")
 	s := pinSummary(tab)
@@ -408,11 +428,13 @@ func TestPinSummary(t *testing.T) {
 }
 
 func TestPinSummaryEmpty(t *testing.T) {
+	t.Parallel()
 	tab := newFilterTab()
 	assert.Empty(t, pinSummary(tab))
 }
 
 func TestMatchesAllPinsMagMode(t *testing.T) {
+	t.Parallel()
 	// In mag mode, $50 -> round(log10(50)) = round(1.7) = 2
 	// and $1,000 -> round(log10(1000)) = 3
 	row50 := []cell{{Value: "$50.00", Kind: cellMoney}}
@@ -431,6 +453,7 @@ func TestMatchesAllPinsMagMode(t *testing.T) {
 }
 
 func TestTranslatePinsToMag(t *testing.T) {
+	t.Parallel()
 	// Pin raw "$50.00", translate to mag mode -> should become mag "🠡2".
 	tab := &Tab{
 		Specs: []columnSpec{{Title: "Cost", Kind: cellMoney}},
@@ -450,6 +473,7 @@ func TestTranslatePinsToMag(t *testing.T) {
 }
 
 func TestTranslatePinsFromMag(t *testing.T) {
+	t.Parallel()
 	// Pin mag "🠡3", translate from mag mode -> should expand to all mag-3 raw values.
 	tab := &Tab{
 		Specs: []columnSpec{{Title: "Cost", Kind: cellMoney}},
@@ -470,17 +494,20 @@ func TestTranslatePinsFromMag(t *testing.T) {
 }
 
 func TestCellDisplayValueNull(t *testing.T) {
+	t.Parallel()
 	c := cell{Kind: cellText, Null: true}
 	assert.Equal(t, nullPinKey, cellDisplayValue(c, false, "$"))
 	assert.Equal(t, nullPinKey, cellDisplayValue(c, true, "$"))
 }
 
 func TestCellDisplayValueNonNull(t *testing.T) {
+	t.Parallel()
 	c := cell{Value: "Hello", Kind: cellText}
 	assert.Equal(t, "hello", cellDisplayValue(c, false, "$"))
 }
 
 func TestCellDisplayValueEntityPinsByKind(t *testing.T) {
+	t.Parallel()
 	project := cell{Value: "P Kitchen Reno", Kind: cellEntity}
 	vendor := cell{Value: "V Bob's Plumbing", Kind: cellEntity}
 	empty := cell{Value: "", Kind: cellEntity}
@@ -491,6 +518,7 @@ func TestCellDisplayValueEntityPinsByKind(t *testing.T) {
 }
 
 func TestMatchesAllPinsNullCell(t *testing.T) {
+	t.Parallel()
 	pins := []filterPin{{Col: 1, Values: map[string]bool{nullPinKey: true}}}
 	nullRow := []cell{{Value: "1"}, {Kind: cellText, Null: true}}
 	emptyRow := []cell{{Value: "1"}, {Value: "", Kind: cellText}}
@@ -510,6 +538,7 @@ func TestMatchesAllPinsNullCell(t *testing.T) {
 }
 
 func TestPinSummaryNull(t *testing.T) {
+	t.Parallel()
 	tab := newFilterTab()
 	togglePin(tab, 1, nullPinKey)
 	s := pinSummary(tab)
@@ -518,6 +547,7 @@ func TestPinSummaryNull(t *testing.T) {
 }
 
 func TestTogglePinNullCell(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 	// Replace row 0, col 1 with a null cell.
 	tab.CellRows[0][1] = cell{Kind: cellStatus, Null: true}
@@ -532,6 +562,7 @@ func TestTogglePinNullCell(t *testing.T) {
 }
 
 func TestTranslatePinsPreservesNull(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs: []columnSpec{{Title: "Cost", Kind: cellMoney}},
 		FullCellRows: [][]cell{
@@ -545,6 +576,7 @@ func TestTranslatePinsPreservesNull(t *testing.T) {
 }
 
 func TestTranslatePinsRoundTrip(t *testing.T) {
+	t.Parallel()
 	// Pin $1,000.00 -> toggle to mag (🠡3) -> toggle back -> should get
 	// $1,000.00 AND $2,000.00 (both mag 3).
 	tab := &Tab{
@@ -572,6 +604,7 @@ func TestTranslatePinsRoundTrip(t *testing.T) {
 // --- Filter inversion tests ---
 
 func TestInvertPreviewDimsMatchingRows(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Pin "Plan" (rows 0 and 2 match), then invert in preview mode.
@@ -588,6 +621,7 @@ func TestInvertPreviewDimsMatchingRows(t *testing.T) {
 }
 
 func TestInvertActiveFilterShowsNonMatchingRows(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Pin "Plan", activate filter, then invert.
@@ -602,6 +636,7 @@ func TestInvertActiveFilterShowsNonMatchingRows(t *testing.T) {
 }
 
 func TestInvertToggleRoundTrip(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	sendKey(m, "!")
@@ -612,6 +647,7 @@ func TestInvertToggleRoundTrip(t *testing.T) {
 }
 
 func TestClearPinsResetsInvert(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	sendKey(m, "n") // Pin "Plan"
@@ -623,6 +659,7 @@ func TestClearPinsResetsInvert(t *testing.T) {
 }
 
 func TestInvertNullCellActiveFilter(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 	// Replace row 0 col 1 with null.
 	tab.CellRows[0][1] = cell{Kind: cellStatus, Null: true}
@@ -642,6 +679,7 @@ func TestInvertNullCellActiveFilter(t *testing.T) {
 }
 
 func TestInvertedPinHighlightsNonMatchingCells(t *testing.T) {
+	t.Parallel()
 	// Pin col 1 = "plan". Normal: pinMatch=true for "plan" cells.
 	// Inverted: pinMatch flips for pinned columns — "plan" cells lose
 	// highlight, non-plan cells gain it.
@@ -660,6 +698,7 @@ func TestInvertedPinHighlightsNonMatchingCells(t *testing.T) {
 }
 
 func TestInvertedPinContextPassedToRenderer(t *testing.T) {
+	t.Parallel()
 	m, tab := newFilterModel()
 
 	// Pin "Plan" and invert — the pinRenderContext should carry Inverted=true.
@@ -674,6 +713,7 @@ func TestInvertedPinContextPassedToRenderer(t *testing.T) {
 }
 
 func TestInvertBlockedOnDashboard(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()

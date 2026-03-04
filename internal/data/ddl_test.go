@@ -11,6 +11,7 @@ import (
 )
 
 func TestTableDDL_KnownTables(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	ddl, err := store.TableDDL("vendors", "documents")
 	require.NoError(t, err)
@@ -22,6 +23,7 @@ func TestTableDDL_KnownTables(t *testing.T) {
 }
 
 func TestTableDDL_UnknownTable(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	ddl, err := store.TableDDL("nonexistent_table")
 	require.NoError(t, err)
@@ -29,6 +31,7 @@ func TestTableDDL_UnknownTable(t *testing.T) {
 }
 
 func TestTableDDL_MixedKnownAndUnknown(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	ddl, err := store.TableDDL("vendors", "nonexistent")
 	require.NoError(t, err)
@@ -37,6 +40,7 @@ func TestTableDDL_MixedKnownAndUnknown(t *testing.T) {
 }
 
 func TestTableDDL_Empty(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	ddl, err := store.TableDDL()
 	require.NoError(t, err)

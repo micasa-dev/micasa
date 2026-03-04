@@ -15,6 +15,7 @@ import (
 )
 
 func TestPullModelSuccess(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/api/pull", r.URL.Path)
@@ -58,6 +59,7 @@ func TestPullModelSuccess(t *testing.T) {
 }
 
 func TestPullModelServerDown(t *testing.T) {
+	t.Parallel()
 	_, err := PullModel(context.Background(), "http://127.0.0.1:1", "qwen3")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot reach")
@@ -65,6 +67,7 @@ func TestPullModelServerDown(t *testing.T) {
 }
 
 func TestPullModelServerError(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = fmt.Fprint(w, `model not found`)
@@ -78,6 +81,7 @@ func TestPullModelServerError(t *testing.T) {
 }
 
 func TestPullModelTrailingSlash(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/pull", r.URL.Path,
 			"trailing slash should be stripped from base URL")
@@ -95,6 +99,7 @@ func TestPullModelTrailingSlash(t *testing.T) {
 }
 
 func TestPullScannerSkipsBlankLines(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintln(w, "")
 		_, _ = fmt.Fprintln(w, `{"status":"done"}`)
@@ -117,6 +122,7 @@ func TestPullScannerSkipsBlankLines(t *testing.T) {
 }
 
 func TestPullScannerSkipsMalformedJSON(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintln(w, `not json`)
 		_, _ = fmt.Fprintln(w, `{"status":"ok"}`)
@@ -133,6 +139,7 @@ func TestPullScannerSkipsMalformedJSON(t *testing.T) {
 }
 
 func TestPullChunkErrorField(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintln(w, `{"status":"error","error":"pull failed: unauthorized"}`)
 	}))
@@ -149,6 +156,7 @@ func TestPullChunkErrorField(t *testing.T) {
 }
 
 func TestPullModelCancelledContext(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 

@@ -19,17 +19,20 @@ import (
 const testValidatorDate = "2025-06-15"
 
 func TestRequiredTextRejectsEmpty(t *testing.T) {
+	t.Parallel()
 	validate := requiredText("title")
 	require.Error(t, validate(""))
 	require.Error(t, validate("  "))
 }
 
 func TestRequiredTextAcceptsNonEmpty(t *testing.T) {
+	t.Parallel()
 	validate := requiredText("title")
 	assert.NoError(t, validate("hello"))
 }
 
 func TestOptionalIntAcceptsValid(t *testing.T) {
+	t.Parallel()
 	validate := optionalInt("months")
 	for _, input := range []string{"", "0", "12", "  7  "} {
 		assert.NoErrorf(t, validate(input), "optionalInt(%q)", input)
@@ -37,6 +40,7 @@ func TestOptionalIntAcceptsValid(t *testing.T) {
 }
 
 func TestOptionalIntRejectsInvalid(t *testing.T) {
+	t.Parallel()
 	validate := optionalInt("months")
 	for _, input := range []string{"abc", "-1", "1.5"} {
 		assert.Errorf(t, validate(input), "optionalInt(%q) expected error", input)
@@ -44,6 +48,7 @@ func TestOptionalIntRejectsInvalid(t *testing.T) {
 }
 
 func TestOptionalIntervalAcceptsValid(t *testing.T) {
+	t.Parallel()
 	validate := optionalInterval("interval")
 	for _, input := range []string{"", "0", "12", "6m", "1y", "2y 6m", "1y6m", "  1Y  "} {
 		assert.NoErrorf(t, validate(input), "optionalInterval(%q)", input)
@@ -51,6 +56,7 @@ func TestOptionalIntervalAcceptsValid(t *testing.T) {
 }
 
 func TestOptionalIntervalRejectsInvalid(t *testing.T) {
+	t.Parallel()
 	validate := optionalInterval("interval")
 	for _, input := range []string{"abc", "-1", "1x", "m", "y"} {
 		err := validate(input)
@@ -62,6 +68,7 @@ func TestOptionalIntervalRejectsInvalid(t *testing.T) {
 }
 
 func TestOptionalFloatAcceptsValid(t *testing.T) {
+	t.Parallel()
 	validate := optionalFloat("bathrooms")
 	for _, input := range []string{"", "0", "2.5", "  3  "} {
 		assert.NoErrorf(t, validate(input), "optionalFloat(%q)", input)
@@ -69,6 +76,7 @@ func TestOptionalFloatAcceptsValid(t *testing.T) {
 }
 
 func TestOptionalFloatRejectsInvalid(t *testing.T) {
+	t.Parallel()
 	validate := optionalFloat("bathrooms")
 	for _, input := range []string{"abc", "-1.5"} {
 		assert.Errorf(t, validate(input), "optionalFloat(%q) expected error", input)
@@ -76,6 +84,7 @@ func TestOptionalFloatRejectsInvalid(t *testing.T) {
 }
 
 func TestOptionalDateAcceptsValid(t *testing.T) {
+	t.Parallel()
 	validate := optionalDate("start date")
 	for _, input := range []string{"", "2025-06-11"} {
 		assert.NoErrorf(t, validate(input), "optionalDate(%q)", input)
@@ -83,6 +92,7 @@ func TestOptionalDateAcceptsValid(t *testing.T) {
 }
 
 func TestOptionalDateRejectsInvalid(t *testing.T) {
+	t.Parallel()
 	validate := optionalDate("start date")
 	for _, input := range []string{"06/11/2025", "not-a-date"} {
 		assert.Errorf(t, validate(input), "optionalDate(%q) expected error", input)
@@ -90,6 +100,7 @@ func TestOptionalDateRejectsInvalid(t *testing.T) {
 }
 
 func TestEndDateAfterStart(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		start   string
@@ -125,6 +136,7 @@ func TestEndDateAfterStart(t *testing.T) {
 }
 
 func TestOptionalMoneyAcceptsValid(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	validate := optionalMoney("budget", cur)
 	for _, input := range []string{"", "100", "1250.00", "$5,000.50"} {
@@ -133,29 +145,34 @@ func TestOptionalMoneyAcceptsValid(t *testing.T) {
 }
 
 func TestOptionalMoneyRejectsInvalid(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	validate := optionalMoney("budget", cur)
 	assert.Error(t, validate("abc"))
 }
 
 func TestRequiredMoneyAcceptsValid(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	validate := requiredMoney("total", cur)
 	assert.NoError(t, validate("1250.00"))
 }
 
 func TestRequiredMoneyRejectsEmpty(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	validate := requiredMoney("total", cur)
 	assert.Error(t, validate(""))
 }
 
 func TestIntToString(t *testing.T) {
+	t.Parallel()
 	assert.Empty(t, intToString(0))
 	assert.Equal(t, "42", intToString(42))
 }
 
 func TestProjectFormValues(t *testing.T) {
+	t.Parallel()
 	budget := int64(500000)
 	start := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 	project := data.Project{
@@ -174,6 +191,7 @@ func TestProjectFormValues(t *testing.T) {
 }
 
 func TestVendorFormValues(t *testing.T) {
+	t.Parallel()
 	vendor := data.Vendor{
 		Name:        "HVAC Pros",
 		ContactName: "Alice",
@@ -192,6 +210,7 @@ func TestVendorFormValues(t *testing.T) {
 }
 
 func TestQuoteFormValues(t *testing.T) {
+	t.Parallel()
 	labor := int64(10000)
 	quote := data.Quote{
 		ProjectID:  1,
@@ -207,6 +226,7 @@ func TestQuoteFormValues(t *testing.T) {
 }
 
 func TestMaintenanceFormValues(t *testing.T) {
+	t.Parallel()
 	appID := uint(3)
 	item := data.MaintenanceItem{
 		Name:           "HVAC Filter",
@@ -221,6 +241,7 @@ func TestMaintenanceFormValues(t *testing.T) {
 }
 
 func TestMaintenanceFormValuesNoAppliance(t *testing.T) {
+	t.Parallel()
 	item := data.MaintenanceItem{
 		Name:       "Smoke Detectors",
 		CategoryID: 1,
@@ -230,6 +251,7 @@ func TestMaintenanceFormValuesNoAppliance(t *testing.T) {
 }
 
 func TestMaintenanceFormValuesDueDate(t *testing.T) {
+	t.Parallel()
 	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
 	item := data.MaintenanceItem{
 		Name:       "Inspect Roof",
@@ -242,6 +264,7 @@ func TestMaintenanceFormValuesDueDate(t *testing.T) {
 }
 
 func TestApplianceFormValues(t *testing.T) {
+	t.Parallel()
 	cost := int64(89900)
 	purchase := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)
 	appliance := data.Appliance{
@@ -259,6 +282,7 @@ func TestApplianceFormValues(t *testing.T) {
 }
 
 func TestHouseFormValues(t *testing.T) {
+	t.Parallel()
 	profile := data.HouseProfile{
 		Nickname:  "Home",
 		YearBuilt: 1995,
@@ -274,6 +298,7 @@ func TestHouseFormValues(t *testing.T) {
 }
 
 func TestServiceLogFormValues(t *testing.T) {
+	t.Parallel()
 	cost := int64(15000)
 	vendorID := uint(1)
 	entry := data.ServiceLogEntry{
@@ -289,6 +314,7 @@ func TestServiceLogFormValues(t *testing.T) {
 }
 
 func TestServiceLogFormValuesNoVendor(t *testing.T) {
+	t.Parallel()
 	entry := data.ServiceLogEntry{
 		ServicedAt: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
 	}
@@ -298,6 +324,7 @@ func TestServiceLogFormValuesNoVendor(t *testing.T) {
 }
 
 func TestFormDirtyDetectionUserFlow(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeForm
 
@@ -331,6 +358,7 @@ func TestFormDirtyDetectionUserFlow(t *testing.T) {
 }
 
 func TestOversizedDocumentShowsHumanReadableSize(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Set a small max to avoid writing a large temp file.
@@ -360,6 +388,7 @@ func TestOversizedDocumentShowsHumanReadableSize(t *testing.T) {
 // field, this test will catch it -- the snapshot would share that reference
 // and dirty-detection via reflect.DeepEqual would silently break.
 func TestFormDataStructsHaveNoReferenceFields(t *testing.T) {
+	t.Parallel()
 	structs := []any{
 		projectFormData{},
 		applianceFormData{},

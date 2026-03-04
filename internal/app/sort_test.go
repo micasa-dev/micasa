@@ -47,6 +47,7 @@ func newSortTab() *Tab {
 }
 
 func TestToggleSortCycle(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{}
 
 	// none -> asc
@@ -66,6 +67,7 @@ func TestToggleSortCycle(t *testing.T) {
 }
 
 func TestToggleSortMultiColumn(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{}
 	toggleSort(tab, 0) // col 0 asc
 	toggleSort(tab, 2) // col 2 asc
@@ -81,6 +83,7 @@ func TestToggleSortMultiColumn(t *testing.T) {
 }
 
 func TestClearSorts(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{}
 	toggleSort(tab, 0)
 	toggleSort(tab, 1)
@@ -89,6 +92,7 @@ func TestClearSorts(t *testing.T) {
 }
 
 func TestApplySortsDefaultPK(t *testing.T) {
+	t.Parallel()
 	tab := newSortTab()
 	// No explicit sorts => default PK (col 0) asc.
 	applySorts(tab)
@@ -98,6 +102,7 @@ func TestApplySortsDefaultPK(t *testing.T) {
 }
 
 func TestApplySortsByNameAsc(t *testing.T) {
+	t.Parallel()
 	tab := newSortTab()
 	toggleSort(tab, 1) // Name asc
 	applySorts(tab)
@@ -107,6 +112,7 @@ func TestApplySortsByNameAsc(t *testing.T) {
 }
 
 func TestApplySortsByNameDesc(t *testing.T) {
+	t.Parallel()
 	tab := newSortTab()
 	toggleSort(tab, 1) // Name asc
 	toggleSort(tab, 1) // Name desc
@@ -117,6 +123,7 @@ func TestApplySortsByNameDesc(t *testing.T) {
 }
 
 func TestApplySortsByMoneyAsc(t *testing.T) {
+	t.Parallel()
 	tab := newSortTab()
 	toggleSort(tab, 2) // Cost asc
 	applySorts(tab)
@@ -126,6 +133,7 @@ func TestApplySortsByMoneyAsc(t *testing.T) {
 }
 
 func TestApplySortsByDateDesc(t *testing.T) {
+	t.Parallel()
 	tab := newSortTab()
 	toggleSort(tab, 3) // Date asc
 	toggleSort(tab, 3) // Date desc
@@ -136,6 +144,7 @@ func TestApplySortsByDateDesc(t *testing.T) {
 }
 
 func TestApplySortsNullLastRegardlessOfDirection(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs: []columnSpec{
 			{Title: "Name", Kind: cellText},
@@ -164,6 +173,7 @@ func TestApplySortsNullLastRegardlessOfDirection(t *testing.T) {
 }
 
 func TestApplySortsEmptySortsNormally(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs: []columnSpec{
 			{Title: "Name", Kind: cellText},
@@ -183,6 +193,7 @@ func TestApplySortsEmptySortsNormally(t *testing.T) {
 }
 
 func TestApplySortsNullAfterEmpty(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs: []columnSpec{
 			{Title: "Name", Kind: cellText},
@@ -203,6 +214,7 @@ func TestApplySortsNullAfterEmpty(t *testing.T) {
 }
 
 func TestApplySortsMultiKey(t *testing.T) {
+	t.Parallel()
 	tab := &Tab{
 		Specs: []columnSpec{
 			{Title: "Group", Kind: cellText},
@@ -225,11 +237,13 @@ func TestApplySortsMultiKey(t *testing.T) {
 }
 
 func TestSortIndicatorSingle(t *testing.T) {
+	t.Parallel()
 	sorts := []sortEntry{{Col: 2, Dir: sortAsc}}
 	assert.Equal(t, " \u25b2", sortIndicator(sorts, 2))
 }
 
 func TestSortIndicatorMulti(t *testing.T) {
+	t.Parallel()
 	sorts := []sortEntry{
 		{Col: 2, Dir: sortAsc},
 		{Col: 5, Dir: sortDesc},
@@ -240,6 +254,7 @@ func TestSortIndicatorMulti(t *testing.T) {
 }
 
 func TestPKTiebreaker(t *testing.T) {
+	t.Parallel()
 	// Col 0 not in stack: gets appended.
 	sorts := []sortEntry{{Col: 2, Dir: sortAsc}}
 	result := withPKTiebreaker(sorts)
@@ -254,6 +269,7 @@ func TestPKTiebreaker(t *testing.T) {
 }
 
 func TestSortKeyOnlyInNormalMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.showDashboard = false
 	tab := m.effectiveTab()

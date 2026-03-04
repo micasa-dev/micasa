@@ -13,6 +13,7 @@ import (
 )
 
 func TestFormDataAsSuccess(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.fs.formData = &projectFormData{}
 	v, err := formDataAs[projectFormData](m)
@@ -21,6 +22,7 @@ func TestFormDataAsSuccess(t *testing.T) {
 }
 
 func TestFormDataAsWrongType(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.fs.formData = &vendorFormData{}
 	_, err := formDataAs[projectFormData](m)
@@ -29,6 +31,7 @@ func TestFormDataAsWrongType(t *testing.T) {
 }
 
 func TestFormDataAsNilFormData(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.fs.formData = nil
 	_, err := formDataAs[projectFormData](m)
@@ -36,6 +39,7 @@ func TestFormDataAsNilFormData(t *testing.T) {
 }
 
 func TestParseFormDataWrongType(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	wrong := &houseFormData{}
 
@@ -77,6 +81,7 @@ func TestParseFormDataWrongType(t *testing.T) {
 }
 
 func TestOptionalFilePathExpandsTilde(t *testing.T) {
+	t.Parallel()
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 

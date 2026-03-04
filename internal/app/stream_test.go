@@ -18,6 +18,7 @@ type testStreamMsg struct {
 type testStreamDoneMsg struct{}
 
 func TestWaitForStreamOpenChannel(t *testing.T) {
+	t.Parallel()
 	ch := make(chan string, 1)
 	ch <- "hello"
 
@@ -33,6 +34,7 @@ func TestWaitForStreamOpenChannel(t *testing.T) {
 }
 
 func TestWaitForStreamClosedChannel(t *testing.T) {
+	t.Parallel()
 	ch := make(chan string)
 	close(ch)
 

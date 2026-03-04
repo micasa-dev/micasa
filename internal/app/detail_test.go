@@ -15,6 +15,7 @@ import (
 )
 
 func TestOpenDetailSetsContext(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	require.Nil(t, m.detail())
@@ -30,6 +31,7 @@ func TestOpenDetailSetsContext(t *testing.T) {
 }
 
 func TestCloseDetailRestoresParent(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(42, "Test Item")
@@ -40,6 +42,7 @@ func TestCloseDetailRestoresParent(t *testing.T) {
 }
 
 func TestEffectiveTabReturnsDetailWhenOpen(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	mainTab := m.effectiveTab()
@@ -54,6 +57,7 @@ func TestEffectiveTabReturnsDetailWhenOpen(t *testing.T) {
 }
 
 func TestEffectiveTabFallsBackToMainTab(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabProjects)
 	tab := m.effectiveTab()
@@ -62,6 +66,7 @@ func TestEffectiveTabFallsBackToMainTab(t *testing.T) {
 }
 
 func TestEscInNormalModeClosesDetail(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -71,6 +76,7 @@ func TestEscInNormalModeClosesDetail(t *testing.T) {
 }
 
 func TestEscInEditModeDoesNotCloseDetail(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -83,6 +89,7 @@ func TestEscInEditModeDoesNotCloseDetail(t *testing.T) {
 }
 
 func TestTabSwitchBlockedInDetailView(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -93,6 +100,7 @@ func TestTabSwitchBlockedInDetailView(t *testing.T) {
 }
 
 func TestColumnNavWorksInDetailView(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -112,6 +120,7 @@ func TestColumnNavWorksInDetailView(t *testing.T) {
 }
 
 func TestDetailTabHasServiceLogSpecs(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -125,6 +134,7 @@ func TestDetailTabHasServiceLogSpecs(t *testing.T) {
 }
 
 func TestHandlerForFormKindFindsDetailHandler(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -135,11 +145,13 @@ func TestHandlerForFormKindFindsDetailHandler(t *testing.T) {
 }
 
 func TestServiceLogHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := serviceLogHandler{maintenanceItemID: 5}
 	assert.Equal(t, formServiceLog, h.FormKind())
 }
 
 func TestMaintenanceColumnsIncludeLogAndDocs(t *testing.T) {
+	t.Parallel()
 	specs := maintenanceColumnSpecs()
 	secondLast := specs[len(specs)-2]
 	assert.Equal(t, "Log", secondLast.Title)
@@ -147,6 +159,7 @@ func TestMaintenanceColumnsIncludeLogAndDocs(t *testing.T) {
 }
 
 func TestApplianceColumnsIncludeMaintAndDocs(t *testing.T) {
+	t.Parallel()
 	specs := applianceColumnSpecs()
 	secondLast := specs[len(specs)-2]
 	assert.Equal(t, "Maint", secondLast.Title)
@@ -157,6 +170,7 @@ func TestApplianceColumnsIncludeMaintAndDocs(t *testing.T) {
 }
 
 func TestVendorOptions(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	opts := vendorOpts("Self (homeowner)", m.vendors)
 	require.NotEmpty(t, opts, "expected at least 1 vendor option (Self)")
@@ -164,6 +178,7 @@ func TestVendorOptions(t *testing.T) {
 }
 
 func TestServiceLogColumnSpecs(t *testing.T) {
+	t.Parallel()
 	specs := serviceLogColumnSpecs()
 	require.Len(t, specs, 6)
 	// Verify the "Performed By" column is flex and linked to vendors.
@@ -174,6 +189,7 @@ func TestServiceLogColumnSpecs(t *testing.T) {
 }
 
 func TestServiceLogRowsSelfPerformed(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{
@@ -189,6 +205,7 @@ func TestServiceLogRowsSelfPerformed(t *testing.T) {
 }
 
 func TestServiceLogRowsVendorPerformed(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	vendorID := uint(5)
 	entries := []data.ServiceLogEntry{
@@ -205,6 +222,7 @@ func TestServiceLogRowsVendorPerformed(t *testing.T) {
 }
 
 func TestServiceLogRowsSelfHasNoLink(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{
@@ -217,6 +235,7 @@ func TestServiceLogRowsSelfHasNoLink(t *testing.T) {
 }
 
 func TestServiceLogRowsDocCount(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{ID: 1, ServicedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
@@ -231,6 +250,7 @@ func TestServiceLogRowsDocCount(t *testing.T) {
 }
 
 func TestMaintenanceLogColumnReplacedManual(t *testing.T) {
+	t.Parallel()
 	specs := maintenanceColumnSpecs()
 	for _, s := range specs {
 		assert.NotEqual(t, "Manual", s.Title, "expected 'Manual' column to be replaced by 'Log'")
@@ -238,6 +258,7 @@ func TestMaintenanceLogColumnReplacedManual(t *testing.T) {
 }
 
 func TestResizeTablesIncludesDetail(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 120
 	m.height = 40
@@ -249,6 +270,7 @@ func TestResizeTablesIncludesDetail(t *testing.T) {
 }
 
 func TestSortWorksInDetailView(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
@@ -294,6 +316,7 @@ func newTestModelWithDetailRows() *Model {
 }
 
 func TestSelectedRowMetaUsesDetailTab(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDetailRows()
 	meta, ok := m.selectedRowMeta()
 	require.True(t, ok)
@@ -301,6 +324,7 @@ func TestSelectedRowMetaUsesDetailTab(t *testing.T) {
 }
 
 func TestSelectedCellUsesDetailTab(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDetailRows()
 	c, ok := m.selectedCell(2)
 	require.True(t, ok)
@@ -308,6 +332,7 @@ func TestSelectedCellUsesDetailTab(t *testing.T) {
 }
 
 func TestApplianceMaintenanceDetailOpens(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabAppliances)
 	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
@@ -318,11 +343,13 @@ func TestApplianceMaintenanceDetailOpens(t *testing.T) {
 }
 
 func TestApplianceMaintenanceHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newApplianceMaintenanceHandler(1)
 	assert.Equal(t, formMaintenance, h.FormKind())
 }
 
 func TestApplianceMaintenanceColumnSpecsNoAppliance(t *testing.T) {
+	t.Parallel()
 	specs := applianceMaintenanceColumnSpecs()
 	for _, s := range specs {
 		assert.NotEqual(
@@ -346,6 +373,7 @@ func TestApplianceMaintenanceColumnSpecsNoAppliance(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestDrilldownStackPushPop(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabMaintenance)
 
@@ -362,6 +390,7 @@ func TestDrilldownStackPushPop(t *testing.T) {
 }
 
 func TestNestedDrilldownApplianceMaintServiceLog(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabAppliances)
 
@@ -387,6 +416,7 @@ func TestNestedDrilldownApplianceMaintServiceLog(t *testing.T) {
 }
 
 func TestCloseAllDetailsCollapsesStack(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabAppliances)
 
@@ -400,6 +430,7 @@ func TestCloseAllDetailsCollapsesStack(t *testing.T) {
 }
 
 func TestCloseAllDetailsDeepStackFinalState(t *testing.T) {
+	t.Parallel()
 	// Push a two-level detail stack (Appliance -> Maintenance -> Service Log)
 	// and verify closeAllDetails restores the correct top-level state in a
 	// single operation.
@@ -453,6 +484,7 @@ func TestCloseAllDetailsDeepStackFinalState(t *testing.T) {
 }
 
 func TestCloseAllDetailsNoopOnEmptyStack(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabProjects)
 	m.status = statusMsg{Text: "keep me", Kind: statusInfo}
@@ -466,6 +498,7 @@ func TestCloseAllDetailsNoopOnEmptyStack(t *testing.T) {
 }
 
 func TestBreadcrumbsMultiLevel(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 120
 	m.height = 40
@@ -485,6 +518,7 @@ func TestBreadcrumbsMultiLevel(t *testing.T) {
 }
 
 func TestEscPopsOneLevel(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabAppliances)
 
@@ -504,6 +538,7 @@ func TestEscPopsOneLevel(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVendorQuoteDrilldown(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabVendors)
 
@@ -526,6 +561,7 @@ func TestVendorQuoteDrilldown(t *testing.T) {
 }
 
 func TestVendorJobsDrilldown(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabVendors)
 
@@ -546,11 +582,13 @@ func TestVendorJobsDrilldown(t *testing.T) {
 }
 
 func TestVendorQuoteHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newVendorQuoteHandler(1)
 	assert.Equal(t, formQuote, h.FormKind())
 }
 
 func TestVendorJobsHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newVendorJobsHandler(1)
 	assert.Equal(t, formServiceLog, h.FormKind())
 }
@@ -560,6 +598,7 @@ func TestVendorJobsHandlerFormKind(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestProjectQuoteDrilldown(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabProjects)
 
@@ -582,11 +621,13 @@ func TestProjectQuoteDrilldown(t *testing.T) {
 }
 
 func TestProjectQuoteHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newProjectQuoteHandler(1)
 	assert.Equal(t, formQuote, h.FormKind())
 }
 
 func TestProjectColumnSpecsIncludeQuotesAndDocs(t *testing.T) {
+	t.Parallel()
 	specs := projectColumnSpecs()
 	secondLast := specs[len(specs)-2]
 	assert.Equal(t, "Quotes", secondLast.Title)
@@ -601,6 +642,7 @@ func TestProjectColumnSpecsIncludeQuotesAndDocs(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestOpenDetailForRow_MaintenanceLog(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabMaintenance)
 	tab := m.activeTab()
@@ -616,6 +658,7 @@ func TestOpenDetailForRow_MaintenanceLog(t *testing.T) {
 }
 
 func TestOpenDetailForRow_ApplianceMaint(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabAppliances)
 	tab := m.activeTab()
@@ -631,6 +674,7 @@ func TestOpenDetailForRow_ApplianceMaint(t *testing.T) {
 }
 
 func TestOpenDetailForRow_VendorQuotes(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabVendors)
 	tab := m.activeTab()
@@ -646,6 +690,7 @@ func TestOpenDetailForRow_VendorQuotes(t *testing.T) {
 }
 
 func TestOpenDetailForRow_VendorJobs(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabVendors)
 	tab := m.activeTab()
@@ -661,6 +706,7 @@ func TestOpenDetailForRow_VendorJobs(t *testing.T) {
 }
 
 func TestOpenDetailForRow_ProjectQuotes(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabProjects)
 	tab := m.activeTab()
@@ -676,6 +722,7 @@ func TestOpenDetailForRow_ProjectQuotes(t *testing.T) {
 }
 
 func TestOpenDetailForRow_NestedApplianceMaintenanceLog(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabAppliances)
 	tab := m.activeTab()
@@ -720,6 +767,7 @@ func TestOpenDetailForRow_NestedApplianceMaintenanceLog(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestDrilldownHint(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	tab := &Tab{Kind: tabProjects}
 	spec := columnSpec{Title: "Quotes"}
@@ -727,6 +775,7 @@ func TestDrilldownHint(t *testing.T) {
 }
 
 func TestNavigateToLinkClosesDetailStack(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabVendors)
 
@@ -752,6 +801,7 @@ func TestNavigateToLinkClosesDetailStack(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestProjectDocumentDrilldown(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabProjects)
 
@@ -771,6 +821,7 @@ func TestProjectDocumentDrilldown(t *testing.T) {
 }
 
 func TestApplianceDocumentDrilldown(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.active = tabIndex(tabAppliances)
 
@@ -783,21 +834,25 @@ func TestApplianceDocumentDrilldown(t *testing.T) {
 }
 
 func TestProjectDocumentHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newEntityDocumentHandler(data.DocumentEntityProject, 1)
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestApplianceDocumentHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newEntityDocumentHandler(data.DocumentEntityAppliance, 1)
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestDocumentHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := documentHandler{}
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestEntityDocumentColumnSpecsNoEntity(t *testing.T) {
+	t.Parallel()
 	specs := entityDocumentColumnSpecs()
 	for _, s := range specs {
 		assert.NotEqual(t, "Entity", s.Title,
@@ -806,6 +861,7 @@ func TestEntityDocumentColumnSpecsNoEntity(t *testing.T) {
 }
 
 func TestDocumentColumnSpecsIncludeEntity(t *testing.T) {
+	t.Parallel()
 	specs := documentColumnSpecs()
 	var found bool
 	for _, s := range specs {
@@ -818,6 +874,7 @@ func TestDocumentColumnSpecsIncludeEntity(t *testing.T) {
 }
 
 func TestOpenDetailForRow_ProjectDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabProjects)
 	tab := m.activeTab()
@@ -833,6 +890,7 @@ func TestOpenDetailForRow_ProjectDocuments(t *testing.T) {
 }
 
 func TestOpenDetailForRow_ApplianceDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabAppliances)
 	tab := m.activeTab()
@@ -848,11 +906,13 @@ func TestOpenDetailForRow_ApplianceDocuments(t *testing.T) {
 }
 
 func TestServiceLogDocumentHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newEntityDocumentHandler(data.DocumentEntityServiceLog, 1)
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestOpenDetailForRow_ServiceLogDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabMaintenance)
 
@@ -881,6 +941,7 @@ func TestOpenDetailForRow_ServiceLogDocuments(t *testing.T) {
 }
 
 func TestServiceLogDocumentColumnSpecsHasDocsColumn(t *testing.T) {
+	t.Parallel()
 	specs := serviceLogColumnSpecs()
 	last := specs[len(specs)-1]
 	assert.Equal(t, tabDocuments.String(), last.Title)
@@ -892,6 +953,7 @@ func TestServiceLogDocumentColumnSpecsHasDocsColumn(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestMaintenanceColumnSpecsIncludeDocs(t *testing.T) {
+	t.Parallel()
 	specs := maintenanceColumnSpecs()
 	last := specs[len(specs)-1]
 	assert.Equal(t, tabDocuments.String(), last.Title)
@@ -899,11 +961,13 @@ func TestMaintenanceColumnSpecsIncludeDocs(t *testing.T) {
 }
 
 func TestMaintenanceDocumentHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newEntityDocumentHandler(data.DocumentEntityMaintenance, 1)
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestOpenDetailForRow_MaintenanceDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabMaintenance)
 	tab := m.activeTab()
@@ -924,6 +988,7 @@ func TestOpenDetailForRow_MaintenanceDocuments(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestQuoteColumnSpecsIncludeDocs(t *testing.T) {
+	t.Parallel()
 	specs := quoteColumnSpecs()
 	last := specs[len(specs)-1]
 	assert.Equal(t, tabDocuments.String(), last.Title)
@@ -931,11 +996,13 @@ func TestQuoteColumnSpecsIncludeDocs(t *testing.T) {
 }
 
 func TestQuoteDocumentHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newEntityDocumentHandler(data.DocumentEntityQuote, 1)
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestOpenDetailForRow_QuoteDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabQuotes)
 	tab := m.activeTab()
@@ -956,6 +1023,7 @@ func TestOpenDetailForRow_QuoteDocuments(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVendorColumnSpecsIncludeDocs(t *testing.T) {
+	t.Parallel()
 	specs := vendorColumnSpecs()
 	last := specs[len(specs)-1]
 	assert.Equal(t, tabDocuments.String(), last.Title)
@@ -963,11 +1031,13 @@ func TestVendorColumnSpecsIncludeDocs(t *testing.T) {
 }
 
 func TestVendorDocumentHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := newEntityDocumentHandler(data.DocumentEntityVendor, 1)
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestOpenDetailForRow_VendorDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabVendors)
 	tab := m.activeTab()
@@ -988,6 +1058,7 @@ func TestOpenDetailForRow_VendorDocuments(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNestedApplianceMaintenanceDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabAppliances)
 
@@ -1026,6 +1097,7 @@ func TestNestedApplianceMaintenanceDocuments(t *testing.T) {
 }
 
 func TestNestedVendorQuoteDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabVendors)
 
@@ -1058,6 +1130,7 @@ func TestNestedVendorQuoteDocuments(t *testing.T) {
 }
 
 func TestNestedProjectQuoteDocuments(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 	m.active = tabIndex(tabProjects)
 

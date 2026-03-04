@@ -10,6 +10,7 @@ import (
 )
 
 func TestOCRAvailable(t *testing.T) {
+	t.Parallel()
 	// Smoke test: just verify the functions don't panic and return
 	// consistent results across calls (sync.Once caching).
 	r1 := OCRAvailable()
@@ -18,18 +19,21 @@ func TestOCRAvailable(t *testing.T) {
 }
 
 func TestImageOCRAvailable(t *testing.T) {
+	t.Parallel()
 	r1 := ImageOCRAvailable()
 	r2 := ImageOCRAvailable()
 	assert.Equal(t, r1, r2)
 }
 
 func TestHasTesseract_Consistent(t *testing.T) {
+	t.Parallel()
 	r1 := HasTesseract()
 	r2 := HasTesseract()
 	assert.Equal(t, r1, r2)
 }
 
 func TestHasPDFToPPM_Consistent(t *testing.T) {
+	t.Parallel()
 	r1 := HasPDFToPPM()
 	r2 := HasPDFToPPM()
 	assert.Equal(t, r1, r2)

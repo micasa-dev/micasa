@@ -16,6 +16,7 @@ import (
 )
 
 func TestProjectRows(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	budget := int64(100000)
 	start := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -41,6 +42,7 @@ func TestProjectRows(t *testing.T) {
 }
 
 func TestProjectRowsDeleted(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	projects := []data.Project{
 		{
@@ -54,6 +56,7 @@ func TestProjectRowsDeleted(t *testing.T) {
 }
 
 func TestQuoteRows(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	labor := int64(20000)
 	quotes := []data.Quote{
@@ -77,6 +80,7 @@ func TestQuoteRows(t *testing.T) {
 }
 
 func TestQuoteRowsFallbackProjectName(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	quotes := []data.Quote{
 		{
@@ -90,6 +94,7 @@ func TestQuoteRowsFallbackProjectName(t *testing.T) {
 }
 
 func TestQuoteRowsDocCount(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	quotes := []data.Quote{
 		{ID: 1, ProjectID: 1, Project: data.Project{Title: "Kitchen"}, TotalCents: 100},
@@ -104,6 +109,7 @@ func TestQuoteRowsDocCount(t *testing.T) {
 }
 
 func TestMaintenanceRows(t *testing.T) {
+	t.Parallel()
 	appID := uint(5)
 	lastServiced := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	items := []data.MaintenanceItem{
@@ -130,6 +136,7 @@ func TestMaintenanceRows(t *testing.T) {
 }
 
 func TestMaintenanceRowsDocCount(t *testing.T) {
+	t.Parallel()
 	items := []data.MaintenanceItem{
 		{ID: 1, Name: "HVAC Filter", IntervalMonths: 3},
 		{ID: 2, Name: "Gutters", IntervalMonths: 6},
@@ -143,6 +150,7 @@ func TestMaintenanceRowsDocCount(t *testing.T) {
 }
 
 func TestMaintenanceRowsNoAppliance(t *testing.T) {
+	t.Parallel()
 	items := []data.MaintenanceItem{
 		{ID: 1, Name: "Gutters", Category: data.MaintenanceCategory{Name: "Exterior"}},
 	}
@@ -155,6 +163,7 @@ func TestMaintenanceRowsNoAppliance(t *testing.T) {
 // Step 12: Due-date items use the same urgency cell kind as interval items,
 // ensuring identical overdue/upcoming coloring.
 func TestMaintenanceRowsDueDateUrgencyCell(t *testing.T) {
+	t.Parallel()
 	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
 	items := []data.MaintenanceItem{
 		{
@@ -177,6 +186,7 @@ func TestMaintenanceRowsDueDateUrgencyCell(t *testing.T) {
 }
 
 func TestApplianceRows(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	cost := int64(89900)
 	purchase := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)
@@ -204,6 +214,7 @@ func TestApplianceRows(t *testing.T) {
 }
 
 func TestApplianceRowsNoOptionalFields(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	now := time.Now()
 	items := []data.Appliance{
@@ -220,6 +231,7 @@ func TestApplianceRowsNoOptionalFields(t *testing.T) {
 }
 
 func TestBuildRowsEmpty(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	rows, meta, cells := projectRows(nil, nil, nil, cur)
 	assert.Empty(t, rows)
@@ -228,6 +240,7 @@ func TestBuildRowsEmpty(t *testing.T) {
 }
 
 func TestDocumentRows(t *testing.T) {
+	t.Parallel()
 	docs := []data.Document{
 		{
 			ID:         1,
@@ -252,6 +265,7 @@ func TestDocumentRows(t *testing.T) {
 }
 
 func TestEntityDocumentRows(t *testing.T) {
+	t.Parallel()
 	docs := []data.Document{
 		{
 			ID:        1,
@@ -270,6 +284,7 @@ func TestEntityDocumentRows(t *testing.T) {
 }
 
 func TestFormatFileSize(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "0 B", formatFileSize(0))
 	assert.Equal(t, "512 B", formatFileSize(512))
 	assert.Equal(t, "1.0 KB", formatFileSize(1024))
@@ -279,21 +294,25 @@ func TestFormatFileSize(t *testing.T) {
 }
 
 func TestDocSizeBytesClamsNegative(t *testing.T) {
+	t.Parallel()
 	d := data.Document{SizeBytes: -1}
 	assert.Equal(t, uint64(0), docSizeBytes(d))
 }
 
 func TestDocSizeBytesPassesPositive(t *testing.T) {
+	t.Parallel()
 	d := data.Document{SizeBytes: 4096}
 	assert.Equal(t, uint64(4096), docSizeBytes(d))
 }
 
 func TestDocSizeBytesZero(t *testing.T) {
+	t.Parallel()
 	d := data.Document{SizeBytes: 0}
 	assert.Equal(t, uint64(0), docSizeBytes(d))
 }
 
 func TestDocumentEntityLabel(t *testing.T) {
+	t.Parallel()
 	names := entityNameMap{
 		{Kind: "project", ID: 5}:    "Kitchen Reno",
 		{Kind: "appliance", ID: 12}: "Dishwasher",
@@ -310,6 +329,7 @@ func TestDocumentEntityLabel(t *testing.T) {
 }
 
 func TestCentsCellNil(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	c := centsCell(nil, cur)
 	assert.True(t, c.Null, "nil cents should produce a null cell")
@@ -318,6 +338,7 @@ func TestCentsCellNil(t *testing.T) {
 }
 
 func TestCentsCellPresent(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	v := int64(123456)
 	c := centsCell(&v, cur)
@@ -326,6 +347,7 @@ func TestCentsCellPresent(t *testing.T) {
 }
 
 func TestDateCellNil(t *testing.T) {
+	t.Parallel()
 	c := dateCell(nil, cellDate)
 	assert.True(t, c.Null, "nil time should produce a null cell")
 	assert.Empty(t, c.Value)
@@ -333,6 +355,7 @@ func TestDateCellNil(t *testing.T) {
 }
 
 func TestDateCellPresent(t *testing.T) {
+	t.Parallel()
 	d := time.Date(2025, 6, 11, 0, 0, 0, 0, time.UTC)
 	c := dateCell(&d, cellDate)
 	assert.False(t, c.Null)
@@ -340,6 +363,7 @@ func TestDateCellPresent(t *testing.T) {
 }
 
 func TestProjectRowsNullOptionalFields(t *testing.T) {
+	t.Parallel()
 	cur := locale.DefaultCurrency()
 	projects := []data.Project{
 		{ID: 1, Title: "Minimal", Status: data.ProjectStatusPlanned},
@@ -354,6 +378,7 @@ func TestProjectRowsNullOptionalFields(t *testing.T) {
 }
 
 func TestCellsToRow(t *testing.T) {
+	t.Parallel()
 	cells := []cell{
 		{Value: "1"},
 		{Value: "hello"},

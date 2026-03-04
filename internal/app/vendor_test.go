@@ -14,6 +14,7 @@ import (
 )
 
 func TestVendorTabExists(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	found := false
 	for _, tab := range m.tabs {
@@ -26,14 +27,17 @@ func TestVendorTabExists(t *testing.T) {
 }
 
 func TestVendorTabIndex(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 5, tabIndex(tabVendors))
 }
 
 func TestVendorTabKindString(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "Vendors", tabVendors.String())
 }
 
 func TestVendorColumnSpecs(t *testing.T) {
+	t.Parallel()
 	specs := vendorColumnSpecs()
 	require.Len(t, specs, 9)
 	expected := []string{
@@ -53,6 +57,7 @@ func TestVendorColumnSpecs(t *testing.T) {
 }
 
 func TestVendorRows(t *testing.T) {
+	t.Parallel()
 	rows, meta, cells := vendorRows(
 		sampleVendors(),
 		map[uint]int{1: 3},
@@ -71,6 +76,7 @@ func TestVendorRows(t *testing.T) {
 }
 
 func TestVendorRowsDocCount(t *testing.T) {
+	t.Parallel()
 	docCounts := map[uint]int{1: 9}
 	_, _, cells := vendorRows(sampleVendors(), nil, nil, docCounts)
 	require.Len(t, cells, 2)
@@ -80,11 +86,13 @@ func TestVendorRowsDocCount(t *testing.T) {
 }
 
 func TestVendorHandlerFormKind(t *testing.T) {
+	t.Parallel()
 	h := vendorHandler{}
 	assert.Equal(t, formVendor, h.FormKind())
 }
 
 func TestVendorHandlerDeleteRestore(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	h := vendorHandler{}
 	require.NoError(t, m.store.CreateVendor(&data.Vendor{Name: "Test Co"}))
@@ -101,6 +109,7 @@ func TestVendorHandlerDeleteRestore(t *testing.T) {
 }
 
 func TestVendorTabNavigable(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	// Navigate to vendor tab.
 	m.active = tabIndex(tabVendors)
@@ -110,6 +119,7 @@ func TestVendorTabNavigable(t *testing.T) {
 }
 
 func TestVendorColumnSpecKinds(t *testing.T) {
+	t.Parallel()
 	specs := vendorColumnSpecs()
 	// ID (0) is readonly.
 	assert.Equal(t, cellReadonly, specs[0].Kind, "ID column should be readonly")
@@ -126,6 +136,7 @@ func TestVendorColumnSpecKinds(t *testing.T) {
 }
 
 func TestQuoteVendorColumnLinksToVendorTab(t *testing.T) {
+	t.Parallel()
 	specs := quoteColumnSpecs()
 	vendorSpec := specs[2] // Vendor column
 	require.NotNil(t, vendorSpec.Link, "expected Vendor column to have a Link")
@@ -133,6 +144,7 @@ func TestQuoteVendorColumnLinksToVendorTab(t *testing.T) {
 }
 
 func TestVendorJobsItemColumnLinksToMaintenanceTab(t *testing.T) {
+	t.Parallel()
 	specs := vendorJobsColumnSpecs()
 	itemSpec := specs[1] // Item column
 	require.NotNil(t, itemSpec.Link, "expected Item column to have a Link")
@@ -140,6 +152,7 @@ func TestVendorJobsItemColumnLinksToMaintenanceTab(t *testing.T) {
 }
 
 func TestVendorJobsRowsSetsItemLinkID(t *testing.T) {
+	t.Parallel()
 	entries := []data.ServiceLogEntry{
 		{
 			ID:                1,

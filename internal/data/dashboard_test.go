@@ -12,6 +12,7 @@ import (
 )
 
 func TestListMaintenanceWithSchedule(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	cat := MaintenanceCategory{Name: "TestCat"}
 	require.NoError(t, store.db.Create(&cat).Error)
@@ -37,6 +38,7 @@ func TestListMaintenanceWithSchedule(t *testing.T) {
 }
 
 func TestListMaintenanceWithScheduleDueDate(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	cat := MaintenanceCategory{Name: "DueDateCat"}
 	require.NoError(t, store.db.Create(&cat).Error)
@@ -62,6 +64,7 @@ func TestListMaintenanceWithScheduleDueDate(t *testing.T) {
 }
 
 func TestListActiveProjects(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	var pt ProjectType
 	require.NoError(t, store.db.First(&pt).Error)
@@ -101,6 +104,7 @@ func TestListActiveProjects(t *testing.T) {
 }
 
 func TestListOpenIncidents(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	require.NoError(t, store.CreateIncident(&Incident{
@@ -129,6 +133,7 @@ func TestListOpenIncidents(t *testing.T) {
 }
 
 func TestListExpiringWarranties(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
 	ptrTime := func(y, m, d int) *time.Time {
@@ -164,6 +169,7 @@ func TestListExpiringWarranties(t *testing.T) {
 }
 
 func TestListRecentServiceLogs(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	cat := MaintenanceCategory{Name: "SLCat"}
 	require.NoError(t, store.db.Create(&cat).Error)
@@ -185,6 +191,7 @@ func TestListRecentServiceLogs(t *testing.T) {
 }
 
 func TestYTDSpending(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	ptr := func(v int64) *int64 { return &v }
 
@@ -240,6 +247,7 @@ func TestYTDSpending(t *testing.T) {
 }
 
 func TestTotalProjectSpendUnaffectedByEdits(t *testing.T) {
+	t.Parallel()
 	// User scenario: editing a project's description (or any field) should
 	// not change the spending total. The old updated_at filter caused edits
 	// to inflate/deflate the YTD figure.

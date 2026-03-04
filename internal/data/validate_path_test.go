@@ -15,6 +15,7 @@ import (
 )
 
 func TestValidateDBPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path    string
 		wantErr string // substring of error, "" means no error
@@ -67,6 +68,7 @@ func TestValidateDBPath(t *testing.T) {
 }
 
 func TestValidateDBPathRejectsRandomURLs(t *testing.T) {
+	t.Parallel()
 	f := gofakeit.New(testSeed)
 	for i := range 100 {
 		u := f.URL()
@@ -77,6 +79,7 @@ func TestValidateDBPathRejectsRandomURLs(t *testing.T) {
 }
 
 func TestValidateDBPathRejectsRandomURLsWithQueryParams(t *testing.T) {
+	t.Parallel()
 	f := gofakeit.New(testSeed)
 	for i := range 50 {
 		u := fmt.Sprintf("%s?%s=%s", f.URL(), f.Word(), f.Word())
@@ -87,6 +90,7 @@ func TestValidateDBPathRejectsRandomURLsWithQueryParams(t *testing.T) {
 }
 
 func TestExpandHome(t *testing.T) {
+	t.Parallel()
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 
@@ -118,6 +122,7 @@ func TestExpandHome(t *testing.T) {
 }
 
 func TestOpenRejectsURIs(t *testing.T) {
+	t.Parallel()
 	f := gofakeit.New(testSeed)
 	for i := range 10 {
 		u := f.URL()

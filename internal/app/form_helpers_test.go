@@ -18,12 +18,14 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestRequiredDateValid(t *testing.T) {
+	t.Parallel()
 	validate := requiredDate("test date")
 	assert.NoError(t, validate("2026-01-15"))
 	assert.NoError(t, validate("2024-12-31"))
 }
 
 func TestRequiredDateEmpty(t *testing.T) {
+	t.Parallel()
 	validate := requiredDate("test date")
 	err := validate("")
 	require.Error(t, err)
@@ -31,6 +33,7 @@ func TestRequiredDateEmpty(t *testing.T) {
 }
 
 func TestRequiredDateWhitespace(t *testing.T) {
+	t.Parallel()
 	validate := requiredDate("test date")
 	err := validate("   ")
 	require.Error(t, err)
@@ -38,6 +41,7 @@ func TestRequiredDateWhitespace(t *testing.T) {
 }
 
 func TestRequiredDateInvalid(t *testing.T) {
+	t.Parallel()
 	validate := requiredDate("test date")
 	err := validate("not-a-date")
 	require.Error(t, err)
@@ -45,6 +49,7 @@ func TestRequiredDateInvalid(t *testing.T) {
 }
 
 func TestRequiredDatePartialFormat(t *testing.T) {
+	t.Parallel()
 	validate := requiredDate("test date")
 	err := validate("2026-1-5")
 	require.Error(t, err)
@@ -55,6 +60,7 @@ func TestRequiredDatePartialFormat(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestDocumentFormValuesRoundTrip(t *testing.T) {
+	t.Parallel()
 	doc := data.Document{
 		Title:      "My Doc",
 		EntityKind: data.DocumentEntityProject,
@@ -69,6 +75,7 @@ func TestDocumentFormValuesRoundTrip(t *testing.T) {
 }
 
 func TestDocumentFormValuesNoEntity(t *testing.T) {
+	t.Parallel()
 	doc := data.Document{
 		Title: "Standalone Doc",
 	}
@@ -83,6 +90,7 @@ func TestDocumentFormValuesNoEntity(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestDocumentEntityOptionsEmpty(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	opts, err := m.documentEntityOptions()
 	require.NoError(t, err)
@@ -92,6 +100,7 @@ func TestDocumentEntityOptionsEmpty(t *testing.T) {
 }
 
 func TestDocumentEntityOptionsIncludesEntities(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Create one of each entity type so they appear in options.
@@ -146,6 +155,7 @@ func TestDocumentEntityOptionsIncludesEntities(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestIncidentFormValuesRoundTrip(t *testing.T) {
+	t.Parallel()
 	appID := uint(5)
 	vendorID := uint(3)
 	cost := int64(15000)
@@ -178,6 +188,7 @@ func TestIncidentFormValuesRoundTrip(t *testing.T) {
 }
 
 func TestIncidentFormValuesNilOptionals(t *testing.T) {
+	t.Parallel()
 	item := data.Incident{
 		Title:       "Minimal",
 		Status:      data.IncidentStatusOpen,
@@ -196,6 +207,7 @@ func TestIncidentFormValuesNilOptionals(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestServiceLogFormValuesRoundTrip(t *testing.T) {
+	t.Parallel()
 	vendorID := uint(7)
 	cost := int64(5000)
 	entry := data.ServiceLogEntry{
@@ -214,6 +226,7 @@ func TestServiceLogFormValuesRoundTrip(t *testing.T) {
 }
 
 func TestServiceLogFormValuesNilOptionals(t *testing.T) {
+	t.Parallel()
 	entry := data.ServiceLogEntry{
 		MaintenanceItemID: 1,
 		ServicedAt:        time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -228,6 +241,7 @@ func TestServiceLogFormValuesNilOptionals(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVendorFormValuesRoundTrip(t *testing.T) {
+	t.Parallel()
 	vendor := data.Vendor{
 		Name:        "Acme",
 		ContactName: "Bob",

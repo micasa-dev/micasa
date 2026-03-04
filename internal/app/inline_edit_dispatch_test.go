@@ -11,6 +11,7 @@ import (
 )
 
 func TestInlineEditProjectTextColumnOpensInlineInput(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	// Create a project.
 	m.startProjectForm()
@@ -30,6 +31,7 @@ func TestInlineEditProjectTextColumnOpensInlineInput(t *testing.T) {
 }
 
 func TestInlineEditProjectSelectColumnOpensFormOverlay(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.startProjectForm()
 	m.fs.form.Init()
@@ -47,6 +49,7 @@ func TestInlineEditProjectSelectColumnOpensFormOverlay(t *testing.T) {
 }
 
 func TestInlineEditVendorTextColumnsUseInlineInput(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.startVendorForm()
 	m.fs.form.Init()
@@ -77,6 +80,7 @@ func TestInlineEditVendorTextColumnsUseInlineInput(t *testing.T) {
 }
 
 func TestInlineEditAppliaceDateColumnOpensCalendar(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.startApplianceForm()
 	m.fs.form.Init()
@@ -94,6 +98,7 @@ func TestInlineEditAppliaceDateColumnOpensCalendar(t *testing.T) {
 }
 
 func TestShiftEOpensFullEditFormRegardlessOfColumn(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	// Create a vendor so there's data to edit.
 	m.startVendorForm()
@@ -131,6 +136,7 @@ func TestShiftEOpensFullEditFormRegardlessOfColumn(t *testing.T) {
 }
 
 func TestEditKeyDispatchesInlineEditInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	// Create a vendor so there's data to edit.
 	m.startVendorForm()

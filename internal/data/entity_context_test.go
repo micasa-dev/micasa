@@ -11,6 +11,7 @@ import (
 )
 
 func TestEntityNames_Empty(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 	vendors, projects, appliances, err := store.EntityNames()
 	require.NoError(t, err)
@@ -20,6 +21,7 @@ func TestEntityNames_Empty(t *testing.T) {
 }
 
 func TestEntityNames_ReturnsActiveOnly(t *testing.T) {
+	t.Parallel()
 	store := newTestStore(t)
 
 	// Seed some data.

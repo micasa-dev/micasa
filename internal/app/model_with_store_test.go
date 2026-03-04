@@ -4,6 +4,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -14,20 +15,18 @@ import (
 
 const testProjectTitle = "Test Project"
 
-// newTestModelWithStore creates a Model backed by a real in-memory SQLite
-// store with seeded defaults (project types, maintenance categories). The
-// model is sized to 120x40 and starts in normal mode (dashboard and house
-// form dismissed).
+// newTestModelWithStore creates a Model backed by a real SQLite store with
+// seeded defaults (project types, maintenance categories). The model is sized
+// to 120x40 and starts in normal mode (dashboard and house form dismissed).
 func newTestModelWithStore(t *testing.T) *Model {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "test.db")
+	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
 	store, err := data.Open(path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
-	require.NoError(t, store.AutoMigrate())
-	require.NoError(t, store.SeedDefaults())
 	store.SetCurrency(locale.DefaultCurrency())
 
 	require.NoError(t, store.CreateHouseProfile(data.HouseProfile{

@@ -14,6 +14,7 @@ import (
 )
 
 func TestPipeline_EmptyData(t *testing.T) {
+	t.Parallel()
 	p := &Pipeline{}
 	r := p.Run(context.Background(), nil, "empty.pdf", "application/pdf")
 	assert.Empty(t, r.Text())
@@ -24,6 +25,7 @@ func TestPipeline_EmptyData(t *testing.T) {
 }
 
 func TestPipeline_PlainText(t *testing.T) {
+	t.Parallel()
 	p := &Pipeline{}
 	r := p.Run(context.Background(), []byte("Hello, world!"), "readme.txt", "text/plain")
 	assert.Equal(t, "Hello, world!", r.Text())
@@ -35,6 +37,7 @@ func TestPipeline_PlainText(t *testing.T) {
 }
 
 func TestPipeline_UnsupportedMIME(t *testing.T) {
+	t.Parallel()
 	p := &Pipeline{}
 	// application/octet-stream: no text extraction, no OCR, no LLM.
 	r := p.Run(context.Background(), []byte{0xFF, 0xD8}, "blob.bin", "application/octet-stream")
@@ -43,6 +46,7 @@ func TestPipeline_UnsupportedMIME(t *testing.T) {
 }
 
 func TestPipeline_ImageOCR(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -61,6 +65,7 @@ func TestPipeline_ImageOCR(t *testing.T) {
 }
 
 func TestPipeline_PDFTextExtraction(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToText() {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
@@ -83,6 +88,7 @@ func TestPipeline_PDFTextExtraction(t *testing.T) {
 }
 
 func TestPipeline_NoLLMClient(t *testing.T) {
+	t.Parallel()
 	p := &Pipeline{LLMClient: nil}
 	r := p.Run(context.Background(), []byte("some extracted text"), "doc.txt", "text/plain")
 	assert.Equal(t, "some extracted text", r.Text())
@@ -91,6 +97,7 @@ func TestPipeline_NoLLMClient(t *testing.T) {
 }
 
 func TestPipeline_OCRIntegration(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -119,6 +126,7 @@ func TestPipeline_OCRIntegration(t *testing.T) {
 }
 
 func TestPipeline_MixedPDF(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -153,6 +161,7 @@ func TestPipeline_MixedPDF(t *testing.T) {
 }
 
 func TestPipeline_NilExtractorsDefault(t *testing.T) {
+	t.Parallel()
 	p := &Pipeline{}
 	// Nil extractors falls back to DefaultExtractors(0, 0).
 	r := p.Run(context.Background(), []byte("text"), "doc.txt", "text/plain")
@@ -161,6 +170,7 @@ func TestPipeline_NilExtractorsDefault(t *testing.T) {
 }
 
 func TestPipeline_SchemaContext(t *testing.T) {
+	t.Parallel()
 	p := &Pipeline{
 		Schema: SchemaContext{
 			Vendors:    []EntityRow{{ID: 1, Name: "Garcia Plumbing"}},
@@ -175,11 +185,13 @@ func TestPipeline_SchemaContext(t *testing.T) {
 }
 
 func TestResult_Text_EmptySources(t *testing.T) {
+	t.Parallel()
 	r := &Result{}
 	assert.Empty(t, r.Text())
 }
 
 func TestResult_Text_FirstNonEmpty(t *testing.T) {
+	t.Parallel()
 	r := &Result{
 		Sources: []TextSource{
 			{Tool: "pdftotext", Text: "pdf text"},
@@ -190,6 +202,7 @@ func TestResult_Text_FirstNonEmpty(t *testing.T) {
 }
 
 func TestResult_Text_SkipsWhitespace(t *testing.T) {
+	t.Parallel()
 	r := &Result{
 		Sources: []TextSource{
 			{Tool: "pdftotext", Text: "   "},
@@ -200,6 +213,7 @@ func TestResult_Text_SkipsWhitespace(t *testing.T) {
 }
 
 func TestResult_SourceByTool(t *testing.T) {
+	t.Parallel()
 	r := &Result{
 		Sources: []TextSource{
 			{Tool: "pdftotext", Text: "pdf"},
@@ -213,6 +227,7 @@ func TestResult_SourceByTool(t *testing.T) {
 }
 
 func TestResult_HasSource(t *testing.T) {
+	t.Parallel()
 	r := &Result{
 		Sources: []TextSource{{Tool: "plaintext", Text: "hello"}},
 	}

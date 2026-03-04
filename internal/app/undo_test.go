@@ -12,6 +12,7 @@ import (
 )
 
 func TestPushUndo(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	require.Empty(t, m.undoStack)
 
@@ -25,6 +26,7 @@ func TestPushUndo(t *testing.T) {
 }
 
 func TestPushUndoCapsAtMax(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	for i := range maxUndoStack + 10 {
 		m.pushUndo(undoEntry{
@@ -38,6 +40,7 @@ func TestPushUndoCapsAtMax(t *testing.T) {
 }
 
 func TestPopUndoRestoresAndRemoves(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	restored := false
 	m.pushUndo(undoEntry{
@@ -58,12 +61,14 @@ func TestPopUndoRestoresAndRemoves(t *testing.T) {
 }
 
 func TestPopUndoEmptyStack(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	err := m.popUndo()
 	require.Error(t, err)
 }
 
 func TestPopUndoRestoreError(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.pushUndo(undoEntry{
 		Description: "bad edit",
@@ -75,6 +80,7 @@ func TestPopUndoRestoreError(t *testing.T) {
 }
 
 func TestPopUndoLIFOOrder(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	var order []string
 
@@ -100,6 +106,7 @@ func TestPopUndoLIFOOrder(t *testing.T) {
 }
 
 func TestUndoKeyInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeEdit
 	m.setAllTableKeyMaps(editTableKeyMap())
@@ -118,6 +125,7 @@ func TestUndoKeyInEditMode(t *testing.T) {
 }
 
 func TestUndoKeyIgnoredInNormalMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeNormal
 
@@ -138,6 +146,7 @@ func TestUndoKeyIgnoredInNormalMode(t *testing.T) {
 }
 
 func TestSnapshotForUndoSkipsCreates(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.fs.editID = nil
 	m.fs.formKind = formProject
@@ -150,12 +159,14 @@ func TestSnapshotForUndoSkipsCreates(t *testing.T) {
 // --- Redo tests ---
 
 func TestPopRedoEmptyStack(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	err := m.popRedo()
 	require.Error(t, err)
 }
 
 func TestPopRedoRestoresAndRemoves(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	restored := false
 	m.pushRedo(undoEntry{
@@ -176,6 +187,7 @@ func TestPopRedoRestoresAndRemoves(t *testing.T) {
 }
 
 func TestRedoKeyInEditMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeEdit
 	m.setAllTableKeyMaps(editTableKeyMap())
@@ -194,6 +206,7 @@ func TestRedoKeyInEditMode(t *testing.T) {
 }
 
 func TestRedoKeyIgnoredInNormalMode(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.mode = modeNormal
 
@@ -213,6 +226,7 @@ func TestRedoKeyIgnoredInNormalMode(t *testing.T) {
 }
 
 func TestNewEditClearsRedoStack(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.redoStack = []undoEntry{
 		{Description: "old redo"},
@@ -231,6 +245,7 @@ func TestNewEditClearsRedoStack(t *testing.T) {
 }
 
 func TestUndoRedoCycle(t *testing.T) {
+	t.Parallel()
 	// Simulates: value starts at "A", user changes to "B", then undo, then redo.
 	m := newTestModel()
 	current := "B"

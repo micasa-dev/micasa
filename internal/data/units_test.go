@@ -13,11 +13,13 @@ import (
 )
 
 func TestUnitSystemString(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "imperial", UnitsImperial.String())
 	assert.Equal(t, "metric", UnitsMetric.String())
 }
 
 func TestParseUnitSystem(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, UnitsImperial, ParseUnitSystem("imperial"))
 	assert.Equal(t, UnitsMetric, ParseUnitSystem("metric"))
 	assert.Equal(t, UnitsMetric, ParseUnitSystem("Metric"))
@@ -27,6 +29,7 @@ func TestParseUnitSystem(t *testing.T) {
 }
 
 func TestSqFtToSqMRoundTrip(t *testing.T) {
+	t.Parallel()
 	original := 1820.0
 	sqm := SqFtToSqM(original)
 	roundTripped := SqMToSqFt(sqm)
@@ -34,16 +37,19 @@ func TestSqFtToSqMRoundTrip(t *testing.T) {
 }
 
 func TestSqFtToSqMKnownValue(t *testing.T) {
+	t.Parallel()
 	// 1000 sq ft = ~92.9 m^2
 	sqm := SqFtToSqM(1000)
 	assert.InDelta(t, 92.9, sqm, 0.1)
 }
 
 func TestSqFtToDisplayIntImperial(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 1820, SqFtToDisplayInt(1820, UnitsImperial))
 }
 
 func TestSqFtToDisplayIntMetric(t *testing.T) {
+	t.Parallel()
 	got := SqFtToDisplayInt(1820, UnitsMetric)
 	// 1820 sq ft = ~169 m^2
 	assert.True(t, got >= 168 && got <= 170,
@@ -51,10 +57,12 @@ func TestSqFtToDisplayIntMetric(t *testing.T) {
 }
 
 func TestDisplayIntToSqFtImperial(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 1820, DisplayIntToSqFt(1820, UnitsImperial))
 }
 
 func TestDisplayIntToSqFtMetric(t *testing.T) {
+	t.Parallel()
 	got := DisplayIntToSqFt(169, UnitsMetric)
 	// 169 m^2 = ~1819 sq ft
 	assert.True(t, got >= 1818 && got <= 1820,
@@ -62,6 +70,7 @@ func TestDisplayIntToSqFtMetric(t *testing.T) {
 }
 
 func TestDisplayRoundTrip(t *testing.T) {
+	t.Parallel()
 	original := 2000
 	display := SqFtToDisplayInt(original, UnitsMetric)
 	require.NotZero(t, display)
@@ -73,11 +82,13 @@ func TestDisplayRoundTrip(t *testing.T) {
 }
 
 func TestFormatAreaImperial(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "1,820 ft\u00B2", FormatArea(1820, UnitsImperial))
 	assert.Empty(t, FormatArea(0, UnitsImperial))
 }
 
 func TestFormatAreaMetric(t *testing.T) {
+	t.Parallel()
 	result := FormatArea(1820, UnitsMetric)
 	assert.Contains(t, result, "m\u00B2")
 	assert.NotContains(t, result, "ft")
@@ -85,11 +96,13 @@ func TestFormatAreaMetric(t *testing.T) {
 }
 
 func TestFormatLotAreaImperial(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "7,000 ft\u00B2 lot", FormatLotArea(7000, UnitsImperial))
 	assert.Empty(t, FormatLotArea(0, UnitsImperial))
 }
 
 func TestFormatLotAreaMetric(t *testing.T) {
+	t.Parallel()
 	result := FormatLotArea(7000, UnitsMetric)
 	assert.Contains(t, result, "m\u00B2 lot")
 	assert.NotContains(t, result, "ft")
@@ -97,6 +110,7 @@ func TestFormatLotAreaMetric(t *testing.T) {
 }
 
 func TestFormTitlesAndPlaceholders(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "Square feet", AreaFormTitle(UnitsImperial))
 	assert.Equal(t, "Square meters", AreaFormTitle(UnitsMetric))
 	assert.Equal(t, "Lot square feet", LotAreaFormTitle(UnitsImperial))
@@ -108,6 +122,7 @@ func TestFormTitlesAndPlaceholders(t *testing.T) {
 }
 
 func TestUnitSystemForLocale(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		tag  language.Tag

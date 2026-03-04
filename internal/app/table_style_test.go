@@ -11,6 +11,7 @@ import (
 )
 
 func TestWarrantyStyleDateOnlyComparison(t *testing.T) {
+	t.Parallel()
 	// Warranty expires "2026-02-20". A user in UTC-5 at 23:00 local on
 	// Feb 20 is still on the expiry date, so the warranty should be active.
 	// But the absolute instant is Feb 21 04:00 UTC, which is After
@@ -24,6 +25,7 @@ func TestWarrantyStyleDateOnlyComparison(t *testing.T) {
 }
 
 func TestWarrantyStyleExpiredNextDay(t *testing.T) {
+	t.Parallel()
 	// Same warranty, but now it's Feb 21 local -- should be expired.
 	loc := time.FixedZone("UTC-5", -5*3600)
 	now := time.Date(2026, 2, 21, 1, 0, 0, 0, loc)
@@ -34,6 +36,7 @@ func TestWarrantyStyleExpiredNextDay(t *testing.T) {
 }
 
 func TestUrgencyStyleUsesProvidedNow(t *testing.T) {
+	t.Parallel()
 	// Verify urgencyStyleAt uses the provided now, not real time.Now().
 	// Set now to the day after the target -- should be overdue regardless
 	// of what the real clock says.
@@ -45,6 +48,7 @@ func TestUrgencyStyleUsesProvidedNow(t *testing.T) {
 }
 
 func TestUrgencyStyleDateOnlyComparison(t *testing.T) {
+	t.Parallel()
 	// A maintenance item due "2026-02-20". User in UTC-5 at 23:00 local
 	// on Feb 19 -- locally that's 1 day away. But the absolute instant
 	// is Feb 20 04:00 UTC, past midnight of the due date. The function

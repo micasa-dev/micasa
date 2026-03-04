@@ -16,6 +16,7 @@ import (
 const testDate = "2026-02-15"
 
 func TestCalendarGridRendersMonth(t *testing.T) {
+	t.Parallel()
 	cal := calendarState{
 		Cursor:   time.Date(2026, 2, 15, 0, 0, 0, 0, time.Local),
 		HasValue: false,
@@ -28,6 +29,7 @@ func TestCalendarGridRendersMonth(t *testing.T) {
 }
 
 func TestCalendarMoveDay(t *testing.T) {
+	t.Parallel()
 	cal := &calendarState{
 		Cursor: time.Date(2026, 2, 15, 0, 0, 0, 0, time.Local),
 	}
@@ -38,6 +40,7 @@ func TestCalendarMoveDay(t *testing.T) {
 }
 
 func TestCalendarMoveWeek(t *testing.T) {
+	t.Parallel()
 	cal := &calendarState{
 		Cursor: time.Date(2026, 2, 15, 0, 0, 0, 0, time.Local),
 	}
@@ -46,6 +49,7 @@ func TestCalendarMoveWeek(t *testing.T) {
 }
 
 func TestCalendarMoveMonth(t *testing.T) {
+	t.Parallel()
 	cal := &calendarState{
 		Cursor: time.Date(2026, 2, 15, 0, 0, 0, 0, time.Local),
 	}
@@ -56,6 +60,7 @@ func TestCalendarMoveMonth(t *testing.T) {
 }
 
 func TestCalendarMoveCrossesMonthBoundary(t *testing.T) {
+	t.Parallel()
 	cal := &calendarState{
 		Cursor: time.Date(2026, 1, 31, 0, 0, 0, 0, time.Local),
 	}
@@ -65,6 +70,7 @@ func TestCalendarMoveCrossesMonthBoundary(t *testing.T) {
 }
 
 func TestDaysIn(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		year  int
 		month time.Month
@@ -82,6 +88,7 @@ func TestDaysIn(t *testing.T) {
 }
 
 func TestSameDay(t *testing.T) {
+	t.Parallel()
 	a := time.Date(2026, 2, 10, 9, 30, 0, 0, time.UTC)
 	b := time.Date(2026, 2, 10, 18, 0, 0, 0, time.UTC)
 	c := time.Date(2026, 2, 11, 9, 30, 0, 0, time.UTC)
@@ -90,6 +97,7 @@ func TestSameDay(t *testing.T) {
 }
 
 func TestCalendarKeyNavigation(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := testDate
 	m.openCalendar(&dateVal, nil)
@@ -118,6 +126,7 @@ func TestCalendarKeyNavigation(t *testing.T) {
 }
 
 func TestCalendarConfirmWritesDate(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := ""
 	confirmed := false
@@ -137,6 +146,7 @@ func TestCalendarConfirmWritesDate(t *testing.T) {
 }
 
 func TestCalendarEscCancels(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := testDate
 	m.openCalendar(&dateVal, nil)
@@ -148,6 +158,7 @@ func TestCalendarEscCancels(t *testing.T) {
 }
 
 func TestDatePickerEscClearsFormState(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := testDate
 	id := uint(42)
@@ -175,6 +186,7 @@ func TestDatePickerEscClearsFormState(t *testing.T) {
 }
 
 func TestCalendarRendersInView(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	m.width = 120
 	m.height = 40
@@ -187,6 +199,7 @@ func TestCalendarRendersInView(t *testing.T) {
 }
 
 func TestCalendarMonthNavigation(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := testDate
 	m.openCalendar(&dateVal, nil)
@@ -206,6 +219,7 @@ func TestCalendarMonthNavigation(t *testing.T) {
 }
 
 func TestCalendarYearNavigation(t *testing.T) {
+	t.Parallel()
 	cal := &calendarState{
 		Cursor: time.Date(2026, 2, 15, 0, 0, 0, 0, time.Local),
 	}
@@ -218,6 +232,7 @@ func TestCalendarYearNavigation(t *testing.T) {
 }
 
 func TestCalendarGridColumnAlignment(t *testing.T) {
+	t.Parallel()
 	cal := calendarState{
 		Cursor:   time.Date(2026, 11, 1, 0, 0, 0, 0, time.Local),
 		HasValue: false,
@@ -255,6 +270,7 @@ func TestCalendarGridColumnAlignment(t *testing.T) {
 }
 
 func TestCalendarFixedHeight(t *testing.T) {
+	t.Parallel()
 	feb := calendarGrid(calendarState{
 		Cursor: time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local),
 	})
@@ -266,6 +282,7 @@ func TestCalendarFixedHeight(t *testing.T) {
 }
 
 func TestCalendarHintsOnLeft(t *testing.T) {
+	t.Parallel()
 	grid := calendarGrid(calendarState{
 		Cursor: time.Date(2026, 2, 15, 0, 0, 0, 0, time.Local),
 	})
@@ -292,6 +309,7 @@ func TestCalendarHintsOnLeft(t *testing.T) {
 }
 
 func TestCalendarMoveMonthFromJan31ClampsFeb(t *testing.T) {
+	t.Parallel()
 	// User scenario: cursor is on Jan 31, user presses L (next month).
 	// Should land on Feb 28 (not March 3 from time.AddDate overflow).
 	cal := &calendarState{
@@ -303,6 +321,7 @@ func TestCalendarMoveMonthFromJan31ClampsFeb(t *testing.T) {
 }
 
 func TestCalendarMoveMonthFromJan31LeapYear(t *testing.T) {
+	t.Parallel()
 	cal := &calendarState{
 		Cursor: time.Date(2024, 1, 31, 0, 0, 0, 0, time.Local),
 	}
@@ -312,6 +331,7 @@ func TestCalendarMoveMonthFromJan31LeapYear(t *testing.T) {
 }
 
 func TestCalendarMoveYearFromFeb29ClampsFeb28(t *testing.T) {
+	t.Parallel()
 	// User scenario: cursor is on Feb 29 in a leap year, user presses ]
 	// (next year). Should land on Feb 28, not March 1.
 	cal := &calendarState{
@@ -324,6 +344,7 @@ func TestCalendarMoveYearFromFeb29ClampsFeb28(t *testing.T) {
 }
 
 func TestCalendarMoveMonthViaKeyboardClamps(t *testing.T) {
+	t.Parallel()
 	// End-to-end user flow: open calendar on Jan 31, press L (next month).
 	m := newTestModel()
 	dateVal := "2025-01-31"
@@ -341,6 +362,7 @@ func TestCalendarMoveMonthViaKeyboardClamps(t *testing.T) {
 }
 
 func TestCalendarToday(t *testing.T) {
+	t.Parallel()
 	cal := &calendarState{
 		Cursor: time.Date(2020, 6, 15, 0, 0, 0, 0, time.Local),
 	}
@@ -349,6 +371,7 @@ func TestCalendarToday(t *testing.T) {
 }
 
 func TestCalendarTodayKeyNavigation(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := "2020-06-15"
 	confirmed := false
@@ -372,6 +395,7 @@ func TestCalendarTodayKeyNavigation(t *testing.T) {
 }
 
 func TestCalendarTodayFromParsedCursor(t *testing.T) {
+	t.Parallel()
 	// openCalendar parses dates via time.ParseInLocation (local).
 	// Pressing "t" must land on the correct local day.
 	m := newTestModel()
@@ -393,6 +417,7 @@ func TestCalendarTodayFromParsedCursor(t *testing.T) {
 }
 
 func TestOpenCalendarParsesInLocalTimezone(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := "2026-02-15"
 	m.openCalendar(&dateVal, nil)
@@ -405,6 +430,7 @@ func TestOpenCalendarParsesInLocalTimezone(t *testing.T) {
 }
 
 func TestOpenCalendarWithEmptyValue(t *testing.T) {
+	t.Parallel()
 	m := newTestModel()
 	dateVal := ""
 	m.openCalendar(&dateVal, nil)

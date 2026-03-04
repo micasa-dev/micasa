@@ -19,6 +19,7 @@ const (
 )
 
 func TestResolveUSD(t *testing.T) {
+	t.Parallel()
 	c, err := Resolve("USD", language.AmericanEnglish)
 	require.NoError(t, err)
 	assert.Equal(t, "USD", c.Code())
@@ -26,6 +27,7 @@ func TestResolveUSD(t *testing.T) {
 }
 
 func TestResolveEUR(t *testing.T) {
+	t.Parallel()
 	c, err := Resolve("EUR", language.German)
 	require.NoError(t, err)
 	assert.Equal(t, "EUR", c.Code())
@@ -33,6 +35,7 @@ func TestResolveEUR(t *testing.T) {
 }
 
 func TestResolveGBP(t *testing.T) {
+	t.Parallel()
 	c, err := Resolve("GBP", language.BritishEnglish)
 	require.NoError(t, err)
 	assert.Equal(t, "GBP", c.Code())
@@ -40,6 +43,7 @@ func TestResolveGBP(t *testing.T) {
 }
 
 func TestResolveJPY(t *testing.T) {
+	t.Parallel()
 	c, err := Resolve("JPY", language.Japanese)
 	require.NoError(t, err)
 	assert.Equal(t, "JPY", c.Code())
@@ -47,29 +51,34 @@ func TestResolveJPY(t *testing.T) {
 }
 
 func TestResolveInvalid(t *testing.T) {
+	t.Parallel()
 	_, err := Resolve("NOPE", language.AmericanEnglish)
 	assert.Error(t, err)
 }
 
 func TestResolveCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	c, err := Resolve("eur", language.German)
 	require.NoError(t, err)
 	assert.Equal(t, "EUR", c.Code())
 }
 
 func TestResolveEmpty(t *testing.T) {
+	t.Parallel()
 	c, err := Resolve("", language.AmericanEnglish)
 	require.NoError(t, err)
 	assert.Equal(t, "USD", c.Code())
 }
 
 func TestDefaultCurrency(t *testing.T) {
+	t.Parallel()
 	c := DefaultCurrency()
 	assert.Equal(t, "USD", c.Code())
 	assert.Equal(t, "$", c.Symbol())
 }
 
 func TestFormatCentsUSD(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	tests := []struct {
 		name  string
@@ -90,11 +99,13 @@ func TestFormatCentsUSD(t *testing.T) {
 }
 
 func TestFormatCentsNegative(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	assert.Equal(t, "-$5.00", c.FormatCents(-500))
 }
 
 func TestFormatCentsMinInt64(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	formatted := c.FormatCents(math.MinInt64)
 	assert.Contains(t, formatted, "-")
@@ -102,17 +113,20 @@ func TestFormatCentsMinInt64(t *testing.T) {
 }
 
 func TestFormatOptionalCentsNil(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	assert.Empty(t, c.FormatOptionalCents(nil))
 }
 
 func TestFormatOptionalCentsNonNil(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	cents := int64(123456)
 	assert.Equal(t, "$1,234.56", c.FormatOptionalCents(&cents))
 }
 
 func TestFormatCentsEUR(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("EUR", language.German)
 	formatted := c.FormatCents(123456)
 	assert.Contains(t, formatted, c.Symbol())
@@ -120,6 +134,7 @@ func TestFormatCentsEUR(t *testing.T) {
 }
 
 func TestFormatCentsGBP(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("GBP", language.BritishEnglish)
 	formatted := c.FormatCents(123456)
 	assert.Contains(t, formatted, c.Symbol())
@@ -129,6 +144,7 @@ func TestFormatCentsGBP(t *testing.T) {
 // TestFormatCentsEURFrench verifies that the same EUR currency formats
 // differently when the formatting locale is French vs German.
 func TestFormatCentsEURFrench(t *testing.T) {
+	t.Parallel()
 	fr := language.MustParse("fr")
 	c := MustResolve("EUR", fr)
 	formatted := c.FormatCents(123456)
@@ -139,6 +155,7 @@ func TestFormatCentsEURFrench(t *testing.T) {
 }
 
 func TestFormatCompactCentsUSD(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	tests := []struct {
 		name  string
@@ -157,6 +174,7 @@ func TestFormatCompactCentsUSD(t *testing.T) {
 }
 
 func TestFormatCompactCentsLargeUSD(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	assert.Equal(t, "$1k", c.FormatCompactCents(100000))
 	assert.Equal(t, "$1.2k", c.FormatCompactCents(123456))
@@ -165,6 +183,7 @@ func TestFormatCompactCentsLargeUSD(t *testing.T) {
 }
 
 func TestFormatCompactCentsEUR(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("EUR", language.German)
 	assert.Contains(t, c.FormatCompactCents(123456), "1,2k")
 	assert.Contains(t, c.FormatCompactCents(130000000), "1,3M")
@@ -172,11 +191,13 @@ func TestFormatCompactCentsEUR(t *testing.T) {
 }
 
 func TestFormatCompactOptionalCentsNil(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	assert.Empty(t, c.FormatCompactOptionalCents(nil))
 }
 
 func TestParseRequiredCentsUSD(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	tests := []struct {
 		input string
@@ -197,6 +218,7 @@ func TestParseRequiredCentsUSD(t *testing.T) {
 }
 
 func TestParseRequiredCentsInvalid(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	for _, input := range []string{"", "12.345", "abc", "1.2.3"} {
 		_, err := c.ParseRequiredCents(input)
@@ -205,6 +227,7 @@ func TestParseRequiredCentsInvalid(t *testing.T) {
 }
 
 func TestParseCentsRejectsNegative(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	for _, input := range []string{"-$5.00", "-5.00", "-$1,234.56"} {
 		_, err := c.ParseRequiredCents(input)
@@ -213,6 +236,7 @@ func TestParseCentsRejectsNegative(t *testing.T) {
 }
 
 func TestParseCentsRoundtripUSD(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	values := []int64{0, 1, 99, 100, 123456}
 	for _, cents := range values {
@@ -224,6 +248,7 @@ func TestParseCentsRoundtripUSD(t *testing.T) {
 }
 
 func TestParseCentsRoundtripEUR(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("EUR", language.German)
 	values := []int64{0, 1, 99, 100, 123456}
 	for _, cents := range values {
@@ -235,6 +260,7 @@ func TestParseCentsRoundtripEUR(t *testing.T) {
 }
 
 func TestParseOptionalCentsEmpty(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	val, err := c.ParseOptionalCents("")
 	require.NoError(t, err)
@@ -242,6 +268,7 @@ func TestParseOptionalCentsEmpty(t *testing.T) {
 }
 
 func TestParseOptionalCentsValid(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	val, err := c.ParseOptionalCents("5")
 	require.NoError(t, err)
@@ -250,6 +277,7 @@ func TestParseOptionalCentsValid(t *testing.T) {
 }
 
 func TestParseCentsEURFormat(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("EUR", language.German)
 	cents, err := c.ParseRequiredCents("1.234,56")
 	require.NoError(t, err)
@@ -257,6 +285,7 @@ func TestParseCentsEURFormat(t *testing.T) {
 }
 
 func TestCurrencyFromLocaleString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		locale string
 		want   string
@@ -277,6 +306,7 @@ func TestCurrencyFromLocaleString(t *testing.T) {
 }
 
 func TestParseCentsOverflow(t *testing.T) {
+	t.Parallel()
 	c := MustResolve("USD", language.AmericanEnglish)
 	tests := []struct {
 		name  string
@@ -333,6 +363,7 @@ func TestDetectLocalePriority(t *testing.T) {
 // TestSameCurrencyDifferentLocales verifies that the same currency code
 // produces different formatting when paired with different locales.
 func TestSameCurrencyDifferentLocales(t *testing.T) {
+	t.Parallel()
 	de := MustResolve("EUR", language.German)
 	fr := MustResolve("EUR", language.MustParse("fr"))
 

@@ -29,6 +29,7 @@ func openAddForm(m *Model) {
 }
 
 func TestUserEditsHouseProfileAndSavesWithCtrlS(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 	require.Contains(t, m.statusView(), "saved", "user should be in form mode")
@@ -54,6 +55,7 @@ func TestUserEditsHouseProfileAndSavesWithCtrlS(t *testing.T) {
 }
 
 func TestUserEditsHouseProfileThenSavesThenEditsAgain(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -83,6 +85,7 @@ func TestUserEditsHouseProfileThenSavesThenEditsAgain(t *testing.T) {
 }
 
 func TestUserAddsProjectAndSavesWithCtrlS(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openAddForm(m)
 	require.Contains(t, m.statusView(), "saved", "user should be in form mode")
@@ -101,6 +104,7 @@ func TestUserAddsProjectAndSavesWithCtrlS(t *testing.T) {
 }
 
 func TestUserSeesStatusBarTransitionOnSave(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -127,6 +131,7 @@ func TestUserSeesStatusBarTransitionOnSave(t *testing.T) {
 }
 
 func TestUserCreatesMaintenanceWithDurationInterval(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// User navigates to the Maintenance tab, then opens the add form.
@@ -159,6 +164,7 @@ func TestUserCreatesMaintenanceWithDurationInterval(t *testing.T) {
 }
 
 func TestUserCreatesMaintenanceWithCombinedInterval(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -184,6 +190,7 @@ func TestUserCreatesMaintenanceWithCombinedInterval(t *testing.T) {
 
 // Step 1: Create maintenance with interval -- existing behavior unchanged.
 func TestUserCreatesMaintenanceWithIntervalOnly(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -214,6 +221,7 @@ func TestUserCreatesMaintenanceWithIntervalOnly(t *testing.T) {
 
 // Step 2: Create maintenance with due date.
 func TestUserCreatesMaintenanceWithDueDate(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -252,6 +260,7 @@ func TestUserCreatesMaintenanceWithDueDate(t *testing.T) {
 // Steps 3-4: Schedule type selector enforces mutual exclusion.
 // When ScheduleType is "interval", stale DueDate values are ignored.
 func TestScheduleTypeSelectorIgnoresStaleValues(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -274,6 +283,7 @@ func TestScheduleTypeSelectorIgnoresStaleValues(t *testing.T) {
 
 // Step 5: Create maintenance with neither interval nor due date (unscheduled).
 func TestUserCreatesMaintenanceUnscheduled(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -303,6 +313,7 @@ func TestUserCreatesMaintenanceUnscheduled(t *testing.T) {
 
 // Step 6: Edit existing interval item via full form, change to due date.
 func TestUserEditsMaintenanceFromIntervalToDueDate(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 
@@ -368,6 +379,7 @@ func TestUserEditsMaintenanceFromIntervalToDueDate(t *testing.T) {
 
 // Edit existing due-date item via full form, switch to interval.
 func TestUserEditsMaintenanceFromDueDateToInterval(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 
@@ -426,6 +438,7 @@ func TestUserEditsMaintenanceFromDueDateToInterval(t *testing.T) {
 
 // Edit existing interval item to unscheduled (schedule type = none).
 func TestUserEditsMaintenanceFromIntervalToNone(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 
@@ -477,6 +490,7 @@ func TestUserEditsMaintenanceFromIntervalToNone(t *testing.T) {
 
 // When ScheduleType is "due_date", stale IntervalMonths values are ignored.
 func TestScheduleTypeDueDateIgnoresStaleInterval(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -504,6 +518,7 @@ func TestScheduleTypeDueDateIgnoresStaleInterval(t *testing.T) {
 
 // When ScheduleType is "none", both interval and due date are cleared.
 func TestScheduleTypeNoneIgnoresBothFields(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabMaintenance)
 	openAddForm(m)
@@ -525,6 +540,7 @@ func TestScheduleTypeNoneIgnoresBothFields(t *testing.T) {
 }
 
 func TestUserCancelsFormWithEscAfterSaving(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -547,6 +563,7 @@ func TestUserCancelsFormWithEscAfterSaving(t *testing.T) {
 }
 
 func TestUserEscDirtyFormShowsConfirmation(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -568,6 +585,7 @@ func TestUserEscDirtyFormShowsConfirmation(t *testing.T) {
 }
 
 func TestUserConfirmsDiscardWithY(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -590,6 +608,7 @@ func TestUserConfirmsDiscardWithY(t *testing.T) {
 }
 
 func TestUserCancelsDiscardWithN(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -611,6 +630,7 @@ func TestUserCancelsDiscardWithN(t *testing.T) {
 }
 
 func TestUserCancelsDiscardWithEsc(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -628,6 +648,7 @@ func TestUserCancelsDiscardWithEsc(t *testing.T) {
 }
 
 func TestCleanFormExitsImmediatelyOnEsc(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -639,6 +660,7 @@ func TestCleanFormExitsImmediatelyOnEsc(t *testing.T) {
 }
 
 func TestConfirmDiscardSwallowsOtherKeys(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -659,6 +681,7 @@ func TestConfirmDiscardSwallowsOtherKeys(t *testing.T) {
 }
 
 func TestSavedFormExitsImmediatelyOnEsc(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -681,6 +704,7 @@ func TestSavedFormExitsImmediatelyOnEsc(t *testing.T) {
 }
 
 func TestCtrlQDirtyFormShowsConfirmation(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -698,6 +722,7 @@ func TestCtrlQDirtyFormShowsConfirmation(t *testing.T) {
 }
 
 func TestCtrlQDirtyFormConfirmQuits(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -718,6 +743,7 @@ func TestCtrlQDirtyFormConfirmQuits(t *testing.T) {
 }
 
 func TestCtrlQDirtyFormCancelStaysInForm(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -737,6 +763,7 @@ func TestCtrlQDirtyFormCancelStaysInForm(t *testing.T) {
 }
 
 func TestCtrlQCleanFormQuitsImmediately(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 	require.False(t, m.fs.formDirty)
@@ -748,6 +775,7 @@ func TestCtrlQCleanFormQuitsImmediately(t *testing.T) {
 }
 
 func TestUserCreatesIncidentWithRelativeDateYesterday(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// User navigates to Incidents tab.
@@ -784,6 +812,7 @@ func TestUserCreatesIncidentWithRelativeDateYesterday(t *testing.T) {
 }
 
 func TestUserCreatesIncidentWithRelativeDateToday(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.active = tabIndex(tabIncidents)
 
@@ -810,6 +839,7 @@ func TestUserCreatesIncidentWithRelativeDateToday(t *testing.T) {
 }
 
 func TestCtrlSSaveClearsStatusErrorAfterRetry(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 	openHouseForm(m)
 
@@ -837,6 +867,7 @@ func TestCtrlSSaveClearsStatusErrorAfterRetry(t *testing.T) {
 }
 
 func TestDateParserRejectsGarbageInput(t *testing.T) {
+	t.Parallel()
 	m := newTestModelWithStore(t)
 
 	// Navigate to incidents tab and open the add form.

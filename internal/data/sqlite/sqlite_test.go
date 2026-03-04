@@ -105,6 +105,7 @@ func TestDialector(t *testing.T) {
 }
 
 func TestErrorTranslator(t *testing.T) {
+	t.Parallel()
 	type Article struct {
 		ArticleNumber string `gorm:"unique"`
 	}
@@ -127,6 +128,7 @@ func TestErrorTranslator(t *testing.T) {
 }
 
 func TestSQLiteVersion(t *testing.T) {
+	t.Parallel()
 	db, err := sql.Open(DriverName, ":memory:")
 	require.NoError(t, err)
 
@@ -137,6 +139,7 @@ func TestSQLiteVersion(t *testing.T) {
 }
 
 func TestOpen(t *testing.T) {
+	t.Parallel()
 	dsn := testDSN(t)
 	d := Open(dsn)
 	assert.Equal(t, "sqlite", d.Name())
@@ -148,6 +151,7 @@ func TestOpen(t *testing.T) {
 }
 
 func TestDefaultValueOf(t *testing.T) {
+	t.Parallel()
 	d := Dialector{}
 
 	auto := d.DefaultValueOf(&schema.Field{AutoIncrement: true})
@@ -158,6 +162,7 @@ func TestDefaultValueOf(t *testing.T) {
 }
 
 func TestDataTypeOf(t *testing.T) {
+	t.Parallel()
 	d := Dialector{}
 
 	tests := []struct {
@@ -190,6 +195,7 @@ func TestDataTypeOf(t *testing.T) {
 }
 
 func TestExplain(t *testing.T) {
+	t.Parallel()
 	d := Dialector{}
 	result := d.Explain("SELECT * FROM users WHERE id = ?", 42)
 	assert.Contains(t, result, "42")
@@ -197,6 +203,7 @@ func TestExplain(t *testing.T) {
 }
 
 func TestQuoteTo(t *testing.T) {
+	t.Parallel()
 	d := Dialector{}
 
 	tests := []struct {
@@ -217,6 +224,7 @@ func TestQuoteTo(t *testing.T) {
 }
 
 func TestSavePointAndRollbackTo(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(&Dialector{DSN: testDSN(t)}, &gorm.Config{
 		Logger:                 logger.Default.LogMode(logger.Silent),
 		SkipDefaultTransaction: true,
@@ -243,6 +251,7 @@ func TestSavePointAndRollbackTo(t *testing.T) {
 }
 
 func TestTranslateForeignKeyViolation(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(&Dialector{DSN: testDSN(t)}, &gorm.Config{
 		Logger:         logger.Default.LogMode(logger.Silent),
 		TranslateError: true,
@@ -271,6 +280,7 @@ func TestTranslateForeignKeyViolation(t *testing.T) {
 // Regression test for #393: time.Time values in numeric-offset timezones
 // (e.g. IST +0530) must roundtrip through SQLite without Scan errors.
 func TestTimeRoundtripNumericTimezone(t *testing.T) {
+	t.Parallel()
 	type Record struct {
 		ID        uint `gorm:"primaryKey"`
 		CreatedAt time.Time
@@ -294,6 +304,7 @@ func TestTimeRoundtripNumericTimezone(t *testing.T) {
 }
 
 func TestCompareVersion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		v1, v2 string
 		want   int

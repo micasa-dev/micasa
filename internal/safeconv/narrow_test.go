@@ -12,6 +12,7 @@ import (
 )
 
 func TestInt(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		input   int64
