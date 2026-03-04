@@ -321,44 +321,34 @@
             runtimeInputs = [
               self.packages.${system}.capture-one
               pkgs.fd
-              pkgs.parallel
             ];
             text = ''
               TAPES="docs/tapes"
 
               if [[ $# -gt 0 ]]; then
-                # Named tapes in parallel
-                printf '%s\n' "$@" | parallel --bar capture-one "$TAPES/{}.tape"
+                for name in "$@"; do
+                  capture-one "$TAPES/$name.tape" &
+                done
+                wait
                 exit
               fi
 
-              # All tapes in parallel (skip demo and using-* animated tapes)
-              ntapes=$(fd -e tape --exclude demo.tape --exclude 'using-*.tape' . "$TAPES" | wc -l)
-              nprocs=$(nproc)
-              jobs=$(( ntapes < nprocs ? ntapes : nprocs ))
-              fd -e tape --exclude demo.tape --exclude 'using-*.tape' -0 . "$TAPES" \
-                | parallel -0 -j"$jobs" --bar capture-one {}
+              # All tapes in parallel (skip demo, using-*, and extraction animated tapes)
+              fd -e tape --exclude demo.tape --exclude 'using-*.tape' --exclude extraction.tape . "$TAPES" \
+                -x capture-one {}
             '';
           };
-          # Records all animated demo tapes (using-*) in parallel
+          # Records all animated demo tapes (using-*, extraction) in parallel
           record-animated = pkgs.writeShellApplication {
             name = "record-animated";
             runtimeInputs = [
               self.packages.${system}.record-tape
               pkgs.fd
-              pkgs.parallel
             ];
             text = ''
               TAPES="docs/tapes"
-              ntapes=$(fd -g 'using-*.tape' . "$TAPES" | wc -l)
-              if [[ "$ntapes" -eq 0 ]]; then
-                echo "no using-*.tape files found in $TAPES" >&2
-                exit 1
-              fi
-              nprocs=$(nproc)
-              jobs=$(( ntapes < nprocs ? ntapes : nprocs ))
-              fd -g 'using-*.tape' -0 . "$TAPES" \
-                | parallel -0 -j"$jobs" --bar record-tape {}
+              fd -g '{using-*,extraction}.tape' . "$TAPES" \
+                -x record-tape {}
             '';
           };
           gen-sample-pdf = pkgs.writeShellApplication {
