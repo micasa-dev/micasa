@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
 )
 
@@ -42,11 +43,11 @@ func operationExtractionSystemPrompt(ctx SchemaContext) string {
 		len(ctx.ProjectTypes) > 0
 	if hasRows {
 		b.WriteString("\n## Existing rows (use these IDs for foreign keys)\n\n")
-		b.WriteString(FormatEntityRows("vendors", ctx.Vendors))
-		b.WriteString(FormatEntityRows("projects", ctx.Projects))
-		b.WriteString(FormatEntityRows("appliances", ctx.Appliances))
-		b.WriteString(FormatEntityRows("maintenance_categories", ctx.MaintenanceCategories))
-		b.WriteString(FormatEntityRows("project_types", ctx.ProjectTypes))
+		b.WriteString(FormatEntityRows(data.TableVendors, ctx.Vendors))
+		b.WriteString(FormatEntityRows(data.TableProjects, ctx.Projects))
+		b.WriteString(FormatEntityRows(data.TableAppliances, ctx.Appliances))
+		b.WriteString(FormatEntityRows(data.TableMaintenanceCategories, ctx.MaintenanceCategories))
+		b.WriteString(FormatEntityRows(data.TableProjectTypes, ctx.ProjectTypes))
 	}
 
 	b.WriteString("\n")

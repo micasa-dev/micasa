@@ -7,24 +7,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 )
 
 var testTables = []TableInfo{
 	{
-		Name: "projects",
+		Name: data.TableProjects,
 		Columns: []ColumnInfo{
-			{Name: "id", Type: "integer", PK: true},
-			{Name: "title", Type: "text", NotNull: true},
-			{Name: "budget_cents", Type: "integer"},
-			{Name: "status", Type: "text"},
+			{Name: data.ColID, Type: "integer", PK: true},
+			{Name: data.ColTitle, Type: "text", NotNull: true},
+			{Name: data.ColBudgetCents, Type: "integer"},
+			{Name: data.ColStatus, Type: "text"},
 		},
 	},
 	{
-		Name: "appliances",
+		Name: data.TableAppliances,
 		Columns: []ColumnInfo{
-			{Name: "id", Type: "integer", PK: true},
-			{Name: "name", Type: "text", NotNull: true},
+			{Name: data.ColID, Type: "integer", PK: true},
+			{Name: data.ColName, Type: "text", NotNull: true},
 		},
 	},
 }

@@ -48,26 +48,22 @@ type shadowFKRemap struct {
 // commitOrder defines the dependency-safe order for committing creatables.
 // Tables with no FK dependencies on other creatables come first.
 var commitOrder = []string{
-	"vendors",
-	"appliances",
-	"quotes",
-	"maintenance_items",
-	"documents",
+	data.TableVendors,
+	data.TableAppliances,
+	data.TableQuotes,
+	data.TableMaintenanceItems,
+	data.TableDocuments,
 }
 
 // fkRemaps maps each creatable table to its FK columns that reference other
 // creatables. Only these need shadow->real remapping; FKs to reference-only
 // tables (projects, categories) pass through unchanged.
 var fkRemaps = map[string][]shadowFKRemap{
-	"vendors":    {},
-	"appliances": {},
-	"quotes": {
-		{Column: data.ColVendorID, Table: "vendors"},
-	},
-	"maintenance_items": {
-		{Column: data.ColApplianceID, Table: "appliances"},
-	},
-	"documents": {},
+	data.TableVendors:          {},
+	data.TableAppliances:       {},
+	data.TableQuotes:           {{Column: data.ColVendorID, Table: data.TableVendors}},
+	data.TableMaintenanceItems: {{Column: data.ColApplianceID, Table: data.TableAppliances}},
+	data.TableDocuments:        {},
 }
 
 // NewShadowDB creates an in-memory SQLite database and migrates the
@@ -193,7 +189,7 @@ func (s *ShadowDB) stageCreate(op Operation) error {
 // data for a raw SQL INSERT. Skips "id" (shadow DB auto-assigns) and
 // "vendor_name" (synthetic field, not a real column).
 func buildInsert(opData map[string]any) (cols []string, vals []any, placeholders []string) {
-	skip := map[string]bool{"id": true, "vendor_name": true}
+	skip := map[string]bool{data.ColID: true, "vendor_name": true}
 
 	for _, k := range sortedKeys(opData) {
 		if skip[k] {
@@ -252,7 +248,7 @@ func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
 			}
 
 			// Remap document entity_id if entity_kind maps to a creatable.
-			if table == "documents" {
+			if table == data.TableDocuments {
 				remapDocumentEntity(row, idMap)
 			}
 
@@ -309,10 +305,10 @@ func remapFK(row map[string]any, fk shadowFKRemap, idMap map[string]map[uint]uin
 // entityKindToTable maps document entity_kind values to their corresponding
 // creatable table names for ID remapping.
 var entityKindToTable = map[string]string{
-	data.DocumentEntityVendor:      "vendors",
-	data.DocumentEntityQuote:       "quotes",
-	data.DocumentEntityMaintenance: "maintenance_items",
-	data.DocumentEntityAppliance:   "appliances",
+	data.DocumentEntityVendor:      data.TableVendors,
+	data.DocumentEntityQuote:       data.TableQuotes,
+	data.DocumentEntityMaintenance: data.TableMaintenanceItems,
+	data.DocumentEntityAppliance:   data.TableAppliances,
 }
 
 // remapDocumentEntity rewrites entity_id on a document row if entity_kind
@@ -351,15 +347,15 @@ func commitRow(
 	opData map[string]any,
 ) (uint, error) {
 	switch table {
-	case "vendors":
+	case data.TableVendors:
 		return commitVendor(store, row)
-	case "appliances":
+	case data.TableAppliances:
 		return commitAppliance(store, row)
-	case "quotes":
+	case data.TableQuotes:
 		return commitQuote(store, row, opData)
-	case "maintenance_items":
+	case data.TableMaintenanceItems:
 		return commitMaintenance(store, row)
-	case "documents":
+	case data.TableDocuments:
 		return commitDocument(store, row)
 	default:
 		return 0, fmt.Errorf("unsupported table %q", table)
@@ -389,9 +385,9 @@ func commitAppliance(store *data.Store, row map[string]any) (uint, error) {
 	stringField(row, data.ColName, &a.Name)
 	stringField(row, data.ColNotes, &a.Notes)
 	stringField(row, data.ColLocation, &a.Location)
-	stringField(row, "brand", &a.Brand)
-	stringField(row, "model_number", &a.ModelNumber)
-	stringField(row, "serial_number", &a.SerialNumber)
+	stringField(row, data.ColBrand, &a.Brand)
+	stringField(row, data.ColModelNumber, &a.ModelNumber)
+	stringField(row, data.ColSerialNumber, &a.SerialNumber)
 	if v := toInt64Ptr(row[data.ColCostCents]); v != nil {
 		a.CostCents = v
 	}
@@ -408,10 +404,10 @@ func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (
 	q.TotalCents = toInt64(row[data.ColTotalCents])
 	stringField(row, data.ColNotes, &q.Notes)
 
-	if v := toInt64Ptr(row["labor_cents"]); v != nil {
+	if v := toInt64Ptr(row[data.ColLaborCents]); v != nil {
 		q.LaborCents = v
 	}
-	if v := toInt64Ptr(row["materials_cents"]); v != nil {
+	if v := toInt64Ptr(row[data.ColMaterialsCents]); v != nil {
 		q.MaterialsCents = v
 	}
 
@@ -442,7 +438,7 @@ func commitMaintenance(store *data.Store, row map[string]any) (uint, error) {
 	m := data.MaintenanceItem{}
 	stringField(row, data.ColName, &m.Name)
 	stringField(row, data.ColNotes, &m.Notes)
-	m.CategoryID = toUint(row["category_id"])
+	m.CategoryID = toUint(row[data.ColCategoryID])
 	if v := toUint(row[data.ColApplianceID]); v != 0 {
 		m.ApplianceID = &v
 	}
@@ -479,9 +475,9 @@ func commitDocument(store *data.Store, row map[string]any) (uint, error) {
 // commitUpdate applies an update operation directly to the real DB.
 func commitUpdate(store *data.Store, op Operation) error {
 	switch op.Table {
-	case "documents":
+	case data.TableDocuments:
 		return commitUpdateDocument(store, op)
-	case "maintenance_items":
+	case data.TableMaintenanceItems:
 		return commitUpdateMaintenance(store, op)
 	default:
 		return fmt.Errorf("update not supported on %q", op.Table)
@@ -489,7 +485,7 @@ func commitUpdate(store *data.Store, op Operation) error {
 }
 
 func commitUpdateDocument(store *data.Store, op Operation) error {
-	rowID := ParseUint(op.Data["id"])
+	rowID := ParseUint(op.Data[data.ColID])
 	if rowID == 0 {
 		return fmt.Errorf("update documents requires id in data")
 	}
@@ -497,10 +493,10 @@ func commitUpdateDocument(store *data.Store, op Operation) error {
 	if err != nil {
 		return fmt.Errorf("get document %d: %w", rowID, err)
 	}
-	applyString(op.Data, "title", &doc.Title)
-	applyString(op.Data, "notes", &doc.Notes)
-	applyString(op.Data, "entity_kind", &doc.EntityKind)
-	if v, ok := op.Data["entity_id"]; ok {
+	applyString(op.Data, data.ColTitle, &doc.Title)
+	applyString(op.Data, data.ColNotes, &doc.Notes)
+	applyString(op.Data, data.ColEntityKind, &doc.EntityKind)
+	if v, ok := op.Data[data.ColEntityID]; ok {
 		if n := ParseUint(v); n > 0 {
 			doc.EntityID = n
 		}
@@ -509,7 +505,7 @@ func commitUpdateDocument(store *data.Store, op Operation) error {
 }
 
 func commitUpdateMaintenance(store *data.Store, op Operation) error {
-	rowID := ParseUint(op.Data["id"])
+	rowID := ParseUint(op.Data[data.ColID])
 	if rowID == 0 {
 		return fmt.Errorf("update maintenance_items requires id in data")
 	}
@@ -517,19 +513,19 @@ func commitUpdateMaintenance(store *data.Store, op Operation) error {
 	if err != nil {
 		return fmt.Errorf("get maintenance_item %d: %w", rowID, err)
 	}
-	applyString(op.Data, "name", &item.Name)
-	applyString(op.Data, "notes", &item.Notes)
-	if v, ok := op.Data["category_id"]; ok {
+	applyString(op.Data, data.ColName, &item.Name)
+	applyString(op.Data, data.ColNotes, &item.Notes)
+	if v, ok := op.Data[data.ColCategoryID]; ok {
 		if n := ParseUint(v); n > 0 {
 			item.CategoryID = n
 		}
 	}
-	if v, ok := op.Data["appliance_id"]; ok {
+	if v, ok := op.Data[data.ColApplianceID]; ok {
 		if n := ParseUint(v); n > 0 {
 			item.ApplianceID = &n
 		}
 	}
-	if v, ok := op.Data["interval_months"]; ok {
+	if v, ok := op.Data[data.ColIntervalMonths]; ok {
 		if raw := ParseInt64(v); raw > 0 {
 			n, err := safeconv.Int(raw)
 			if err != nil {
@@ -538,7 +534,7 @@ func commitUpdateMaintenance(store *data.Store, op Operation) error {
 			item.IntervalMonths = n
 		}
 	}
-	if v, ok := op.Data["cost_cents"]; ok {
+	if v, ok := op.Data[data.ColCostCents]; ok {
 		n := ParseInt64(v)
 		item.CostCents = &n
 	}

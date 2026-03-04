@@ -12,6 +12,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -587,7 +588,7 @@ func TestBuildTableInfoFromRealStore(t *testing.T) {
 
 	var hasProjects bool
 	for _, tbl := range tables {
-		if tbl.Name == "projects" {
+		if tbl.Name == data.TableProjects {
 			hasProjects = true
 			require.NotEmpty(t, tbl.Columns)
 		}

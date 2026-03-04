@@ -18,11 +18,11 @@ func TestTableNames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should include our core tables.
-	assert.Contains(t, names, "house_profiles")
-	assert.Contains(t, names, "projects")
-	assert.Contains(t, names, "vendors")
-	assert.Contains(t, names, "maintenance_items")
-	assert.Contains(t, names, "appliances")
+	assert.Contains(t, names, TableHouseProfiles)
+	assert.Contains(t, names, TableProjects)
+	assert.Contains(t, names, TableVendors)
+	assert.Contains(t, names, TableMaintenanceItems)
+	assert.Contains(t, names, TableAppliances)
 
 	// Should not include sqlite internals.
 	for _, name := range names {
@@ -34,14 +34,14 @@ func TestTableColumns(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	cols, err := store.TableColumns("projects")
+	cols, err := store.TableColumns(TableProjects)
 	require.NoError(t, err)
 	assert.NotEmpty(t, cols)
 
 	// Check that the id column is a PK.
 	var foundID bool
 	for _, col := range cols {
-		if col.Name == "id" {
+		if col.Name == ColID {
 			foundID = true
 			assert.Positive(t, col.PK)
 		}
@@ -139,8 +139,8 @@ func TestContainsWord(t *testing.T) {
 
 func TestIsSafeIdentifier(t *testing.T) {
 	t.Parallel()
-	assert.True(t, isSafeIdentifier("projects"))
-	assert.True(t, isSafeIdentifier("house_profiles"))
+	assert.True(t, isSafeIdentifier(TableProjects))
+	assert.True(t, isSafeIdentifier(TableHouseProfiles))
 	assert.True(t, isSafeIdentifier("table123"))
 	assert.False(t, isSafeIdentifier(""))
 	assert.False(t, isSafeIdentifier("table; DROP"))

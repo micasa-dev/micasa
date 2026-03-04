@@ -261,7 +261,7 @@ func (s *Store) IsMicasaDB() (bool, error) {
 	var count int64
 	err := s.db.Raw(
 		`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?)`,
-		"vendors", "projects", "appliances",
+		TableVendors, TableProjects, TableAppliances,
 	).Scan(&count).Error
 	if err != nil {
 		return false, err
@@ -1117,7 +1117,7 @@ func (s *Store) CountIncidentsByVendor(vendorIDs []uint) (map[uint]int, error) {
 // avoid loading the potentially large Data BLOB.
 var listDocumentColumns = []string{
 	ColID, ColTitle, ColFileName, ColEntityKind, ColEntityID,
-	ColMIMEType, ColSizeBytes, ColChecksum, ColNotes,
+	ColMIMEType, ColSizeBytes, ColChecksumSHA256, ColNotes,
 	ColCreatedAt, ColUpdatedAt, ColDeletedAt,
 }
 
@@ -1198,7 +1198,7 @@ func (s *Store) UpdateDocument(doc Document) error {
 	if len(doc.Data) == 0 {
 		omit = append(omit,
 			ColFileName, ColMIMEType, ColSizeBytes,
-			ColChecksum, ColData,
+			ColChecksumSHA256, ColData,
 		)
 	}
 	return s.db.Model(&Document{}).Where(ColID+" = ?", doc.ID).

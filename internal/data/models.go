@@ -30,53 +30,6 @@ const (
 	DeletionEntityIncident    = "incident"
 )
 
-// Column name constants for use in raw SQL queries. Centralising these
-// prevents drift between struct fields and hand-written SQL fragments.
-const (
-	ColID                = "id"
-	ColName              = "name"
-	ColCreatedAt         = "created_at"
-	ColUpdatedAt         = "updated_at"
-	ColDeletedAt         = "deleted_at"
-	ColStatus            = "status"
-	ColPreviousStatus    = "previous_status"
-	ColActualCents       = "actual_cents"
-	ColBudgetCents       = "budget_cents"
-	ColCostCents         = "cost_cents"
-	ColTotalCents        = "total_cents"
-	ColIntervalMonths    = "interval_months"
-	ColDueDate           = "due_date"
-	ColLastServicedAt    = "last_serviced_at"
-	ColWarrantyExpiry    = "warranty_expiry"
-	ColServicedAt        = "serviced_at"
-	ColReceivedDate      = "received_date"
-	ColRestoredAt        = "restored_at"
-	ColVendorID          = "vendor_id"
-	ColProjectID         = "project_id"
-	ColProjectTypeID     = "project_type_id"
-	ColApplianceID       = "appliance_id"
-	ColMaintenanceItemID = "maintenance_item_id"
-	ColEntityKind        = "entity_kind"
-	ColEntityID          = "entity_id"
-	ColEntity            = "entity"
-	ColTargetID          = "target_id"
-	ColContactName       = "contact_name"
-	ColEmail             = "email"
-	ColPhone             = "phone"
-	ColWebsite           = "website"
-	ColNotes             = "notes"
-	ColTitle             = "title"
-	ColFileName          = "file_name"
-	ColMIMEType          = "mime_type"
-	ColSizeBytes         = "size_bytes"
-	ColChecksum          = "sha256"
-	ColData              = "data"
-	ColExtractedText     = "extracted_text"
-	ColExtractData       = "ocr_data" // DB column name kept for migration compat
-	ColSeverity          = "severity"
-	ColLocation          = "location"
-)
-
 const (
 	IncidentStatusOpen       = "open"
 	IncidentStatusInProgress = "in_progress"

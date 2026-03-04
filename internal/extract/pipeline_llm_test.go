@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -70,7 +71,7 @@ func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 
 	require.Len(t, r.Operations, 2)
 	assert.Equal(t, ActionCreate, r.Operations[0].Action)
-	assert.Equal(t, "vendors", r.Operations[0].Table)
+	assert.Equal(t, data.TableVendors, r.Operations[0].Table)
 	assert.Equal(t, ActionUpdate, r.Operations[1].Action)
 	assert.Equal(t, documentsTable, r.Operations[1].Table)
 }

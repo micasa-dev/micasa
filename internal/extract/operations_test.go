@@ -6,6 +6,7 @@ package extract
 import (
 	"testing"
 
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +23,7 @@ func TestParseOperations_Valid(t *testing.T) {
 	require.Len(t, ops, 2)
 
 	assert.Equal(t, ActionCreate, ops[0].Action)
-	assert.Equal(t, "vendors", ops[0].Table)
+	assert.Equal(t, data.TableVendors, ops[0].Table)
 	assert.Equal(t, "Garcia Plumbing", ops[0].Data["name"])
 
 	assert.Equal(t, ActionUpdate, ops[1].Action)
@@ -50,7 +51,7 @@ func TestParseOperations_NoDocument(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ops, 1)
 	assert.Equal(t, ActionCreate, ops[0].Action)
-	assert.Equal(t, "vendors", ops[0].Table)
+	assert.Equal(t, data.TableVendors, ops[0].Table)
 }
 
 func TestParseOperations_RejectsCodeFences(t *testing.T) {
@@ -209,11 +210,11 @@ func TestOperationsSchema_CoversTables(t *testing.T) {
 	// Non-document operation variants.
 	opVariants := operationVariants()
 	expectedOps := []tableAction{
-		{"vendors", ActionCreate},
-		{"appliances", ActionCreate},
-		{"quotes", ActionCreate},
-		{"maintenance_items", ActionCreate},
-		{"maintenance_items", ActionUpdate},
+		{data.TableVendors, ActionCreate},
+		{data.TableAppliances, ActionCreate},
+		{data.TableQuotes, ActionCreate},
+		{data.TableMaintenanceItems, ActionCreate},
+		{data.TableMaintenanceItems, ActionUpdate},
 	}
 	require.Len(t, opVariants, len(expectedOps))
 
@@ -265,7 +266,7 @@ func TestOperationsSchema_NoDocumentInOperations(t *testing.T) {
 
 func TestOperationsSchema_VendorsCreateColumns(t *testing.T) {
 	t.Parallel()
-	variant := findVariant(t, ActionCreate, "vendors")
+	variant := findVariant(t, ActionCreate, data.TableVendors)
 	dataProps := variantDataProps(t, variant)
 
 	expected := []string{"name", "contact_name", "email", "phone", "website", "notes"}
@@ -288,7 +289,7 @@ func TestOperationsSchema_DocumentsUpdateRequiresID(t *testing.T) {
 
 func TestOperationsSchema_MaintenanceUpdateRequiresID(t *testing.T) {
 	t.Parallel()
-	variant := findVariant(t, ActionUpdate, "maintenance_items")
+	variant := findVariant(t, ActionUpdate, data.TableMaintenanceItems)
 	dataRequired := variantDataRequired(t, variant)
 	assert.Contains(t, dataRequired, "id")
 }
@@ -309,7 +310,7 @@ func TestOperationsSchema_EntityKindEnum(t *testing.T) {
 
 func TestOperationsSchema_QuotesCreateColumns(t *testing.T) {
 	t.Parallel()
-	variant := findVariant(t, ActionCreate, "quotes")
+	variant := findVariant(t, ActionCreate, data.TableQuotes)
 	dataProps := variantDataProps(t, variant)
 	dataRequired := variantDataRequired(t, variant)
 
@@ -378,17 +379,17 @@ func variantDataRequired(t *testing.T, variant map[string]any) []any {
 // --- ValidateOperations ---
 
 var testAllowedOps = map[string]AllowedOps{
-	documentsTable:      {Update: true},
-	"vendors":           {Insert: true},
-	"quotes":            {Insert: true},
-	"maintenance_items": {Insert: true},
-	"appliances":        {Insert: true},
+	documentsTable:             {Update: true},
+	data.TableVendors:          {Insert: true},
+	data.TableQuotes:           {Insert: true},
+	data.TableMaintenanceItems: {Insert: true},
+	data.TableAppliances:       {Insert: true},
 }
 
 func TestValidateOperations_Valid(t *testing.T) {
 	t.Parallel()
 	ops := []Operation{
-		{Action: ActionCreate, Table: "vendors", Data: map[string]any{"name": "Test"}},
+		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{"name": "Test"}},
 		{Action: ActionUpdate, Table: documentsTable, Data: map[string]any{"title": "Doc"}},
 	}
 	err := ValidateOperations(ops, testAllowedOps)
@@ -400,7 +401,7 @@ func TestValidateOperations_InvalidAction(t *testing.T) {
 	ops := []Operation{
 		{
 			Action: "delete",
-			Table:  "vendors",
+			Table:  data.TableVendors,
 			Data:   map[string]any{"id": 1},
 		}, //nolint:exhaustive // intentionally invalid
 	}
@@ -432,7 +433,7 @@ func TestValidateOperations_CreateOnUpdateOnlyTable(t *testing.T) {
 func TestValidateOperations_UpdateOnInsertOnlyTable(t *testing.T) {
 	t.Parallel()
 	ops := []Operation{
-		{Action: ActionUpdate, Table: "vendors", Data: map[string]any{"name": "X"}},
+		{Action: ActionUpdate, Table: data.TableVendors, Data: map[string]any{"name": "X"}},
 	}
 	err := ValidateOperations(ops, testAllowedOps)
 	require.Error(t, err)
@@ -442,7 +443,7 @@ func TestValidateOperations_UpdateOnInsertOnlyTable(t *testing.T) {
 func TestValidateOperations_EmptyData(t *testing.T) {
 	t.Parallel()
 	ops := []Operation{
-		{Action: ActionCreate, Table: "vendors", Data: map[string]any{}},
+		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{}},
 	}
 	err := ValidateOperations(ops, testAllowedOps)
 	require.Error(t, err)

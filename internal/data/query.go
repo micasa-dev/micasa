@@ -144,7 +144,7 @@ func (s *Store) DataDump() string {
 		// Raw SQL bypasses GORM's automatic WHERE deleted_at IS NULL scope.
 		deletedAtIdx := -1
 		for i, c := range cols {
-			if strings.ToLower(c) == "deleted_at" {
+			if strings.ToLower(c) == ColDeletedAt {
 				deletedAtIdx = i
 				break
 			}
@@ -211,18 +211,33 @@ type columnHint struct {
 var columnHints = []columnHint{
 	{
 		"project statuses (stored values)",
-		"SELECT DISTINCT status FROM projects WHERE deleted_at IS NULL ORDER BY status",
+		fmt.Sprintf("SELECT DISTINCT %s FROM %s WHERE %s IS NULL ORDER BY %s",
+			ColStatus, TableProjects, ColDeletedAt, ColStatus),
 	},
-	{"project types", "SELECT DISTINCT name FROM project_types ORDER BY name"},
-	{"vendor names", "SELECT DISTINCT name FROM vendors WHERE deleted_at IS NULL ORDER BY name"},
+	{
+		"project types",
+		fmt.Sprintf("SELECT DISTINCT %s FROM %s ORDER BY %s",
+			ColName, TableProjectTypes, ColName),
+	},
+	{
+		"vendor names",
+		fmt.Sprintf("SELECT DISTINCT %s FROM %s WHERE %s IS NULL ORDER BY %s",
+			ColName, TableVendors, ColDeletedAt, ColName),
+	},
 	{
 		"appliance names",
-		"SELECT DISTINCT name FROM appliances WHERE deleted_at IS NULL ORDER BY name",
+		fmt.Sprintf("SELECT DISTINCT %s FROM %s WHERE %s IS NULL ORDER BY %s",
+			ColName, TableAppliances, ColDeletedAt, ColName),
 	},
-	{"maintenance categories", "SELECT DISTINCT name FROM maintenance_categories ORDER BY name"},
+	{
+		"maintenance categories",
+		fmt.Sprintf("SELECT DISTINCT %s FROM %s ORDER BY %s",
+			ColName, TableMaintenanceCategories, ColName),
+	},
 	{
 		"maintenance item names",
-		"SELECT DISTINCT name FROM maintenance_items WHERE deleted_at IS NULL ORDER BY name",
+		fmt.Sprintf("SELECT DISTINCT %s FROM %s WHERE %s IS NULL ORDER BY %s",
+			ColName, TableMaintenanceItems, ColDeletedAt, ColName),
 	},
 }
 
@@ -248,7 +263,7 @@ func (s *Store) ColumnHints() string {
 // clutter without helping the LLM answer user questions.
 func isNoiseColumn(col string) bool {
 	switch strings.ToLower(col) {
-	case "id", "created_at", "updated_at", "deleted_at", "data":
+	case ColID, ColCreatedAt, ColUpdatedAt, ColDeletedAt, ColData:
 		return true
 	}
 	return false

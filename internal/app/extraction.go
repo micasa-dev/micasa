@@ -36,7 +36,7 @@ const (
 	numExtractionSteps
 )
 
-const tableDocuments = "documents"
+const tableDocuments = data.TableDocuments
 
 var nextExtractionID atomic.Uint64
 
@@ -1732,52 +1732,52 @@ func previewColumns(tableName string, cur locale.Currency) []previewColDef {
 		return fmtAnyText(v)
 	}
 	switch tableName {
-	case "vendors":
+	case data.TableVendors:
 		s := vendorColumnSpecs()
 		return []previewColDef{
-			{"name", s[1], fmtAnyText},
-			{"contact_name", s[2], fmtAnyText},
-			{"email", s[3], fmtAnyText},
-			{"phone", s[4], fmtAnyText},
-			{"website", s[5], fmtAnyText},
+			{data.ColName, s[1], fmtAnyText},
+			{data.ColContactName, s[2], fmtAnyText},
+			{data.ColEmail, s[3], fmtAnyText},
+			{data.ColPhone, s[4], fmtAnyText},
+			{data.ColWebsite, s[5], fmtAnyText},
 		}
 	case tableDocuments:
 		s := documentColumnSpecs()
 		return []previewColDef{
-			{"title", s[1], fmtAnyText},
-			{"mime_type", s[3], fmtAnyText},
-			{"notes", s[5], fmtAnyText},
+			{data.ColTitle, s[1], fmtAnyText},
+			{data.ColMIMEType, s[3], fmtAnyText},
+			{data.ColNotes, s[5], fmtAnyText},
 		}
-	case "quotes":
+	case data.TableQuotes:
 		s := quoteColumnSpecs()
 		return []previewColDef{
-			{"project_id", s[1], fmtAnyFK},
-			{"vendor_id", s[2], fmtAnyFK},
-			{"total_cents", s[3], fmtAnyCents},
-			{"labor_cents", s[4], fmtAnyCents},
-			{"materials_cents", s[5], fmtAnyCents},
-			{"other_cents", s[6], fmtAnyCents},
-			{"received_date", s[7], fmtAnyText},
+			{data.ColProjectID, s[1], fmtAnyFK},
+			{data.ColVendorID, s[2], fmtAnyFK},
+			{data.ColTotalCents, s[3], fmtAnyCents},
+			{data.ColLaborCents, s[4], fmtAnyCents},
+			{data.ColMaterialsCents, s[5], fmtAnyCents},
+			{data.ColOtherCents, s[6], fmtAnyCents},
+			{data.ColReceivedDate, s[7], fmtAnyText},
 		}
-	case "maintenance_items":
+	case data.TableMaintenanceItems:
 		s := maintenanceColumnSpecs()
 		return []previewColDef{
-			{"name", s[1], fmtAnyText},
-			{"category_id", s[2], fmtAnyFK},
-			{"appliance_id", s[3], fmtAnyFK},
-			{"interval_months", s[6], fmtAnyInterval},
+			{data.ColName, s[1], fmtAnyText},
+			{data.ColCategoryID, s[2], fmtAnyFK},
+			{data.ColApplianceID, s[3], fmtAnyFK},
+			{data.ColIntervalMonths, s[6], fmtAnyInterval},
 		}
-	case "appliances":
+	case data.TableAppliances:
 		s := applianceColumnSpecs()
 		return []previewColDef{
-			{"name", s[1], fmtAnyText},
-			{"brand", s[2], fmtAnyText},
-			{"model_number", s[3], fmtAnyText},
-			{"serial_number", s[4], fmtAnyText},
-			{"location", s[5], fmtAnyText},
-			{"purchase_date", s[6], fmtAnyText},
-			{"warranty_expiry", s[8], fmtAnyText},
-			{"cost_cents", s[9], fmtAnyCents},
+			{data.ColName, s[1], fmtAnyText},
+			{data.ColBrand, s[2], fmtAnyText},
+			{data.ColModelNumber, s[3], fmtAnyText},
+			{data.ColSerialNumber, s[4], fmtAnyText},
+			{data.ColLocation, s[5], fmtAnyText},
+			{data.ColPurchaseDate, s[6], fmtAnyText},
+			{data.ColWarrantyExpiry, s[8], fmtAnyText},
+			{data.ColCostCents, s[9], fmtAnyCents},
 		}
 	default:
 		return nil
@@ -1786,11 +1786,11 @@ func previewColumns(tableName string, cur locale.Currency) []previewColDef {
 
 // previewTabName maps a DB table name to the display name used in the tab bar.
 var previewTabName = map[string]string{
-	tableDocuments:      "Docs",
-	"vendors":           "Vendors",
-	"quotes":            "Quotes",
-	"maintenance_items": "Maintenance",
-	"appliances":        "Appliances",
+	tableDocuments:             "Docs",
+	data.TableVendors:          "Vendors",
+	data.TableQuotes:           "Quotes",
+	data.TableMaintenanceItems: "Maintenance",
+	data.TableAppliances:       "Appliances",
 }
 
 // previewTableGroup holds the column specs and cell rows for one table section

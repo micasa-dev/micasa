@@ -244,12 +244,12 @@ func TestRenderOperationPreview_TabbedInterface(t *testing.T) {
 	m := newPreviewModel([]extract.Operation{
 		{
 			Action: "create",
-			Table:  "vendors",
+			Table:  data.TableVendors,
 			Data:   map[string]any{"name": "Garcia Plumbing"},
 		},
 		{
 			Action: "update",
-			Table:  "documents",
+			Table:  data.TableDocuments,
 			Data:   map[string]any{"id": float64(42), "title": "Invoice", "notes": "Repair"},
 		},
 	})
@@ -282,7 +282,7 @@ func TestRenderOperationPreview_EmptyOps(t *testing.T) {
 func TestRenderOperationPreview_EmptyData(t *testing.T) {
 	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
-		{Action: "create", Table: "vendors", Data: nil},
+		{Action: "create", Table: data.TableVendors, Data: nil},
 	})
 	out := m.renderOperationPreviewSection(60, false)
 	assert.Contains(t, out, "no operations")
@@ -293,7 +293,7 @@ func TestRenderOperationPreview_MoneyFormatting(t *testing.T) {
 	m := newPreviewModel([]extract.Operation{
 		{
 			Action: "create",
-			Table:  "quotes",
+			Table:  data.TableQuotes,
 			Data: map[string]any{
 				"project_id":  float64(1),
 				"vendor_id":   float64(2),
@@ -315,8 +315,8 @@ func TestRenderOperationPreview_MoneyFormatting(t *testing.T) {
 func TestRenderOperationPreview_MultipleRowsSameTable(t *testing.T) {
 	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "Acme"}},
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "Beta Corp"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "Acme"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "Beta Corp"}},
 	})
 	out := m.renderOperationPreviewSection(60, false)
 
@@ -337,9 +337,13 @@ func TestRenderOperationPreview_UnknownTable(t *testing.T) {
 func TestGroupOperationsByTable(t *testing.T) {
 	t.Parallel()
 	ops := []extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
-		{Action: "update", Table: "documents", Data: map[string]any{"title": "B"}},
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "C", "email": "c@x.com"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
+		{Action: "update", Table: data.TableDocuments, Data: map[string]any{"title": "B"}},
+		{
+			Action: "create",
+			Table:  data.TableVendors,
+			Data:   map[string]any{"name": "C", "email": "c@x.com"},
+		},
 	}
 	groups := groupOperationsByTable(ops, locale.DefaultCurrency())
 
@@ -379,11 +383,11 @@ func TestAcceptDeferredExtraction_CreatesDocument(t *testing.T) {
 	}
 	// LLM produced operations including document fields.
 	ex.operations = []extract.Operation{
-		{Action: "create", Table: "documents", Data: map[string]any{
+		{Action: "create", Table: data.TableDocuments, Data: map[string]any{
 			"title": "Garcia Invoice",
 			"notes": "Plumbing repair",
 		}},
-		{Action: "create", Table: "vendors", Data: map[string]any{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Garcia Plumbing",
 		}},
 	}
@@ -429,7 +433,7 @@ func TestDeferredExtraction_PendingDocFieldPresent(t *testing.T) {
 func TestExploreMode_XTogglesExploring(t *testing.T) {
 	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
 	})
 	ex := m.ex.extraction
 	assert.False(t, ex.exploring)
@@ -446,7 +450,7 @@ func TestExploreMode_XTogglesExploring(t *testing.T) {
 func TestExploreMode_EscExitsExploring(t *testing.T) {
 	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
 	})
 	ex := m.ex.extraction
 	sendExtractionKey(m, "x")
@@ -461,8 +465,8 @@ func TestExploreMode_EscExitsExploring(t *testing.T) {
 func TestExploreMode_JKNavigatesRows(t *testing.T) {
 	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "B"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "B"}},
 	})
 	ex := m.ex.extraction
 	sendExtractionKey(m, "x")
@@ -482,7 +486,7 @@ func TestExploreMode_JKNavigatesRows(t *testing.T) {
 func TestExploreMode_HLNavigatesCols(t *testing.T) {
 	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "A", "email": "a@b.com",
 		}},
 	})
@@ -501,8 +505,12 @@ func TestExploreMode_HLNavigatesCols(t *testing.T) {
 func TestExploreMode_BFSwitchesTabs(t *testing.T) {
 	t.Parallel()
 	m := newPreviewModel([]extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
-		{Action: "create", Table: "quotes", Data: map[string]any{"total_cents": float64(100)}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
+		{
+			Action: "create",
+			Table:  data.TableQuotes,
+			Data:   map[string]any{"total_cents": float64(100)},
+		},
 	})
 	ex := m.ex.extraction
 	sendExtractionKey(m, "x")
@@ -520,7 +528,7 @@ func TestExploreMode_BFSwitchesTabs(t *testing.T) {
 func TestExploreMode_AcceptWorksInExploreMode(t *testing.T) {
 	t.Parallel()
 	ops := []extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{"name": "A"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
 	}
 	m := newPreviewModel(ops)
 	ex := m.ex.extraction
@@ -1442,10 +1450,10 @@ func TestDispatch_VendorCrossReference(t *testing.T) {
 	// Simulate LLM output: create vendor then quote referencing it with
 	// a fictional vendor_id that doesn't match the real DB ID.
 	ops := []extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Garcia Plumbing",
 		}},
-		{Action: "create", Table: "quotes", Data: map[string]any{
+		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
 			"vendor_id":   float64(1),
 			"project_id":  float64(project.ID),
 			"total_cents": float64(150000),
@@ -1513,7 +1521,7 @@ func TestDispatch_InvalidProjectIDShowsError(t *testing.T) {
 	acme := vendors[0]
 
 	ops := []extract.Operation{
-		{Action: "create", Table: "quotes", Data: map[string]any{
+		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
 			"vendor_id":   float64(acme.ID),
 			"project_id":  float64(9999),
 			"total_cents": float64(50000),
@@ -1576,10 +1584,10 @@ func TestDispatch_OffsetCrossReference(t *testing.T) {
 	// LLM creates a new vendor and a quote referencing it.
 	// The LLM sees max vendor ID = 3, so it emits vendor_id: 4.
 	ops := []extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Delta Electric",
 		}},
-		{Action: "create", Table: "quotes", Data: map[string]any{
+		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
 			"vendor_id":   float64(4),
 			"project_id":  float64(project.ID),
 			"total_cents": float64(200000),
@@ -1658,10 +1666,10 @@ func TestDispatch_DuplicateVendorDedup(t *testing.T) {
 
 	// LLM creates a vendor with the same name and a quote referencing it.
 	ops := []extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Acme Plumbing",
 		}},
-		{Action: "create", Table: "quotes", Data: map[string]any{
+		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
 			"vendor_id":   float64(2),
 			"project_id":  float64(project.ID),
 			"total_cents": float64(75000),
@@ -1728,10 +1736,10 @@ func TestDispatch_DuplicateApplianceDedup(t *testing.T) {
 
 	// LLM creates an appliance with the same name and a maintenance item.
 	ops := []extract.Operation{
-		{Action: "create", Table: "appliances", Data: map[string]any{
+		{Action: "create", Table: data.TableAppliances, Data: map[string]any{
 			"name": "Water Heater",
 		}},
-		{Action: "create", Table: "maintenance_items", Data: map[string]any{
+		{Action: "create", Table: data.TableMaintenanceItems, Data: map[string]any{
 			"name":         "Flush Tank",
 			"appliance_id": float64(2),
 			"category_id":  float64(catID),
@@ -1789,10 +1797,10 @@ func TestDispatch_TransactionRollbackOnFailure(t *testing.T) {
 	// Batch: create a vendor, then a quote with an invalid project_id.
 	// The vendor should NOT persist because the transaction rolls back.
 	ops := []extract.Operation{
-		{Action: "create", Table: "vendors", Data: map[string]any{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Ghost Vendor",
 		}},
-		{Action: "create", Table: "quotes", Data: map[string]any{
+		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
 			"vendor_id":   float64(1),
 			"project_id":  float64(9999),
 			"total_cents": float64(50000),

@@ -6,6 +6,7 @@ package extract
 import (
 	"testing"
 
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,8 +15,8 @@ func TestBuildExtractionPrompt(t *testing.T) {
 	t.Parallel()
 	schema := SchemaContext{
 		DDL: map[string]string{
-			"vendors":   "CREATE TABLE `vendors` (`id` integer PRIMARY KEY AUTOINCREMENT, `name` text)",
-			"documents": "CREATE TABLE `documents` (`id` integer PRIMARY KEY AUTOINCREMENT, `title` text)",
+			data.TableVendors:   "CREATE TABLE `vendors` (`id` integer PRIMARY KEY AUTOINCREMENT, `name` text)",
+			data.TableDocuments: "CREATE TABLE `documents` (`id` integer PRIMARY KEY AUTOINCREMENT, `title` text)",
 		},
 		Vendors:    []EntityRow{{ID: 1, Name: "Garcia Plumbing"}, {ID: 2, Name: "Acme Electric"}},
 		Projects:   []EntityRow{{ID: 1, Name: "Kitchen Remodel"}},
@@ -171,10 +172,10 @@ func TestStripCodeFences(t *testing.T) {
 func TestFormatDDLBlock(t *testing.T) {
 	t.Parallel()
 	ddl := map[string]string{
-		"vendors":   "CREATE TABLE `vendors` (`id` integer, `name` text)",
-		"documents": "CREATE TABLE `documents` (`id` integer, `title` text)",
+		data.TableVendors:   "CREATE TABLE `vendors` (`id` integer, `name` text)",
+		data.TableDocuments: "CREATE TABLE `documents` (`id` integer, `title` text)",
 	}
-	result := FormatDDLBlock(ddl, []string{"vendors", "documents"})
+	result := FormatDDLBlock(ddl, []string{data.TableVendors, data.TableDocuments})
 	assert.Contains(t, result, "CREATE TABLE `vendors`")
 	assert.Contains(t, result, "CREATE TABLE `documents`")
 }
@@ -182,17 +183,17 @@ func TestFormatDDLBlock(t *testing.T) {
 func TestFormatDDLBlock_MissingTable(t *testing.T) {
 	t.Parallel()
 	ddl := map[string]string{
-		"vendors": "CREATE TABLE `vendors` (`id` integer)",
+		data.TableVendors: "CREATE TABLE `vendors` (`id` integer)",
 	}
-	result := FormatDDLBlock(ddl, []string{"vendors", "nonexistent"})
-	assert.Contains(t, result, "vendors")
+	result := FormatDDLBlock(ddl, []string{data.TableVendors, "nonexistent"})
+	assert.Contains(t, result, data.TableVendors)
 	assert.NotContains(t, result, "nonexistent")
 }
 
 func TestFormatEntityRows(t *testing.T) {
 	t.Parallel()
 	rows := []EntityRow{{ID: 1, Name: "Garcia Plumbing"}, {ID: 2, Name: "Acme Electric"}}
-	result := FormatEntityRows("vendors", rows)
+	result := FormatEntityRows(data.TableVendors, rows)
 	assert.Contains(t, result, "-- vendors (id, name)")
 	assert.Contains(t, result, "-- 1, Garcia Plumbing")
 	assert.Contains(t, result, "-- 2, Acme Electric")
@@ -200,6 +201,6 @@ func TestFormatEntityRows(t *testing.T) {
 
 func TestFormatEntityRows_Empty(t *testing.T) {
 	t.Parallel()
-	result := FormatEntityRows("vendors", nil)
+	result := FormatEntityRows(data.TableVendors, nil)
 	assert.Empty(t, result)
 }

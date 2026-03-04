@@ -71,7 +71,7 @@ type TableDef struct {
 // shadow.go consumes.
 var ExtractionTableDefs = []TableDef{
 	{
-		Table: "vendors",
+		Table: data.TableVendors,
 		Columns: []ColumnDef{
 			{Name: "name", Type: ColTypeString},
 			{Name: "contact_name", Type: ColTypeString},
@@ -85,7 +85,7 @@ var ExtractionTableDefs = []TableDef{
 		},
 	},
 	{
-		Table: "appliances",
+		Table: data.TableAppliances,
 		Columns: []ColumnDef{
 			{Name: "name", Type: ColTypeString},
 			{Name: "brand", Type: ColTypeString},
@@ -100,7 +100,7 @@ var ExtractionTableDefs = []TableDef{
 		},
 	},
 	{
-		Table: "quotes",
+		Table: data.TableQuotes,
 		Columns: []ColumnDef{
 			{Name: "project_id", Type: ColTypeInteger},
 			{Name: "vendor_id", Type: ColTypeInteger},
@@ -115,7 +115,7 @@ var ExtractionTableDefs = []TableDef{
 		},
 	},
 	{
-		Table: "maintenance_items",
+		Table: data.TableMaintenanceItems,
 		Columns: []ColumnDef{
 			{Name: "name", Type: ColTypeString},
 			{Name: "category_id", Type: ColTypeInteger},
@@ -132,7 +132,7 @@ var ExtractionTableDefs = []TableDef{
 		},
 	},
 	{
-		Table: "documents",
+		Table: data.TableDocuments,
 		Columns: []ColumnDef{
 			{Name: "title", Type: ColTypeString},
 			{Name: "notes", Type: ColTypeString},
@@ -237,14 +237,14 @@ var ExtractionAllowedOps = func() map[string]AllowedOps {
 // reference in its output. Includes both writable and read-only reference
 // tables.
 var ExtractionTables = []string{
-	"documents",
-	"vendors",
-	"quotes",
-	"maintenance_items",
-	"appliances",
-	"projects",
-	"project_types",
-	"maintenance_categories",
+	data.TableDocuments,
+	data.TableVendors,
+	data.TableQuotes,
+	data.TableMaintenanceItems,
+	data.TableAppliances,
+	data.TableProjects,
+	data.TableProjectTypes,
+	data.TableMaintenanceCategories,
 }
 
 // FormatDDLBlock formats the DDL map as a SQL comment block for inclusion

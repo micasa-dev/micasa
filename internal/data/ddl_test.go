@@ -13,13 +13,13 @@ import (
 func TestTableDDL_KnownTables(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ddl, err := store.TableDDL("vendors", "documents")
+	ddl, err := store.TableDDL(TableVendors, TableDocuments)
 	require.NoError(t, err)
 	require.Len(t, ddl, 2)
-	assert.Contains(t, ddl["vendors"], "CREATE TABLE")
-	assert.Contains(t, ddl["vendors"], "name")
-	assert.Contains(t, ddl["documents"], "CREATE TABLE")
-	assert.Contains(t, ddl["documents"], "entity_kind")
+	assert.Contains(t, ddl[TableVendors], "CREATE TABLE")
+	assert.Contains(t, ddl[TableVendors], ColName)
+	assert.Contains(t, ddl[TableDocuments], "CREATE TABLE")
+	assert.Contains(t, ddl[TableDocuments], ColEntityKind)
 }
 
 func TestTableDDL_UnknownTable(t *testing.T) {
@@ -33,10 +33,10 @@ func TestTableDDL_UnknownTable(t *testing.T) {
 func TestTableDDL_MixedKnownAndUnknown(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ddl, err := store.TableDDL("vendors", "nonexistent")
+	ddl, err := store.TableDDL(TableVendors, "nonexistent")
 	require.NoError(t, err)
 	require.Len(t, ddl, 1)
-	assert.Contains(t, ddl, "vendors")
+	assert.Contains(t, ddl, TableVendors)
 }
 
 func TestTableDDL_Empty(t *testing.T) {
