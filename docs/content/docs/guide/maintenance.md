@@ -39,7 +39,7 @@ The `Next` column is computed automatically from `Last` serviced +
 `Every` is empty, `Next` is blank.
 
 Items that are overdue or coming due soon appear on the
-[Dashboard]({{< ref "/docs/guide/dashboard" >}}) with urgency indicators.
+<a href="/docs/guide/dashboard/" class="tab-pill">Dashboard</a> with urgency indicators.
 
 ## Service log
 
@@ -67,13 +67,13 @@ Maintenance table.
 
 The "Performed By" field is a select. The first option is always "Self
 (homeowner)." All existing vendors appear as additional options. To add a new
-vendor, create one via the Quotes form or Vendors tab first -- vendors are
+vendor, create one via the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> form or <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a> tab first -- vendors are
 shared across quotes and service logs.
 
 The `Performed By` column is a foreign key link. When at least one log
 entry was performed by a vendor, the header shows `→`. In Nav mode,
 press `enter` on a vendor name to jump to that vendor's row in the
-Vendors tab. Pressing `enter` on "Self" shows a brief status message
+<a href="/docs/guide/vendors/" class="tab-pill">Vendors</a> tab. Pressing `enter` on "Self" shows a brief status message
 since there is nothing to follow.
 
 ## Additional form fields
@@ -94,4 +94,4 @@ column, or `e` on the `ID` column, to open the full form).
 
 When a maintenance item is linked to an appliance, the `Appliance` column shows
 the appliance name. This column is a foreign key link -- in Nav mode, press
-`enter` on it to jump to that appliance in the Appliances tab.
+`enter` on it to jump to that appliance in the <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tab.

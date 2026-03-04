@@ -50,7 +50,7 @@ database. This cannot be undone.
 
 ## Dashboard
 
-Open incidents appear in the dashboard's "Open Incidents" section, ordered by
+Open incidents appear in the <a href="/docs/guide/dashboard/" class="tab-pill">Dashboard</a>'s "Open Incidents" section, ordered by
 severity (urgent first). Press `enter` on a dashboard row to jump to that
 incident in the table.
 

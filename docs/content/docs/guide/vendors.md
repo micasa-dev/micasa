@@ -39,7 +39,7 @@ reference that vendor.
 
 ## Cross-tab navigation
 
-The `Vendor` column on the Quotes tab is a live link (shown with `→` in the header). Press `enter` on
+The `Vendor` column on the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab is a live link (shown with `→` in the header). Press `enter` on
 a vendor name in the Quotes table to jump to that vendor's row in the Vendors
 tab.
 
@@ -57,7 +57,7 @@ column.
 
 ## Incidents
 
-[Incidents]({{< ref "/docs/guide/incidents" >}}) can optionally link to a
+<a href="/docs/guide/incidents/" class="tab-pill">Incidents</a> can optionally link to a
 vendor via the `Vendor` column, tracking who you've called or hired for a
 particular issue.
 

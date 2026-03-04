@@ -49,7 +49,7 @@ Complete reference of every keybinding in micasa, organized by mode.
 |-----|--------|
 | `s` | Cycle sort on current column (none -> asc -> desc -> none) |
 | `S` | Clear all sorts |
-| `t` | Projects tab: toggle hiding settled projects (`completed` + `abandoned`) |
+| `t` | <a href="/docs/guide/projects/" class="tab-pill">Projects</a> tab: toggle hiding settled projects (`completed` + `abandoned`) |
 | `/` | Jump to column (fuzzy find) |
 | `c` | Hide current column |
 | `C` | Show all hidden columns |
@@ -67,7 +67,7 @@ Complete reference of every keybinding in micasa, organized by mode.
 | Key     | Action |
 |---------|--------|
 | `enter` | Drill into detail view, follow FK link, or preview notes |
-| `o`     | Open selected document with OS viewer (Docs tab only) |
+| `o`     | Open selected document with OS viewer (<a href="/docs/guide/documents/" class="tab-pill">Docs</a> tab only) |
 | `i`     | Enter Edit mode |
 | `@`     | Open LLM chat overlay |
 | `?`     | Open help overlay |
@@ -91,7 +91,7 @@ Same as Nav mode, except `d` and `u` are rebound:
 | Key   | Action |
 |-------|--------|
 | `a`   | Add new entry to current tab |
-| `A`   | Add document with extraction (Docs tab only) |
+| `A`   | Add document with extraction (<a href="/docs/guide/documents/" class="tab-pill">Docs</a> tab only) |
 | `e`   | Edit current cell inline (date columns open calendar picker), or full form if cell is read-only |
 | `E`   | Open full edit form for the selected row (regardless of column) |
 | `d`   | Toggle delete/restore on selected row |
@@ -140,7 +140,7 @@ When typing `/model `, an autocomplete picker appears:
 
 ### File picker
 
-When a form field opens a file picker (e.g., `A` on the Docs tab):
+When a form field opens a file picker (e.g., `A` on the <a href="/docs/guide/documents/" class="tab-pill">Docs</a> tab):
 
 | Key       | Action |
 |-----------|--------|

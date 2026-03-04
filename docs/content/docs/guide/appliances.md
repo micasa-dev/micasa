@@ -37,7 +37,7 @@ Only the `Name` is required.
 ## Warranty tracking
 
 Enter the warranty expiry date when you add an appliance. The
-[Dashboard]({{< ref "/docs/guide/dashboard" >}}) shows appliances with warranties expiring within
+<a href="/docs/guide/dashboard/" class="tab-pill">Dashboard</a> shows appliances with warranties expiring within
 90 days (or recently expired within 30 days) in the "Expiring Soon" section.
 
 ## Maintenance drill
@@ -52,7 +52,7 @@ From the detail view you can add, edit, or delete maintenance items. Press
 
 ## Incidents
 
-[Incidents]({{< ref "/docs/guide/incidents" >}}) can optionally link to an
+<a href="/docs/guide/incidents/" class="tab-pill">Incidents</a> can optionally link to an
 appliance via the `Appliance` column. This lets you track which equipment is
 involved in a household issue. Appliances with active incidents cannot be
 deleted -- resolve or unlink the incidents first.

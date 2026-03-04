@@ -73,8 +73,8 @@ Edit).
 
 ## Tabs
 
-The main data lives in six tabs: **Projects**, **Quotes**, **Maintenance**,
-**Appliances**, **Vendors**, and **Docs**. Use `b` / `f` to cycle between
+The main data lives in six tabs: <a href="/docs/guide/projects/" class="tab-pill">Projects</a>, <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a>, <a href="/docs/guide/maintenance/" class="tab-pill">Maintenance</a>,
+<a href="/docs/guide/appliances/" class="tab-pill">Appliances</a>, <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a>, and <a href="/docs/guide/documents/" class="tab-pill">Docs</a>. Use `b` / `f` to cycle between
 them. The active tab is highlighted in the tab bar.
 
 ## Detail views
@@ -82,10 +82,10 @@ them. The active tab is highlighted in the tab bar.
 Some columns are drill columns (marked `↘` in the header) -- pressing `enter` on them opens a sub-table.
 For example:
 
-- `Log` column on the Maintenance tab opens the service log for that item
-- `Maint` column on the Appliances tab opens maintenance items linked to
+- `Log` column on the <a href="/docs/guide/maintenance/" class="tab-pill">Maintenance</a> tab opens the service log for that item
+- `Maint` column on the <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tab opens maintenance items linked to
   that appliance
-- `Docs` column on the Projects or Appliances tab opens linked documents
+- `Docs` column on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> or <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tab opens linked documents
 
 A breadcrumb bar replaces the tab bar while in a detail view (e.g.,
 `Maintenance > HVAC filter replacement`). Press `esc` to close the detail
@@ -109,7 +109,7 @@ to the referenced row in the target tab. If the cell has no link (e.g.
 instead.
 
 Examples:
-- Quotes `Project` column links to the Projects tab
-- Quotes `Vendor` column links to the Vendors tab
-- Maintenance `Appliance` column links to the Appliances tab
-- Service log `Performed By` column links to the Vendors tab
+- Quotes `Project` column links to the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> tab
+- Quotes `Vendor` column links to the <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a> tab
+- Maintenance `Appliance` column links to the <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tab
+- Service log `Performed By` column links to the <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a> tab

@@ -76,6 +76,6 @@ across display modes without manual re-pinning.
   that column
 - **Hidden columns**: hiding a column with `c` clears any pins on that column
 - **Sorting**: sorts apply to whatever rows are visible (filtered or full)
-- **Settled project toggle** (`t`): on the Projects tab, `t` hides completed
+- **Settled project toggle** (`t`): on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> tab, `t` hides completed
   and abandoned projects using the pin/filter mechanism internally
 - **All rows filtered**: shows "No matches." instead of the table

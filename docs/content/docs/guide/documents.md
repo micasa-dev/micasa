@@ -62,7 +62,7 @@ belongs to (e.g., "project #3", "appliance #7").
 
 ## Drill columns
 
-The `Docs` column appears on the **Projects** and **Appliances** tabs, showing
+The `Docs` column appears on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> and <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tabs, showing
 how many documents are linked to each record. In Nav mode, press `enter` to
 drill into a scoped document list for that record.
 

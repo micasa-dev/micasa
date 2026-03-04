@@ -308,6 +308,29 @@ pre {
   color: var(--terracotta);
 }
 
+/* -- Tab pill ------------------------------------------------ */
+
+.tab-pill {
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.85em;
+  background: var(--terracotta);
+  color: var(--cream);
+  padding: 0.1em 0.45em;
+  border-radius: 4px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.blog-post-body a.tab-pill {
+  color: var(--cream);
+  text-decoration: none;
+}
+
+.blog-post-body a.tab-pill:hover {
+  background: var(--terracotta-dark);
+  color: var(--cream);
+}
+
 /* -- Responsive --------------------------------------------- */
 
 @media (max-width: 600px) {

@@ -69,5 +69,5 @@ straight to the full form.
 The `Quotes` column shows how many quotes are linked to this project. In
 Nav mode, press `enter` to drill into a detail view of those quotes.
 
-On the Quotes tab, the `Project` column links back -- press `enter` to jump
+On the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab, the `Project` column links back -- press `enter` to jump
 to the project.

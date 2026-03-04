@@ -69,4 +69,4 @@ The dashboard supports keyboard navigation:
 
 When you press `enter`, the dashboard closes and navigates to the
 corresponding row in the appropriate tab. For example, pressing `enter` on an
-overdue maintenance item takes you to that row in the Maintenance tab.
+overdue maintenance item takes you to that row in the <a href="/docs/guide/maintenance/" class="tab-pill">Maintenance</a> tab.
