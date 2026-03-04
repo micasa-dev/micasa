@@ -304,7 +304,9 @@
                 --noTimes \
                 --printPathWarnings \
                 --panicOnWarning
-              pagefind --site website --quiet
+              pagefind --site website \
+                --quiet \
+                --force-language en
             '';
           };
           site = pkgs.writeShellApplication {
