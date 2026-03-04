@@ -54,7 +54,7 @@ website/
 
 # Build-time copies of shared assets (source of truth: images/)
 docs/static/images/favicon.svg
-docs/static/images/demo.webp
+docs/static/videos/demo.webm
 
 # Pagefind search index (generated at build time)
 docs/static/pagefind/

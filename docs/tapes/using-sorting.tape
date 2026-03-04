@@ -1,6 +1,6 @@
 Require micasa
 
-Output docs/static/images/using-sorting.gif
+Output docs/static/videos/using-sorting.webm
 
 Set Shell bash
 Set FontFamily "Hack Nerd Font"

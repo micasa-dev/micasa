@@ -1,6 +1,6 @@
 Require micasa
 
-Output images/demo.gif
+Output videos/demo.webm
 
 Set Shell bash
 Set FontFamily "Hack Nerd Font"

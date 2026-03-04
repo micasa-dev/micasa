@@ -12,7 +12,7 @@
   <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/dm-serif-display-latin-400.woff2" | relURL }}" crossorigin>
   <link rel="stylesheet" href="{{ "css/fonts.css" | relURL }}">
   <link rel="stylesheet" href="{{ "css/website.css" | relURL }}">
-  <link rel="preload" as="image" type="image/webp" href="{{ "images/demo.webp" | relURL }}">
+  <link rel="preload" as="video" type="video/webm" href="{{ "videos/demo.webm" | relURL }}">
 </head>
 <body>
 
@@ -39,7 +39,7 @@
 
 <!-- Demo -->
 <div class="container demo-container">
-  <img src="{{ "images/demo.webp" | relURL }}" alt="micasa demo showing terminal UI" class="demo-gif" fetchpriority="high" decoding="async">
+  <video src="{{ "videos/demo.webm" | relURL }}" class="demo-gif" autoplay loop muted playsinline></video>
 </div>
 
 <!-- Pitch -->

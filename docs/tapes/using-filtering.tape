@@ -1,6 +1,6 @@
 Require micasa
 
-Output docs/static/images/using-filtering.gif
+Output docs/static/videos/using-filtering.webm
 
 Set Shell bash
 Set FontFamily "Hack Nerd Font"

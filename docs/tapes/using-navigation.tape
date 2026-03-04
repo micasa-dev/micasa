@@ -1,6 +1,6 @@
 Require micasa
 
-Output docs/static/images/using-navigation.gif
+Output docs/static/videos/using-navigation.webm
 
 Set Shell bash
 Set FontFamily "Hack Nerd Font"

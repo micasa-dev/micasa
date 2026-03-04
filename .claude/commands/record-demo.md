@@ -5,7 +5,7 @@ Re-record the demo GIF and/or screenshot tapes after UI/UX changes.
 
 ## Demo GIF
 
-Run `nix run '.#record-demo'` to update `images/demo.gif` (used in README).
+Run `nix run '.#record-demo'` to update `videos/demo.webm` (used in README).
 Commit the GIF with the feature.
 
 ## Screenshots

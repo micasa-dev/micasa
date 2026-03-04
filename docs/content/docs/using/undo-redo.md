@@ -7,7 +7,7 @@ linkTitle = "Undo & Redo"
 
 micasa supports multi-level undo and redo for data edits.
 
-![Undo and redo demo showing edit, undo, and redo](/images/using-undo-redo.webp)
+<video src="/videos/using-undo-redo.webm" autoplay loop muted playsinline style="max-width:100%;border-radius:8px"></video>
 
 ## How it works
 

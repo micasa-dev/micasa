@@ -39,7 +39,7 @@ a quote for $287 linked to that vendor, update this document's title to
 same table layout as the rest of the app. You review, you accept or reject.
 The LLM never writes to your database directly.
 
-![extraction pipeline](/images/extraction.webp)
+<video src="/videos/extraction.webm" autoplay loop muted playsinline style="max-width:100%;border-radius:8px"></video>
 
 The overlay is keyboard-driven: `j`/`k` to navigate steps, `enter` to
 expand logs, `x` to explore the proposed operations table, `a` to accept,
