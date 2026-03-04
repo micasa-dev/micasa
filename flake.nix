@@ -289,7 +289,7 @@
               micasa
               pkgs.vhs
               pkgs.nerd-fonts.hack
-              pkgs.imagemagick
+              pkgs.ffmpeg-headless
             ];
             runtimeEnv = {
               FONTCONFIG_FILE = "${vhsFontsConf}";
@@ -305,16 +305,11 @@
               OUT="docs/static/images"
               mkdir -p "$OUT"
 
-              tmpdir=$(mktemp -d)
-              trap 'rm -rf "$tmpdir"' EXIT
-
               vhs "$tape"
 
-              # Extract last frame from GIF as lossless WebP
-              magick "$OUT/$name.gif" -coalesce "$tmpdir/frame-%04d.png"
-              last=$(printf '%s\n' "$tmpdir/frame"-*.png | sort -t- -k2 -n | tail -1)
-              magick "$last" -quality 100 -define webp:lossless=true "$OUT/$name.webp"
-              rm -f "$OUT/$name.gif"
+              # Extract last frame from WebM as lossless WebP
+              ffmpeg -y -sseof -0.04 -i "$OUT/$name.webm" -frames:v 1 -c:v libwebp -lossless 1 "$OUT/$name.webp"
+              rm -f "$OUT/$name.webm"
 
               echo "$name -> $OUT/$name.webp"
             '';

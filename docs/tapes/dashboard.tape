@@ -1,6 +1,6 @@
 Require micasa
 
-Output docs/static/images/dashboard.gif
+Output docs/static/images/dashboard.webm
 
 Set Shell bash
 Set FontFamily "Hack Nerd Font"
