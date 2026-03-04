@@ -34,6 +34,7 @@ func collectProgress(fn func(ch chan<- ExtractProgress)) []ExtractProgress {
 // ---------------------------------------------------------------------------
 
 func TestOcrPDF_ValidPDF(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -51,6 +52,7 @@ func TestOcrPDF_ValidPDF(t *testing.T) {
 }
 
 func TestOcrPDF_ScannedPDF(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -69,6 +71,7 @@ func TestOcrPDF_ScannedPDF(t *testing.T) {
 }
 
 func TestOcrPDF_InvalidData(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -79,6 +82,7 @@ func TestOcrPDF_InvalidData(t *testing.T) {
 }
 
 func TestOcrPDF_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -96,6 +100,7 @@ func TestOcrPDF_ContextCancelled(t *testing.T) {
 }
 
 func TestOcrPDF_MixedPDF_MultiPageTSV(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -114,6 +119,7 @@ func TestOcrPDF_MixedPDF_MultiPageTSV(t *testing.T) {
 }
 
 func TestOcrPDF_SinglePage(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -133,6 +139,7 @@ func TestOcrPDF_SinglePage(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestOcrImage_ValidImage(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -151,6 +158,7 @@ func TestOcrImage_ValidImage(t *testing.T) {
 }
 
 func TestOcrImage_InvoicePNG(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -169,6 +177,7 @@ func TestOcrImage_InvoicePNG(t *testing.T) {
 }
 
 func TestOcrImage_InvalidData(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -179,6 +188,7 @@ func TestOcrImage_InvalidData(t *testing.T) {
 }
 
 func TestOcrImage_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -202,6 +212,7 @@ func TestOcrImage_ContextCancelled(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestOcrImageFile_ValidFile(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -218,6 +229,7 @@ func TestOcrImageFile_ValidFile(t *testing.T) {
 }
 
 func TestOcrImageFile_NonExistentFile(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -228,6 +240,7 @@ func TestOcrImageFile_NonExistentFile(t *testing.T) {
 }
 
 func TestOcrImageFile_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -249,6 +262,7 @@ func TestOcrImageFile_ContextCancelled(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRasterize_ValidPDF(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToPPM() {
 		skipOrFatalCI(t, "pdftoppm not available")
 	}
@@ -272,6 +286,7 @@ func TestRasterize_ValidPDF(t *testing.T) {
 }
 
 func TestRasterize_InvalidPDF(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToPPM() {
 		skipOrFatalCI(t, "pdftoppm not available")
 	}
@@ -286,6 +301,7 @@ func TestRasterize_InvalidPDF(t *testing.T) {
 }
 
 func TestRasterize_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToPPM() {
 		skipOrFatalCI(t, "pdftoppm not available")
 	}
@@ -312,6 +328,7 @@ func TestRasterize_ContextCancelled(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestExtractPDF_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToText() {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
@@ -329,6 +346,7 @@ func TestExtractPDF_ContextCancelled(t *testing.T) {
 }
 
 func TestExtractPDF_CorruptData(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToText() {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
@@ -343,6 +361,7 @@ func TestExtractPDF_CorruptData(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestOcrPDFWithProgress_ZeroMaxPages(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -368,6 +387,7 @@ func TestOcrPDFWithProgress_ZeroMaxPages(t *testing.T) {
 }
 
 func TestOcrPDFWithProgress_NegativeMaxPages(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -393,6 +413,7 @@ func TestOcrPDFWithProgress_NegativeMaxPages(t *testing.T) {
 }
 
 func TestOcrPDFWithProgress_EmptyData(t *testing.T) {
+	t.Parallel()
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
 		ocrPDFWithProgress(context.Background(), nil, 5, ch)
 	})
@@ -404,6 +425,7 @@ func TestOcrPDFWithProgress_EmptyData(t *testing.T) {
 }
 
 func TestOcrPDFWithProgress_InvalidPDF(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -424,6 +446,7 @@ func TestOcrPDFWithProgress_InvalidPDF(t *testing.T) {
 }
 
 func TestOcrPDFWithProgress_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -454,6 +477,7 @@ func TestOcrPDFWithProgress_ContextCancelled(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestOcrImageWithProgress_ValidImage(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -490,6 +514,7 @@ func TestOcrImageWithProgress_ValidImage(t *testing.T) {
 }
 
 func TestOcrImageWithProgress_EmptyData(t *testing.T) {
+	t.Parallel()
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
 		ocrImageWithProgress(context.Background(), nil, ch)
 	})
@@ -501,6 +526,7 @@ func TestOcrImageWithProgress_EmptyData(t *testing.T) {
 }
 
 func TestOcrImageWithProgress_InvalidImage(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -520,6 +546,7 @@ func TestOcrImageWithProgress_InvalidImage(t *testing.T) {
 }
 
 func TestOcrImageWithProgress_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -552,6 +579,7 @@ func TestOcrImageWithProgress_ContextCancelled(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestPDFOCRExtractor_Extract_MaxPagesDefault(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -569,6 +597,7 @@ func TestPDFOCRExtractor_Extract_MaxPagesDefault(t *testing.T) {
 }
 
 func TestPDFOCRExtractor_Extract_InvalidPDF(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -579,6 +608,7 @@ func TestPDFOCRExtractor_Extract_InvalidPDF(t *testing.T) {
 }
 
 func TestPDFOCRExtractor_Extract_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -601,6 +631,7 @@ func TestPDFOCRExtractor_Extract_ContextCancelled(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestImageOCRExtractor_Extract_InvalidImage(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -611,6 +642,7 @@ func TestImageOCRExtractor_Extract_InvalidImage(t *testing.T) {
 }
 
 func TestImageOCRExtractor_Extract_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}
@@ -635,6 +667,7 @@ func TestImageOCRExtractor_Extract_ContextCancelled(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestPDFTextExtractor_Extract_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToText() {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
@@ -653,6 +686,7 @@ func TestPDFTextExtractor_Extract_ContextCancelled(t *testing.T) {
 }
 
 func TestPDFTextExtractor_Extract_InvalidPDF(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToText() {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
@@ -663,6 +697,7 @@ func TestPDFTextExtractor_Extract_InvalidPDF(t *testing.T) {
 }
 
 func TestPDFTextExtractor_Extract_DefaultTimeout(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToText() {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
@@ -684,6 +719,7 @@ func TestPDFTextExtractor_Extract_DefaultTimeout(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestExtractWithProgress_PDF_InvalidData(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -709,6 +745,7 @@ func TestExtractWithProgress_PDF_InvalidData(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestMergeAcquiredImages_PrefersPdftoppm(t *testing.T) {
+	t.Parallel()
 	results := []acquireResult{
 		{tool: "pdfimages", images: []string{"a.png", "b.png"}},
 		{tool: "pdftohtml", images: []string{"c.png"}},
@@ -720,6 +757,7 @@ func TestMergeAcquiredImages_PrefersPdftoppm(t *testing.T) {
 }
 
 func TestMergeAcquiredImages_FallsBackToTargeted(t *testing.T) {
+	t.Parallel()
 	results := []acquireResult{
 		{tool: "pdfimages", images: []string{"a.png", "b.png"}},
 		{tool: "pdftohtml", images: []string{"c.png"}},
@@ -730,6 +768,7 @@ func TestMergeAcquiredImages_FallsBackToTargeted(t *testing.T) {
 }
 
 func TestMergeAcquiredImages_PdftoppmOnly(t *testing.T) {
+	t.Parallel()
 	results := []acquireResult{
 		{tool: "pdftoppm", images: []string{"page-01.png"}},
 	}
@@ -738,11 +777,13 @@ func TestMergeAcquiredImages_PdftoppmOnly(t *testing.T) {
 }
 
 func TestMergeAcquiredImages_Empty(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, mergeAcquiredImages(nil))
 	assert.Nil(t, mergeAcquiredImages([]acquireResult{}))
 }
 
 func TestExtractWithProgress_Image_InvalidData(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}

@@ -46,6 +46,7 @@ func mustMarshalJSON(t *testing.T, s string) string {
 // text extraction runs, OCR is skipped (not a PDF/image), then the LLM
 // receives the text and returns JSON operations.
 func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
+	t.Parallel()
 	opsJSON := `{"operations": [
 		{"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing"}}
 	], "document": {"action": "update", "data": {"id": 42, "title": "Garcia Plumbing Invoice", "notes": "Plumbing repair invoice"}}}`
@@ -79,6 +80,7 @@ func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 // error is captured in Result.Err but doesn't prevent the document
 // from being saved.
 func TestPipeline_LLMServerDown(t *testing.T) {
+	t.Parallel()
 	// Point at a port that's not listening.
 	client, err := llm.NewClient("llamacpp", "http://127.0.0.1:1/v1", "test-model", "", time.Second)
 	require.NoError(t, err)
@@ -98,6 +100,7 @@ func TestPipeline_LLMServerDown(t *testing.T) {
 // TestPipeline_LLMGarbageResponse verifies that when the LLM returns
 // unparseable JSON, the pipeline captures the error without crashing.
 func TestPipeline_LLMGarbageResponse(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w,
@@ -121,6 +124,7 @@ func TestPipeline_LLMGarbageResponse(t *testing.T) {
 // TestPipeline_LLMSkippedWithoutText verifies that the LLM step is not
 // called when there's no extracted text (e.g. a binary file).
 func TestPipeline_LLMSkippedWithoutText(t *testing.T) {
+	t.Parallel()
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		called = true
@@ -143,6 +147,7 @@ func TestPipeline_LLMSkippedWithoutText(t *testing.T) {
 // TestPipeline_LLMForbiddenAction verifies that a forbidden action from the
 // LLM is caught by validation and reported as an error.
 func TestPipeline_LLMForbiddenAction(t *testing.T) {
+	t.Parallel()
 	opsJSON := `{"operations": [{"action": "delete", "table": "vendors", "data": {"id": 1}}]}`
 	_, client := newTestLLMServer(t, opsJSON)
 
@@ -158,6 +163,7 @@ func TestPipeline_LLMForbiddenAction(t *testing.T) {
 // TestPipeline_LLMForbiddenTable verifies that writing to an unknown table
 // is caught by validation.
 func TestPipeline_LLMForbiddenTable(t *testing.T) {
+	t.Parallel()
 	opsJSON := `{"operations": [{"action": "create", "table": "users", "data": {"name": "hacker"}}]}`
 	_, client := newTestLLMServer(t, opsJSON)
 

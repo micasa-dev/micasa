@@ -14,6 +14,7 @@ import (
 )
 
 func TestTextFromTSV(t *testing.T) {
+	t.Parallel()
 	// Simulated tesseract TSV output with header + data rows.
 	// Columns: level page_num block_num par_num line_num word_num left top width height conf text
 	tsv := []byte(
@@ -31,12 +32,14 @@ func TestTextFromTSV(t *testing.T) {
 }
 
 func TestTextFromTSV_Empty(t *testing.T) {
+	t.Parallel()
 	assert.Empty(t, textFromTSV(nil))
 	assert.Empty(t, textFromTSV([]byte("")))
 	assert.Empty(t, textFromTSV([]byte("header\n")))
 }
 
 func TestTextFromTSV_EmptyWords(t *testing.T) {
+	t.Parallel()
 	tsv := []byte(
 		"level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
 			"5\t1\t1\t1\t1\t1\t100\t200\t50\t12\t96\t\n" +
@@ -47,6 +50,7 @@ func TestTextFromTSV_EmptyWords(t *testing.T) {
 }
 
 func TestTextFromTSV_ParagraphBreaks(t *testing.T) {
+	t.Parallel()
 	tsv := []byte(
 		"level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
 			"5\t1\t1\t1\t1\t1\t100\t200\t50\t12\t96\tPar1\n" +
@@ -57,6 +61,7 @@ func TestTextFromTSV_ParagraphBreaks(t *testing.T) {
 }
 
 func TestAtoi(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input  string
 		expect int
@@ -74,6 +79,7 @@ func TestAtoi(t *testing.T) {
 }
 
 func TestIsImageMIME(t *testing.T) {
+	t.Parallel()
 	assert.True(t, IsImageMIME("image/png"))
 	assert.True(t, IsImageMIME("image/jpeg"))
 	assert.True(t, IsImageMIME("image/tiff"))
@@ -85,16 +91,19 @@ func TestIsImageMIME(t *testing.T) {
 }
 
 func TestPDFOCRExtractor_UnsupportedMIME(t *testing.T) {
+	t.Parallel()
 	ext := &PDFOCRExtractor{}
 	assert.False(t, ext.Matches("application/json"))
 }
 
 func TestImageOCRExtractor_UnsupportedMIME(t *testing.T) {
+	t.Parallel()
 	ext := &ImageOCRExtractor{}
 	assert.False(t, ext.Matches("application/json"))
 }
 
 func TestOCRExtractor_EmptyData(t *testing.T) {
+	t.Parallel()
 	ext := &PDFOCRExtractor{}
 	src, err := ext.Extract(context.Background(), nil)
 	require.NoError(t, err)
@@ -102,6 +111,7 @@ func TestOCRExtractor_EmptyData(t *testing.T) {
 }
 
 func TestPDFOCR_Integration(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -122,6 +132,7 @@ func TestPDFOCR_Integration(t *testing.T) {
 }
 
 func TestImageOCR_Integration(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}

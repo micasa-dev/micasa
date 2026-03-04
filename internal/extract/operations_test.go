@@ -13,6 +13,7 @@ import (
 // --- ParseOperations ---
 
 func TestParseOperations_Valid(t *testing.T) {
+	t.Parallel()
 	raw := `{"operations": [
 		{"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing"}}
 	], "document": {"action": "update", "data": {"id": 42, "title": "Invoice", "notes": "Repair"}}}`
@@ -30,6 +31,7 @@ func TestParseOperations_Valid(t *testing.T) {
 }
 
 func TestParseOperations_DocumentOnly(t *testing.T) {
+	t.Parallel()
 	raw := `{"operations": [], "document": {"action": "update", "data": {"id": 1, "title": "Receipt"}}}`
 	ops, err := ParseOperations(raw)
 	require.NoError(t, err)
@@ -40,6 +42,7 @@ func TestParseOperations_DocumentOnly(t *testing.T) {
 }
 
 func TestParseOperations_NoDocument(t *testing.T) {
+	t.Parallel()
 	raw := `{"operations": [
 		{"action": "create", "table": "vendors", "data": {"name": "Test Vendor"}}
 	]}`
@@ -51,35 +54,41 @@ func TestParseOperations_NoDocument(t *testing.T) {
 }
 
 func TestParseOperations_RejectsCodeFences(t *testing.T) {
+	t.Parallel()
 	raw := "```json\n" + `{"operations": [{"action": "create", "table": "vendors", "data": {"name": "Test"}}]}` + "\n```"
 	_, err := ParseOperations(raw)
 	assert.Error(t, err)
 }
 
 func TestParseOperations_Empty(t *testing.T) {
+	t.Parallel()
 	_, err := ParseOperations("")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty LLM output")
 }
 
 func TestParseOperations_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, err := ParseOperations("I don't understand the question")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parse operations json")
 }
 
 func TestParseOperations_EmptyArray(t *testing.T) {
+	t.Parallel()
 	_, err := ParseOperations(`{"operations": []}`)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no operations found")
 }
 
 func TestParseOperations_InvalidWrapper(t *testing.T) {
+	t.Parallel()
 	_, err := ParseOperations(`{"operations": "not an array"}`)
 	assert.Error(t, err)
 }
 
 func TestParseOperations_RawArrayRejected(t *testing.T) {
+	t.Parallel()
 	raw := `[{"action": "create", "table": "vendors", "data": {"name": "Test"}}]`
 	_, err := ParseOperations(raw)
 	assert.Error(t, err, "raw arrays should be rejected; schema requires object wrapper")
@@ -88,6 +97,7 @@ func TestParseOperations_RawArrayRejected(t *testing.T) {
 // --- OperationsSchema ---
 
 func TestOperationsSchema_TopLevel(t *testing.T) {
+	t.Parallel()
 	schema := OperationsSchema()
 	assert.Equal(t, "object", schema["type"])
 	assert.Equal(t, false, schema["additionalProperties"])
@@ -115,6 +125,7 @@ func TestOperationsSchema_TopLevel(t *testing.T) {
 }
 
 func TestOperationsSchema_VariantStructure(t *testing.T) {
+	t.Parallel()
 	variants := operationVariants()
 
 	for i, v := range variants {
@@ -153,6 +164,7 @@ func TestOperationsSchema_VariantStructure(t *testing.T) {
 }
 
 func TestOperationsSchema_DocumentVariantStructure(t *testing.T) {
+	t.Parallel()
 	variants := documentVariants()
 	require.Len(t, variants, 2)
 
@@ -188,6 +200,7 @@ func TestOperationsSchema_DocumentVariantStructure(t *testing.T) {
 }
 
 func TestOperationsSchema_CoversTables(t *testing.T) {
+	t.Parallel()
 	type tableAction struct {
 		table  string
 		action Action
@@ -235,6 +248,7 @@ func TestOperationsSchema_CoversTables(t *testing.T) {
 }
 
 func TestOperationsSchema_NoDocumentInOperations(t *testing.T) {
+	t.Parallel()
 	for i, v := range operationVariants() {
 		variant, ok := v.(map[string]any)
 		require.True(t, ok)
@@ -250,6 +264,7 @@ func TestOperationsSchema_NoDocumentInOperations(t *testing.T) {
 }
 
 func TestOperationsSchema_VendorsCreateColumns(t *testing.T) {
+	t.Parallel()
 	variant := findVariant(t, ActionCreate, "vendors")
 	dataProps := variantDataProps(t, variant)
 
@@ -265,18 +280,21 @@ func TestOperationsSchema_VendorsCreateColumns(t *testing.T) {
 }
 
 func TestOperationsSchema_DocumentsUpdateRequiresID(t *testing.T) {
+	t.Parallel()
 	variant := findDocumentVariant(t, ActionUpdate)
 	dataRequired := variantDataRequired(t, variant)
 	assert.Contains(t, dataRequired, "id")
 }
 
 func TestOperationsSchema_MaintenanceUpdateRequiresID(t *testing.T) {
+	t.Parallel()
 	variant := findVariant(t, ActionUpdate, "maintenance_items")
 	dataRequired := variantDataRequired(t, variant)
 	assert.Contains(t, dataRequired, "id")
 }
 
 func TestOperationsSchema_EntityKindEnum(t *testing.T) {
+	t.Parallel()
 	variant := findDocumentVariant(t, ActionUpdate)
 	dataProps := variantDataProps(t, variant)
 
@@ -290,6 +308,7 @@ func TestOperationsSchema_EntityKindEnum(t *testing.T) {
 }
 
 func TestOperationsSchema_QuotesCreateColumns(t *testing.T) {
+	t.Parallel()
 	variant := findVariant(t, ActionCreate, "quotes")
 	dataProps := variantDataProps(t, variant)
 	dataRequired := variantDataRequired(t, variant)
@@ -367,6 +386,7 @@ var testAllowedOps = map[string]AllowedOps{
 }
 
 func TestValidateOperations_Valid(t *testing.T) {
+	t.Parallel()
 	ops := []Operation{
 		{Action: ActionCreate, Table: "vendors", Data: map[string]any{"name": "Test"}},
 		{Action: ActionUpdate, Table: documentsTable, Data: map[string]any{"title": "Doc"}},
@@ -376,6 +396,7 @@ func TestValidateOperations_Valid(t *testing.T) {
 }
 
 func TestValidateOperations_InvalidAction(t *testing.T) {
+	t.Parallel()
 	ops := []Operation{
 		{
 			Action: "delete",
@@ -389,6 +410,7 @@ func TestValidateOperations_InvalidAction(t *testing.T) {
 }
 
 func TestValidateOperations_UnknownTable(t *testing.T) {
+	t.Parallel()
 	ops := []Operation{
 		{Action: ActionCreate, Table: "users", Data: map[string]any{"name": "Test"}},
 	}
@@ -398,6 +420,7 @@ func TestValidateOperations_UnknownTable(t *testing.T) {
 }
 
 func TestValidateOperations_CreateOnUpdateOnlyTable(t *testing.T) {
+	t.Parallel()
 	ops := []Operation{
 		{Action: ActionCreate, Table: documentsTable, Data: map[string]any{"title": "X"}},
 	}
@@ -407,6 +430,7 @@ func TestValidateOperations_CreateOnUpdateOnlyTable(t *testing.T) {
 }
 
 func TestValidateOperations_UpdateOnInsertOnlyTable(t *testing.T) {
+	t.Parallel()
 	ops := []Operation{
 		{Action: ActionUpdate, Table: "vendors", Data: map[string]any{"name": "X"}},
 	}
@@ -416,6 +440,7 @@ func TestValidateOperations_UpdateOnInsertOnlyTable(t *testing.T) {
 }
 
 func TestValidateOperations_EmptyData(t *testing.T) {
+	t.Parallel()
 	ops := []Operation{
 		{Action: ActionCreate, Table: "vendors", Data: map[string]any{}},
 	}
@@ -427,6 +452,7 @@ func TestValidateOperations_EmptyData(t *testing.T) {
 // --- ParseUint ---
 
 func TestParseUint(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, uint(42), ParseUint(float64(42)))
 	assert.Equal(t, uint(42), ParseUint("42"))
 	assert.Equal(t, uint(42), ParseUint(" 42 "))

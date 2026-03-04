@@ -17,11 +17,13 @@ import (
 // --- Tool/Matches/Available unit tests ---
 
 func TestPDFTextExtractor_Tool(t *testing.T) {
+	t.Parallel()
 	ext := &PDFTextExtractor{}
 	assert.Equal(t, "pdftotext", ext.Tool())
 }
 
 func TestPDFTextExtractor_Matches(t *testing.T) {
+	t.Parallel()
 	ext := &PDFTextExtractor{}
 	assert.True(t, ext.Matches("application/pdf"))
 	assert.False(t, ext.Matches("text/plain"))
@@ -29,16 +31,19 @@ func TestPDFTextExtractor_Matches(t *testing.T) {
 }
 
 func TestPDFTextExtractor_Available(t *testing.T) {
+	t.Parallel()
 	ext := &PDFTextExtractor{}
 	assert.Equal(t, HasPDFToText(), ext.Available())
 }
 
 func TestPlainTextExtractor_Tool(t *testing.T) {
+	t.Parallel()
 	ext := &PlainTextExtractor{}
 	assert.Equal(t, "plaintext", ext.Tool())
 }
 
 func TestPlainTextExtractor_Matches(t *testing.T) {
+	t.Parallel()
 	ext := &PlainTextExtractor{}
 	assert.True(t, ext.Matches("text/plain"))
 	assert.True(t, ext.Matches("text/markdown"))
@@ -48,11 +53,13 @@ func TestPlainTextExtractor_Matches(t *testing.T) {
 }
 
 func TestPlainTextExtractor_Available(t *testing.T) {
+	t.Parallel()
 	ext := &PlainTextExtractor{}
 	assert.True(t, ext.Available())
 }
 
 func TestPlainTextExtractor_Extract(t *testing.T) {
+	t.Parallel()
 	ext := &PlainTextExtractor{}
 	src, err := ext.Extract(context.Background(), []byte("  hello   world  "))
 	require.NoError(t, err)
@@ -62,6 +69,7 @@ func TestPlainTextExtractor_Extract(t *testing.T) {
 }
 
 func TestPDFTextExtractor_Extract_EmptyData(t *testing.T) {
+	t.Parallel()
 	ext := &PDFTextExtractor{}
 	src, err := ext.Extract(context.Background(), nil)
 	require.NoError(t, err)
@@ -70,6 +78,7 @@ func TestPDFTextExtractor_Extract_EmptyData(t *testing.T) {
 }
 
 func TestPlainTextExtractor_Extract_EmptyData(t *testing.T) {
+	t.Parallel()
 	ext := &PlainTextExtractor{}
 	src, err := ext.Extract(context.Background(), nil)
 	require.NoError(t, err)
@@ -78,6 +87,7 @@ func TestPlainTextExtractor_Extract_EmptyData(t *testing.T) {
 }
 
 func TestImageOCRExtractor_Extract_EmptyData(t *testing.T) {
+	t.Parallel()
 	ext := &ImageOCRExtractor{}
 	src, err := ext.Extract(context.Background(), nil)
 	require.NoError(t, err)
@@ -86,6 +96,7 @@ func TestImageOCRExtractor_Extract_EmptyData(t *testing.T) {
 }
 
 func TestPDFOCRExtractor_Extract_EmptyData(t *testing.T) {
+	t.Parallel()
 	ext := &PDFOCRExtractor{}
 	src, err := ext.Extract(context.Background(), nil)
 	require.NoError(t, err)
@@ -94,11 +105,13 @@ func TestPDFOCRExtractor_Extract_EmptyData(t *testing.T) {
 }
 
 func TestPDFOCRExtractor_Tool(t *testing.T) {
+	t.Parallel()
 	ext := &PDFOCRExtractor{}
 	assert.Equal(t, "tesseract", ext.Tool())
 }
 
 func TestPDFOCRExtractor_Matches(t *testing.T) {
+	t.Parallel()
 	ext := &PDFOCRExtractor{}
 	assert.True(t, ext.Matches("application/pdf"))
 	assert.False(t, ext.Matches("text/plain"))
@@ -106,16 +119,19 @@ func TestPDFOCRExtractor_Matches(t *testing.T) {
 }
 
 func TestPDFOCRExtractor_Available(t *testing.T) {
+	t.Parallel()
 	ext := &PDFOCRExtractor{}
 	assert.Equal(t, OCRAvailable(), ext.Available())
 }
 
 func TestImageOCRExtractor_Tool(t *testing.T) {
+	t.Parallel()
 	ext := &ImageOCRExtractor{}
 	assert.Equal(t, "tesseract", ext.Tool())
 }
 
 func TestImageOCRExtractor_Matches(t *testing.T) {
+	t.Parallel()
 	ext := &ImageOCRExtractor{}
 	assert.True(t, ext.Matches("image/png"))
 	assert.True(t, ext.Matches("image/jpeg"))
@@ -125,6 +141,7 @@ func TestImageOCRExtractor_Matches(t *testing.T) {
 }
 
 func TestImageOCRExtractor_Available(t *testing.T) {
+	t.Parallel()
 	ext := &ImageOCRExtractor{}
 	assert.Equal(t, ImageOCRAvailable(), ext.Available())
 }
@@ -132,6 +149,7 @@ func TestImageOCRExtractor_Available(t *testing.T) {
 // --- DefaultExtractors ---
 
 func TestDefaultExtractors_Order(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	require.Len(t, extractors, 4)
 	assert.Equal(t, "pdftotext", extractors[0].Tool())
@@ -147,6 +165,7 @@ func TestDefaultExtractors_Order(t *testing.T) {
 }
 
 func TestDefaultExtractors_Passthrough(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(42, 99)
 	pdfExt, ok := extractors[0].(*PDFTextExtractor)
 	require.True(t, ok)
@@ -160,24 +179,28 @@ func TestDefaultExtractors_Passthrough(t *testing.T) {
 // --- HasMatchingExtractor ---
 
 func TestHasMatchingExtractor_Tesseract_PDF(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	got := HasMatchingExtractor(extractors, "tesseract", "application/pdf")
 	assert.Equal(t, OCRAvailable(), got)
 }
 
 func TestHasMatchingExtractor_Tesseract_Image(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	got := HasMatchingExtractor(extractors, "tesseract", "image/png")
 	assert.Equal(t, ImageOCRAvailable(), got)
 }
 
 func TestHasMatchingExtractor_Pdftotext(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	got := HasMatchingExtractor(extractors, "pdftotext", "application/pdf")
 	assert.Equal(t, HasPDFToText(), got)
 }
 
 func TestHasMatchingExtractor_NoMatch(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	assert.False(t, HasMatchingExtractor(extractors, "tesseract", "text/plain"))
 	assert.False(t, HasMatchingExtractor(extractors, "pdftotext", "image/png"))
@@ -187,23 +210,27 @@ func TestHasMatchingExtractor_NoMatch(t *testing.T) {
 // --- NeedsOCR ---
 
 func TestNeedsOCR_PDF(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	got := NeedsOCR(extractors, "application/pdf")
 	assert.Equal(t, OCRAvailable(), got)
 }
 
 func TestNeedsOCR_Image(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	got := NeedsOCR(extractors, "image/png")
 	assert.Equal(t, ImageOCRAvailable(), got)
 }
 
 func TestNeedsOCR_PlainText(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 0)
 	assert.False(t, NeedsOCR(extractors, "text/plain"))
 }
 
 func TestNeedsOCR_NoOCRExtractors(t *testing.T) {
+	t.Parallel()
 	extractors := []Extractor{&PlainTextExtractor{}, &PDFTextExtractor{}}
 	assert.False(t, NeedsOCR(extractors, "application/pdf"))
 	assert.False(t, NeedsOCR(extractors, "image/png"))
@@ -212,21 +239,25 @@ func TestNeedsOCR_NoOCRExtractors(t *testing.T) {
 // --- ExtractorTimeout / ExtractorMaxPages ---
 
 func TestExtractorTimeout(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(0, 42)
 	assert.Equal(t, time.Duration(42), ExtractorTimeout(extractors))
 }
 
 func TestExtractorTimeout_NoPDFText(t *testing.T) {
+	t.Parallel()
 	extractors := []Extractor{&PlainTextExtractor{}}
 	assert.Equal(t, time.Duration(0), ExtractorTimeout(extractors))
 }
 
 func TestExtractorMaxPages(t *testing.T) {
+	t.Parallel()
 	extractors := DefaultExtractors(15, 0)
 	assert.Equal(t, 15, ExtractorMaxPages(extractors))
 }
 
 func TestExtractorMaxPages_NoOCR(t *testing.T) {
+	t.Parallel()
 	extractors := []Extractor{&PlainTextExtractor{}}
 	assert.Equal(t, 0, ExtractorMaxPages(extractors))
 }
@@ -234,6 +265,7 @@ func TestExtractorMaxPages_NoOCR(t *testing.T) {
 // --- Integration Extract tests ---
 
 func TestPDFTextExtractor_Extract(t *testing.T) {
+	t.Parallel()
 	if !HasPDFToText() {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
@@ -253,6 +285,7 @@ func TestPDFTextExtractor_Extract(t *testing.T) {
 }
 
 func TestPDFOCRExtractor_Extract(t *testing.T) {
+	t.Parallel()
 	if !OCRAvailable() {
 		skipOrFatalCI(t, "tesseract and/or pdftoppm not available")
 	}
@@ -272,6 +305,7 @@ func TestPDFOCRExtractor_Extract(t *testing.T) {
 }
 
 func TestImageOCRExtractor_Extract(t *testing.T) {
+	t.Parallel()
 	if !ImageOCRAvailable() {
 		skipOrFatalCI(t, "tesseract not available")
 	}

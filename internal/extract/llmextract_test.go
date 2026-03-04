@@ -11,6 +11,7 @@ import (
 )
 
 func TestBuildExtractionPrompt(t *testing.T) {
+	t.Parallel()
 	schema := SchemaContext{
 		DDL: map[string]string{
 			"vendors":   "CREATE TABLE `vendors` (`id` integer PRIMARY KEY AUTOINCREMENT, `name` text)",
@@ -53,6 +54,7 @@ func TestBuildExtractionPrompt(t *testing.T) {
 }
 
 func TestBuildExtractionPrompt_DualSources(t *testing.T) {
+	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    1,
 		Filename: "mixed.pdf",
@@ -72,6 +74,7 @@ func TestBuildExtractionPrompt_DualSources(t *testing.T) {
 }
 
 func TestBuildExtractionPrompt_OCROnly(t *testing.T) {
+	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    1,
 		Filename: "scan.pdf",
@@ -88,6 +91,7 @@ func TestBuildExtractionPrompt_OCROnly(t *testing.T) {
 }
 
 func TestBuildExtractionPrompt_NoEntities(t *testing.T) {
+	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    1,
 		Filename: "doc.txt",
@@ -101,6 +105,7 @@ func TestBuildExtractionPrompt_NoEntities(t *testing.T) {
 }
 
 func TestBuildExtractionPrompt_ZeroDocID(t *testing.T) {
+	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    0,
 		Filename: "new.pdf",
@@ -116,6 +121,7 @@ func TestBuildExtractionPrompt_ZeroDocID(t *testing.T) {
 }
 
 func TestBuildExtractionPrompt_NonZeroDocID(t *testing.T) {
+	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    42,
 		Filename: "existing.pdf",
@@ -129,6 +135,7 @@ func TestBuildExtractionPrompt_NonZeroDocID(t *testing.T) {
 }
 
 func TestStripCodeFences(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		input  string
@@ -153,6 +160,7 @@ func TestStripCodeFences(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, tt.expect, StripCodeFences(tt.input))
 		})
 	}
@@ -161,6 +169,7 @@ func TestStripCodeFences(t *testing.T) {
 // --- Schema context formatting tests ---
 
 func TestFormatDDLBlock(t *testing.T) {
+	t.Parallel()
 	ddl := map[string]string{
 		"vendors":   "CREATE TABLE `vendors` (`id` integer, `name` text)",
 		"documents": "CREATE TABLE `documents` (`id` integer, `title` text)",
@@ -171,6 +180,7 @@ func TestFormatDDLBlock(t *testing.T) {
 }
 
 func TestFormatDDLBlock_MissingTable(t *testing.T) {
+	t.Parallel()
 	ddl := map[string]string{
 		"vendors": "CREATE TABLE `vendors` (`id` integer)",
 	}
@@ -180,6 +190,7 @@ func TestFormatDDLBlock_MissingTable(t *testing.T) {
 }
 
 func TestFormatEntityRows(t *testing.T) {
+	t.Parallel()
 	rows := []EntityRow{{ID: 1, Name: "Garcia Plumbing"}, {ID: 2, Name: "Acme Electric"}}
 	result := FormatEntityRows("vendors", rows)
 	assert.Contains(t, result, "-- vendors (id, name)")
@@ -188,6 +199,7 @@ func TestFormatEntityRows(t *testing.T) {
 }
 
 func TestFormatEntityRows_Empty(t *testing.T) {
+	t.Parallel()
 	result := FormatEntityRows("vendors", nil)
 	assert.Empty(t, result)
 }
