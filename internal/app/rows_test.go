@@ -15,19 +15,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestDateValue(t *testing.T) {
-	assert.Empty(t, dateValue(nil))
-	d := time.Date(2025, 6, 11, 0, 0, 0, 0, time.UTC)
-	assert.Equal(t, "2025-06-11", dateValue(&d))
-}
-
-func TestCentsValue(t *testing.T) {
-	cur := locale.DefaultCurrency()
-	assert.Empty(t, centsValue(nil, cur))
-	c := int64(123456)
-	assert.Equal(t, "$1,234.56", centsValue(&c, cur))
-}
-
 func TestProjectRows(t *testing.T) {
 	cur := locale.DefaultCurrency()
 	budget := int64(100000)
@@ -350,24 +337,6 @@ func TestDateCellPresent(t *testing.T) {
 	c := dateCell(&d, cellDate)
 	assert.False(t, c.Null)
 	assert.Equal(t, "2025-06-11", c.Value)
-}
-
-func TestNullTextCellEmpty(t *testing.T) {
-	c := nullTextCell("", 0)
-	assert.True(t, c.Null, "empty string with no link should be null")
-	assert.Empty(t, c.Value)
-}
-
-func TestNullTextCellWithValue(t *testing.T) {
-	c := nullTextCell("hello", 0)
-	assert.False(t, c.Null)
-	assert.Equal(t, "hello", c.Value)
-}
-
-func TestNullTextCellEmptyWithLink(t *testing.T) {
-	c := nullTextCell("", 5)
-	assert.False(t, c.Null, "empty string with a link ID should not be null")
-	assert.Equal(t, uint(5), c.LinkID)
 }
 
 func TestProjectRowsNullOptionalFields(t *testing.T) {

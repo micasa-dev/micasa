@@ -67,9 +67,6 @@ internal/extract/testdata/
 .pre-commit-config.yaml
 dev.md
 
-# Rust (legacy)
-target/
-
 # Claude local settings
 .claude/settings.local.json
 .claude/worktrees

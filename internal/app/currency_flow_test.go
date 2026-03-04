@@ -741,7 +741,7 @@ func TestCurrencyFlow_MagModeToggle(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 17. CentsCell and CentsValue helpers
+// 17. CentsCell helper
 // ---------------------------------------------------------------------------
 
 func TestCurrencyFlow_CentsHelpers(t *testing.T) {
@@ -753,9 +753,6 @@ func TestCurrencyFlow_CentsHelpers(t *testing.T) {
 			assert.False(t, c.Null)
 			assert.Equal(t, cellMoney, c.Kind)
 			assert.Equal(t, cur.FormatCents(v), c.Value)
-
-			val := centsValue(&v, cur)
-			assert.Equal(t, cur.FormatCents(v), val)
 		})
 	}
 }

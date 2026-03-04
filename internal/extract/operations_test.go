@@ -161,67 +161,6 @@ func TestValidateOperations_EmptyData(t *testing.T) {
 	assert.Contains(t, err.Error(), "data must not be empty")
 }
 
-// --- OperationPreview ---
-
-func TestOperationPreview_Create(t *testing.T) {
-	op := Operation{
-		Action: "create",
-		Table:  "vendors",
-		Data:   map[string]any{"name": "Garcia Plumbing"},
-	}
-	row := OperationPreview(op)
-	require.NotNil(t, row)
-	assert.Equal(t, "vendors", row.Table)
-	assert.Equal(t, "create", row.Op)
-	assert.Equal(t, uint(0), row.RowID)
-	assert.Equal(t, []string{"name"}, row.Columns)
-	assert.Equal(t, []string{"Garcia Plumbing"}, row.Values)
-}
-
-func TestOperationPreview_UpdateWithID(t *testing.T) {
-	op := Operation{
-		Action: "update",
-		Table:  "documents",
-		Data:   map[string]any{"id": float64(42), "title": "Invoice", "notes": "Repair"},
-	}
-	row := OperationPreview(op)
-	require.NotNil(t, row)
-	assert.Equal(t, "documents", row.Table)
-	assert.Equal(t, "update", row.Op)
-	assert.Equal(t, uint(42), row.RowID)
-	assert.Contains(t, row.Columns, "notes")
-	assert.Contains(t, row.Columns, "title")
-	assert.NotContains(t, row.Columns, "id")
-}
-
-func TestOperationPreview_EmptyData(t *testing.T) {
-	op := Operation{Action: "create", Table: "vendors", Data: nil}
-	assert.Nil(t, OperationPreview(op))
-}
-
-func TestOperationPreview_NumericValues(t *testing.T) {
-	op := Operation{
-		Action: "create",
-		Table:  "quotes",
-		Data:   map[string]any{"total_cents": float64(150000), "vendor_id": float64(1)},
-	}
-	row := OperationPreview(op)
-	require.NotNil(t, row)
-	assert.Contains(t, row.Values, "150000")
-	assert.Contains(t, row.Values, "1")
-}
-
-// --- formatValue ---
-
-func TestFormatValue(t *testing.T) {
-	assert.Equal(t, "hello", formatValue("hello"))
-	assert.Equal(t, "42", formatValue(float64(42)))
-	assert.Equal(t, "3.14", formatValue(float64(3.14)))
-	assert.Equal(t, "true", formatValue(true))
-	assert.Equal(t, "false", formatValue(false))
-	assert.Equal(t, "null", formatValue(nil))
-}
-
 // --- ParseUint ---
 
 func TestParseUint(t *testing.T) {

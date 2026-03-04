@@ -26,16 +26,6 @@ type Operation struct {
 	Data   map[string]any `json:"data"`
 }
 
-// OperationPreviewRow holds the column-value pairs from an Operation for
-// rendering as a mini table in the extraction overlay.
-type OperationPreviewRow struct {
-	Table   string
-	Op      string // "create" or "update"
-	RowID   uint   // nonzero for update (from data["id"] or separate field)
-	Columns []string
-	Values  []string
-}
-
 // ParseOperations unmarshals the schema-constrained {"operations": [...]}
 // response from the LLM.
 func ParseOperations(raw string) ([]Operation, error) {
@@ -146,36 +136,6 @@ func ValidateOperations(ops []Operation, allowed map[string]AllowedOps) error {
 	return nil
 }
 
-// OperationPreview extracts column-value pairs from an Operation for display.
-func OperationPreview(op Operation) *OperationPreviewRow {
-	if len(op.Data) == 0 {
-		return nil
-	}
-
-	row := &OperationPreviewRow{
-		Table: op.Table,
-		Op:    op.Action,
-	}
-
-	// Extract row ID from "id" key if present (for updates).
-	if idVal, ok := op.Data["id"]; ok {
-		row.RowID = ParseUint(idVal)
-	}
-
-	// Sort keys for deterministic display. Exclude "id" from column list
-	// since it's shown in the header.
-	keys := sortedKeys(op.Data)
-	for _, k := range keys {
-		if k == "id" {
-			continue
-		}
-		row.Columns = append(row.Columns, k)
-		row.Values = append(row.Values, formatValue(op.Data[k]))
-	}
-
-	return row
-}
-
 // ParseUint extracts a uint from a JSON value (json.Number, float64, or
 // string). Returns 0 for nil, negative, or unparsable values.
 func ParseUint(v any) uint {
@@ -194,30 +154,6 @@ func ParseUint(v any) uint {
 		}
 	}
 	return 0
-}
-
-// formatValue converts a JSON value to a display string.
-func formatValue(v any) string {
-	switch val := v.(type) {
-	case string:
-		return val
-	case json.Number:
-		return val.String()
-	case float64:
-		if val == float64(int64(val)) {
-			return strconv.FormatInt(int64(val), 10)
-		}
-		return strconv.FormatFloat(val, 'f', -1, 64)
-	case bool:
-		if val {
-			return "true"
-		}
-		return "false"
-	case nil:
-		return "null"
-	default:
-		return fmt.Sprintf("%v", val)
-	}
 }
 
 // sortedKeys returns the keys of a map in sorted order.

@@ -74,11 +74,7 @@ const (
 	ColExtractedText     = "extracted_text"
 	ColExtractData       = "ocr_data" // DB column name kept for migration compat
 	ColSeverity          = "severity"
-	ColDescription       = "description"
-	ColDateNoticed       = "date_noticed"
-	ColDateResolved      = "date_resolved"
 	ColLocation          = "location"
-	ColIncidentID        = "incident_id"
 )
 
 const (

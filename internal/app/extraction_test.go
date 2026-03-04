@@ -1007,15 +1007,10 @@ func TestSpinnerTick_UpdatesBgExtractions(t *testing.T) {
 	require.Len(t, m.ex.bgExtractions, 1)
 
 	bg := m.ex.bgExtractions[0]
-	initialView := bg.Spinner.View()
 
 	// Send a spinner tick -- should update the bg spinner.
 	_, cmd := m.Update(bg.Spinner.Tick())
 	assert.NotNil(t, cmd, "spinner tick should return a command for bg extraction")
-
-	// The spinner view may or may not change depending on frame timing,
-	// but the update should not panic and should return commands.
-	_ = initialView
 }
 
 func TestCtrlQ_CancelsAllBgExtractions(t *testing.T) {

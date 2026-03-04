@@ -838,20 +838,6 @@ func projectQuoteRows(
 	})
 }
 
-func centsValue(cents *int64, cur locale.Currency) string {
-	if cents == nil {
-		return ""
-	}
-	return cur.FormatCents(*cents)
-}
-
-func dateValue(value *time.Time) string {
-	if value == nil {
-		return ""
-	}
-	return value.Format(data.DateLayout)
-}
-
 // centsCell returns a cell for an optional money value. NULL pointer produces
 // a null cell; non-nil produces a formatted money cell.
 func centsCell(cents *int64, cur locale.Currency) cell {
@@ -868,15 +854,6 @@ func dateCell(value *time.Time, kind cellKind) cell {
 		return cell{Kind: kind, Null: true}
 	}
 	return cell{Value: value.Format(data.DateLayout), Kind: kind}
-}
-
-// nullTextCell returns a null cell when value is empty (representing a NULL FK
-// or optional field), otherwise a normal text cell.
-func nullTextCell(value string, linkID uint) cell {
-	if value == "" && linkID == 0 {
-		return cell{Kind: cellText, Null: true}
-	}
-	return cell{Value: value, Kind: cellText, LinkID: linkID}
 }
 
 type documentCol int

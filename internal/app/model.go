@@ -133,7 +133,6 @@ const (
 	symEmDash    = "\u2014" // —
 	symInfinity  = "\u221E" // ∞
 	symMiddleDot = "\u00b7" // ·
-	symSuperTwo  = "\u00B2" // ²
 )
 
 // Key bindings for help viewport (g/G for top/bottom are not in the
