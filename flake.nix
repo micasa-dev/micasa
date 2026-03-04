@@ -163,6 +163,14 @@
               language = "system";
               pass_filenames = false;
             };
+            go-generate-check = {
+              enable = true;
+              name = "go-generate-check";
+              entry = "${goGenerateCheck}/bin/go-generate-check";
+              files = "^internal/data/(models|cmd/genmeta/main)\\.go$";
+              language = "system";
+              pass_filenames = false;
+            };
             vendor-hash-check = {
               enable = true;
               name = "vendor-hash-check";
@@ -266,6 +274,24 @@
             go mod tidy
             git diff --exit-code go.mod go.sum || {
               echo "go mod tidy modified go.mod/go.sum -- please re-stage" >&2
+              exit 1
+            }
+          '';
+        };
+
+        goGenerateCheck = pkgs.writeShellApplication {
+          name = "go-generate-check";
+          runtimeInputs = [
+            pkgs.go
+            pkgs.git
+          ];
+          runtimeEnv.CGO_ENABLED = "0";
+          text = ''
+            export GOCACHE="''${GOCACHE:-$(mktemp -d)}"
+            export GOMODCACHE="''${GOMODCACHE:-$(mktemp -d)}"
+            go generate ./internal/data/
+            git diff --exit-code internal/data/meta_generated.go || {
+              echo "go generate produced changes -- please re-stage internal/data/meta_generated.go" >&2
               exit 1
             }
           '';
