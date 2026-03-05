@@ -501,7 +501,7 @@ func TestNotePreviewStillWorksAfterNotesEditChanges(t *testing.T) {
 
 func TestDocumentNotesSaveDoesNotTriggerExtraction(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &documentFormData{Notes: "original note"}
 	m.openNotesEdit(1, formDocument, &values.Notes, values)
 
