@@ -498,3 +498,18 @@ func TestNotePreviewStillWorksAfterNotesEditChanges(t *testing.T) {
 	require.NotNil(t, m.notePreview)
 	assert.Equal(t, "read-only preview", m.notePreview.text)
 }
+
+func TestDocumentNotesSaveDoesNotTriggerExtraction(t *testing.T) {
+	t.Parallel()
+	m := newTestModel()
+	values := &documentFormData{Notes: "original note"}
+	m.openNotesEdit(1, formDocument, &values.Notes, values)
+
+	require.True(t, m.fs.notesEditMode)
+	require.Equal(t, formDocument, m.fs.formKind)
+
+	cmd := m.saveFormInPlace()
+
+	assert.Nil(t, cmd, "saving document notes should not return extraction command")
+	assert.Nil(t, m.ex.extraction, "saving document notes should not start extraction")
+}

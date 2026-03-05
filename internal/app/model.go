@@ -2192,7 +2192,7 @@ func (m *Model) saveFormInPlace() tea.Cmd {
 
 // afterDocumentSaveIfNeeded triggers async LLM extraction for document forms.
 func (m *Model) afterDocumentSaveIfNeeded(kind FormKind) tea.Cmd {
-	if kind != formDocument {
+	if kind != formDocument || m.fs.notesEditMode {
 		return nil
 	}
 	return m.afterDocumentSave()
