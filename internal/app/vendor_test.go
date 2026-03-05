@@ -15,7 +15,7 @@ import (
 
 func TestVendorTabExists(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	found := false
 	for _, tab := range m.tabs {
 		if tab.Kind == tabVendors {
@@ -110,7 +110,7 @@ func TestVendorHandlerDeleteRestore(t *testing.T) {
 
 func TestVendorTabNavigable(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	// Navigate to vendor tab.
 	m.active = tabIndex(tabVendors)
 	tab := m.activeTab()

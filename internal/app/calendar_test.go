@@ -98,7 +98,7 @@ func TestSameDay(t *testing.T) {
 
 func TestCalendarKeyNavigation(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := testDate
 	m.openCalendar(&dateVal, nil)
 	require.NotNil(t, m.calendar)
@@ -127,7 +127,7 @@ func TestCalendarKeyNavigation(t *testing.T) {
 
 func TestCalendarConfirmWritesDate(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := ""
 	confirmed := false
 	m.openCalendar(&dateVal, func() { confirmed = true })
@@ -147,7 +147,7 @@ func TestCalendarConfirmWritesDate(t *testing.T) {
 
 func TestCalendarEscCancels(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := testDate
 	m.openCalendar(&dateVal, nil)
 	sendKey(m, "esc")
@@ -159,7 +159,7 @@ func TestCalendarEscCancels(t *testing.T) {
 
 func TestDatePickerEscClearsFormState(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := testDate
 	id := uint(42)
 
@@ -187,7 +187,7 @@ func TestDatePickerEscClearsFormState(t *testing.T) {
 
 func TestCalendarRendersInView(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	dateVal := testDate
@@ -200,7 +200,7 @@ func TestCalendarRendersInView(t *testing.T) {
 
 func TestCalendarMonthNavigation(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := testDate
 	m.openCalendar(&dateVal, nil)
 
@@ -346,7 +346,7 @@ func TestCalendarMoveYearFromFeb29ClampsFeb28(t *testing.T) {
 func TestCalendarMoveMonthViaKeyboardClamps(t *testing.T) {
 	t.Parallel()
 	// End-to-end user flow: open calendar on Jan 31, press L (next month).
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := "2025-01-31"
 	m.openCalendar(&dateVal, nil)
 	require.NotNil(t, m.calendar)
@@ -372,7 +372,7 @@ func TestCalendarToday(t *testing.T) {
 
 func TestCalendarTodayKeyNavigation(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := "2020-06-15"
 	confirmed := false
 	m.openCalendar(&dateVal, func() { confirmed = true })
@@ -398,7 +398,7 @@ func TestCalendarTodayFromParsedCursor(t *testing.T) {
 	t.Parallel()
 	// openCalendar parses dates via time.ParseInLocation (local).
 	// Pressing "t" must land on the correct local day.
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := "2020-06-15"
 	m.openCalendar(&dateVal, nil)
 	require.NotNil(t, m.calendar)
@@ -418,7 +418,7 @@ func TestCalendarTodayFromParsedCursor(t *testing.T) {
 
 func TestOpenCalendarParsesInLocalTimezone(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := "2026-02-15"
 	m.openCalendar(&dateVal, nil)
 	require.NotNil(t, m.calendar)
@@ -431,7 +431,7 @@ func TestOpenCalendarParsesInLocalTimezone(t *testing.T) {
 
 func TestOpenCalendarWithEmptyValue(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	dateVal := ""
 	m.openCalendar(&dateVal, nil)
 	require.NotNil(t, m.calendar)

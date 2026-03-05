@@ -15,7 +15,7 @@ import (
 
 func TestNotePreviewOpensOnEnter(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	// Open service log detail (has Notes column).
 	_ = m.openServiceLogDetail(1, "Test")
@@ -57,7 +57,7 @@ func TestNotePreviewOpensOnEnter(t *testing.T) {
 
 func TestNotePreviewDismissesOnAnyKey(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.notePreview = &notePreviewState{text: "some note", title: "Notes"}
 
 	sendKey(m, "q")
@@ -72,7 +72,7 @@ func TestNotePreviewDismissesOnAnyKey(t *testing.T) {
 
 func TestNotePreviewDoesNotOpenOnEmptyNote(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 	tab := m.effectiveTab()
@@ -99,7 +99,7 @@ func TestNotePreviewDoesNotOpenOnEmptyNote(t *testing.T) {
 
 func TestNotePreviewRendersInView(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.notePreview = &notePreviewState{
 		text:  "This is a test note with some content.",
 		title: "Notes",
@@ -112,7 +112,7 @@ func TestNotePreviewRendersInView(t *testing.T) {
 
 func TestNotePreviewBlocksOtherKeys(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.notePreview = &notePreviewState{text: "test"}
 	initialTab := m.active
 
@@ -155,7 +155,7 @@ func TestWordWrap(t *testing.T) {
 
 func TestEnterHintShowsPreviewOnNotesColumn(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 	tab := m.effectiveTab()
@@ -222,7 +222,7 @@ func TestExtraLineCount(t *testing.T) {
 
 func TestMultilineNotesRenderedAsSingleLineInTable(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 	tab := m.effectiveTab()
@@ -260,7 +260,7 @@ func TestMultilineNotesRenderedAsSingleLineInTable(t *testing.T) {
 
 func TestMultilineNotesPreservedInPreviewOverlay(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.notePreview = &notePreviewState{
 		text:  "Changed the filter\nand checked pressure",
 		title: "Notes",
@@ -288,7 +288,7 @@ func TestNaturalWidthsMultilineNotesFirstLine(t *testing.T) {
 
 func TestLongNotesTruncatedInTableView(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 	tab := m.effectiveTab()
@@ -349,7 +349,7 @@ func TestNaturalWidthsNotesCappedAtMax(t *testing.T) {
 
 func TestOpenNotesEditOpensTextareaOverlay(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "existing note"}
 	m.openNotesEdit(1, formServiceLog, &values.Notes, values)
 
@@ -363,7 +363,7 @@ func TestOpenNotesEditOpensTextareaOverlay(t *testing.T) {
 
 func TestNotesEditModeShowsEditorHint(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "test"}
 	m.openNotesEdit(1, formServiceLog, &values.Notes, values)
 
@@ -373,7 +373,7 @@ func TestNotesEditModeShowsEditorHint(t *testing.T) {
 
 func TestNotesEditModeClearedOnExitForm(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "test"}
 	m.openNotesEdit(1, formServiceLog, &values.Notes, values)
 	require.True(t, m.fs.notesEditMode)
@@ -385,7 +385,7 @@ func TestNotesEditModeClearedOnExitForm(t *testing.T) {
 }
 
 func TestCtrlEWithoutEditorShowsError(t *testing.T) {
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "test"}
 	m.openNotesEdit(1, formServiceLog, &values.Notes, values)
 
@@ -401,7 +401,7 @@ func TestCtrlEWithoutEditorShowsError(t *testing.T) {
 
 func TestEditorFinishedMsgUpdatesFieldAndReopensTextarea(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "original"}
 
 	// Simulate a pending editor returning edited content.
@@ -428,7 +428,7 @@ func TestEditorFinishedMsgUpdatesFieldAndReopensTextarea(t *testing.T) {
 
 func TestEditorFinishedMsgStripsTrailingNewlines(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "original"}
 
 	tmpFile := t.TempDir() + "/notes.txt"
@@ -448,7 +448,7 @@ func TestEditorFinishedMsgStripsTrailingNewlines(t *testing.T) {
 
 func TestEditorFinishedWithErrorReopensTextarea(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "original"}
 
 	tmpFile := t.TempDir() + "/notes.txt"
@@ -473,7 +473,7 @@ func TestEditorFinishedWithErrorReopensTextarea(t *testing.T) {
 
 func TestNotePreviewStillWorksAfterNotesEditChanges(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 	tab := m.effectiveTab()

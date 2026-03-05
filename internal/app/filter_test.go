@@ -60,8 +60,10 @@ func newFilterTab() *Tab {
 //	Row 1: ID=2, Status=Active, Vendor=Bob
 //	Row 2: ID=3, Status=Plan,   Vendor=Bob
 //	Row 3: ID=4, Status=Done,   Vendor=Alice
-func newFilterModel() (*Model, *Tab) {
-	m := newTestModel()
+func newFilterModel(t *testing.T) (*Model, *Tab) {
+	t.Helper()
+
+	m := newTestModel(t)
 	m.mode = modeNormal
 	m.showDashboard = false
 
@@ -126,7 +128,7 @@ func newFilterModel() (*Model, *Tab) {
 
 func TestTogglePinAddsAndRemoves(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Cursor at row 0, col 1 -> pin "Plan".
 	sendKey(m, "n")
@@ -140,7 +142,7 @@ func TestTogglePinAddsAndRemoves(t *testing.T) {
 
 func TestTogglePinMultipleValuesInColumn(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Pin "Plan" at row 0.
 	sendKey(m, "n")
@@ -158,7 +160,7 @@ func TestTogglePinMultipleValuesInColumn(t *testing.T) {
 
 func TestClearPins(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	sendKey(m, "n") // Pin "Plan"
 	sendKey(m, "N") // Activate filter
@@ -172,7 +174,7 @@ func TestClearPins(t *testing.T) {
 
 func TestApplyRowFilterNoPin(t *testing.T) {
 	t.Parallel()
-	_, tab := newFilterModel()
+	_, tab := newFilterModel(t)
 
 	// No pins: all rows present and undimmed.
 	assert.Len(t, tab.CellRows, 4)
@@ -184,7 +186,7 @@ func TestApplyRowFilterNoPin(t *testing.T) {
 
 func TestApplyRowFilterPreview(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Pin "Plan" -> triggers preview mode (all rows visible, non-matches dimmed).
 	sendKey(m, "n")
@@ -198,7 +200,7 @@ func TestApplyRowFilterPreview(t *testing.T) {
 
 func TestApplyRowFilterActive(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	sendKey(m, "n") // Pin "Plan"
 	sendKey(m, "N") // Activate filter
@@ -210,7 +212,7 @@ func TestApplyRowFilterActive(t *testing.T) {
 
 func TestApplyRowFilterActiveAcrossColumns(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Pin "Plan" (row 0, col 1).
 	sendKey(m, "n")
@@ -230,7 +232,7 @@ func TestApplyRowFilterActiveAcrossColumns(t *testing.T) {
 
 func TestEagerModeToggleWithNoPins(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Activate filter with no pins ("eager mode").
 	sendKey(m, "N")
@@ -245,7 +247,7 @@ func TestEagerModeToggleWithNoPins(t *testing.T) {
 
 func TestEagerModeToggleOff(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Activate and pin.
 	sendKey(m, "N")
@@ -260,7 +262,7 @@ func TestEagerModeToggleOff(t *testing.T) {
 
 func TestPinsPersistAcrossTabSwitch(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 	startTab := m.active
 
 	sendKey(m, "n") // Pin "Plan"
@@ -282,7 +284,7 @@ func TestPinsPersistAcrossTabSwitch(t *testing.T) {
 
 func TestHideColumnClearsPinsOnThatColumn(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Pin "Plan" on col 1 (Status).
 	sendKey(m, "n")
@@ -320,7 +322,7 @@ func seedTabForPinning(m *Model) *Tab {
 
 func TestCtrlNClearsAllPinsAndFilter(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.mode = modeNormal
 	tab := seedTabForPinning(m)
 
@@ -338,7 +340,7 @@ func TestCtrlNClearsAllPinsAndFilter(t *testing.T) {
 
 func TestCtrlNNoopWithoutPins(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.mode = modeNormal
 	m.showDashboard = false
 
@@ -350,7 +352,7 @@ func TestCtrlNNoopWithoutPins(t *testing.T) {
 
 func TestPinOnDashboardBlocked(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 	startPins := len(m.effectiveTab().Pins)
@@ -548,7 +550,7 @@ func TestPinSummaryNull(t *testing.T) {
 
 func TestTogglePinNullCell(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 	// Replace row 0, col 1 with a null cell.
 	tab.CellRows[0][1] = cell{Kind: cellStatus, Null: true}
 	tab.FullCellRows[0][1] = cell{Kind: cellStatus, Null: true}
@@ -605,7 +607,7 @@ func TestTranslatePinsRoundTrip(t *testing.T) {
 
 func TestInvertPreviewDimsMatchingRows(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Pin "Plan" (rows 0 and 2 match), then invert in preview mode.
 	sendKey(m, "n")
@@ -622,7 +624,7 @@ func TestInvertPreviewDimsMatchingRows(t *testing.T) {
 
 func TestInvertActiveFilterShowsNonMatchingRows(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Pin "Plan", activate filter, then invert.
 	sendKey(m, "n")
@@ -637,7 +639,7 @@ func TestInvertActiveFilterShowsNonMatchingRows(t *testing.T) {
 
 func TestInvertToggleRoundTrip(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	sendKey(m, "!")
 	assert.True(t, tab.FilterInverted, "first ! should invert")
@@ -648,7 +650,7 @@ func TestInvertToggleRoundTrip(t *testing.T) {
 
 func TestClearPinsResetsInvert(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	sendKey(m, "n") // Pin "Plan"
 	sendKey(m, "!") // Invert
@@ -660,7 +662,7 @@ func TestClearPinsResetsInvert(t *testing.T) {
 
 func TestInvertNullCellActiveFilter(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 	// Replace row 0 col 1 with null.
 	tab.CellRows[0][1] = cell{Kind: cellStatus, Null: true}
 	tab.FullCellRows[0][1] = cell{Kind: cellStatus, Null: true}
@@ -699,7 +701,7 @@ func TestInvertedPinHighlightsNonMatchingCells(t *testing.T) {
 
 func TestInvertedPinContextPassedToRenderer(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 
 	// Pin "Plan" and invert — the pinRenderContext should carry Inverted=true.
 	sendKey(m, "n")
@@ -714,7 +716,7 @@ func TestInvertedPinContextPassedToRenderer(t *testing.T) {
 
 func TestInvertBlockedOnDashboard(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 	tab := m.effectiveTab()

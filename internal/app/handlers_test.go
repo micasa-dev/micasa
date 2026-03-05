@@ -12,7 +12,7 @@ import (
 
 func TestAllTabsHaveHandlers(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	for i, tab := range m.tabs {
 		require.NotNilf(t, tab.Handler, "tab %d (%s) has nil handler", i, tab.Name)
 	}
@@ -20,7 +20,7 @@ func TestAllTabsHaveHandlers(t *testing.T) {
 
 func TestHandlerForFormKind(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	cases := []struct {
 		kind FormKind
 		name string
@@ -46,7 +46,7 @@ func TestHandlerForFormKind(t *testing.T) {
 
 func TestHandlerForFormKindReturnsNilForNonTabKinds(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	for _, kind := range []FormKind{formHouse, formNone} {
 		assert.Nilf(t, m.handlerForFormKind(kind), "expected nil handler for %v", kind)
 	}
@@ -54,7 +54,7 @@ func TestHandlerForFormKindReturnsNilForNonTabKinds(t *testing.T) {
 
 func TestHandlerFormKindMatchesTabKind(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	expected := map[TabKind]FormKind{
 		tabProjects:    formProject,
 		tabQuotes:      formQuote,

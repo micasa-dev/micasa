@@ -89,7 +89,7 @@ func TestCapSlice(t *testing.T) {
 
 func TestDashboardToggle(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = false
 
 	sendKey(m, "D")
@@ -102,7 +102,7 @@ func TestDashboardDismissedByTabSwitch(t *testing.T) {
 	t.Parallel()
 	for _, key := range []string{"f", "b"} {
 		t.Run(key, func(t *testing.T) {
-			m := newTestModel()
+			m := newTestModel(t)
 			m.showDashboard = true
 			sendKey(m, key)
 			assert.False(t, m.showDashboard)
@@ -112,7 +112,7 @@ func TestDashboardDismissedByTabSwitch(t *testing.T) {
 
 func TestDashboardNavigation(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 	// Populate nav with 5 entries.
@@ -147,7 +147,7 @@ func TestDashboardNavigation(t *testing.T) {
 
 func TestDashboardEnterKeyJumps(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 	m.dash.nav = []dashNavEntry{
@@ -163,7 +163,7 @@ func TestDashboardEnterKeyJumps(t *testing.T) {
 
 func TestDashboardBlocksTableKeys(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 	m.dash.nav = []dashNavEntry{{Tab: tabMaintenance, ID: 1}}
@@ -198,7 +198,7 @@ func TestDashboardBlocksTableKeys(t *testing.T) {
 
 func TestDashboardViewEmptySections(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.dash.data = dashboardData{}
@@ -213,7 +213,7 @@ func TestDashboardViewEmptySections(t *testing.T) {
 
 func TestDashboardViewWithData(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
@@ -249,7 +249,7 @@ func TestDashboardViewWithData(t *testing.T) {
 
 func TestDashboardViewIncidentsFirst(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
@@ -296,7 +296,7 @@ func TestDashboardViewIncidentsFirst(t *testing.T) {
 
 func TestDashboardViewFitsOverlayWidth(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 80
 	m.height = 40
 
@@ -335,7 +335,7 @@ func TestDashboardViewFitsOverlayWidth(t *testing.T) {
 
 func TestDashboardOverlay(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
@@ -350,7 +350,7 @@ func TestDashboardOverlay(t *testing.T) {
 
 func TestDashboardOverlayFitsHeight(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 80
 	m.height = 30
 	m.showDashboard = true
@@ -390,7 +390,7 @@ func TestDashboardOverlayFitsHeight(t *testing.T) {
 
 func TestDashboardOverlayDimsSurroundingContent(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
@@ -412,7 +412,7 @@ func TestDashboardOverlayDimsSurroundingContent(t *testing.T) {
 
 func TestDashboardHiddenWhenEmpty(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
@@ -430,7 +430,7 @@ func TestDashboardHiddenWhenEmpty(t *testing.T) {
 
 func TestDashboardStatusBarShowsNormal(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
@@ -442,7 +442,7 @@ func TestDashboardStatusBarShowsNormal(t *testing.T) {
 
 func TestBuildDashNav(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
 	overdueDue := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
 
@@ -666,7 +666,7 @@ func TestTruncateToWidth(t *testing.T) {
 
 func TestDashboardViewScrollsWithSmallBudget(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 
@@ -728,7 +728,7 @@ func TestDashboardViewScrollsWithSmallBudget(t *testing.T) {
 
 func TestDashboardScrollFollowsCursor(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 
@@ -761,7 +761,7 @@ func TestDashboardScrollFollowsCursor(t *testing.T) {
 // session.
 func TestDashboardExpandCollapseWithEKey(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.width = 120
 	m.height = 40
@@ -807,7 +807,7 @@ func TestDashboardExpandCollapseWithEKey(t *testing.T) {
 // headers, simulating how a user skips through sections.
 func TestDashboardSectionNavWithShiftJK(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.width = 120
 	m.height = 40
@@ -854,7 +854,7 @@ func TestDashboardSectionNavWithShiftJK(t *testing.T) {
 // with that incident selected.
 func TestDashboardEnterKeyJumpsToIncidents(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.width = 120
 	m.height = 40
@@ -886,7 +886,7 @@ func TestDashboardEnterKeyJumpsToIncidents(t *testing.T) {
 // to land on the Appliances tab with that appliance selected.
 func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.width = 120
 	m.height = 40
@@ -937,7 +937,7 @@ func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 // ExpiringWarranties was non-empty, making the visible section unreachable.
 func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.width = 120
 	m.height = 40
@@ -988,7 +988,7 @@ func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 // does nothing (user should press e to expand instead).
 func TestDashboardEnterOnHeaderDoesNotJump(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
@@ -1004,7 +1004,7 @@ func TestDashboardEnterOnHeaderDoesNotJump(t *testing.T) {
 // down makes the first section header fully visible.
 func TestDashboardGoTopResetsScroll(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.showDashboard = true
@@ -1101,7 +1101,7 @@ func TestDashboardDemoDataExpiringReachable(t *testing.T) {
 // Expiring Soon rows must be visible and navigable when at the bottom.
 func TestDashboardScrollReachesAllSections(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 25 // short terminal — forces scrolling
 	m.showDashboard = true
@@ -1164,7 +1164,7 @@ func TestDashboardScrollReachesAllSections(t *testing.T) {
 // sendKey to drive navigation through the real user code path.
 func TestDashboardScrollIndicators(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 20 // short terminal forces scrolling
 	m.showDashboard = true
@@ -1230,7 +1230,7 @@ func TestOverlayContentWidth(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := newTestModel()
+			m := newTestModel(t)
 			m.width = tt.termWidth
 			assert.Equal(t, tt.want, m.overlayContentWidth())
 		})

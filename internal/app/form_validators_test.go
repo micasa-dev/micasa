@@ -289,7 +289,7 @@ func TestHouseFormValues(t *testing.T) {
 		Bedrooms:  3,
 		Bathrooms: 2.5,
 	}
-	m := newTestModel()
+	m := newTestModel(t)
 	got := m.houseFormValues(profile)
 	assert.Equal(t, "Home", got.Nickname)
 	assert.Equal(t, "1995", got.YearBuilt)
@@ -325,7 +325,7 @@ func TestServiceLogFormValuesNoVendor(t *testing.T) {
 
 func TestFormDirtyDetectionUserFlow(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.mode = modeForm
 
 	// Simulate: user opens an appliance edit form with pre-filled values.

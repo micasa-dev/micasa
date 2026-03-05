@@ -14,7 +14,7 @@ import (
 
 func TestDashMaintSplitRows(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.styles = appStyles
 
 	lastSrv := time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC)
@@ -61,7 +61,7 @@ func TestDashMaintSplitRows(t *testing.T) {
 
 func TestDashMaintSplitRowsEmpty(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.dash.data = dashboardData{}
 	overdue, upcoming := m.dashMaintSplitRows()
 	assert.Nil(t, overdue)
@@ -70,7 +70,7 @@ func TestDashMaintSplitRowsEmpty(t *testing.T) {
 
 func TestDashProjectRowsColumns(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.styles = appStyles
 
 	m.dash.data = dashboardData{
@@ -89,7 +89,7 @@ func TestDashProjectRowsColumns(t *testing.T) {
 
 func TestDashExpiringRowsOverdueAndUpcoming(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.styles = appStyles
 
 	expiredDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -119,7 +119,7 @@ func TestDashExpiringRowsOverdueAndUpcoming(t *testing.T) {
 
 func TestDashExpiringRowsEmpty(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.dash.data = dashboardData{}
 	rows := m.dashExpiringRows()
 	assert.Nil(t, rows)

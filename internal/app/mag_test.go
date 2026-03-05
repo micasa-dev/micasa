@@ -235,7 +235,7 @@ func TestMagTransformText(t *testing.T) {
 
 func TestMagModeToggle(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	seedMoneyCells(m)
 
 	// Initially off: compact money format visible ($ in header, "5k" in cell).
@@ -265,7 +265,7 @@ func TestMagModeToggle(t *testing.T) {
 
 func TestMagModeWorksInEditMode(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	seedMoneyCells(m)
 	sendKey(m, "i")
 
@@ -317,7 +317,7 @@ func seedTabMoneyCells(tab *Tab, amounts []string) {
 
 func TestMagModeTranslatesPinsOnAllTabs(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = false
 
 	// Seed money cells on the active tab (Projects, index 0) and a

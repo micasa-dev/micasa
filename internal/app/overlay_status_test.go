@@ -12,7 +12,7 @@ import (
 
 func TestStatusBarHiddenWhenDashboardActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 
@@ -26,7 +26,7 @@ func TestStatusBarHiddenWhenDashboardActive(t *testing.T) {
 
 func TestStatusBarHiddenWhenHelpActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	sendKey(m, "?")
 	require.Contains(t, m.buildView(), "Keyboard Shortcuts")
 
@@ -40,7 +40,7 @@ func TestStatusBarHiddenWhenHelpActive(t *testing.T) {
 
 func TestStatusBarHiddenWhenNotePreviewActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.notePreview = &notePreviewState{text: "test note"}
 
 	status := m.statusView()
@@ -53,7 +53,7 @@ func TestStatusBarHiddenWhenNotePreviewActive(t *testing.T) {
 
 func TestStatusBarHiddenWhenColumnFinderActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	sendKey(m, "/")
 	require.Contains(t, m.buildView(), "Jump to Column")
 
@@ -67,7 +67,7 @@ func TestStatusBarHiddenWhenColumnFinderActive(t *testing.T) {
 
 func TestStatusBarHiddenWhenCalendarActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	fieldValue := ""
 	m.openCalendar(&fieldValue, nil)
 	require.Contains(t, m.buildView(), "Su Mo Tu We Th Fr Sa")
@@ -82,7 +82,7 @@ func TestStatusBarHiddenWhenCalendarActive(t *testing.T) {
 
 func TestStatusBarShownWhenNoOverlayActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = false
 	m.notePreview = nil
 	m.helpViewport = nil

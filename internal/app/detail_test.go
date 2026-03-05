@@ -16,7 +16,7 @@ import (
 
 func TestOpenDetailSetsContext(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	require.Nil(t, m.detail())
 
@@ -32,7 +32,7 @@ func TestOpenDetailSetsContext(t *testing.T) {
 
 func TestCloseDetailRestoresParent(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(42, "Test Item")
 
@@ -43,7 +43,7 @@ func TestCloseDetailRestoresParent(t *testing.T) {
 
 func TestEffectiveTabReturnsDetailWhenOpen(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	mainTab := m.effectiveTab()
 	require.NotNil(t, mainTab)
@@ -58,7 +58,7 @@ func TestEffectiveTabReturnsDetailWhenOpen(t *testing.T) {
 
 func TestEffectiveTabFallsBackToMainTab(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabProjects)
 	tab := m.effectiveTab()
 	require.NotNil(t, tab)
@@ -67,7 +67,7 @@ func TestEffectiveTabFallsBackToMainTab(t *testing.T) {
 
 func TestEscInNormalModeClosesDetail(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 	require.NotNil(t, m.detail())
@@ -77,7 +77,7 @@ func TestEscInNormalModeClosesDetail(t *testing.T) {
 
 func TestEscInEditModeDoesNotCloseDetail(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 
@@ -90,7 +90,7 @@ func TestEscInEditModeDoesNotCloseDetail(t *testing.T) {
 
 func TestTabSwitchBlockedInDetailView(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 
@@ -101,7 +101,7 @@ func TestTabSwitchBlockedInDetailView(t *testing.T) {
 
 func TestColumnNavWorksInDetailView(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 
@@ -121,7 +121,7 @@ func TestColumnNavWorksInDetailView(t *testing.T) {
 
 func TestDetailTabHasServiceLogSpecs(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 
@@ -135,7 +135,7 @@ func TestDetailTabHasServiceLogSpecs(t *testing.T) {
 
 func TestHandlerForFormKindFindsDetailHandler(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 
@@ -171,7 +171,7 @@ func TestApplianceColumnsIncludeMaintAndDocs(t *testing.T) {
 
 func TestVendorOptions(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	opts := vendorOpts("Self (homeowner)", m.vendors)
 	require.NotEmpty(t, opts, "expected at least 1 vendor option (Self)")
 	assert.Equal(t, uint(0), opts[0].Value, "expected first vendor option value=0 (Self)")
@@ -259,7 +259,7 @@ func TestMaintenanceLogColumnReplacedManual(t *testing.T) {
 
 func TestResizeTablesIncludesDetail(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.active = tabIndex(tabMaintenance)
@@ -271,7 +271,7 @@ func TestResizeTablesIncludesDetail(t *testing.T) {
 
 func TestSortWorksInDetailView(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 
@@ -283,8 +283,10 @@ func TestSortWorksInDetailView(t *testing.T) {
 }
 
 // newTestModelWithDetailRows creates a model with detail open and seeded rows.
-func newTestModelWithDetailRows() *Model {
-	m := newTestModel()
+func newTestModelWithDetailRows(t *testing.T) *Model {
+	t.Helper()
+
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	_ = m.openServiceLogDetail(1, "Test")
 
@@ -317,7 +319,7 @@ func newTestModelWithDetailRows() *Model {
 
 func TestSelectedRowMetaUsesDetailTab(t *testing.T) {
 	t.Parallel()
-	m := newTestModelWithDetailRows()
+	m := newTestModelWithDetailRows(t)
 	meta, ok := m.selectedRowMeta()
 	require.True(t, ok)
 	assert.Equal(t, uint(1), meta.ID)
@@ -325,7 +327,7 @@ func TestSelectedRowMetaUsesDetailTab(t *testing.T) {
 
 func TestSelectedCellUsesDetailTab(t *testing.T) {
 	t.Parallel()
-	m := newTestModelWithDetailRows()
+	m := newTestModelWithDetailRows(t)
 	c, ok := m.selectedCell(2)
 	require.True(t, ok)
 	assert.Equal(t, "Self", c.Value)
@@ -333,7 +335,7 @@ func TestSelectedCellUsesDetailTab(t *testing.T) {
 
 func TestApplianceMaintenanceDetailOpens(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
 	require.NotNil(t, m.detail())
@@ -374,7 +376,7 @@ func TestApplianceMaintenanceColumnSpecsNoAppliance(t *testing.T) {
 
 func TestDrilldownStackPushPop(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 
 	// Push first level.
@@ -391,7 +393,7 @@ func TestDrilldownStackPushPop(t *testing.T) {
 
 func TestNestedDrilldownApplianceMaintServiceLog(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 
 	// Level 1: Appliance → Maintenance
@@ -417,7 +419,7 @@ func TestNestedDrilldownApplianceMaintServiceLog(t *testing.T) {
 
 func TestCloseAllDetailsCollapsesStack(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 
 	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
@@ -485,7 +487,7 @@ func TestCloseAllDetailsDeepStackFinalState(t *testing.T) {
 
 func TestCloseAllDetailsNoopOnEmptyStack(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabProjects)
 	m.status = statusMsg{Text: "keep me", Kind: statusInfo}
 
@@ -499,7 +501,7 @@ func TestCloseAllDetailsNoopOnEmptyStack(t *testing.T) {
 
 func TestBreadcrumbsMultiLevel(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.active = tabIndex(tabAppliances)
@@ -519,7 +521,7 @@ func TestBreadcrumbsMultiLevel(t *testing.T) {
 
 func TestEscPopsOneLevel(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 
 	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
@@ -539,7 +541,7 @@ func TestEscPopsOneLevel(t *testing.T) {
 
 func TestVendorQuoteDrilldown(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabVendors)
 
 	require.NoError(t, m.openVendorQuoteDetail(3, "Acme Plumbing"))
@@ -562,7 +564,7 @@ func TestVendorQuoteDrilldown(t *testing.T) {
 
 func TestVendorJobsDrilldown(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabVendors)
 
 	require.NoError(t, m.openVendorJobsDetail(3, "Acme Plumbing"))
@@ -599,7 +601,7 @@ func TestVendorJobsHandlerFormKind(t *testing.T) {
 
 func TestProjectQuoteDrilldown(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabProjects)
 
 	require.NoError(t, m.openProjectQuoteDetail(7, "Kitchen Remodel"))
@@ -768,7 +770,7 @@ func TestOpenDetailForRow_NestedApplianceMaintenanceLog(t *testing.T) {
 
 func TestDrilldownHint(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	tab := &Tab{Kind: tabProjects}
 	spec := columnSpec{Title: "Quotes"}
 	assert.Equal(t, drilldownArrow+" drill", m.drilldownHint(tab, spec))
@@ -802,7 +804,7 @@ func TestNavigateToLinkClosesDetailStack(t *testing.T) {
 
 func TestProjectDocumentDrilldown(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabProjects)
 
 	require.NoError(t, m.openProjectDocumentDetail(7, "Kitchen Remodel"))
@@ -822,7 +824,7 @@ func TestProjectDocumentDrilldown(t *testing.T) {
 
 func TestApplianceDocumentDrilldown(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 
 	require.NoError(t, m.openApplianceDocumentDetail(5, "Dishwasher"))

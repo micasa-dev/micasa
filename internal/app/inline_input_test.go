@@ -15,7 +15,7 @@ import (
 
 func TestOpenInlineInputSetsState(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	m.openInlineInput(42, formVendor, "Name", "Acme", &field, nil, &vendorFormData{})
 
@@ -32,7 +32,7 @@ func TestOpenInlineInputSetsState(t *testing.T) {
 
 func TestInlineInputEscCloses(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	m.openInlineInput(1, formVendor, "Name", "", &field, nil, &vendorFormData{})
 
@@ -49,7 +49,7 @@ func TestInlineInputEscCloses(t *testing.T) {
 
 func TestInlineInputAbsorbsKeys(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	m.openInlineInput(1, formVendor, "Name", "", &field, nil, &vendorFormData{})
 
@@ -66,7 +66,7 @@ func TestInlineInputAbsorbsKeys(t *testing.T) {
 
 func TestInlineInputTypingUpdatesValue(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	m.openInlineInput(1, formVendor, "Name", "", &field, nil, &vendorFormData{})
 
@@ -82,7 +82,7 @@ func TestInlineInputTypingUpdatesValue(t *testing.T) {
 
 func TestInlineInputValidationBlocksSubmit(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	validate := func(s string) error {
 		if strings.TrimSpace(s) == "" {
@@ -104,7 +104,7 @@ func TestInlineInputValidationBlocksSubmit(t *testing.T) {
 
 func TestInlineInputStatusViewRendersPrompt(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	m.openInlineInput(1, formVendor, "Name", "", &field, nil, &vendorFormData{})
 
@@ -114,7 +114,7 @@ func TestInlineInputStatusViewRendersPrompt(t *testing.T) {
 
 func TestInlineInputPreservesExistingValue(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	field := "existing value"
 	m.openInlineInput(1, formVendor, "Name", "", &field, nil, &vendorFormData{})
 
@@ -125,7 +125,7 @@ func TestInlineInputPreservesExistingValue(t *testing.T) {
 
 func TestInlineInputPlaceholder(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	m.openInlineInput(1, formAppliance, "Cost", "899.00", &field, nil, &applianceFormData{})
 
@@ -134,7 +134,7 @@ func TestInlineInputPlaceholder(t *testing.T) {
 
 func TestInlineInputTableStaysVisible(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	var field string
 	m.openInlineInput(1, formVendor, "Name", "", &field, nil, &vendorFormData{})
 

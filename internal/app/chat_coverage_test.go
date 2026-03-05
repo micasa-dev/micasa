@@ -64,7 +64,7 @@ func testOllamaClient(t *testing.T, model string) *llm.Client {
 
 func TestHideChatSetsVisibleFalse(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	require.NotNil(t, m.chat)
 	require.True(t, m.chat.Visible)
@@ -76,7 +76,7 @@ func TestHideChatSetsVisibleFalse(t *testing.T) {
 
 func TestHideChatBlursInput(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	require.True(t, m.chat.Input.Focused())
 
@@ -86,7 +86,7 @@ func TestHideChatBlursInput(t *testing.T) {
 
 func TestHideChatCancelsStreaming(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	cancelled := false
@@ -100,7 +100,7 @@ func TestHideChatCancelsStreaming(t *testing.T) {
 
 func TestHideChatCancelsPull(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.pull.active = true
 	m.pull.fromChat = true
@@ -114,7 +114,7 @@ func TestHideChatCancelsPull(t *testing.T) {
 
 func TestHandleChatKeyEscHidesChat(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	require.True(t, m.chat.Visible)
 
@@ -126,7 +126,7 @@ func TestHandleChatKeyEscHidesChat(t *testing.T) {
 
 func TestHandleChatKeyEnterWhileStreamingNoop(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.Input.SetValue("hello")
@@ -139,7 +139,7 @@ func TestHandleChatKeyEnterWhileStreamingNoop(t *testing.T) {
 
 func TestHandleChatKeyCtrlSTogglesSQL(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	require.False(t, m.chat.ShowSQL)
 
@@ -154,7 +154,7 @@ func TestHandleChatKeyCtrlSTogglesSQL(t *testing.T) {
 
 func TestHandleChatKeyUpDownHistory(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.History = []string{"first", "second", "third"}
 	m.chat.HistoryCur = -1
@@ -178,7 +178,7 @@ func TestHandleChatKeyUpDownHistory(t *testing.T) {
 
 func TestHandleChatKeyCompleterEscDismisses(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{
 		Matches: []modelCompleterMatch{{Name: "test-model"}},
@@ -191,7 +191,7 @@ func TestHandleChatKeyCompleterEscDismisses(t *testing.T) {
 
 func TestHandleChatKeyCompleterUpDown(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{
 		Matches: []modelCompleterMatch{
@@ -220,7 +220,7 @@ func TestHandleChatKeyCompleterUpDown(t *testing.T) {
 
 func TestBuildChatOverlayContainsTitle(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	overlay := m.buildChatOverlay()
@@ -230,7 +230,7 @@ func TestBuildChatOverlayContainsTitle(t *testing.T) {
 
 func TestBuildChatOverlayWithClientShowsModelName(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "test-model")
 	m.openChat()
 
@@ -240,7 +240,7 @@ func TestBuildChatOverlayWithClientShowsModelName(t *testing.T) {
 
 func TestBuildChatOverlayShowsCompleterHints(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{
 		Matches: []modelCompleterMatch{{Name: "m"}},
@@ -254,7 +254,7 @@ func TestBuildChatOverlayShowsCompleterHints(t *testing.T) {
 
 func TestBuildChatOverlayShowsNormalHints(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	overlay := m.buildChatOverlay()
@@ -268,7 +268,7 @@ func TestBuildChatOverlayShowsNormalHints(t *testing.T) {
 
 func TestRenderModelCompleterLoading(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{Loading: true}
 
@@ -278,7 +278,7 @@ func TestRenderModelCompleterLoading(t *testing.T) {
 
 func TestRenderModelCompleterNoMatches(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{}
 	m.chat.Input.SetValue("/model xyz")
@@ -289,7 +289,7 @@ func TestRenderModelCompleterNoMatches(t *testing.T) {
 
 func TestRenderModelCompleterNoModels(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{}
 	m.chat.Input.SetValue("/model ")
@@ -300,7 +300,7 @@ func TestRenderModelCompleterNoModels(t *testing.T) {
 
 func TestRenderModelCompleterShowsMatches(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{
 		Matches: []modelCompleterMatch{
@@ -317,7 +317,7 @@ func TestRenderModelCompleterShowsMatches(t *testing.T) {
 
 func TestRenderModelCompleterFixedHeight(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{
 		Matches: []modelCompleterMatch{
@@ -336,7 +336,7 @@ func TestRenderModelCompleterFixedHeight(t *testing.T) {
 
 func TestChatOverlayWidthClampsMax(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 200
 	w := m.chatOverlayWidth()
 	assert.LessOrEqual(t, w, 90)
@@ -344,7 +344,7 @@ func TestChatOverlayWidthClampsMax(t *testing.T) {
 
 func TestChatOverlayWidthClampsMin(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 30
 	w := m.chatOverlayWidth()
 	assert.GreaterOrEqual(t, w, 40)
@@ -352,7 +352,7 @@ func TestChatOverlayWidthClampsMin(t *testing.T) {
 
 func TestChatOverlayWidthNormal(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 80
 	w := m.chatOverlayWidth()
 	assert.Equal(t, 72, w, "80 - 8 = 72")
@@ -362,7 +362,7 @@ func TestChatOverlayWidthNormal(t *testing.T) {
 
 func TestChatViewportHeightClampsMin(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.height = 10
 	h := m.chatViewportHeight()
 	assert.GreaterOrEqual(t, h, 4)
@@ -370,7 +370,7 @@ func TestChatViewportHeightClampsMin(t *testing.T) {
 
 func TestChatViewportHeightWithCompleter(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.height = 60
 	m.openChat()
 
@@ -387,7 +387,7 @@ func TestChatViewportHeightWithCompleter(t *testing.T) {
 
 func TestHistoryBackEmpty(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.History = nil
 	m.chat.HistoryCur = -1
@@ -398,7 +398,7 @@ func TestHistoryBackEmpty(t *testing.T) {
 
 func TestHistoryBackStashesCurrentInput(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.History = []string{"old"}
 	m.chat.HistoryCur = -1
@@ -412,7 +412,7 @@ func TestHistoryBackStashesCurrentInput(t *testing.T) {
 
 func TestHistoryBackClampsAtOldest(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.History = []string{"only"}
 	m.chat.HistoryCur = 0
@@ -423,7 +423,7 @@ func TestHistoryBackClampsAtOldest(t *testing.T) {
 
 func TestHistoryForwardNotBrowsing(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.HistoryCur = -1
 
@@ -433,7 +433,7 @@ func TestHistoryForwardNotBrowsing(t *testing.T) {
 
 func TestHistoryForwardRestoresLiveInput(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.History = []string{"old"}
 	m.chat.HistoryCur = -1
@@ -449,7 +449,7 @@ func TestHistoryForwardRestoresLiveInput(t *testing.T) {
 
 func TestHistoryRoundTrip(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.History = []string{"a", "b", "c"}
 	m.chat.HistoryCur = -1
@@ -477,7 +477,7 @@ func TestHistoryRoundTrip(t *testing.T) {
 
 func TestBuildConversationHistoryEmpty(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = nil
 
@@ -487,7 +487,7 @@ func TestBuildConversationHistoryEmpty(t *testing.T) {
 
 func TestBuildConversationHistoryFiltersRoles(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleUser, Content: "question 1"},
@@ -512,7 +512,7 @@ func TestBuildConversationHistoryFiltersRoles(t *testing.T) {
 
 func TestBuildConversationHistoryExcludesStreamingAssistant(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.Messages = []chatMessage{
@@ -527,7 +527,7 @@ func TestBuildConversationHistoryExcludesStreamingAssistant(t *testing.T) {
 
 func TestBuildConversationHistoryExcludesEmptyAssistant(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleUser, Content: "q"},
@@ -543,7 +543,7 @@ func TestBuildConversationHistoryExcludesEmptyAssistant(t *testing.T) {
 
 func TestBuildFallbackMessagesStructure(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "test-model")
 	m.openChat()
 	m.chat.Messages = []chatMessage{
@@ -567,7 +567,7 @@ func TestBuildFallbackMessagesStructure(t *testing.T) {
 
 func TestBuildFallbackMessagesNoHistory(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "test-model")
 	m.openChat()
 
@@ -661,7 +661,7 @@ func TestMergeModelListsLocalFlag(t *testing.T) {
 
 func TestCompleterQueryMatchesPrefix(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model qwen")
 
@@ -672,7 +672,7 @@ func TestCompleterQueryMatchesPrefix(t *testing.T) {
 
 func TestCompleterQueryEmptyAfterPrefix(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model ")
 
@@ -683,7 +683,7 @@ func TestCompleterQueryEmptyAfterPrefix(t *testing.T) {
 
 func TestCompleterQueryNoMatch(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("hello")
 
@@ -693,7 +693,7 @@ func TestCompleterQueryNoMatch(t *testing.T) {
 
 func TestCompleterQueryCaseInsensitive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/Model test")
 
@@ -704,7 +704,7 @@ func TestCompleterQueryCaseInsensitive(t *testing.T) {
 
 func TestCompleterQueryShortInput(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/mod")
 
@@ -716,7 +716,7 @@ func TestCompleterQueryShortInput(t *testing.T) {
 
 func TestActivateCompleterNoClientSetsNoLoading(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	require.Nil(t, m.llmClient)
 
@@ -728,7 +728,7 @@ func TestActivateCompleterNoClientSetsNoLoading(t *testing.T) {
 
 func TestActivateCompleterAlreadyActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{Loading: false}
 
@@ -738,7 +738,7 @@ func TestActivateCompleterAlreadyActive(t *testing.T) {
 
 func TestActivateCompleterWithClient(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "test")
 	m.openChat()
 
@@ -752,7 +752,7 @@ func TestActivateCompleterWithClient(t *testing.T) {
 
 func TestRefilterCompleterEmptyQuery(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model ")
 	m.chat.Completer = &modelCompleter{
@@ -770,7 +770,7 @@ func TestRefilterCompleterEmptyQuery(t *testing.T) {
 
 func TestRefilterCompleterWithQuery(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model alp")
 	m.chat.Completer = &modelCompleter{
@@ -795,7 +795,7 @@ func TestRefilterCompleterWithQuery(t *testing.T) {
 
 func TestRefilterCompleterMarksActive(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "alpha")
 	m.openChat()
 	m.chat.Input.SetValue("/model ")
@@ -814,7 +814,7 @@ func TestRefilterCompleterMarksActive(t *testing.T) {
 
 func TestRefilterCompleterClampsCursor(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model xyz")
 	m.chat.Completer = &modelCompleter{
@@ -896,7 +896,7 @@ func TestCleanPullStatus(t *testing.T) {
 
 func TestOpenChatCreatesNewSession(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	assert.Nil(t, m.chat)
 
 	m.openChat()
@@ -908,7 +908,7 @@ func TestOpenChatCreatesNewSession(t *testing.T) {
 
 func TestOpenChatReshowsHiddenSession(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	// openChat with no llmClient adds a notice; track the initial count.
@@ -930,7 +930,7 @@ func TestOpenChatReshowsHiddenSession(t *testing.T) {
 
 func TestOpenChatNoLLMClientShowsNotice(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = nil
 	m.openChat()
 
@@ -953,7 +953,7 @@ func TestOpenChatWithStoreLoadsHistory(t *testing.T) {
 
 func TestCancelChatOperationsStreamingNotVisible(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Visible = false
 	m.chat.Streaming = true
@@ -969,7 +969,7 @@ func TestCancelChatOperationsStreamingNotVisible(t *testing.T) {
 
 func TestSubmitChatEmptyInput(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("")
 	cmd := m.submitChat()
@@ -978,7 +978,7 @@ func TestSubmitChatEmptyInput(t *testing.T) {
 
 func TestSubmitChatWhitespaceInput(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("   ")
 	cmd := m.submitChat()
@@ -987,7 +987,7 @@ func TestSubmitChatWhitespaceInput(t *testing.T) {
 
 func TestSubmitChatNoLLMClient(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("hello")
 	cmd := m.submitChat()
@@ -997,7 +997,7 @@ func TestSubmitChatNoLLMClient(t *testing.T) {
 
 func TestSubmitChatRecordsHistory(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("my question")
 	m.submitChat()
@@ -1009,7 +1009,7 @@ func TestSubmitChatRecordsHistory(t *testing.T) {
 
 func TestSubmitChatDeduplicatesHistory(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	m.chat.Input.SetValue("same question")
@@ -1028,7 +1028,7 @@ func TestSubmitChatDeduplicatesHistory(t *testing.T) {
 
 func TestSubmitChatRemovesInterruptedNotice(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "test")
 	m.openChat()
 	m.chat.Messages = []chatMessage{
@@ -1049,7 +1049,7 @@ func TestSubmitChatRemovesInterruptedNotice(t *testing.T) {
 
 func TestHandleSlashCommandHelp(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/help")
 
@@ -1066,7 +1066,7 @@ func TestHandleSlashCommandHelp(t *testing.T) {
 
 func TestHandleSlashCommandSqlToggles(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	require.False(t, m.chat.ShowSQL)
 
@@ -1077,7 +1077,7 @@ func TestHandleSlashCommandSqlToggles(t *testing.T) {
 
 func TestHandleSlashCommandUnknown(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	cmd := m.handleSlashCommand("/bogus")
@@ -1091,7 +1091,7 @@ func TestHandleSlashCommandUnknown(t *testing.T) {
 
 func TestHandleSlashCommandModelNoArg(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "qwen3")
 	m.openChat()
 
@@ -1108,7 +1108,7 @@ func TestHandleSlashCommandModelNoArg(t *testing.T) {
 
 func TestHandleModelsListMsgRendersInChat(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "m1")
 	m.openChat()
 
@@ -1122,7 +1122,7 @@ func TestHandleModelsListMsgRendersInChat(t *testing.T) {
 
 func TestHandleModelsListMsgError(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	m.handleModelsListMsg(modelsListMsg{Err: fmt.Errorf("connection refused")})
@@ -1134,7 +1134,7 @@ func TestHandleModelsListMsgError(t *testing.T) {
 
 func TestHandleModelsListMsgEmptyModels(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 
 	m.handleModelsListMsg(modelsListMsg{Models: []string{}})
@@ -1145,7 +1145,7 @@ func TestHandleModelsListMsgEmptyModels(t *testing.T) {
 
 func TestHandleModelsListMsgFeedsCompleter(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model ")
 	m.chat.Completer = &modelCompleter{Loading: true}
@@ -1157,7 +1157,7 @@ func TestHandleModelsListMsgFeedsCompleter(t *testing.T) {
 
 func TestHandleModelsListMsgCompleterError(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model ")
 	m.chat.Completer = &modelCompleter{Loading: true}
@@ -1172,7 +1172,7 @@ func TestHandleModelsListMsgCompleterError(t *testing.T) {
 
 func TestRemoveLastNotice(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleUser, Content: "q"},
@@ -1190,7 +1190,7 @@ func TestRemoveLastNotice(t *testing.T) {
 
 func TestSyncCompleterActivatesOnModelPrefix(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model ")
 	require.Nil(t, m.chat.Completer)
@@ -1201,7 +1201,7 @@ func TestSyncCompleterActivatesOnModelPrefix(t *testing.T) {
 
 func TestSyncCompleterDeactivatesWhenPrefixRemoved(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Completer = &modelCompleter{}
 	m.chat.Input.SetValue("hello")
@@ -1212,7 +1212,7 @@ func TestSyncCompleterDeactivatesWhenPrefixRemoved(t *testing.T) {
 
 func TestSyncCompleterRefiltersExisting(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Input.SetValue("/model q")
 	m.chat.Completer = &modelCompleter{
@@ -1237,7 +1237,7 @@ func TestSyncCompleterRefiltersExisting(t *testing.T) {
 
 func TestHandleSQLStreamStartedError(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.StreamingSQL = true
@@ -1263,7 +1263,7 @@ func TestHandleSQLStreamStartedError(t *testing.T) {
 
 func TestHandleSQLStreamStartedSuccess(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.StreamingSQL = true
@@ -1289,7 +1289,7 @@ func TestHandleSQLStreamStartedSuccess(t *testing.T) {
 
 func TestHandleSQLChunkDroppedAfterCancel(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = false // Already cancelled.
 
@@ -1299,7 +1299,7 @@ func TestHandleSQLChunkDroppedAfterCancel(t *testing.T) {
 
 func TestHandleSQLChunkError(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.StreamingSQL = true
@@ -1321,7 +1321,7 @@ func TestHandleSQLChunkError(t *testing.T) {
 
 func TestHandleSQLChunkAccumulatesSQL(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.StreamingSQL = true
@@ -1342,7 +1342,7 @@ func TestHandleSQLChunkAccumulatesSQL(t *testing.T) {
 
 func TestHandleChatChunkError(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.Messages = []chatMessage{
@@ -1359,7 +1359,7 @@ func TestHandleChatChunkError(t *testing.T) {
 
 func TestHandleChatChunkAccumulates(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	ch := make(chan llm.StreamChunk, 5)
@@ -1377,7 +1377,7 @@ func TestHandleChatChunkAccumulates(t *testing.T) {
 
 func TestHandleChatChunkDone(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Streaming = true
 	m.chat.Messages = []chatMessage{
@@ -1393,7 +1393,7 @@ func TestHandleChatChunkDone(t *testing.T) {
 
 func TestRenderChatMessagesShowsAllRoles(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleUser, Content: "my question"},
@@ -1411,7 +1411,7 @@ func TestRenderChatMessagesShowsAllRoles(t *testing.T) {
 
 func TestRenderChatMessagesShowsSQLWhenToggled(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.ShowSQL = true
 	m.chat.Messages = []chatMessage{
@@ -1424,7 +1424,7 @@ func TestRenderChatMessagesShowsSQLWhenToggled(t *testing.T) {
 
 func TestRenderChatMessagesHidesSQLWhenOff(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.ShowSQL = false
 	m.chat.Messages = []chatMessage{
@@ -1437,7 +1437,7 @@ func TestRenderChatMessagesHidesSQLWhenOff(t *testing.T) {
 
 func TestRenderChatMessagesSkipsGeneratingQueryNotice(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleNotice, Content: "generating query"},
@@ -1451,7 +1451,7 @@ func TestRenderChatMessagesSkipsGeneratingQueryNotice(t *testing.T) {
 
 func TestRenderChatMessagesInterrupted(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleNotice, Content: "Interrupted"},
@@ -1463,7 +1463,7 @@ func TestRenderChatMessagesInterrupted(t *testing.T) {
 
 func TestRenderChatMessagesPullCancelled(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleNotice, Content: "Pull cancelled"},
@@ -1477,7 +1477,7 @@ func TestRenderChatMessagesPullCancelled(t *testing.T) {
 
 func TestCmdSwitchModelPullAlreadyInProgress(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testLLMClient(t, "test")
 	m.openChat()
 	m.pull.active = true
@@ -1497,7 +1497,7 @@ func TestCmdSwitchModelPullAlreadyInProgress(t *testing.T) {
 func TestCmdListModelsLive(t *testing.T) {
 	t.Parallel()
 	requireOllama(t)
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testOllamaClient(t, "")
 	m.openChat()
 
@@ -1513,7 +1513,7 @@ func TestCmdListModelsLive(t *testing.T) {
 func TestCmdSwitchModelLive(t *testing.T) {
 	t.Parallel()
 	requireOllama(t)
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testOllamaClient(t, "")
 	m.openChat()
 
@@ -1528,7 +1528,7 @@ func TestCmdSwitchModelLive(t *testing.T) {
 func TestSubmitChatLiveSlashModels(t *testing.T) {
 	t.Parallel()
 	requireOllama(t)
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testOllamaClient(t, "test")
 	m.openChat()
 	m.chat.Input.SetValue("/models")
@@ -1546,7 +1546,7 @@ func TestSubmitChatLiveSlashModels(t *testing.T) {
 
 func TestReplaceAssistantWithErrorRemovesIncomplete(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleUser, Content: "question"},
@@ -1562,7 +1562,7 @@ func TestReplaceAssistantWithErrorRemovesIncomplete(t *testing.T) {
 
 func TestReplaceAssistantWithErrorNoAssistant(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = []chatMessage{
 		{Role: roleUser, Content: "question"},
@@ -1577,7 +1577,7 @@ func TestReplaceAssistantWithErrorNoAssistant(t *testing.T) {
 
 func TestReplaceAssistantWithErrorEmptyMessages(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openChat()
 	m.chat.Messages = nil
 
@@ -1645,7 +1645,7 @@ func TestWaitForChunkClosedChannel(t *testing.T) {
 func TestActivateCompleterLive(t *testing.T) {
 	t.Parallel()
 	requireOllama(t)
-	m := newTestModel()
+	m := newTestModel(t)
 	m.llmClient = testOllamaClient(t, "")
 	m.openChat()
 

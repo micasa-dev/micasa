@@ -270,7 +270,7 @@ func TestPKTiebreaker(t *testing.T) {
 
 func TestSortKeyOnlyInNormalMode(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = false
 	tab := m.effectiveTab()
 	sendKey(m, "i")

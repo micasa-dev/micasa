@@ -14,7 +14,7 @@ import (
 
 func TestFormDataAsSuccess(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.fs.formData = &projectFormData{}
 	v, err := formDataAs[projectFormData](m)
 	require.NoError(t, err)
@@ -23,7 +23,7 @@ func TestFormDataAsSuccess(t *testing.T) {
 
 func TestFormDataAsWrongType(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.fs.formData = &vendorFormData{}
 	_, err := formDataAs[projectFormData](m)
 	require.Error(t, err)
@@ -32,7 +32,7 @@ func TestFormDataAsWrongType(t *testing.T) {
 
 func TestFormDataAsNilFormData(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.fs.formData = nil
 	_, err := formDataAs[projectFormData](m)
 	require.Error(t, err)
@@ -40,7 +40,7 @@ func TestFormDataAsNilFormData(t *testing.T) {
 
 func TestParseFormDataWrongType(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	wrong := &houseFormData{}
 
 	m.fs.formData = wrong

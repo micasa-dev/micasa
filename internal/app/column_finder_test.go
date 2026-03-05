@@ -126,7 +126,7 @@ func TestColumnFinderState_CursorClamps(t *testing.T) {
 
 func TestOpenColumnFinder(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	require.NotNil(t, m.columnFinder)
 	assert.NotEmpty(t, m.columnFinder.All)
@@ -135,7 +135,7 @@ func TestOpenColumnFinder(t *testing.T) {
 
 func TestColumnFinderJump(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	tab := m.effectiveTab()
 	require.NotNil(t, tab)
 	origCol := tab.ColCursor
@@ -156,7 +156,7 @@ func TestColumnFinderJump(t *testing.T) {
 
 func TestColumnFinderJump_UnhidesHiddenColumn(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	tab := m.effectiveTab()
 	if tab == nil || len(tab.Specs) < 3 {
 		t.Skip("need at least 3 columns")
@@ -186,7 +186,7 @@ func TestColumnFinderJump_UnhidesHiddenColumn(t *testing.T) {
 
 func TestHandleColumnFinderKey_EscCloses(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyEscape})
 	assert.Nil(t, m.columnFinder)
@@ -195,7 +195,7 @@ func TestHandleColumnFinderKey_EscCloses(t *testing.T) {
 
 func TestHandleColumnFinderKey_Typing(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	cf := m.columnFinder
 	initial := len(cf.Matches)
@@ -212,7 +212,7 @@ func TestHandleColumnFinderKey_Typing(t *testing.T) {
 
 func TestHandleColumnFinderKey_Backspace(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	cf := m.columnFinder
 
@@ -226,7 +226,7 @@ func TestHandleColumnFinderKey_Backspace(t *testing.T) {
 
 func TestHandleColumnFinderKey_BackspaceMultibyte(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	cf := m.columnFinder
 
@@ -246,7 +246,7 @@ func TestHandleColumnFinderKey_BackspaceMultibyte(t *testing.T) {
 
 func TestHandleColumnFinderKey_CtrlU(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	cf := m.columnFinder
 
@@ -258,7 +258,7 @@ func TestHandleColumnFinderKey_CtrlU(t *testing.T) {
 
 func TestHandleColumnFinderKey_Navigation(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	cf := m.columnFinder
 	if len(cf.Matches) < 2 {
@@ -280,7 +280,7 @@ func TestHandleColumnFinderKey_Navigation(t *testing.T) {
 
 func TestBuildColumnFinderOverlay_ShowsColumns(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 80
 	m.height = 24
 	m.openColumnFinder()
@@ -303,7 +303,7 @@ func TestHighlightFuzzyMatch(t *testing.T) {
 
 func TestSlashBlockedOnDashboard(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.showDashboard = true
 	cmd, handled := m.handleDashboardKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
 	assert.True(t, handled, "/ should be blocked on dashboard")
@@ -312,7 +312,7 @@ func TestSlashBlockedOnDashboard(t *testing.T) {
 
 func TestSlashOpensColumnFinder(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	sendKey(m, "/")
 	assert.NotNil(t, m.columnFinder)
 	assert.Contains(t, m.buildView(), "Jump to Column",
@@ -321,7 +321,7 @@ func TestSlashOpensColumnFinder(t *testing.T) {
 
 func TestSlashBlockedInEditMode(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.mode = modeEdit
 	sendKey(m, "/")
 	assert.Nil(t, m.columnFinder)
@@ -331,7 +331,7 @@ func TestSlashBlockedInEditMode(t *testing.T) {
 
 func TestColumnFinderEnterJumps(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.openColumnFinder()
 	cf := m.columnFinder
 	if len(cf.Matches) < 2 {

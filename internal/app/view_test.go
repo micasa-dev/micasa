@@ -20,7 +20,7 @@ import (
 
 func TestBuildViewShowsFullHouseBox(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	m.hasHouse = true
@@ -58,7 +58,7 @@ func TestExpandedHouseViewNoEllipsis(t *testing.T) {
 
 func TestBuildViewShowsTerminalTooSmallMessage(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = minUsableWidth - 1
 	m.height = minUsableHeight - 1
 	m.showDashboard = true
@@ -71,7 +71,7 @@ func TestBuildViewShowsTerminalTooSmallMessage(t *testing.T) {
 
 func TestBuildViewDoesNotShowTerminalTooSmallMessageAtMinimumSize(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = minUsableWidth
 	m.height = minUsableHeight
 
@@ -288,7 +288,7 @@ func TestVisibleProjectionHiddenSortOmitted(t *testing.T) {
 
 func TestHideCurrentColumnPreventsLastVisible(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.mode = modeNormal
 	m.showDashboard = false
 	tab := m.effectiveTab()
@@ -304,7 +304,7 @@ func TestHideCurrentColumnPreventsLastVisible(t *testing.T) {
 
 func TestHideCurrentColumnMovesToNext(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.mode = modeNormal
 	m.showDashboard = false
 	tab := m.effectiveTab()
@@ -321,7 +321,7 @@ func TestHideCurrentColumnMovesToNext(t *testing.T) {
 
 func TestShowAllColumns(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.mode = modeNormal
 	m.showDashboard = false
 	tab := m.effectiveTab()
@@ -601,7 +601,7 @@ func ptr[T any](v T) *T { return &v }
 
 func TestNavBadgeLabel(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 120
 	m.height = 40
 	status := m.statusView()
@@ -611,7 +611,7 @@ func TestNavBadgeLabel(t *testing.T) {
 
 func TestStatusBarStableWidthWithFilters(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 200
 	m.height = 40
 
@@ -632,7 +632,7 @@ func TestStatusBarStableWidthWithFilters(t *testing.T) {
 
 func TestStatusViewUsesMoreLabelWhenHintsCollapse(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.height = 40
 	// At very narrow width, the help hint compacts from "help" to "more".
 	// Add an enter hint to increase the hint count enough to trigger collapse.
@@ -652,14 +652,14 @@ func TestStatusViewUsesMoreLabelWhenHintsCollapse(t *testing.T) {
 
 func TestHelpContentIncludesProjectStatusFilterShortcut(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Toggle settled projects")
 }
 
 func TestHelpContentHasGlobalSection(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Global")
 	assert.Contains(t, help, "Quit")
@@ -668,7 +668,7 @@ func TestHelpContentHasGlobalSection(t *testing.T) {
 
 func TestHelpContentEditModeHalfPage(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "CTRL+D")
 	assert.Contains(t, help, "CTRL+U")
@@ -676,14 +676,14 @@ func TestHelpContentEditModeHalfPage(t *testing.T) {
 
 func TestHelpContentNavModeEsc(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Close detail")
 }
 
 func TestHelpContentFormsShowsFieldNavigation(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Next field")
 	assert.Contains(t, help, "Previous field")
@@ -691,7 +691,7 @@ func TestHelpContentFormsShowsFieldNavigation(t *testing.T) {
 
 func TestHelpContentExcludesDatePicker(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.NotContains(t, help, "Date Picker",
 		"date picker is a transient widget and should not appear in global help")
@@ -699,7 +699,7 @@ func TestHelpContentExcludesDatePicker(t *testing.T) {
 
 func TestHelpContentShowsArrowKeyAlternatives(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	// Nav mode row/column bindings include arrow symbols (renderKeys splits
 	// on "/" so they appear as individual badges, not as "↑/↓").
@@ -884,7 +884,7 @@ func TestDimBackgroundNeutralizesCancelFaint(t *testing.T) {
 
 func TestNormalModeOmitsDiscoveryHints(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 200 // very wide so nothing gets dropped by priority
 	m.height = 40
 	status := m.statusView()
@@ -907,7 +907,7 @@ func TestNormalModeOmitsDiscoveryHints(t *testing.T) {
 
 func TestEditModeOmitsUndoRedoProfile(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 200
 	m.height = 40
 	m.mode = modeEdit
@@ -927,7 +927,7 @@ func TestEditModeOmitsUndoRedoProfile(t *testing.T) {
 
 func TestAskHintHiddenWithoutLLM(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 200
 	m.height = 40
 	m.llmClient = nil
@@ -938,7 +938,7 @@ func TestAskHintHiddenWithoutLLM(t *testing.T) {
 
 func TestPinSummaryNotInStatusHints(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 200
 	m.height = 40
 	tab := m.activeTab()
@@ -954,7 +954,7 @@ func TestPinSummaryNotInStatusHints(t *testing.T) {
 
 func TestFilterIndicatorOnTabRow(t *testing.T) {
 	t.Parallel()
-	m, tab := newFilterModel()
+	m, tab := newFilterModel(t)
 	m.width = 120
 	m.height = 40
 
@@ -1000,7 +1000,7 @@ func TestFilterIndicatorOnTabRow(t *testing.T) {
 // mode (inactive tabs struck through), matching edit-mode behavior.
 func TestTabsLockedInFormMode(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 
 	m.mode = modeNormal
 	assert.False(t, m.tabsLocked(), "normal mode should not lock tabs")
@@ -1014,14 +1014,14 @@ func TestTabsLockedInFormMode(t *testing.T) {
 
 func TestHelpContentIncludesInvertFilter(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Invert filter")
 }
 
 func TestRowCountShowsDeletedCount(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.width = 200
 	m.height = 40
 	tab := m.effectiveTab()
@@ -1076,7 +1076,7 @@ func TestEmptyHintDetailDrilldown(t *testing.T) {
 		{tabMaintenance, "Service Log", "No service log for this maintenance item"},
 	}
 	for _, tt := range tests {
-		m := newTestModel()
+		m := newTestModel(t)
 		// Push a detail context so m.inDetail() is true.
 		m.detailStack = append(m.detailStack, &detailContext{
 			Tab: Tab{Kind: tt.parentKind, Name: tt.subName},
@@ -1200,7 +1200,7 @@ func TestRequiredLegendHiddenOnInlineEdit(t *testing.T) {
 
 func TestSetStatusSavedWithUndo(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.undoStack = append(m.undoStack, undoEntry{Description: "test"})
 	m.setStatusSaved(true)
 	assert.Contains(t, m.status.Text, "Press u to undo.")
@@ -1208,7 +1208,7 @@ func TestSetStatusSavedWithUndo(t *testing.T) {
 
 func TestSetStatusSavedNoUndo(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.setStatusSaved(false)
 	assert.Equal(t, "Saved.", m.status.Text)
 	assert.NotContains(t, m.status.Text, "undo")
@@ -1260,7 +1260,7 @@ func TestPluralCoversAllTabKinds(t *testing.T) {
 
 func TestOverlayMaxHeightClampsSmallTerminal(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.height = 10
 	h := m.overlayMaxHeight()
 	assert.Equal(t, 10, h, "should clamp to minimum of 10")
@@ -1268,7 +1268,7 @@ func TestOverlayMaxHeightClampsSmallTerminal(t *testing.T) {
 
 func TestOverlayMaxHeightNormalTerminal(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.height = 40
 	h := m.overlayMaxHeight()
 	assert.Equal(t, m.effectiveHeight()-4, h)

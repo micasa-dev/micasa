@@ -13,7 +13,7 @@ import (
 
 func TestToggleUnitSystemViaKeypress(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	m.hasHouse = true
 	require.Equal(t, data.UnitsImperial, m.unitSystem, "should default to imperial")
 
@@ -126,7 +126,7 @@ func TestHouseFormShowsConvertedValues(t *testing.T) {
 
 func TestHelpContentIncludesToggleUnits(t *testing.T) {
 	t.Parallel()
-	m := newTestModel()
+	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Toggle units")
 }
