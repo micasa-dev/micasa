@@ -34,6 +34,28 @@ func TestBuildViewShowsFullHouseBox(t *testing.T) {
 	assert.Contains(t, lines[0], "╭", "first line should contain the top border")
 }
 
+func TestExpandedHouseViewNoEllipsis(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	m.height = 40
+
+	// Toggle house expanded.
+	sendKey(m, "tab")
+	require.True(t, m.showHouse)
+
+	// At screenshot dimensions (2400px/32pt font ~ 120-125 columns) the
+	// house profile must render without ellipsis truncation.
+	for _, width := range []int{120, 160, 200} {
+		m.width = width
+		house := m.houseView()
+		clamped := clampLines(house, width)
+		for i, line := range strings.Split(clamped, "\n") {
+			assert.NotContains(t, line, symEllipsis,
+				"width %d: line %d truncated", width, i)
+		}
+	}
+}
+
 func TestBuildViewShowsTerminalTooSmallMessage(t *testing.T) {
 	t.Parallel()
 	m := newTestModel()

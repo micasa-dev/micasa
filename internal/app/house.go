@@ -101,6 +101,12 @@ func (m *Model) houseExpanded() string {
 	if art == "" {
 		return content
 	}
+	artGap := 3
+	boxOverhead := m.styles.HeaderBox().GetHorizontalFrameSize()
+	needed := lipgloss.Width(content) + artGap + lipgloss.Width(art) + boxOverhead
+	if needed > m.effectiveWidth() {
+		return content
+	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, content, "   ", art)
 }
 
