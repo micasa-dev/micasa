@@ -276,8 +276,8 @@ model = "qwen3"
 # Maximum pages to OCR for scanned documents. Default: 20.
 # max_extract_pages = 20
 
-# Set to false to disable LLM-powered extraction. Text extraction and OCR
-# still run independently.
+# Set to false to disable LLM-powered extraction.
+# When disabled, no structured data is extracted from documents.
 # enabled = true
 
 # Enable model thinking for extraction. Default: false (faster, no <think>).
@@ -350,17 +350,17 @@ Document attachment limits and caching.
 
 ### `[extraction]` section
 
-Document extraction pipeline settings. Controls OCR, pdftotext, and
-LLM-powered structured pre-fill. Text extraction and OCR are independent
-and always available when their tools are installed. The LLM layer adds
-structured data extraction (document type, costs, dates, vendor matching).
+Document extraction pipeline settings. Requires an LLM -- OCR and pdftotext
+are internal pipeline steps that feed the LLM, not standalone features.
+When enabled, the pipeline extracts structured data (document type, costs,
+dates, vendor matching) from uploaded documents.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `model` | string | (chat model) | **Deprecated.** Use `[llm.extraction] model` instead. Falls back to `llm.model` if empty. |
 | `text_timeout` | string | `"30s"` | Max time for `pdftotext` to run. Go duration syntax, e.g. `"1m"`. Increase for very large PDFs. |
 | `max_extract_pages` | int | `20` | Maximum pages to OCR per scanned document. Front-loaded info is typically in the first pages. |
-| `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. Text extraction and OCR still run. |
+| `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. When disabled, no structured data is extracted from documents. |
 | `thinking` | bool | `false` | **Deprecated.** Use `[llm.extraction] thinking` instead. |
 
 ### `[locale]` section

@@ -231,7 +231,7 @@ internal/
 # max_extract_pages = 20
 
 # Set to false to disable LLM-powered extraction even when LLM is configured.
-# Text extraction and OCR still work independently.
+# When disabled, no structured data is extracted from documents.
 # enabled = true
 ```
 

@@ -23,7 +23,7 @@ import (
 type Config struct {
 	LLM        LLM        `toml:"llm"        doc:"LLM provider, model, and connection settings."`
 	Documents  Documents  `toml:"documents"  doc:"Document attachment limits and caching."`
-	Extraction Extraction `toml:"extraction" doc:"Document extraction pipeline (OCR, pdftotext, LLM pre-fill)."`
+	Extraction Extraction `toml:"extraction" doc:"Document extraction pipeline. Requires an LLM; OCR and pdftotext are internal steps, not standalone features."`
 	Locale     Locale     `toml:"locale"     doc:"Locale and currency settings."`
 
 	// Warnings collects non-fatal messages (e.g. deprecations) during load.
@@ -240,8 +240,8 @@ type Extraction struct {
 	MaxExtractPages int `toml:"max_extract_pages" env:"MICASA_MAX_EXTRACT_PAGES"`
 
 	// Enabled controls whether LLM-powered extraction runs when a document
-	// is uploaded. Text and image extraction are independent and always
-	// available. Default: true.
+	// is uploaded. When disabled, no structured data is extracted -- OCR and
+	// pdftotext are internal pipeline steps, not standalone features. Default: true.
 	Enabled *bool `toml:"enabled,omitempty" env:"MICASA_EXTRACTION_ENABLED"`
 
 	// TextTimeout is the maximum time to wait for pdftotext. Go duration
@@ -1029,7 +1029,7 @@ model = "` + DefaultModel + `"
 # max_extract_pages = 20
 
 # Set to false to disable LLM-powered extraction even when LLM is configured.
-# Text and image extraction still work independently.
+# When disabled, no structured data is extracted from documents.
 # enabled = true
 
 [locale]

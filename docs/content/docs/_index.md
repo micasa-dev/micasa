@@ -28,9 +28,9 @@ No cloud. No account. No subscriptions.
 - **[Vim-style modal navigation]({{< ref "/docs/using/navigation" >}})** with Nav and Edit modes, multi-column
   sorting, column hiding, and cross-tab FK links
 - **[Document attachments]({{< ref "/docs/guide/documents" >}})** -- attach files (manuals, invoices,
-  photos) to any record, stored as BLOBs in the same SQLite file. PDFs and
-  images are automatically processed: text extraction, OCR for scanned
-  documents, and optional [LLM-powered structured data extraction]({{< ref "/docs/guide/documents#extraction-pipeline" >}})
+  photos) to any record, stored as BLOBs in the same SQLite file. When an LLM
+  is configured, an [extraction pipeline]({{< ref "/docs/guide/documents#extraction-pipeline" >}})
+  (OCR, text extraction, LLM) pre-fills form fields with structured data
 - **[LLM chat]({{< ref "/docs/guide/llm-chat" >}})** -- ask questions about your home data,
   powered by a local LLM ([Ollama](https://ollama.com) or any OpenAI-compatible API)
 
