@@ -6,6 +6,7 @@ package app
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -24,12 +25,12 @@ func (m *Model) houseView() string {
 			),
 			m.styles.HeaderHint().Render("Complete the form to add a house profile."),
 		)
-		return m.headerBox(content)
+		return m.zones.Mark(zoneHouse, m.headerBox(content))
 	}
 	if m.showHouse {
-		return m.headerBox(m.houseExpanded())
+		return m.zones.Mark(zoneHouse, m.headerBox(m.houseExpanded()))
 	}
-	return m.headerBox(m.houseCollapsed())
+	return m.zones.Mark(zoneHouse, m.headerBox(m.houseCollapsed()))
 }
 
 func (m *Model) houseCollapsed() string {
@@ -55,9 +56,14 @@ func (m *Model) houseExpanded() string {
 	val := m.styles.HeaderValue()
 	sep := hint.Render(" · ")
 
+	addr := formatAddress(m.house)
+	if addr != "" {
+		mapsURL := "https://maps.google.com/maps?q=" + url.QueryEscape(addr)
+		addr = osc8Link(mapsURL, addr)
+	}
 	identity := joinStyledParts(sep,
 		styledPart(val, m.house.Nickname),
-		styledPart(hint, formatAddress(m.house)),
+		styledPart(hint, addr),
 	)
 	titleLine := joinInline(title, badge) + "  " + identity
 

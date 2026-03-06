@@ -283,6 +283,13 @@ details; do not duplicate that detail here.
   status bar message via `setStatusInfo`.
 - **Visual consistency across paired surfaces**: When changing a UI
   element's appearance, audit every surface echoing the same semantics.
+- **Clickability for every interactive element**: Every new UI feature
+  must consider mouse clickability alongside keyboard interaction.
+  Zone-mark all interactive elements with `m.zones.Mark(id, content)`.
+  Write mouse click tests in `mouse_test.go` using
+  `sendClick`/`sendMouse`/`requireZone`. See `mouse.go` for dispatch
+  logic and zone ID conventions (`tab-N`, `row-N`, `col-N`, `hint-ID`,
+  `house-header`, `breadcrumb-back`, `dash-N`, `overlay`).
 
 ### Behavioral guardrails
 
@@ -292,6 +299,9 @@ details; do not duplicate that detail here.
 
 If the user asks you to learn something, add behavioral constraints to this
 "Hard rules" section, or create a skill in `.claude/commands/` for workflows.
+Project-wide conventions go in `AGENTS.md`, not in auto-memory. Reserve
+auto-memory for personal workflow preferences and session-specific context
+that don't apply to the codebase as a whole.
 
 ## Development best practices
 

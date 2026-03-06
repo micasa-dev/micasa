@@ -182,7 +182,7 @@ func (cmd *runCmd) Run() error {
 	fmt.Fprint(os.Stderr, "\033[22;2t\033]2;micasa\007")
 	defer fmt.Fprint(os.Stderr, "\033[23;2t")
 
-	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
+	_, err = tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
 	if err != nil {
 		return fmt.Errorf("running program: %w", err)
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/cpcloud/micasa/internal/locale"
+	zone "github.com/lrstanley/bubblezone"
 	"gorm.io/gorm"
 )
 
@@ -170,6 +171,7 @@ type notePreviewState struct {
 }
 
 type Model struct {
+	zones                 *zone.Manager
 	store                 *data.Store
 	dbPath                string
 	configPath            string
@@ -248,6 +250,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 	pprog.PercentageStyle = appStyles.TextDim()
 
 	model := &Model{
+		zones:           zone.New(),
 		store:           store,
 		dbPath:          options.DBPath,
 		configPath:      options.ConfigPath,
@@ -401,6 +404,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, tea.Batch(cmds...)
+	case tea.MouseMsg:
+		return m.handleMouse(typed)
 	case openFileResultMsg:
 		if typed.Err != nil {
 			m.setStatusError(fmt.Sprintf("open: %s", typed.Err))
@@ -959,7 +964,7 @@ func (m *Model) openCalendar(fieldPtr *string, onConfirm func()) {
 }
 
 func (m *Model) View() string {
-	return m.buildView()
+	return m.zones.Scan(m.buildView())
 }
 
 func (m *Model) enterNormalMode() {

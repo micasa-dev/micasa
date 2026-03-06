@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/locale"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -778,7 +779,7 @@ func renderTestHeader(
 	headerSpecs := annotateMoneyHeaders(specs, cur)
 	vpSorts := make([]sortEntry, len(sorts))
 	copy(vpSorts, sorts)
-	return renderHeaderRow(headerSpecs, widths, seps, 0, vpSorts, false, false, nil)
+	return renderHeaderRow(headerSpecs, widths, seps, 0, vpSorts, false, false, nil, zone.New())
 }
 
 // Regression: user reported "ID" truncated to "I" on the quotes table
