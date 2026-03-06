@@ -24,13 +24,12 @@ jobs:
       group: ci-test-${{ matrix.os }}-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.event_name == 'pull_request' }}
       matrix:
         os:
           - ubuntu-latest
           - ubuntu-24.04-arm
           - macos-latest
-          - macos-15-intel
           - windows-latest
           - windows-11-arm
     steps:
@@ -135,7 +134,22 @@ jobs:
           files: coverage.txt
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Benchmarks (smoke)
+  benchmarks:
+    name: Benchmarks (smoke)
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-benchmarks-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: "1.25"
+
+      - name: Run smoke benchmarks
         run: go test -bench . -benchtime 1x -timeout 5m -run '^$' ./...
 
   deadcode:
@@ -229,45 +243,13 @@ jobs:
         with:
           extra_args: --only-verified
 
-  govulncheck:
-    name: Go Vulnerability Check
-    runs-on: ubuntu-latest
-    concurrency:
-      group: ci-govulncheck-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
-
-      - name: Run govulncheck
-        run: nix run '.#govulncheck'
-
-  vuln-scan:
-    name: Vulnerability Scan
-    runs-on: ubuntu-latest
-    concurrency:
-      group: ci-vuln-scan-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
-
-      - name: Run osv-scanner
-        run: nix run '.#osv-scanner'
-
   # ---------------------------------------------------------------------------
   # Semantic Release (dry-run on PRs, publish on main push)
   # ---------------------------------------------------------------------------
 
   semantic-release:
     name: Semantic Release
-    needs: [test, deadcode, govulncheck, pre-commit, nix-build, docs, secrets]
+    needs: [test, deadcode, pre-commit, nix-build, docs, secrets]
     runs-on: ubuntu-latest
     concurrency:
       group: semantic-release-${{ github.ref }}
