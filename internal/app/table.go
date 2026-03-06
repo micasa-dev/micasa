@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/cpcloud/micasa/internal/data"
+	zone "github.com/lrstanley/bubblezone"
 )
 
 // defaultStyle is reused for cells that need no special styling, avoiding
@@ -80,6 +81,7 @@ func renderHeaderRow(
 	sorts []sortEntry,
 	hasLeft, hasRight bool,
 	rows [][]cell,
+	zones *zone.Manager,
 ) string {
 	cells := make([]string, 0, len(specs))
 	last := len(specs) - 1
@@ -101,11 +103,13 @@ func renderHeaderRow(
 		}
 		indicator := sortIndicator(sorts, i)
 		text := formatHeaderCell(title, indicator, width)
+		var rendered string
 		if i == colCursor {
-			cells = append(cells, appStyles.ColActiveHeader().Render(text))
+			rendered = appStyles.ColActiveHeader().Render(text)
 		} else {
-			cells = append(cells, appStyles.TableHeader().Render(text))
+			rendered = appStyles.TableHeader().Render(text)
 		}
+		cells = append(cells, zones.Mark(fmt.Sprintf("%s%d", zoneCol, i), rendered))
 	}
 	return joinCells(cells, separators)
 }
@@ -349,6 +353,7 @@ func renderRows(
 	colCursor int,
 	height int,
 	pinCtx pinRenderContext,
+	zones *zone.Manager,
 ) []string {
 	total := len(rows)
 	if total == 0 {
@@ -382,7 +387,7 @@ func renderRows(
 			pinCtx,
 			i,
 		)
-		rendered = append(rendered, row)
+		rendered = append(rendered, zones.Mark(fmt.Sprintf("%s%d", zoneRow, i), row))
 	}
 	return rendered
 }

@@ -527,6 +527,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		isHeaderCursor := navIdx == m.dash.cursor
 		dimmed := cursorSection != "" && cursorSection != s.title
 		hdr := m.dashSectionHeader(s.title, len(s.rows), dimmed)
+		hdr = m.zones.Mark(fmt.Sprintf("%s%d", zoneDashRow, navIdx), hdr)
 		if isHeaderCursor {
 			cursorLine = len(lines)
 		}
@@ -544,18 +545,19 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		)
 		// Column header row (if present) offsets data rows by 1.
 		headerOffset := len(tbl) - len(s.rows)
+		dataNavIdx := navIdx
 		for j, row := range tbl {
-			if localCursor >= 0 && j-headerOffset == localCursor {
+			dataIdx := j - headerOffset
+			if localCursor >= 0 && dataIdx == localCursor {
 				cursorLine = len(lines)
+			}
+			if dataIdx >= 0 && dataIdx < len(s.rows) && s.rows[dataIdx].Target != nil {
+				row = m.zones.Mark(fmt.Sprintf("%s%d", zoneDashRow, dataNavIdx), row)
+				dataNavIdx++
 			}
 			lines = append(lines, row)
 		}
-
-		for _, r := range s.rows {
-			if r.Target != nil {
-				navIdx++
-			}
-		}
+		navIdx = dataNavIdx
 	}
 
 	// Scroll windowing: show only `budget` lines, following the cursor.

@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/locale"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,6 +31,7 @@ func newTestModel(t *testing.T) *Model {
 
 	store.SetCurrency(locale.DefaultCurrency())
 	m := &Model{
+		zones:  zone.New(),
 		store:  store,
 		styles: appStyles,
 		tabs:   NewTabs(),

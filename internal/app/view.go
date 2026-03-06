@@ -59,7 +59,7 @@ func (m *Model) buildView() string {
 
 	for _, o := range overlays {
 		if o.active {
-			fg := cancelFaint(o.render())
+			fg := m.zones.Mark(zoneOverlay, cancelFaint(o.render()))
 			base = overlay.Composite(fg, dimBackground(base), overlay.Center, overlay.Center, 0, 0)
 		}
 	}
@@ -126,6 +126,9 @@ func (m *Model) buildBaseView() string {
 		available := m.effectiveWidth() - tabsW - minGap
 		if available > 5 {
 			path := truncateLeft(shortenHome(m.dbPath), available)
+			if m.dbPath != ":memory:" {
+				path = osc8Link("file://"+m.dbPath, path)
+			}
 			label := m.styles.HeaderHint().Render(path)
 			gap := m.effectiveWidth() - tabsW - lipgloss.Width(label)
 			if gap > 0 {
@@ -205,13 +208,15 @@ func (m *Model) tabsView() string {
 	pinned := m.tabsLocked()
 	parts := make([]string, 0, len(m.tabs)*2)
 	for i, tab := range m.tabs {
+		var rendered string
 		if i == m.active {
-			parts = append(parts, m.styles.TabActive().Render(tab.Name))
+			rendered = m.styles.TabActive().Render(tab.Name)
 		} else if pinned {
-			parts = append(parts, m.styles.TabLocked().Render(tab.Name))
+			rendered = m.styles.TabLocked().Render(tab.Name)
 		} else {
-			parts = append(parts, m.styles.TabInactive().Render(tab.Name))
+			rendered = m.styles.TabInactive().Render(tab.Name)
 		}
+		parts = append(parts, m.zones.Mark(fmt.Sprintf("%s%d", zoneTab, i), rendered))
 		// Gap between tabs: triangle indicates filter state.
 		// Filled/hollow = active/preview, down/up = normal/inverted.
 		var mark string
@@ -259,7 +264,7 @@ func (m *Model) breadcrumbView() string {
 	back := m.styles.HeaderHint().Render(" (")
 	back += m.keycap("esc")
 	back += m.styles.HeaderHint().Render(" back)")
-	return crumb + back
+	return crumb + m.zones.Mark(zoneBreadcrumb, back)
 }
 
 func (m *Model) tabUnderline() string {
@@ -515,6 +520,9 @@ func (m *Model) renderStatusHints(hints []statusHint) string {
 			value := hint.full
 			if compact[i] && hint.compact != "" {
 				value = hint.compact
+			}
+			if hint.id != "" {
+				value = m.zones.Mark(zoneHint+hint.id, value)
 			}
 			parts = append(parts, value)
 		}
@@ -886,6 +894,7 @@ func (m *Model) tableView(tab *Tab) string {
 		vp.HasLeft,
 		vp.HasRight,
 		vp.LinkCells,
+		m.zones,
 	)
 	divider := renderDivider(vp.Widths, vp.PlainSeps, normalDiv, m.styles.TableSeparator())
 
@@ -928,6 +937,7 @@ func (m *Model) tableView(tab *Tab) string {
 		vp.Cursor,
 		effectiveHeight,
 		pinCtx,
+		m.zones,
 	)
 
 	// Assemble body (header + divider + data rows).
@@ -1063,6 +1073,12 @@ func cancelFaint(s string) string {
 	}
 	b.WriteString(suf)
 	return b.String()
+}
+
+// osc8Link wraps text in an OSC 8 hyperlink escape sequence, making it
+// clickable in terminals that support the OSC 8 standard.
+func osc8Link(url, text string) string {
+	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
 }
 
 // --- Keycap rendering ---

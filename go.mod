@@ -18,6 +18,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.6
 	github.com/dustin/go-humanize v1.0.1
 	github.com/iancoleman/strcase v0.3.0
+	github.com/lrstanley/bubblezone v1.0.0
 	github.com/mozilla-ai/any-llm-go v0.8.0
 	github.com/rmhubbert/bubbletea-overlay v0.6.5
 	github.com/stretchr/testify v1.11.1
