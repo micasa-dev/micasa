@@ -1,0 +1,66 @@
+/* Generated using: hugo gen chromastyles --style=gruvbox */
+
+/* Background */ .bg { color:inherit;background-color:transparent; }
+/* PreWrapper */ .chroma { color:inherit;background-color:transparent;-webkit-text-size-adjust:none; }
+/* LineLink */ .chroma .lnlinks { outline:none;text-decoration:none;color:inherit }
+/* LineTableTD */ .chroma .lntd { vertical-align:top;padding:0;margin:0;border:0; }
+/* LineTable */ .chroma .lntable { border-spacing:0;padding:0;margin:0;border:0; }
+/* LineHighlight */ .chroma .hl { background-color:#3d3d3d }
+/* LineNumbersTable */ .chroma .lnt { white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#756d59 }
+/* LineNumbers */ .chroma .ln { white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#756d59 }
+/* Line */ .chroma .line { display:flex; }
+/* Keyword */ .chroma .k { color:#fe8019 }
+/* KeywordConstant */ .chroma .kc { color:#fe8019 }
+/* KeywordDeclaration */ .chroma .kd { color:#fe8019 }
+/* KeywordNamespace */ .chroma .kn { color:#fe8019 }
+/* KeywordPseudo */ .chroma .kp { color:#fe8019 }
+/* KeywordReserved */ .chroma .kr { color:#fe8019 }
+/* KeywordType */ .chroma .kt { color:#fabd2f }
+/* NameAttribute */ .chroma .na { color:#b8bb26;font-weight:bold }
+/* NameConstant */ .chroma .no { color:#d3869b }
+/* NameEntity */ .chroma .ni { color:#fabd2f }
+/* NameException */ .chroma .ne { color:#fb4934 }
+/* NameLabel */ .chroma .nl { color:#fb4934 }
+/* NameTag */ .chroma .nt { color:#fb4934 }
+/* NameBuiltin */ .chroma .nb { color:#fabd2f }
+/* NameBuiltinPseudo */ .chroma .bp { color:#fabd2f }
+/* NameFunction */ .chroma .nf { color:#fabd2f }
+/* NameFunctionMagic */ .chroma .fm { color:#fabd2f }
+/* LiteralString */ .chroma .s { color:#b8bb26 }
+/* LiteralStringAffix */ .chroma .sa { color:#b8bb26 }
+/* LiteralStringBacktick */ .chroma .sb { color:#b8bb26 }
+/* LiteralStringChar */ .chroma .sc { color:#b8bb26 }
+/* LiteralStringDelimiter */ .chroma .dl { color:#b8bb26 }
+/* LiteralStringDoc */ .chroma .sd { color:#b8bb26 }
+/* LiteralStringDouble */ .chroma .s2 { color:#b8bb26 }
+/* LiteralStringEscape */ .chroma .se { color:#b8bb26 }
+/* LiteralStringHeredoc */ .chroma .sh { color:#b8bb26 }
+/* LiteralStringInterpol */ .chroma .si { color:#b8bb26 }
+/* LiteralStringOther */ .chroma .sx { color:#b8bb26 }
+/* LiteralStringRegex */ .chroma .sr { color:#b8bb26 }
+/* LiteralStringSingle */ .chroma .s1 { color:#b8bb26 }
+/* LiteralStringSymbol */ .chroma .ss { color:#83a598 }
+/* LiteralNumber */ .chroma .m { color:#d3869b }
+/* LiteralNumberBin */ .chroma .mb { color:#d3869b }
+/* LiteralNumberFloat */ .chroma .mf { color:#d3869b }
+/* LiteralNumberHex */ .chroma .mh { color:#d3869b }
+/* LiteralNumberInteger */ .chroma .mi { color:#d3869b }
+/* LiteralNumberIntegerLong */ .chroma .il { color:#d3869b }
+/* LiteralNumberOct */ .chroma .mo { color:#d3869b }
+/* Operator */ .chroma .o { color:#fe8019 }
+/* OperatorWord */ .chroma .ow { color:#fe8019 }
+/* Comment */ .chroma .c { color:#928374;font-style:italic }
+/* CommentHashbang */ .chroma .ch { color:#928374;font-style:italic }
+/* CommentMultiline */ .chroma .cm { color:#928374;font-style:italic }
+/* CommentSingle */ .chroma .c1 { color:#928374;font-style:italic }
+/* CommentSpecial */ .chroma .cs { color:#928374;font-style:italic }
+/* CommentPreproc */ .chroma .cp { color:#8ec07c }
+/* CommentPreprocFile */ .chroma .cpf { color:#8ec07c;font-style:italic }
+/* GenericDeleted */ .chroma .gd { color:#282828;background-color:#fb4934 }
+/* GenericEmph */ .chroma .ge { color:#83a598;text-decoration:underline }
+/* GenericError */ .chroma .gr { background-color:#fb4934;font-weight:bold }
+/* GenericHeading */ .chroma .gh { color:#b8bb26;font-weight:bold }
+/* GenericInserted */ .chroma .gi { color:#282828;background-color:#b8bb26 }
+/* GenericOutput */ .chroma .go { color:#504945 }
+/* GenericSubheading */ .chroma .gu { color:#b8bb26;font-weight:bold }
+/* GenericTraceback */ .chroma .gt { background-color:#fb4934;font-weight:bold }

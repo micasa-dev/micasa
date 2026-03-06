@@ -239,8 +239,19 @@ body {
 /* Code */
 
 code,
-pre {
+pre,
+kbd {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+}
+
+kbd {
+  font-size: 0.82em;
+  background: var(--linen);
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .blog-post-body :not(pre) > code {

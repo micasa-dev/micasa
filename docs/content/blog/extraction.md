@@ -41,9 +41,9 @@ The LLM never writes to your database directly.
 
 <video src="/videos/extraction.webm" class="demo-video" autoplay loop muted playsinline></video>
 
-The overlay is keyboard-driven: `j`/`k` to navigate steps, `enter` to
-expand logs, `x` to explore the proposed operations table, `a` to accept,
-`r` to rerun the LLM if the first attempt missed, `esc` to cancel.
+The overlay is keyboard-driven: <kbd>j</kbd>/<kbd>k</kbd> to navigate steps, <kbd>enter</kbd> to
+expand logs, <kbd>x</kbd> to explore the proposed operations table, <kbd>a</kbd> to accept,
+<kbd>r</kbd> to rerun the LLM if the first attempt missed, <kbd>esc</kbd> to cancel.
 
 ## The LLM is the least important part
 
@@ -85,14 +85,14 @@ Some other things that landed since the [launch post](/blog/launch/):
   `2 weeks ago`, or `last friday` instead of `YYYY-MM-DD`. Works in any date
   field.
   ([#528](https://github.com/cpcloud/micasa/pull/528))
-- **[`t` for today](/docs/using/date-input/#calendar-picker)** -- in date
+- **[<kbd>t</kbd> for today](/docs/using/date-input/#calendar-picker)** -- in date
   pickers. Typing `2026-02-26` every time was a small daily indignity.
   ([#517](https://github.com/cpcloud/micasa/pull/517))
 - **[Maintenance](/docs/guide/maintenance/) due dates** -- items can now have
   a fixed date instead of only a recurring interval. "Clean the gutters every
   6 months" and "replace the roof by 2028" are different kinds of tasks.
   ([#525](https://github.com/cpcloud/micasa/pull/525))
-- **`E` for [full edit](/docs/reference/keybindings/#data-operations)** -- opens the edit form
+- **<kbd>E</kbd> for [full edit](/docs/reference/keybindings/#data-operations)** -- opens the edit form
   from any column. Previously you had to navigate to the right column first.
   ([#540](https://github.com/cpcloud/micasa/pull/540))
 - **Scrollable [dashboard](/docs/guide/dashboard/)** -- previously clipped
@@ -105,7 +105,7 @@ Some other things that landed since the [launch post](/blog/launch/):
 go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
 ```
 
-Switch to the Docs tab, press `i` to enter Edit mode, then `A` to drop
+Switch to the Docs tab, press <kbd>i</kbd> to enter Edit mode, then <kbd>A</kbd> to drop
 a PDF in and see what the pipeline makes of it. Binaries on the
 [releases page](https://github.com/cpcloud/micasa/releases/latest).
 

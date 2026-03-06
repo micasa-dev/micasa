@@ -9,7 +9,7 @@ languageCode = "en-us"
 unsafe = true
 
 [markup.highlight]
-style = "manni"
+style = "gruvbox"
 noClasses = false
 
 [markup.tableOfContents]
