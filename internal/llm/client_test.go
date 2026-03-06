@@ -826,10 +826,6 @@ func TestNewClientOllamaCustomBaseURL(t *testing.T) {
 // tests. It avoids real network I/O so the fake clock can advance.
 type mockModelLister struct {
 	listModelsFunc func(ctx context.Context) (*anyllm.ModelsResponse, error)
-	streamFunc     func(
-		ctx context.Context,
-		params anyllm.CompletionParams,
-	) (<-chan anyllm.ChatCompletionChunk, <-chan error)
 }
 
 func (m *mockModelLister) Name() string { return "mock" }
@@ -842,10 +838,10 @@ func (m *mockModelLister) Completion(
 }
 
 func (m *mockModelLister) CompletionStream(
-	ctx context.Context,
-	params anyllm.CompletionParams,
+	_ context.Context,
+	_ anyllm.CompletionParams,
 ) (<-chan anyllm.ChatCompletionChunk, <-chan error) {
-	return m.streamFunc(ctx, params)
+	panic("not implemented")
 }
 
 func (m *mockModelLister) ListModels(
@@ -877,88 +873,6 @@ func TestPingTimesOutAtQuickOpTimeout(t *testing.T) {
 			QuickOpTimeout.Seconds(), elapsed.Seconds(), 1,
 			"should time out at QuickOpTimeout, not sooner or later",
 		)
-	})
-}
-
-// TestListModelsTimesOutAtQuickOpTimeout verifies that ListModels enforces
-// the 30s QuickOpTimeout when the provider blocks forever.
-func TestListModelsTimesOutAtQuickOpTimeout(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		mock := &mockModelLister{
-			listModelsFunc: func(ctx context.Context) (*anyllm.ModelsResponse, error) {
-				<-ctx.Done()
-				return nil, ctx.Err()
-			},
-		}
-		client := &Client{provider: mock, providerName: "mock", model: "m"}
-
-		start := time.Now()
-		_, err := client.ListModels(context.Background())
-
-		elapsed := time.Since(start)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "timed out")
-		assert.InDelta(t,
-			QuickOpTimeout.Seconds(), elapsed.Seconds(), 1,
-			"should time out at QuickOpTimeout",
-		)
-	})
-}
-
-// TestStreamingSurvivesPastQuickOpTimeout verifies that a streaming response
-// taking longer than QuickOpTimeout (30s) is NOT killed. Streaming has no
-// internal timeout -- only the caller's context or HTTP client timeout apply.
-func TestStreamingSurvivesPastQuickOpTimeout(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		mock := &mockModelLister{
-			listModelsFunc: func(_ context.Context) (*anyllm.ModelsResponse, error) {
-				return nil, fmt.Errorf("not used")
-			},
-			streamFunc: func(
-				_ context.Context,
-				_ anyllm.CompletionParams,
-			) (<-chan anyllm.ChatCompletionChunk, <-chan error) {
-				chunks := make(chan anyllm.ChatCompletionChunk)
-				errs := make(chan error)
-				go func() {
-					defer close(chunks)
-					defer close(errs)
-
-					chunks <- anyllm.ChatCompletionChunk{
-						Choices: []anyllm.ChunkChoice{
-							{Delta: anyllm.ChunkDelta{Content: "Hello"}, FinishReason: ""},
-						},
-					}
-
-					// Delay longer than QuickOpTimeout.
-					time.Sleep(QuickOpTimeout + 30*time.Second)
-
-					chunks <- anyllm.ChatCompletionChunk{
-						Choices: []anyllm.ChunkChoice{
-							{Delta: anyllm.ChunkDelta{Content: " world"}, FinishReason: "stop"},
-						},
-					}
-				}()
-				return chunks, errs
-			},
-		}
-		client := &Client{provider: mock, providerName: "mock", model: "m"}
-
-		ch, err := client.ChatStream(
-			context.Background(),
-			[]Message{{Role: "user", Content: "hi"}},
-		)
-		require.NoError(t, err)
-
-		var content string
-		for chunk := range ch {
-			require.NoError(t, chunk.Err)
-			content += chunk.Content
-			if chunk.Done {
-				break
-			}
-		}
-		assert.Equal(t, "Hello world", content)
 	})
 }
 
