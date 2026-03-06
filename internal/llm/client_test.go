@@ -4,15 +4,19 @@
 package llm
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"testing/synctest"
 	"time"
 
+	anyllm "github.com/mozilla-ai/any-llm-go"
 	anyllmerrors "github.com/mozilla-ai/any-llm-go/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -816,4 +820,288 @@ func TestNewClientOllamaCustomBaseURL(t *testing.T) {
 	c, err := NewClient("ollama", srv.URL, "qwen3", "", testTimeout)
 	require.NoError(t, err)
 	assert.NoError(t, c.Ping(context.Background()))
+}
+
+// mockModelLister is a minimal anyllm.ModelLister for synctest-based timeout
+// tests. It avoids real network I/O so the fake clock can advance.
+type mockModelLister struct {
+	listModelsFunc func(ctx context.Context) (*anyllm.ModelsResponse, error)
+	streamFunc     func(
+		ctx context.Context,
+		params anyllm.CompletionParams,
+	) (<-chan anyllm.ChatCompletionChunk, <-chan error)
+}
+
+func (m *mockModelLister) Name() string { return "mock" }
+
+func (m *mockModelLister) Completion(
+	_ context.Context,
+	_ anyllm.CompletionParams,
+) (*anyllm.ChatCompletion, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (m *mockModelLister) CompletionStream(
+	ctx context.Context,
+	params anyllm.CompletionParams,
+) (<-chan anyllm.ChatCompletionChunk, <-chan error) {
+	return m.streamFunc(ctx, params)
+}
+
+func (m *mockModelLister) ListModels(
+	ctx context.Context,
+) (*anyllm.ModelsResponse, error) {
+	return m.listModelsFunc(ctx)
+}
+
+// TestPingTimesOutAtQuickOpTimeout verifies that Ping enforces the 30s
+// QuickOpTimeout via context deadline when the server never responds.
+// Uses synctest with a mock provider (no real I/O) so the fake clock advances.
+func TestPingTimesOutAtQuickOpTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		mock := &mockModelLister{
+			listModelsFunc: func(ctx context.Context) (*anyllm.ModelsResponse, error) {
+				<-ctx.Done()
+				return nil, ctx.Err()
+			},
+		}
+		client := &Client{provider: mock, providerName: "mock", model: "m"}
+
+		start := time.Now()
+		err := client.Ping(context.Background())
+
+		elapsed := time.Since(start)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timed out")
+		assert.InDelta(t,
+			QuickOpTimeout.Seconds(), elapsed.Seconds(), 1,
+			"should time out at QuickOpTimeout, not sooner or later",
+		)
+	})
+}
+
+// TestListModelsTimesOutAtQuickOpTimeout verifies that ListModels enforces
+// the 30s QuickOpTimeout when the provider blocks forever.
+func TestListModelsTimesOutAtQuickOpTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		mock := &mockModelLister{
+			listModelsFunc: func(ctx context.Context) (*anyllm.ModelsResponse, error) {
+				<-ctx.Done()
+				return nil, ctx.Err()
+			},
+		}
+		client := &Client{provider: mock, providerName: "mock", model: "m"}
+
+		start := time.Now()
+		_, err := client.ListModels(context.Background())
+
+		elapsed := time.Since(start)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timed out")
+		assert.InDelta(t,
+			QuickOpTimeout.Seconds(), elapsed.Seconds(), 1,
+			"should time out at QuickOpTimeout",
+		)
+	})
+}
+
+// TestStreamingSurvivesPastQuickOpTimeout verifies that a streaming response
+// taking longer than QuickOpTimeout (30s) is NOT killed. Streaming has no
+// internal timeout -- only the caller's context or HTTP client timeout apply.
+func TestStreamingSurvivesPastQuickOpTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		mock := &mockModelLister{
+			listModelsFunc: func(_ context.Context) (*anyllm.ModelsResponse, error) {
+				return nil, fmt.Errorf("not used")
+			},
+			streamFunc: func(
+				_ context.Context,
+				_ anyllm.CompletionParams,
+			) (<-chan anyllm.ChatCompletionChunk, <-chan error) {
+				chunks := make(chan anyllm.ChatCompletionChunk)
+				errs := make(chan error)
+				go func() {
+					defer close(chunks)
+					defer close(errs)
+
+					chunks <- anyllm.ChatCompletionChunk{
+						Choices: []anyllm.ChunkChoice{
+							{Delta: anyllm.ChunkDelta{Content: "Hello"}, FinishReason: ""},
+						},
+					}
+
+					// Delay longer than QuickOpTimeout.
+					time.Sleep(QuickOpTimeout + 30*time.Second)
+
+					chunks <- anyllm.ChatCompletionChunk{
+						Choices: []anyllm.ChunkChoice{
+							{Delta: anyllm.ChunkDelta{Content: " world"}, FinishReason: "stop"},
+						},
+					}
+				}()
+				return chunks, errs
+			},
+		}
+		client := &Client{provider: mock, providerName: "mock", model: "m"}
+
+		ch, err := client.ChatStream(
+			context.Background(),
+			[]Message{{Role: "user", Content: "hi"}},
+		)
+		require.NoError(t, err)
+
+		var content string
+		for chunk := range ch {
+			require.NoError(t, chunk.Err)
+			content += chunk.Content
+			if chunk.Done {
+				break
+			}
+		}
+		assert.Equal(t, "Hello world", content)
+	})
+}
+
+// pipeClient creates an llm.Client backed by an OpenAI-compatible provider
+// whose HTTP transport uses the client side of a net.Pipe. The caller must
+// run a manual HTTP server on srvConn.
+func pipeClient(
+	t *testing.T,
+	cliConn net.Conn,
+	responseTimeout time.Duration,
+) *Client {
+	t.Helper()
+	httpClient := &http.Client{
+		Timeout: responseTimeout,
+		Transport: &http.Transport{
+			DialContext: func(
+				_ context.Context, _, _ string,
+			) (net.Conn, error) {
+				return cliConn, nil
+			},
+		},
+	}
+	opts := []anyllm.Option{
+		anyllm.WithHTTPClient(httpClient),
+		anyllm.WithBaseURL("http://pipe"),
+	}
+	p, err := createProvider("llamacpp", opts)
+	require.NoError(t, err)
+	return &Client{provider: p, providerName: "llamacpp", model: "m"}
+}
+
+// sseChunk formats a single SSE data line.
+func sseChunk(content, finishReason string) string {
+	return fmt.Sprintf(
+		"data: {\"choices\":[{\"delta\":{\"content\":%q},\"finish_reason\":%q}]}\n\n",
+		content, finishReason,
+	)
+}
+
+// TestHTTPStreamingSurvivesPastQuickOpTimeout verifies that a real HTTP
+// streaming response taking longer than QuickOpTimeout is not killed.
+// Uses net.Pipe (no real network I/O) so synctest's fake clock advances.
+func TestHTTPStreamingSurvivesPastQuickOpTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		srvConn, cliConn := net.Pipe()
+		defer func() { assert.NoError(t, cliConn.Close()) }()
+
+		client := pipeClient(t, cliConn, 10*time.Minute)
+
+		go func() {
+			defer func() { assert.NoError(t, srvConn.Close()) }()
+
+			br := bufio.NewReader(srvConn)
+			req, err := http.ReadRequest(br)
+			if !assert.NoError(t, err) {
+				return
+			}
+			assert.NoError(t, req.Body.Close())
+
+			header := "HTTP/1.1 200 OK\r\n" +
+				"Content-Type: text/event-stream\r\n" +
+				"Connection: close\r\n\r\n"
+			_, _ = srvConn.Write([]byte(header))
+			_, _ = srvConn.Write([]byte(sseChunk("Hello", "")))
+
+			// Delay past QuickOpTimeout -- must survive.
+			time.Sleep(QuickOpTimeout + 30*time.Second)
+
+			_, _ = srvConn.Write([]byte(sseChunk(" world", "stop")))
+			_, _ = srvConn.Write([]byte("data: [DONE]\n\n"))
+		}()
+
+		ch, err := client.ChatStream(
+			context.Background(),
+			[]Message{{Role: "user", Content: "hi"}},
+		)
+		require.NoError(t, err)
+
+		var content string
+		for chunk := range ch {
+			require.NoError(t, chunk.Err)
+			content += chunk.Content
+			if chunk.Done {
+				break
+			}
+		}
+		assert.Equal(t, "Hello world", content)
+	})
+}
+
+// TestHTTPResponseTimeoutKillsHungStream verifies that the HTTP client's
+// response timeout (from llm.timeout config) terminates a stream that
+// produces no data for longer than the timeout.
+func TestHTTPResponseTimeoutKillsHungStream(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		srvConn, cliConn := net.Pipe()
+		defer func() { assert.NoError(t, srvConn.Close()) }()
+		defer func() { assert.NoError(t, cliConn.Close()) }()
+
+		responseTimeout := 1 * time.Minute
+		client := pipeClient(t, cliConn, responseTimeout)
+
+		go func() {
+			br := bufio.NewReader(srvConn)
+			req, err := http.ReadRequest(br)
+			if !assert.NoError(t, err) {
+				return
+			}
+			assert.NoError(t, req.Body.Close())
+
+			header := "HTTP/1.1 200 OK\r\n" +
+				"Content-Type: text/event-stream\r\n" +
+				"Connection: close\r\n\r\n"
+			_, _ = srvConn.Write([]byte(header))
+
+			// Send one chunk then go silent -- response timeout should fire.
+			_, _ = srvConn.Write([]byte(sseChunk("partial", "")))
+
+			// Block until the client gives up and closes the pipe.
+			buf := make([]byte, 1)
+			_, _ = srvConn.Read(buf)
+		}()
+
+		start := time.Now()
+		ch, err := client.ChatStream(
+			context.Background(),
+			[]Message{{Role: "user", Content: "hi"}},
+		)
+		require.NoError(t, err)
+
+		var gotErr bool
+		for chunk := range ch {
+			if chunk.Err != nil {
+				gotErr = true
+				break
+			}
+		}
+
+		elapsed := time.Since(start)
+		assert.True(t, gotErr, "stream should have errored from response timeout")
+		assert.InDelta(t,
+			responseTimeout.Seconds(), elapsed.Seconds(), 5,
+			"should time out near the response timeout, not QuickOpTimeout",
+		)
+	})
 }
