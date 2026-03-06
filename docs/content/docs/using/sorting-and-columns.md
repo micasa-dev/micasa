@@ -16,8 +16,8 @@ micasa supports multi-column sorting in Nav mode.
 
 ### How it works
 
-1. Navigate to a column with `h`/`l`
-2. Press `s` to cycle: **none** -> **ascending** -> **descending** -> **none**
+1. Navigate to a column with <kbd>h</kbd>/<kbd>l</kbd>
+2. Press <kbd>s</kbd> to cycle: **none** -> **ascending** -> **descending** -> **none**
 3. Repeat on other columns to add secondary sort keys
 
 The column header shows sort indicators:
@@ -44,14 +44,14 @@ priority 2, and so on.
 
 ### Clearing sorts
 
-Press `S` (capital S) to clear all sort criteria and return to default PK
+Press <kbd>S</kbd> (capital S) to clear all sort criteria and return to default PK
 ordering.
 
 ## Fuzzy column finder
 
-Press `/` in Nav mode to open a fuzzy finder overlay. Type to filter
-columns by name -- matched characters are highlighted. Use `up`/`down` to
-navigate the list, `enter` to jump to the selected column, `esc` to cancel.
+Press <kbd>/</kbd> in Nav mode to open a fuzzy finder overlay. Type to filter
+columns by name -- matched characters are highlighted. Use <kbd>up</kbd>/<kbd>down</kbd> to
+navigate the list, <kbd>enter</kbd> to jump to the selected column, <kbd>esc</kbd> to cancel.
 
 Jumping to a hidden column automatically unhides it.
 
@@ -62,7 +62,7 @@ hidden columns come back when you restart.
 
 ### Hiding
 
-In Nav mode, navigate to a column and press `c` to hide it. The column
+In Nav mode, navigate to a column and press <kbd>c</kbd> to hide it. The column
 disappears from the table. Hidden column names are shown as color-coded badges
 below the table and listed in the status bar.
 
@@ -70,7 +70,7 @@ You can't hide the last visible column.
 
 ### Showing
 
-Press `C` (capital C) to show all hidden columns at once.
+Press <kbd>C</kbd> (capital C) to show all hidden columns at once.
 
 ## Horizontal scrolling
 

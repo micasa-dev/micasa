@@ -40,13 +40,13 @@ date portion is kept -- time components are discarded.
 
 ## Calendar picker
 
-When inline editing a date column (`e` in Edit mode), a calendar widget opens
-instead of a text input. Navigate with `h`/`j`/`k`/`l` (day/week),
-`H`/`L` (month), `[`/`]` (year).
+When inline editing a date column (<kbd>e</kbd> in Edit mode), a calendar widget opens
+instead of a text input. Navigate with <kbd>h</kbd>/<kbd>j</kbd>/<kbd>k</kbd>/<kbd>l</kbd> (day/week),
+<kbd>H</kbd>/<kbd>L</kbd> (month), <kbd>[</kbd>/<kbd>]</kbd> (year).
 
-Press `t` to jump the calendar cursor to today's date.
+Press <kbd>t</kbd> to jump the calendar cursor to today's date.
 
-Press `enter` to pick the highlighted date, `esc` to cancel.
+Press <kbd>enter</kbd> to pick the highlighted date, <kbd>esc</kbd> to cancel.
 
 ## Where dates appear
 

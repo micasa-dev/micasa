@@ -11,10 +11,10 @@ Track planned and in-progress work on your house.
 
 ## Adding a project
 
-1. Switch to the Projects tab (`f` to cycle forward)
-2. Enter Edit mode (`i`)
-3. Press `a` to open the add form
-4. Fill in the fields and save (`ctrl+s`)
+1. Switch to the Projects tab (<kbd>f</kbd> to cycle forward)
+2. Enter Edit mode (<kbd>i</kbd>)
+3. Press <kbd>a</kbd> to open the add form
+4. Fill in the fields and save (<kbd>ctrl+s</kbd>)
 
 The `Title` field is required. Everything else is optional or has a default.
 
@@ -30,8 +30,8 @@ The `Title` field is required. Everything else is optional or has a default.
 | `Actual` | money | Real cost | Over-budget is highlighted on the dashboard |
 | `Start` | date | Start date | [Date input]({{< ref "/docs/using/date-input" >}}) |
 | `End` | date | End date | [Date input]({{< ref "/docs/using/date-input" >}}) |
-| `Quotes` | drill | Number of linked quotes | Press `enter` to view linked quotes |
-| `Docs` | drill | Number of linked documents | Press `enter` to view linked documents |
+| `Quotes` | drill | Number of linked quotes | Press <kbd>enter</kbd> to view linked quotes |
+| `Docs` | drill | Number of linked documents | Press <kbd>enter</kbd> to view linked documents |
 
 ## Status lifecycle
 
@@ -47,7 +47,7 @@ Projects move through these statuses. Each has a distinct color in the table:
 
 ## Settled filter
 
-In Nav mode on the Projects tab, press `t` to toggle hiding **settled
+In Nav mode on the Projects tab, press <kbd>t</kbd> to toggle hiding **settled
 projects** (`completed` + `abandoned`). A `◀` triangle appears to the right of
 the tab when the filter is active.
 
@@ -59,15 +59,15 @@ but doesn't appear as a table column.
 
 ## Inline editing
 
-In Edit mode, press `e` on any non-`ID` column to edit just that cell inline.
-Press `e` on the `ID` column (or any read-only column) to open the full edit
-form, which includes the description field. Press `E` from any column to jump
+In Edit mode, press <kbd>e</kbd> on any non-`ID` column to edit just that cell inline.
+Press <kbd>e</kbd> on the `ID` column (or any read-only column) to open the full edit
+form, which includes the description field. Press <kbd>E</kbd> from any column to jump
 straight to the full form.
 
 ## Linked quotes
 
 The `Quotes` column shows how many quotes are linked to this project. In
-Nav mode, press `enter` to drill into a detail view of those quotes.
+Nav mode, press <kbd>enter</kbd> to drill into a detail view of those quotes.
 
-On the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab, the `Project` column links back -- press `enter` to jump
+On the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab, the `Project` column links back -- press <kbd>enter</kbd> to jump
 to the project.

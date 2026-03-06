@@ -72,10 +72,10 @@ micasa uses three modes: Nav, Edit, and Form. The key dispatch chain in
 `Update()` is:
 
 1. Window resize handling
-2. `ctrl+q` always quits
-3. `ctrl+c` cancels in-flight LLM operations
+2. <kbd>ctrl+q</kbd> always quits
+3. <kbd>ctrl+c</kbd> cancels in-flight LLM operations
 4. Chat chunk messages (streaming responses)
-5. Help overlay intercepts `esc`/`?` when open
+5. Help overlay intercepts <kbd>esc</kbd>/<kbd>?</kbd> when open
 6. Chat overlay: absorbs all keys when open
 7. Note preview overlay: any key dismisses
 8. Calendar date picker: absorbs all keys when open
@@ -86,8 +86,8 @@ micasa uses three modes: Nav, Edit, and Form. The key dispatch chain in
 13. Common keys (shared by Nav and Edit)
 14. Mode-specific keys
 
-The `bubbles/table` widget has its own vim keybindings. In Edit mode, `d` and
-`u` are stripped from the table's KeyMap so they can be used for delete/undo
+The `bubbles/table` widget has its own vim keybindings. In Edit mode, <kbd>d</kbd> and
+<kbd>u</kbd> are stripped from the table's KeyMap so they can be used for delete/undo
 without conflicting with half-page navigation.
 
 ### Effective tab

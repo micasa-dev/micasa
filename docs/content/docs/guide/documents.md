@@ -11,21 +11,21 @@ Attach files to your home records -- warranties, manuals, invoices, photos.
 
 ## Adding a document
 
-1. Switch to the Docs tab (`f` to cycle forward)
-2. Enter Edit mode (`i`), press `a`
-3. Fill in a title and optional file path, then save (`ctrl+s`)
+1. Switch to the Docs tab (<kbd>f</kbd> to cycle forward)
+2. Enter Edit mode (<kbd>i</kbd>), press <kbd>a</kbd>
+3. Fill in a title and optional file path, then save (<kbd>ctrl+s</kbd>)
 
 If you provide a file path, micasa reads the file into the database as a BLOB
 (up to 50 MB). The title auto-fills from the filename when left blank.
 
 ### Quick add with extraction
 
-Press `A` (shift+a) on the Docs tab to open a streamlined add form that
+Press <kbd>A</kbd> (shift+a) on the Docs tab to open a streamlined add form that
 picks a file and immediately runs the [extraction pipeline](#extraction-pipeline). This is the
 fastest way to import a document when you want OCR and LLM hints.
 
 You can also add documents from within a project or appliance detail view --
-drill into the `Docs` column and press `a`. Documents added this way are
+drill into the `Docs` column and press <kbd>a</kbd>. Documents added this way are
 automatically linked to that record.
 
 ## Fields
@@ -37,7 +37,7 @@ automatically linked to that record.
 | `Entity` | text | Linked record | E.g., "project #3". Only shown on top-level Docs tab |
 | `Type` | text | MIME type | E.g., "application/pdf", "image/jpeg" |
 | `Size` | text | File size | Human-readable (e.g., "2.5 MB"). Read-only |
-| `Notes` | notes | Free-text annotations | Press `enter` to preview |
+| `Notes` | notes | Free-text annotations | Press <kbd>enter</kbd> to preview |
 | `Updated` | date | Last modified | Read-only |
 
 ## File handling
@@ -47,7 +47,7 @@ automatically linked to that record.
 - **Size limit**: 50 MB per file
 - **MIME detection**: automatic from file contents and extension
 - **Checksum**: SHA-256 hash stored for integrity
-- **Cache**: when you open a document (`o`), micasa extracts it to the XDG
+- **Cache**: when you open a document (<kbd>o</kbd>), micasa extracts it to the XDG
   cache directory and opens it with your OS viewer
 
 ## Entity linking
@@ -63,7 +63,7 @@ belongs to (e.g., "project #3", "appliance #7").
 ## Drill columns
 
 The `Docs` column appears on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> and <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tabs, showing
-how many documents are linked to each record. In Nav mode, press `enter` to
+how many documents are linked to each record. In Nav mode, press <kbd>enter</kbd> to
 drill into a scoped document list for that record.
 
 ## Extraction pipeline <span class="badge-experimental"><span class="badge-pot"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle class="bubble-1" cx="5" cy="4" r="1" fill="currentColor"/><circle class="bubble-2" cx="8" cy="3" r="0.8" fill="currentColor"/><circle class="bubble-3" cx="11" cy="4.5" r="0.9" fill="currentColor"/><path d="M3 8h10v4a3 3 0 01-3 3H6a3 3 0 01-3-3V8z" fill="currentColor" opacity="0.25"/><path d="M3 8h10v4a3 3 0 01-3 3H6a3 3 0 01-3-3V8z" stroke="currentColor" stroke-width="1.2" fill="none"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="badge-label">brewing</span></span> {#extraction-pipeline}
@@ -114,7 +114,7 @@ before accepting.
 The results appear as a **tabbed table preview** below the pipeline steps --
 one tab per affected table, using the same column layout as the main UI. The
 user reviews proposed changes and explicitly accepts before anything touches
-the database. The LLM never writes directly. Press `r` to rerun the LLM step
+the database. The LLM never writes directly. Press <kbd>r</kbd> to rerun the LLM step
 if the first result is poor.
 
 The extraction model can be configured separately from the chat model. See
@@ -130,24 +130,24 @@ model name). The overlay has two modes:
 **Pipeline mode** (default): navigate steps, expand logs, review the dimmed
 operation preview below.
 
-**Explore mode** (press `x`): full table navigation of the proposed operations.
+**Explore mode** (press <kbd>x</kbd>): full table navigation of the proposed operations.
 Pipeline steps dim and the table preview becomes interactive with row/column
-cursors and tab switching. Press `x` or `esc` to return to pipeline mode.
+cursors and tab switching. Press <kbd>x</kbd> or <kbd>esc</kbd> to return to pipeline mode.
 
-When extraction completes successfully, press `a` to accept the results and
+When extraction completes successfully, press <kbd>a</kbd> to accept the results and
 apply them. On error the overlay stays open showing which step failed. Press
-`esc` at any time to cancel and close.
+<kbd>esc</kbd> at any time to cancel and close.
 
 | Key | Action |
 |-----|--------|
-| `a` | Accept results (when done, no errors) |
-| `esc` | Cancel / exit explore mode |
-| `j`/`k` | Navigate steps (pipeline) or rows (explore) |
-| `h`/`l` | Navigate columns (explore) |
-| `b`/`f` | Switch tabs (explore) |
-| `enter` | Expand/collapse step logs |
-| `r` | Rerun LLM step |
-| `x` | Toggle explore mode |
+| <kbd>a</kbd> | Accept results (when done, no errors) |
+| <kbd>esc</kbd> | Cancel / exit explore mode |
+| <kbd>j</kbd>/<kbd>k</kbd> | Navigate steps (pipeline) or rows (explore) |
+| <kbd>h</kbd>/<kbd>l</kbd> | Navigate columns (explore) |
+| <kbd>b</kbd>/<kbd>f</kbd> | Switch tabs (explore) |
+| <kbd>enter</kbd> | Expand/collapse step logs |
+| <kbd>r</kbd> | Rerun LLM step |
+| <kbd>x</kbd> | Toggle explore mode |
 
 See [Keybindings]({{< ref "/docs/reference/keybindings" >}}) for the full
 reference.
@@ -187,6 +187,6 @@ For the LLM step, install [Ollama](https://ollama.com) and pull a model
 
 ## Inline editing
 
-In Edit mode, press `e` on the `Title` or `Notes` column to edit inline. Press
-`e` on any other column (or `E` from any column) to open the full edit form.
+In Edit mode, press <kbd>e</kbd> on the `Title` or `Notes` column to edit inline. Press
+<kbd>e</kbd> on any other column (or <kbd>E</kbd> from any column) to open the full edit form.
 The file attachment cannot be changed after creation.

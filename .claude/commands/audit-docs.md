@@ -16,3 +16,9 @@ Review each surface and update any that are affected by the change:
 Keep README and website in sync: when changing content on one (features,
 install instructions, keybindings, tech stack, pitch copy), update the other
 to match.
+
+6. **Keyboard key references** -- in Hugo docs (`docs/content/`), every
+   keyboard key or shortcut must use `<kbd>` HTML tags, not backtick code
+   spans. Single keys: `<kbd>j</kbd>`, modifiers: `<kbd>ctrl+s</kbd>`,
+   named keys: `<kbd>enter</kbd>`, `<kbd>esc</kbd>`, etc. Backtick code
+   spans are for non-key references (column names, config values, commands).

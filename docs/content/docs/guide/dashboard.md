@@ -12,8 +12,8 @@ The dashboard shows what needs attention right now.
 ## Opening the dashboard
 
 - On launch (if you have a house profile), the dashboard opens automatically
-- Press `D` in Nav mode to toggle it on/off
-- Press `f` to dismiss it and switch to the next tab
+- Press <kbd>D</kbd> in Nav mode to toggle it on/off
+- Press <kbd>f</kbd> to dismiss it and switch to the next tab
 
 ## Sections
 
@@ -60,13 +60,13 @@ The dashboard supports keyboard navigation:
 
 | Key     | Action |
 |---------|--------|
-| `j`/`k` | Move cursor down/up through items |
-| `g`/`G` | Jump to first/last item |
-| `enter` | Jump to the highlighted item's tab and row |
-| `D`     | Close dashboard |
-| `b`/`f` | Dismiss dashboard, switch tab |
-| `?`     | Open help overlay (stacks on top of dashboard) |
+| <kbd>j</kbd>/<kbd>k</kbd> | Move cursor down/up through items |
+| <kbd>g</kbd>/<kbd>G</kbd> | Jump to first/last item |
+| <kbd>enter</kbd> | Jump to the highlighted item's tab and row |
+| <kbd>D</kbd>     | Close dashboard |
+| <kbd>b</kbd>/<kbd>f</kbd> | Dismiss dashboard, switch tab |
+| <kbd>?</kbd>     | Open help overlay (stacks on top of dashboard) |
 
-When you press `enter`, the dashboard closes and navigates to the
-corresponding row in the appropriate tab. For example, pressing `enter` on an
+When you press <kbd>enter</kbd>, the dashboard closes and navigates to the
+corresponding row in the appropriate tab. For example, pressing <kbd>enter</kbd> on an
 overdue maintenance item takes you to that row in the <a href="/docs/guide/maintenance/" class="tab-pill">Maintenance</a> tab.

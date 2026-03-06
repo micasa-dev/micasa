@@ -17,55 +17,55 @@ have full table navigation:
 
 | Key         | Action               |
 |-------------|----------------------|
-| `j` / `k`   | Move row down / up   |
-| `h` / `l`   | Move column left / right (skips hidden columns) |
-| `^` / `$`   | Jump to first / last column |
-| `g` / `G`   | Jump to first / last row |
-| `d` / `u`   | Half-page down / up  |
-| `b` / `f`   | Previous / next tab  |
-| `enter`     | Drill into detail, follow link, or preview |
-| `s` / `S`   | Sort column / clear sorts |
-| `/`         | Jump to column (fuzzy find) |
-| `c` / `C`   | Hide column / show all |
-| `n` / `N`   | Pin cell value / toggle filter |
-| `ctrl+n`    | Clear all pins and filter |
-| `tab`       | Toggle house profile |
-| `D`         | Toggle dashboard       |
-| `i`         | Enter Edit mode      |
-| `@`         | Open LLM chat        |
-| `?`         | Help overlay         |
+| <kbd>j</kbd> / <kbd>k</kbd>   | Move row down / up   |
+| <kbd>h</kbd> / <kbd>l</kbd>   | Move column left / right (skips hidden columns) |
+| <kbd>^</kbd> / <kbd>$</kbd>   | Jump to first / last column |
+| <kbd>g</kbd> / <kbd>G</kbd>   | Jump to first / last row |
+| <kbd>d</kbd> / <kbd>u</kbd>   | Half-page down / up  |
+| <kbd>b</kbd> / <kbd>f</kbd>   | Previous / next tab  |
+| <kbd>enter</kbd>     | Drill into detail, follow link, or preview |
+| <kbd>s</kbd> / <kbd>S</kbd>   | Sort column / clear sorts |
+| <kbd>/</kbd>         | Jump to column (fuzzy find) |
+| <kbd>c</kbd> / <kbd>C</kbd>   | Hide column / show all |
+| <kbd>n</kbd> / <kbd>N</kbd>   | Pin cell value / toggle filter |
+| <kbd>ctrl+n</kbd>    | Clear all pins and filter |
+| <kbd>tab</kbd>       | Toggle house profile |
+| <kbd>D</kbd>         | Toggle dashboard       |
+| <kbd>i</kbd>         | Enter Edit mode      |
+| <kbd>@</kbd>         | Open LLM chat        |
+| <kbd>?</kbd>         | Help overlay         |
 
 ## Edit mode
 
-Press `i` from Nav mode to enter Edit mode. The status bar shows an orange
-**EDIT** badge. Navigation still works (`j`/`k`/`h`/`l`/`g`/`G`), but `d`
-and `u` are rebound from page navigation to data actions:
+Press <kbd>i</kbd> from Nav mode to enter Edit mode. The status bar shows an orange
+**EDIT** badge. Navigation still works (<kbd>j</kbd>/<kbd>k</kbd>/<kbd>h</kbd>/<kbd>l</kbd>/<kbd>g</kbd>/<kbd>G</kbd>), but <kbd>d</kbd>
+and <kbd>u</kbd> are rebound from page navigation to data actions:
 
 | Key   | Action                    |
 |-------|---------------------------|
-| `a`   | Add new entry             |
-| `e`   | Edit cell or full row     |
-| `E`   | Open full edit form       |
-| `d`   | Delete or restore item    |
-| `x`   | Toggle show deleted items |
-| `p`   | Edit house profile        |
-| `u`   | Undo last edit            |
-| `r`   | Redo undone edit          |
-| `esc` | Return to Nav mode     |
+| <kbd>a</kbd>   | Add new entry             |
+| <kbd>e</kbd>   | Edit cell or full row     |
+| <kbd>E</kbd>   | Open full edit form       |
+| <kbd>d</kbd>   | Delete or restore item    |
+| <kbd>x</kbd>   | Toggle show deleted items |
+| <kbd>p</kbd>   | Edit house profile        |
+| <kbd>u</kbd>   | Undo last edit            |
+| <kbd>r</kbd>   | Redo undone edit          |
+| <kbd>esc</kbd> | Return to Nav mode     |
 
-> **Tip:** `ctrl+d` and `ctrl+u` still work for half-page navigation in Edit
+> **Tip:** <kbd>ctrl+d</kbd> and <kbd>ctrl+u</kbd> still work for half-page navigation in Edit
 > mode.
 
 ## Form mode
 
-When you add or edit an entry, micasa opens a form. Use `tab` / `shift+tab`
+When you add or edit an entry, micasa opens a form. Use <kbd>tab</kbd> / <kbd>shift+tab</kbd>
 to move between fields, type to fill them in.
 
 | Key      | Action          |
 |----------|-----------------|
-| `ctrl+s` | Save and close  |
-| `esc`    | Cancel          |
-| `1`-`9`  | Jump to Nth option in select fields |
+| <kbd>ctrl+s</kbd> | Save and close  |
+| <kbd>esc</kbd>    | Cancel          |
+| <kbd>1</kbd>-<kbd>9</kbd>  | Jump to Nth option in select fields |
 
 The form shows a dirty indicator when you've changed something. After saving
 or canceling, you return to whichever mode you were in before (Nav or
@@ -74,12 +74,12 @@ Edit).
 ## Tabs
 
 The main data lives in six tabs: <a href="/docs/guide/projects/" class="tab-pill">Projects</a>, <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a>, <a href="/docs/guide/maintenance/" class="tab-pill">Maintenance</a>,
-<a href="/docs/guide/appliances/" class="tab-pill">Appliances</a>, <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a>, and <a href="/docs/guide/documents/" class="tab-pill">Docs</a>. Use `b` / `f` to cycle between
+<a href="/docs/guide/appliances/" class="tab-pill">Appliances</a>, <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a>, and <a href="/docs/guide/documents/" class="tab-pill">Docs</a>. Use <kbd>b</kbd> / <kbd>f</kbd> to cycle between
 them. The active tab is highlighted in the tab bar.
 
 ## Detail views
 
-Some columns are drill columns (marked `↘` in the header) -- pressing `enter` on them opens a sub-table.
+Some columns are drill columns (marked `↘` in the header) -- pressing <kbd>enter</kbd> on them opens a sub-table.
 For example:
 
 - `Log` column on the <a href="/docs/guide/maintenance/" class="tab-pill">Maintenance</a> tab opens the service log for that item
@@ -88,13 +88,13 @@ For example:
 - `Docs` column on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> or <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tab opens linked documents
 
 A breadcrumb bar replaces the tab bar while in a detail view (e.g.,
-`Maintenance > HVAC filter replacement`). Press `esc` to close the detail
+`Maintenance > HVAC filter replacement`). Press <kbd>esc</kbd> to close the detail
 view and return to the parent tab.
 
 ## Horizontal scrolling
 
 When a table has more columns than fit on screen, it scrolls horizontally as
-you move with `h`/`l` or `^`/`$`. Scroll indicators appear in the column
+you move with <kbd>h</kbd>/<kbd>l</kbd> or <kbd>^</kbd>/<kbd>$</kbd>. Scroll indicators appear in the column
 headers: a **◀** on the leftmost header when columns are off-screen to the
 left, and a **▶** on the rightmost header when columns are off-screen to the
 right.
@@ -103,7 +103,7 @@ right.
 
 Some columns reference entities in other tabs. When at least one row in the
 column has a link, a `→` arrow appears in the column header. When the cursor
-is on a linked cell, the status bar shows `follow →`. Press `enter` to jump
+is on a linked cell, the status bar shows `follow →`. Press <kbd>enter</kbd> to jump
 to the referenced row in the target tab. If the cell has no link (e.g.
 "Self" in the `Performed By` column), the status bar shows a brief message
 instead.

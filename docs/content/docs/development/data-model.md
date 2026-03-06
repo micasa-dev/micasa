@@ -55,7 +55,7 @@ Vendor quotes linked to a project.
 ### Why this matters
 
 - Every quote **requires a project**, preventing orphan records. The project
-  column is a live link (`enter` jumps to it).
+  column is a live link (<kbd>enter</kbd> jumps to it).
 - **Vendor records are shared** across quotes and service log entries, so
   contact info lives in one place.
 
@@ -69,7 +69,7 @@ Recurring upkeep tasks with an optional appliance link.
   and sorting clean, same rationale as project types.
 - The optional **appliance link** enables bidirectional navigation: jump from
   a task to its appliance, or drill from an appliance into all its tasks.
-- The **service log** is a drill column -- press `enter` to open the full
+- The **service log** is a drill column -- press <kbd>enter</kbd> to open the full
   history for a given task.
 
 ## Service Log

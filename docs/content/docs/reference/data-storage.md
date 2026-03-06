@@ -73,9 +73,9 @@ micasa backup --source /path/to/micasa.db ~/backups/micasa-$(date +%F).db
 micasa uses GORM's soft delete feature. When you delete an item, it sets a
 `deleted_at` timestamp rather than removing the row. This means:
 
-- Deleted items can be restored (press `d` on a deleted item in Edit mode)
+- Deleted items can be restored (press <kbd>d</kbd> on a deleted item in Edit mode)
 - The `deletion_records` table tracks when items were deleted and restored
-- Toggle `x` in Edit mode to show/hide deleted items
+- Toggle <kbd>x</kbd> in Edit mode to show/hide deleted items
 - Soft deletions persist across runs -- quit and reopen, and your deleted items
   are still hidden (but restorable). Nothing is ever permanently lost unless
   you edit the database file directly

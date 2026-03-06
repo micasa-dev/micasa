@@ -13,10 +13,10 @@ micasa lets you filter table rows by pinning cell values, then activating to hid
 
 1. Navigate to a cell whose value you want to filter by (e.g., "Plan" in the
    Status column)
-2. Press `n` to pin it -- matching rows stay bright, others dim
-3. Press `N` to activate -- non-matching rows disappear
-4. Press `N` again to deactivate (rows return, dimming resumes)
-5. Press `ctrl+n` to clear all pins and deactivate the filter at once
+2. Press <kbd>n</kbd> to pin it -- matching rows stay bright, others dim
+3. Press <kbd>N</kbd> to activate -- non-matching rows disappear
+4. Press <kbd>N</kbd> again to deactivate (rows return, dimming resumes)
+5. Press <kbd>ctrl+n</kbd> to clear all pins and deactivate the filter at once
 
 ## Pin logic
 
@@ -41,9 +41,9 @@ the filter before committing.
 
 ## Eager filter mode
 
-You can press `N` to arm the filter *before* pinning anything. A `◀` triangle
+You can press <kbd>N</kbd> to arm the filter *before* pinning anything. A `◀` triangle
 appears to the right of the active tab to indicate filtering is on. Subsequent
-`n` presses immediately filter (no preview step) because the filter is already
+<kbd>n</kbd> presses immediately filter (no preview step) because the filter is already
 active.
 
 ## Per-tab persistence
@@ -54,7 +54,7 @@ without losing your selection.
 
 ## Mag mode interaction
 
-When [mag mode](https://magworld.pw) (`ctrl+o`) is active, pins operate on the
+When [mag mode](https://magworld.pw) (<kbd>ctrl+o</kbd>) is active, pins operate on the
 mag value rather than the underlying number. Because mag compresses dollar
 amounts to their order of magnitude, values that look different normally
 (e.g. $1,200 and $1,800) collapse into the same bucket -- pin one and
@@ -66,16 +66,16 @@ across display modes without manual re-pinning.
 
 | Key | Action |
 |-----|--------|
-| `n` | Toggle pin on current cell value |
-| `N` | Toggle filter activation (preview <-> active) |
-| `ctrl+n` | Clear all pins and deactivate filter |
+| <kbd>n</kbd> | Toggle pin on current cell value |
+| <kbd>N</kbd> | Toggle filter activation (preview <-> active) |
+| <kbd>ctrl+n</kbd> | Clear all pins and deactivate filter |
 
 ## Edge cases
 
 - **Empty cells**: pinning an empty cell matches all rows with empty values in
   that column
-- **Hidden columns**: hiding a column with `c` clears any pins on that column
+- **Hidden columns**: hiding a column with <kbd>c</kbd> clears any pins on that column
 - **Sorting**: sorts apply to whatever rows are visible (filtered or full)
-- **Settled project toggle** (`t`): on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> tab, `t` hides completed
+- **Settled project toggle** (<kbd>t</kbd>): on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> tab, <kbd>t</kbd> hides completed
   and abandoned projects using the pin/filter mechanism internally
 - **All rows filtered**: shows "No matches." instead of the table

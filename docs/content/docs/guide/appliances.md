@@ -12,7 +12,7 @@ Track the physical equipment in your home.
 ## Adding an appliance
 
 1. Switch to the Appliances tab
-2. Enter Edit mode (`i`), press `a`
+2. Enter Edit mode (<kbd>i</kbd>), press <kbd>a</kbd>
 3. Fill in the identity and details forms
 
 Only the `Name` is required.
@@ -31,8 +31,8 @@ Only the `Name` is required.
 | `Age` | computed | Time since purchase | Read-only. E.g., "3y 2m", "8m", "<1m" |
 | `Warranty` | warranty | Warranty expiry | Green when active, red when expired. Shows on dashboard when expiring |
 | `Cost` | money | Purchase price | Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) |
-| `Maint` | drill | Maintenance count | Press `enter` to view linked maintenance |
-| `Docs` | drill | Document count | Press `enter` to view linked documents |
+| `Maint` | drill | Maintenance count | Press <kbd>enter</kbd> to view linked maintenance |
+| `Docs` | drill | Document count | Press <kbd>enter</kbd> to view linked documents |
 
 ## Warranty tracking
 
@@ -43,12 +43,12 @@ Enter the warranty expiry date when you add an appliance. The
 ## Maintenance drill
 
 The `Maint` column shows how many maintenance items are linked to this
-appliance. In Nav mode, navigate to the `Maint` column and press `enter` to
+appliance. In Nav mode, navigate to the `Maint` column and press <kbd>enter</kbd> to
 open a detail view showing those maintenance items (without the Appliance
 column, since it's redundant).
 
 From the detail view you can add, edit, or delete maintenance items. Press
-`esc` to return to the Appliances table.
+<kbd>esc</kbd> to return to the Appliances table.
 
 ## Incidents
 
@@ -64,6 +64,6 @@ stored on the appliance record but don't appear as a table column.
 
 ## Inline editing
 
-All columns except `ID`, `Age`, and `Maint` support inline editing. Press `e`
-in Edit mode on a cell to edit just that field. Press `E` from any column to
+All columns except `ID`, `Age`, and `Maint` support inline editing. Press <kbd>e</kbd>
+in Edit mode on a cell to edit just that field. Press <kbd>E</kbd> from any column to
 open the full edit form.

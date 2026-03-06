@@ -17,7 +17,7 @@ stored in a LIFO stack (up to 50 entries).
 
 ## Undo
 
-In Edit mode, press `u` to undo the last edit. This restores the entity to its
+In Edit mode, press <kbd>u</kbd> to undo the last edit. This restores the entity to its
 state before the edit was made. You can undo multiple times to walk back
 through your edit history.
 
@@ -30,7 +30,7 @@ The undo operation:
 
 ## Redo
 
-In Edit mode, press `r` to redo an undone edit. This re-applies the change
+In Edit mode, press <kbd>r</kbd> to redo an undone edit. This re-applies the change
 that was undone.
 
 Redo works symmetrically to undo: it pops from the redo stack, snapshots the
@@ -41,7 +41,7 @@ current state onto the undo stack, and restores.
 - **New edits clear the redo stack.** If you undo a change and then make a
   new edit, the redo history is lost. This is standard undo/redo behavior.
 - **Undo works across tabs.** The undo stack is global, not per-tab. If you
-  edit a project, then edit a maintenance item, pressing `u` twice will undo
+  edit a project, then edit a maintenance item, pressing <kbd>u</kbd> twice will undo
   both, in reverse order.
 - **Session-only.** Undo history is not persisted to disk. Quitting micasa
   clears the stacks.

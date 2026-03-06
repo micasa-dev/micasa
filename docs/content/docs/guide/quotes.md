@@ -17,7 +17,7 @@ is linked to a project.
 ## Adding a quote
 
 1. Switch to the Quotes tab
-2. Enter Edit mode (`i`), press `a`
+2. Enter Edit mode (<kbd>i</kbd>), press <kbd>a</kbd>
 3. Select a project, enter vendor details, then cost breakdown
 
 ## Fields
@@ -25,8 +25,8 @@ is linked to a project.
 | Column | Type | Description | Notes |
 |-------:|------|-------------|-------|
 | `ID` | auto | Auto-assigned | Read-only |
-| `Project` | link | Linked project | Shows `→` in header -- press `enter` to jump |
-| `Vendor` | link | Vendor name | Required. Shows `→` in header -- press `enter` to jump to vendor |
+| `Project` | link | Linked project | Shows `→` in header -- press <kbd>enter</kbd> to jump |
+| `Vendor` | link | Vendor name | Required. Shows `→` in header -- press <kbd>enter</kbd> to jump to vendor |
 | `Total` | money | Total quote amount | Required |
 | `Labor` | money | Labor portion | Optional |
 | `Mat` | money | Materials portion | Optional |
@@ -50,10 +50,10 @@ all quotes and service log entries for that vendor.
 ## Cost comparison
 
 To compare quotes for a project, sort the Quotes tab by the `Project` column
-(`s` on the `Project` column header) to group quotes by project. Then compare
+(<kbd>s</kbd> on the `Project` column header) to group quotes by project. Then compare
 the `Total`, `Labor`, `Mat`, and `Other` columns across vendors.
 
 ## Project link
 
-The `Project` column is a foreign key. In Nav mode, press `enter` on the
+The `Project` column is a foreign key. In Nav mode, press <kbd>enter</kbd> on the
 `Project` cell to jump to the linked project in the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> tab.

@@ -17,7 +17,7 @@ optional. Fill in what you know now and come back later for the rest.
 
 ## Viewing the profile
 
-Press `tab` to toggle the house profile display above the table.
+Press <kbd>tab</kbd> to toggle the house profile display above the table.
 The collapsed view shows a single line with key stats:
 
 ```
@@ -33,9 +33,9 @@ The expanded view shows three sections:
 
 ## Editing the profile
 
-Enter Edit mode (`i`), then press `p` to open the house profile form. The
+Enter Edit mode (<kbd>i</kbd>), then press <kbd>p</kbd> to open the house profile form. The
 form is organized into the same sections (Basics, Structure, Utilities,
-Financial). Save with `ctrl+s`, cancel with `esc`.
+Financial). Save with <kbd>ctrl+s</kbd>, cancel with <kbd>esc</kbd>.
 
 ## Fields
 

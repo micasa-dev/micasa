@@ -551,6 +551,18 @@ pre {
   border-radius: 4px;
 }
 
+.docs-main kbd {
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.85em;
+  color: var(--terracotta);
+  background: var(--linen);
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  white-space: nowrap;
+}
+
 .docs-main pre {
   background: var(--charcoal);
   color: #e8e2da;
@@ -611,7 +623,8 @@ pre {
   border-bottom: none;
 }
 
-.docs-main td code {
+.docs-main td code,
+.docs-main td kbd {
   color: var(--terracotta);
   background: rgba(192, 94, 60, 0.06);
 }

@@ -19,34 +19,34 @@ Everyone you've hired or gotten quotes from, in one place.
 | `Email` | text | Email address | Optional |
 | `Phone` | text | Phone number | Optional |
 | `Website` | text | URL | Optional |
-| `Quotes` | drill | Number of linked quotes | Press `enter` to view linked quotes |
-| `Jobs` | drill | Number of linked service log entries | Press `enter` to view linked jobs |
+| `Quotes` | drill | Number of linked quotes | Press <kbd>enter</kbd> to view linked quotes |
+| `Jobs` | drill | Number of linked service log entries | Press <kbd>enter</kbd> to view linked jobs |
 
 ## How vendors are created
 
 Vendors can be created in two ways:
 
-1. **Directly** on the Vendors tab: enter Edit mode (`i`), press `a`
+1. **Directly** on the Vendors tab: enter Edit mode (<kbd>i</kbd>), press <kbd>a</kbd>
 2. **Implicitly** when adding a quote or service log entry -- type a vendor
    name and micasa finds or creates the record
 
 ## Editing a vendor
 
-Navigate to the Vendors tab, enter Edit mode (`i`), and press `e` on the
-cell you want to change, or `E` to open the full edit form. Edits to a
+Navigate to the Vendors tab, enter Edit mode (<kbd>i</kbd>), and press <kbd>e</kbd> on the
+cell you want to change, or <kbd>E</kbd> to open the full edit form. Edits to a
 vendor's contact info propagate to all quotes and service log entries that
 reference that vendor.
 
 ## Cross-tab navigation
 
-The `Vendor` column on the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab is a live link (shown with `→` in the header). Press `enter` on
+The `Vendor` column on the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab is a live link (shown with `→` in the header). Press <kbd>enter</kbd> on
 a vendor name in the Quotes table to jump to that vendor's row in the Vendors
 tab.
 
 ## Drill columns
 
 The `Quotes` and `Jobs` columns show how many quotes and service log entries
-reference each vendor. In Nav mode, press `enter` to drill into a detail
+reference each vendor. In Nav mode, press <kbd>enter</kbd> to drill into a detail
 view showing those records.
 
 ## Notes

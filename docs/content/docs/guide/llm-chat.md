@@ -38,11 +38,11 @@ URL, model, or backend.
 
 ## Opening the chat
 
-Press `@` from Nav or Edit mode to open the chat overlay. A text input
-appears at the bottom of a centered panel. Type a question and press `enter`.
+Press <kbd>@</kbd> from Nav or Edit mode to open the chat overlay. A text input
+appears at the bottom of a centered panel. Type a question and press <kbd>enter</kbd>.
 
-Press `esc` to dismiss the overlay. Your conversation is preserved -- press
-`@` again to pick up where you left off.
+Press <kbd>esc</kbd> to dismiss the overlay. Your conversation is preserved -- press
+<kbd>@</kbd> again to pick up where you left off.
 
 ## Asking questions
 
@@ -78,7 +78,7 @@ Context resets when you close micasa.
 
 ## SQL display
 
-Press `ctrl+s` to toggle SQL query visibility. When on, each answer shows the
+Press <kbd>ctrl+s</kbd> to toggle SQL query visibility. When on, each answer shows the
 generated SQL query in a formatted code block above the response. This is
 useful for verifying what the model is actually querying, or learning how your
 data is structured.
@@ -92,13 +92,13 @@ taking shape before results appear.
 
 ## Cancellation
 
-Press `ctrl+c` while the model is generating to cancel the current request.
+Press <kbd>ctrl+c</kbd> while the model is generating to cancel the current request.
 An "Interrupted" notice appears in the conversation. Your next question
 replaces the notice.
 
 ## Prompt history
 
-Use `up`/`down` arrows (or `ctrl+p`/`ctrl+n`) to browse previous prompts.
+Use <kbd>up</kbd>/<kbd>down</kbd> arrows (or <kbd>ctrl+p</kbd>/<kbd>ctrl+n</kbd>) to browse previous prompts.
 History is saved to the database and persists across sessions.
 
 ## Slash commands
@@ -110,21 +110,21 @@ The chat input supports a few slash commands:
 | `/help` | Show available commands |
 | `/models` | List models available on the server |
 | `/model <name>` | Switch to a different model |
-| `/sql` | Toggle SQL display (same as `ctrl+s`) |
+| `/sql` | Toggle SQL display (same as <kbd>ctrl+s</kbd>) |
 
 ### Switching models
 
 Type `/model ` (with a trailing space) to activate the model picker -- an
 inline autocomplete list showing both locally downloaded models and popular
-models available for download. Use `up`/`down` to navigate and `enter` to
+models available for download. Use <kbd>up</kbd>/<kbd>down</kbd> to navigate and <kbd>enter</kbd> to
 select.
 
 If you pick a model that isn't downloaded yet, micasa pulls it automatically.
-A progress bar shows download progress. Press `ctrl+c` to cancel a pull.
+A progress bar shows download progress. Press <kbd>ctrl+c</kbd> to cancel a pull.
 
 ## Mag mode
 
-Press `ctrl+o` to toggle [mag mode](https://magworld.pw) -- an easter egg that
+Press <kbd>ctrl+o</kbd> to toggle [mag mode](https://magworld.pw) -- an easter egg that
 replaces money values with their order of magnitude (`$1,250` becomes `$ 🠡3`).
 Works with any configured currency. Applies everywhere including LLM responses.
 Live toggle, instant update.
@@ -139,7 +139,7 @@ depends on how much GPU you're packing. A few things to keep in mind:
 **Wrong SQL is common.** Small models (7B-14B parameters) frequently generate
 SQL that doesn't match the schema, joins tables incorrectly, or misinterprets
 your question. micasa provides the model with your full schema and actual
-database values to help, but it's not foolproof. Toggle `ctrl+s` to inspect
+database values to help, but it's not foolproof. Toggle <kbd>ctrl+s</kbd> to inspect
 the generated SQL when an answer looks off.
 
 **Phrasing matters.** The same question worded differently can produce

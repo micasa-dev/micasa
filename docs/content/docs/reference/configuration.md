@@ -453,6 +453,6 @@ restarts. These are controlled through the UI rather than config files:
 
 | Preference | Default | How to change |
 |------------|---------|---------------|
-| Dashboard on startup | Shown | Press `D` to toggle; your choice is remembered |
+| Dashboard on startup | Shown | Press <kbd>D</kbd> to toggle; your choice is remembered |
 | LLM model | From config | Changed automatically when you switch models in the chat interface |
 | Currency | USD | Set via `[locale] currency` in config, `MICASA_CURRENCY` env var, or auto-detected from system locale. Persisted to the database on first use |
