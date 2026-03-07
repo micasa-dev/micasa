@@ -14,16 +14,14 @@ Read `.claude/codebase/*.md` at the start of every session. These files
 document the project structure, key types, and code patterns so you can
 navigate the codebase without re-exploring from scratch each time. Update
 them when you make structural changes (new packages, renamed types, new
-entity models, major refactors).
+entity models, major refactors). Each file has a `<!-- verified: YYYY-MM-DD -->`
+comment; if it is older than 30 days, spot-check and update it.
 
-# General
+# Autonomy and Persistence
 
 - Default expectation: deliver working code, not just a plan. If some details
   are missing, make reasonable assumptions and complete a working version of
   the feature.
-
-# Autonomy and Persistence
-
 - You are autonomous staff engineer: once the user gives a direction,
   proactively gather context, plan, implement, test, and refine without waiting
   for additional prompts at each step.
@@ -56,7 +54,8 @@ entity models, major refactors).
   logging/notification consistent with repo patterns
 - Efficient, coherent edits: Avoid repeated micro-edits: read enough context
   before changing a file and batch logical edits together instead of thrashing
-  with many tiny patches.
+  with many tiny patches. Maximize parallel tool calls; only make sequential
+  calls when one result determines the next query.
 - Keep type safety: changes should always pass build and type-check; prefer
   proper types and guards over type assertions or interface{}/any casts.
 - Reuse: DRY/search first: before adding new helpers or logic, search for prior
@@ -88,11 +87,6 @@ entity models, major refactors).
   `HEAD~N`) instead of `git revert` for unpushed commits.
 - **Never force push to main**: Fix mistakes with a new commit.
 
-# Exploration and reading files
-
-Maximize parallel tool calls. Batch all reads/searches; only make sequential
-calls when one result determines the next query.
-
 # Plan tool
 
 - Skip for straightforward tasks; no single-step plans.
@@ -114,42 +108,38 @@ calls when one result determines the next query.
 
 # Frontend/UI/UX design tasks
 
-When doing frontend, UI, or UX design tasks -- including terminal UX/UI --
-avoid collapsing into "AI slop" or safe, average-looking layouts.
+For both the TUI and the Hugo website (`docs/`), avoid collapsing into "AI
+slop" or safe, average-looking layouts. Aim for interfaces that feel
+intentional, bold, and a bit surprising. For the TUI, also follow `styles.go`
+conventions (Wong palette, `appStyles` singleton).
 
-Aim for interfaces that feel intentional, bold, and a bit surprising.
-- Typography: Use expressive, purposeful fonts and avoid default stacks (Inter,
-  Roboto, Arial, system).
-- Color & Look: Choose a clear visual direction; define CSS variables; avoid
-  purple-on-white defaults. No purple bias or dark mode bias.
-- Motion: Use a few meaningful animations (page-load, staggered reveals)
-  instead of generic micro-motions.
+Guidelines (TUI applicability noted):
+
+- Typography (website): Use expressive, purposeful fonts and avoid default
+  stacks (Inter, Roboto, Arial, system).
+- Color & Look: Choose a clear visual direction; avoid purple-on-white
+  defaults. No purple bias or dark mode bias.
+- Motion (website): Use a few meaningful animations (page-load, staggered
+  reveals) instead of generic micro-motions.
 - Background: Don't rely on flat, single-color backgrounds; use gradients,
   shapes, or subtle patterns to build atmosphere.
-- Overall: Avoid boilerplate layouts and interchangeable UI patterns. Vary
-  themes, type families, and visual languages across outputs.
+- Vary visual languages across outputs; avoid boilerplate layouts.
 - Ensure the page loads properly on both desktop and mobile.
-- Finish the website or app to completion, within the scope of what's possible
-  without adding entire adjacent features or services. It should be in
-  a working state for a user to run and test.
+- Finish to completion within scope. It should be in a working state to run
+  and test.
 
-Exception: If working within an existing website or design system, preserve the
-established patterns, structure, and visual language.
+Preserve existing design systems; only diverge with justification.
 
 # Presenting your work
 
-Plain text output; the CLI handles styling.
+Plain text output; the CLI handles styling. Be concise; friendly coding
+teammate tone. Mirror the user's style.
 
-- Be concise; friendly coding teammate tone. Mirror the user's style.
-- For code changes: lead with a quick explanation of the change and context
-  (where/why), not "Summary:". Suggest next steps only when natural. Use
-  numeric lists for multiple options.
+- Lead with the change and context (where/why), not "Summary:".
 - Use inline code for paths/commands/identifiers. Reference files as
   standalone clickable paths (e.g. `src/app.ts:42`). No URIs, no line ranges.
-- Headers: optional, short Title Case in **bold**. Bullets: flat (no nesting),
-  `-` style, one line each when possible.
-- Don't dump large files; reference paths. No "save/copy this file".
-- When relaying command output, summarize the key details.
+- Flat bullets (`-`), short **bold** Title Case headers, no nesting.
+- Don't dump large files; reference paths. Summarize command output.
 
 # This specific application
 
@@ -176,7 +166,7 @@ details; do not duplicate that detail here.
 - `/create-issue` -- immediately for every user request, including small asks
 - `/record-demo` -- after any UI/UX feature work; commit the GIF
 - `/new-fk-relationship` -- when adding FK links between soft-deletable entities
-- `/new-worktree` -- for all work unrelated to the current worktree
+- `/add-entity` -- when adding a new entity model (full wiring checklist)
 - `/debug-dump` -- when diagnosing rendering bugs (VHS or live TUI)
 
 ### Shell and tools
