@@ -16,9 +16,9 @@ var dimPath = appStyles.DimPath()
 // filePickerDesc returns the description line for a filepicker field,
 // reflecting the current ShowHidden state.
 func filePickerDesc(showHidden bool) string {
-	label := "hidden"
+	label := "\x1b[9mhidden\x1b[29m"
 	if showHidden {
-		label = "\x1b[9m" + label + "\x1b[29m"
+		label = "hidden"
 	}
 	return keyH + "/" + symLeft + " back " + symMiddleDot + " " +
 		keyEnter + " open " + symMiddleDot + " " +

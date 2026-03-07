@@ -133,16 +133,14 @@ func TestFilePickerDescriptionReflectsHiddenState(t *testing.T) {
 
 	fp := requireFilePicker(t, m)
 	desc := filePickerDescription(fp)
-	assert.Contains(t, desc, "hidden",
-		"description should contain 'hidden'")
-	assert.NotContains(t, desc, "\x1b[9m",
-		"'hidden' should not be struck through when hidden files are hidden")
+	assert.Contains(t, desc, "\x1b[9m",
+		"'hidden' should be struck through when hidden files are not shown")
 
 	sendKey(m, keyShiftH)
 	fp = requireFilePicker(t, m)
 	desc = filePickerDescription(fp)
-	assert.Contains(t, desc, "\x1b[9m",
-		"'hidden' should be struck through when hidden files are shown")
+	assert.NotContains(t, desc, "\x1b[9m",
+		"'hidden' should not be struck through when hidden files are shown")
 }
 
 func TestFilePickerTitleShowsCurrentDir(t *testing.T) {
