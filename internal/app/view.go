@@ -811,6 +811,7 @@ func (m *Model) helpContent() string {
 				{keyTab, "Next field"},
 				{keyShiftTab, "Previous field"},
 				{"1-9", "Jump to Nth option"},
+				{keyShiftH, "Toggle hidden files (file picker)"},
 				{keyCtrlE, "Open notes in $EDITOR"},
 				{keyCtrlS, "Save"},
 				{keyEsc, "Cancel"},
