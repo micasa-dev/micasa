@@ -1389,6 +1389,58 @@ func TestHandleChatChunkDone(t *testing.T) {
 	assert.False(t, m.chat.Streaming)
 }
 
+func TestHandleChatChunkStripsANSI(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.openChat()
+	m.chat.Streaming = true
+	ch := make(chan llm.StreamChunk, 5)
+	m.chat.StreamCh = ch
+	m.chat.Messages = []chatMessage{
+		{Role: roleAssistant, Content: ""},
+	}
+
+	m.handleChatChunk(chatChunkMsg{Content: "\x1b[1mBold\x1b[0m text"})
+	assert.Equal(t, "Bold text", m.chat.Messages[0].Content,
+		"ANSI escape codes from LLM response should be stripped")
+}
+
+func TestHandleChatChunkDoneSetsStreamingBeforeRefresh(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.openChat()
+	m.chat.Streaming = true
+	m.chat.Messages = []chatMessage{
+		{Role: roleAssistant, Content: "response"},
+	}
+
+	m.handleChatChunk(chatChunkMsg{Done: true})
+
+	assert.False(t, m.chat.Streaming)
+	// Viewport content should NOT contain the spinner because Streaming
+	// was set to false before the refresh.
+	vpContent := m.chat.Viewport.View()
+	assert.NotContains(t, vpContent, "thinking",
+		"spinner should not appear in viewport after Done")
+}
+
+func TestHandleSQLChunkStripsANSI(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.openChat()
+	m.chat.Streaming = true
+	m.chat.StreamingSQL = true
+	ch := make(chan llm.StreamChunk, 5)
+	m.chat.SQLStreamCh = ch
+	m.chat.Messages = []chatMessage{
+		{Role: roleAssistant, SQL: ""},
+	}
+
+	m.handleSQLChunk(sqlChunkMsg{Content: "\x1b[32mSELECT\x1b[0m 1"})
+	assert.Equal(t, "SELECT 1", m.chat.Messages[0].SQL,
+		"ANSI escape codes from SQL stream should be stripped")
+}
+
 // --- renderChatMessages ---
 
 func TestRenderChatMessagesShowsAllRoles(t *testing.T) {

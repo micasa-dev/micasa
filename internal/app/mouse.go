@@ -205,7 +205,7 @@ func (m *Model) handleHintClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}},
 		{"ask", func() (tea.Model, tea.Cmd) {
 			if m.mode == modeNormal {
-				m.openChat()
+				return m, m.openChat()
 			}
 			return m, nil
 		}},

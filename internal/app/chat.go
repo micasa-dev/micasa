@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
 	ollamaPull "github.com/cpcloud/micasa/internal/ollama"
@@ -151,21 +152,23 @@ type ollamaPullState struct {
 }
 
 // openChat shows the chat overlay. If a session already exists it is
-// un-hidden; otherwise a fresh session is created.
-func (m *Model) openChat() {
+// un-hidden; otherwise a fresh session is created. Returns a tea.Cmd
+// that starts the cursor blink timer (required for periodic redraws
+// in terminals without other event sources, such as VHS recordings).
+func (m *Model) openChat() tea.Cmd {
 	if m.chat != nil {
 		// Session exists but was hidden -- just show it again.
 		m.chat.Visible = true
-		m.chat.Input.Focus()
+		cmd := m.chat.Input.Focus()
 		m.refreshChatViewport()
-		return
+		return cmd
 	}
 
 	ti := textinput.New()
 	ti.Placeholder = "Ask about your home data... (/help for commands)"
 	ti.CharLimit = 500
 	ti.Width = m.chatInputWidth()
-	ti.Focus()
+	blinkCmd := ti.Focus()
 
 	vp := viewport.New(m.chatViewportWidth(), m.chatViewportHeight())
 	vp.KeyMap.Left.SetEnabled(false)
@@ -202,6 +205,7 @@ func (m *Model) openChat() {
 		})
 		m.refreshChatViewport()
 	}
+	return blinkCmd
 }
 
 // hideChat hides the chat overlay but preserves the session so the user
@@ -939,13 +943,14 @@ func (m *Model) handleSQLChunk(msg sqlChunkMsg) tea.Cmd {
 	if len(m.chat.Messages) > 0 {
 		lastIdx := len(m.chat.Messages) - 1
 		if m.chat.Messages[lastIdx].Role == roleAssistant {
-			m.chat.Messages[lastIdx].SQL += msg.Content
-			m.refreshChatViewport()
+			m.chat.Messages[lastIdx].SQL += ansi.Strip(msg.Content)
 		}
 	}
 
 	if msg.Done {
 		// SQL generation complete. Extract, validate, and execute.
+		// Set StreamingSQL false before refreshing so the viewport renders
+		// the final state without the "generating query" spinner.
 		m.chat.StreamingSQL = false
 		m.chat.SQLStreamCh = nil
 		sql := ""
@@ -972,6 +977,7 @@ func (m *Model) handleSQLChunk(msg sqlChunkMsg) tea.Cmd {
 	}
 
 	// More chunks coming.
+	m.refreshChatViewport()
 	return waitForSQLChunk(m.chat.SQLStreamCh)
 }
 
@@ -1013,17 +1019,18 @@ func (m *Model) handleChatChunk(msg chatChunkMsg) tea.Cmd {
 	if len(m.chat.Messages) > 0 && msg.Content != "" {
 		last := &m.chat.Messages[len(m.chat.Messages)-1]
 		if last.Role == roleAssistant {
-			last.Content += msg.Content
+			last.Content += ansi.Strip(msg.Content)
 		}
 	}
-	m.refreshChatViewport()
 
 	if msg.Done {
 		m.chat.Streaming = false
 		m.chat.CancelFn = nil
+		m.refreshChatViewport()
 		return nil
 	}
 
+	m.refreshChatViewport()
 	return waitForChunk(m.chat.StreamCh)
 }
 

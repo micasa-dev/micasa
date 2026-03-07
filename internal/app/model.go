@@ -758,8 +758,7 @@ func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 		}
 		return nil, true
 	case keyAt:
-		m.openChat()
-		return nil, true
+		return m.openChat(), true
 	case keyEsc:
 		if m.inDetail() {
 			m.closeDetail()
@@ -2511,6 +2510,15 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 	}
 	keyMsg, ok := msg.(tea.KeyMsg)
 	if !ok {
+		// Forward non-key messages (e.g. cursor blink) to the chat
+		// textinput so the cursor keeps blinking. Without this, VHS
+		// recordings freeze after streaming because no events trigger
+		// View() redraws.
+		if m.chat != nil && m.chat.Visible && m.chat.Input.Focused() {
+			var cmd tea.Cmd
+			m.chat.Input, cmd = m.chat.Input.Update(msg)
+			return cmd, true
+		}
 		return nil, true
 	}
 	return handler(keyMsg), true

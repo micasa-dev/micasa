@@ -23,6 +23,7 @@ require (
 	github.com/rmhubbert/bubbletea-overlay v0.6.5
 	github.com/stretchr/testify v1.11.1
 	github.com/tj/go-naturaldate v1.3.0
+	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
 	gorm.io/gorm v1.31.1
 	modernc.org/sqlite v1.46.1
@@ -90,7 +91,6 @@ require (
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/genai v1.45.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect

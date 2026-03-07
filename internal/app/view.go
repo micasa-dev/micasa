@@ -9,9 +9,12 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/glamour"
+	glamouransi "github.com/charmbracelet/glamour/ansi"
+	glamourstyles "github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	overlay "github.com/rmhubbert/bubbletea-overlay"
+	"golang.org/x/term"
 )
 
 func (m *Model) buildView() string {
@@ -1225,6 +1228,20 @@ func topLevelEmptyHint(kind TabKind) string {
 	)
 }
 
+// glamourStyle caches the glamour style config at init time so
+// renderMarkdown never sends an OSC 11 background-color query.
+// In virtual terminals like VHS the async response leaks into stdin
+// and appears as literal text in focused text inputs.
+var glamourStyle = func() glamouransi.StyleConfig {
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return glamourstyles.NoTTYStyleConfig
+	}
+	if lipgloss.HasDarkBackground() {
+		return glamourstyles.DarkStyleConfig
+	}
+	return glamourstyles.LightStyleConfig
+}()
+
 // markdownRenderer caches a glamour terminal renderer keyed by width.
 // Embed or store a pointer in any state struct that needs markdown rendering.
 type markdownRenderer struct {
@@ -1241,7 +1258,7 @@ func (mr *markdownRenderer) renderMarkdown(text string, width int) string {
 	}
 	if mr.renderer == nil || mr.width != width {
 		r, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
+			glamour.WithStyles(glamourStyle),
 			glamour.WithWordWrap(width),
 		)
 		if err != nil {

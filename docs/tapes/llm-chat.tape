@@ -36,7 +36,7 @@ Sleep 1.5s
 
 # Type a question.
 Set TypingSpeed 40ms
-Type "How much have I spent on plumbing?"
+Type "How many projects are on hold right now?"
 Set TypingSpeed 0
 Sleep 0.5s
 
@@ -44,7 +44,19 @@ Sleep 0.5s
 Enter
 
 # Wait for the LLM to stream its response.
-Sleep 15s
+Sleep 8s
+
+# Type a follow-up question.
+Set TypingSpeed 40ms
+Type "Ok, of those, which has the highest budget?"
+Set TypingSpeed 0
+Sleep 0.5s
+
+# Submit the follow-up.
+Enter
+
+# Wait for the second response.
+Sleep 8s
 
 # Dismiss the overlay.
 Escape
