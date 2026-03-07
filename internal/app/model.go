@@ -488,6 +488,30 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, isResize := msg.(tea.WindowSizeMsg); isResize {
 		return m, nil
 	}
+	// Toggle hidden files in the filepicker with ".".
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == keyShiftH {
+		if field := m.fs.form.GetFocusedField(); field != nil {
+			if fp, ok := field.(*huh.FilePicker); ok {
+				current := filePickerShowHidden(fp)
+				newVal := !current
+				fp.ShowHidden(newVal)
+				// Reset cursor to top so it doesn't point past the new list.
+				goToTop := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+				updated, _ := m.fs.form.Update(goToTop)
+				if form, ok := updated.(*huh.Form); ok {
+					m.fs.form = form
+				}
+				syncFilePickerTitle(m.fs.form)
+				syncFilePickerDescription(m.fs.form)
+				if newVal {
+					m.setStatusInfo("Showing hidden files.")
+				} else {
+					m.setStatusInfo("Hiding hidden files.")
+				}
+				return m, fp.Init()
+			}
+		}
+	}
 	// Intercept 1-9 on Select fields to jump to the Nth option.
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		if n, isOrdinal := selectOrdinal(keyMsg); isOrdinal && isSelectField(m.fs.form) {
@@ -509,6 +533,7 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fs.form = form
 	}
 	syncFilePickerTitle(m.fs.form)
+	syncFilePickerDescription(m.fs.form)
 	m.checkFormDirty()
 	switch m.fs.form.State {
 	case huh.StateCompleted:

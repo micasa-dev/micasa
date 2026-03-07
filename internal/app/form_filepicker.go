@@ -13,6 +13,51 @@ import (
 // recedes next to the bold title label.
 var dimPath = appStyles.DimPath()
 
+// filePickerDesc returns the description line for a filepicker field,
+// reflecting the current ShowHidden state.
+func filePickerDesc(showHidden bool) string {
+	label := "hidden"
+	if showHidden {
+		label = "\x1b[9m" + label + "\x1b[29m"
+	}
+	return keyH + "/" + symLeft + " back " + symMiddleDot + " " +
+		keyEnter + " open " + symMiddleDot + " " +
+		keyShiftH + " " + label
+}
+
+// filePickerShowHidden reads the inner bubbles filepicker's ShowHidden field
+// via reflection. Returns false if the field is not a FilePicker.
+func filePickerShowHidden(field huh.Field) bool {
+	v := reflect.ValueOf(field)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	picker := v.FieldByName("picker")
+	if !picker.IsValid() {
+		return false
+	}
+	sh := picker.FieldByName("ShowHidden")
+	if !sh.IsValid() {
+		return false
+	}
+	return sh.Bool()
+}
+
+// syncFilePickerDescription updates the focused FilePicker's description to
+// reflect the current ShowHidden state. No-op if the focused field is not a
+// *huh.FilePicker.
+func syncFilePickerDescription(form *huh.Form) {
+	field := form.GetFocusedField()
+	if field == nil {
+		return
+	}
+	fp, ok := field.(*huh.FilePicker)
+	if !ok {
+		return
+	}
+	fp.Description(filePickerDesc(filePickerShowHidden(fp)))
+}
+
 // filePickerCurrentDir returns the bubbles filepicker's CurrentDirectory from
 // a huh.FilePicker field via reflection (the picker field is unexported).
 // Returns "" if the field is not a FilePicker.
@@ -30,6 +75,20 @@ func filePickerCurrentDir(field huh.Field) string {
 		return ""
 	}
 	return dir.String()
+}
+
+// filePickerDescription reads the huh FilePicker's description field via
+// reflection. Returns "" if the field is not a FilePicker.
+func filePickerDescription(field huh.Field) string {
+	v := reflect.ValueOf(field)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	d := v.FieldByName("description")
+	if !d.IsValid() {
+		return ""
+	}
+	return d.String()
 }
 
 // filePickerTitle reads the huh FilePicker's title field via reflection.

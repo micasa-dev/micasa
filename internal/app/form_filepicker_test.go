@@ -73,6 +73,78 @@ func TestFilePickerBackNavigatesUp(t *testing.T) {
 	}
 }
 
+func TestFilePickerDefaultHidesHiddenFiles(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	m := newTestModelWithStore(t)
+	require.NoError(t, m.startQuickDocumentForm())
+
+	fp := requireFilePicker(t, m)
+	assert.False(t, filePickerShowHidden(fp),
+		"filepicker should hide hidden files by default")
+}
+
+func TestFilePickerToggleHidden(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	m := newTestModelWithStore(t)
+	require.NoError(t, m.startQuickDocumentForm())
+
+	fp := requireFilePicker(t, m)
+	require.False(t, filePickerShowHidden(fp), "should start hidden")
+
+	// Press "." to show hidden files.
+	sendKey(m, keyShiftH)
+	fp = requireFilePicker(t, m)
+	assert.True(t, filePickerShowHidden(fp),
+		"pressing . should show hidden files")
+
+	// Press "." again to hide hidden files.
+	sendKey(m, keyShiftH)
+	fp = requireFilePicker(t, m)
+	assert.False(t, filePickerShowHidden(fp),
+		"pressing . again should hide hidden files")
+}
+
+func TestFilePickerToggleHiddenStatusMessage(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	m := newTestModelWithStore(t)
+	require.NoError(t, m.startQuickDocumentForm())
+
+	// Toggle on.
+	sendKey(m, keyShiftH)
+	assert.Equal(t, "Showing hidden files.", m.status.Text)
+
+	// Toggle off.
+	sendKey(m, keyShiftH)
+	assert.Equal(t, "Hiding hidden files.", m.status.Text)
+}
+
+func TestFilePickerDescriptionReflectsHiddenState(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	m := newTestModelWithStore(t)
+	require.NoError(t, m.startQuickDocumentForm())
+
+	fp := requireFilePicker(t, m)
+	desc := filePickerDescription(fp)
+	assert.Contains(t, desc, "hidden",
+		"description should contain 'hidden'")
+	assert.NotContains(t, desc, "\x1b[9m",
+		"'hidden' should not be struck through when hidden files are hidden")
+
+	sendKey(m, keyShiftH)
+	fp = requireFilePicker(t, m)
+	desc = filePickerDescription(fp)
+	assert.Contains(t, desc, "\x1b[9m",
+		"'hidden' should be struck through when hidden files are shown")
+}
+
 func TestFilePickerTitleShowsCurrentDir(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
