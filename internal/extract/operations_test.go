@@ -4,6 +4,8 @@
 package extract
 
 import (
+	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/cpcloud/micasa/internal/data"
@@ -460,4 +462,35 @@ func TestParseUint(t *testing.T) {
 	assert.Equal(t, uint(0), ParseUint(float64(-1)))
 	assert.Equal(t, uint(0), ParseUint("abc"))
 	assert.Equal(t, uint(0), ParseUint(nil))
+	// Concrete integer types from GORM/SQLite map queries.
+	assert.Equal(t, uint(7), ParseUint(uint(7)))
+	assert.Equal(t, uint(9), ParseUint(uint64(9)))
+	assert.Equal(t, uint(5), ParseUint(int64(5)))
+	assert.Equal(t, uint(0), ParseUint(int64(-3)))
+	assert.Equal(t, uint(11), ParseUint(int(11)))
+	assert.Equal(t, uint(0), ParseUint(int(-1)))
+	// json.Number from UseNumber decoder.
+	assert.Equal(t, uint(99), ParseUint(json.Number("99")))
+	assert.Equal(t, uint(0), ParseUint(json.Number("not-a-number")))
+	// Unsupported type.
+	assert.Equal(t, uint(0), ParseUint([]int{1}))
+}
+
+// --- ParseInt64 ---
+
+func TestParseInt64(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, int64(0), ParseInt64(nil))
+	assert.Equal(t, int64(42), ParseInt64(int64(42)))
+	assert.Equal(t, int64(-3), ParseInt64(int64(-3)))
+	assert.Equal(t, int64(7), ParseInt64(float64(7)))
+	assert.Equal(t, int64(5), ParseInt64(int(5)))
+	assert.Equal(t, int64(10), ParseInt64(uint(10)))
+	assert.Equal(t, int64(0), ParseInt64(uint(math.MaxInt64+1)))
+	assert.Equal(t, int64(99), ParseInt64("99"))
+	assert.Equal(t, int64(0), ParseInt64("abc"))
+	assert.Equal(t, int64(77), ParseInt64(json.Number("77")))
+	assert.Equal(t, int64(0), ParseInt64(json.Number("nope")))
+	// Unsupported type with no String() method.
+	assert.Equal(t, int64(0), ParseInt64([]int{1}))
 }
