@@ -1731,7 +1731,7 @@ func (m *Model) renderExtractionStep(
 					if isTerminal {
 						b.WriteString(m.renderPageRatio(ts.Count, ex.extractedPages, ex.docPages))
 					} else {
-						b.WriteString(dim.Render(fmt.Sprintf("%d/%d pp", ts.Count, ts.Count)))
+						b.WriteString(dim.Render(fmt.Sprintf("%d/%d pp", ts.Count, ex.extractedPages)))
 					}
 				}
 			}

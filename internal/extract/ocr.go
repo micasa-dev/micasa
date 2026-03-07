@@ -136,6 +136,9 @@ func ocrPage(ctx context.Context, pdfPath string, page int, onRasterDone func())
 		)}
 	}
 	if err := tessCmd.Start(); err != nil {
+		// Close the pipe reader so pdftocairo gets EPIPE and exits
+		// instead of blocking on a full pipe buffer.
+		_ = pipe.Close()
 		_ = cairoCmd.Wait()
 		return ocrPageResult{err: fmt.Errorf(
 			"tesseract page %d: %s: %w",
@@ -145,7 +148,7 @@ func ocrPage(ctx context.Context, pdfPath string, page int, onRasterDone func())
 
 	// Wait for both to finish. Cairo must finish first so the pipe closes.
 	cairoWaitErr := cairoCmd.Wait()
-	if cairoWaitErr == nil && onRasterDone != nil {
+	if onRasterDone != nil {
 		onRasterDone()
 	}
 	tessWaitErr := tessCmd.Wait()

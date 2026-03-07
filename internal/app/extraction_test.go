@@ -1531,6 +1531,20 @@ func TestAcquireTools_NonTerminalDoneRenderedDim(t *testing.T) {
 	assert.Contains(t, out, "tesseract")
 }
 
+func TestAcquireTools_NonTerminalPageRatioUsesTotal(t *testing.T) {
+	t.Parallel()
+	m, ex := newExtToolModel(t)
+	// Set count != extractedPages to verify the denominator is the total,
+	// not the tool's own count (regression: was rendering "7/7 pp").
+	ex.acquireTools[0].Count = 7
+	ex.extractedPages = 20
+	ex.expanded[stepExtract] = true
+
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "7/20 pp", "non-terminal denominator must be extractedPages")
+	assert.NotContains(t, out, "7/7 pp", "denominator must not equal numerator")
+}
+
 func TestAcquireTools_NonTerminalRunningRenderedDim(t *testing.T) {
 	t.Parallel()
 	m := newExtractionModel(t, map[extractionStep]stepStatus{
