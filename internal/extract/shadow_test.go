@@ -772,14 +772,14 @@ func TestFKGraph_AllCreatablesPresent(t *testing.T) {
 	g := creatableFKs
 
 	expected := map[string]bool{
-		data.TableVendors:          true,
-		data.TableAppliances:       true,
-		data.TableProjects:         true,
-		data.TableQuotes:           true,
-		data.TableMaintenanceItems: true,
-		data.TableIncidents:        true,
+		data.TableVendors:           true,
+		data.TableAppliances:        true,
+		data.TableProjects:          true,
+		data.TableQuotes:            true,
+		data.TableMaintenanceItems:  true,
+		data.TableIncidents:         true,
 		data.TableServiceLogEntries: true,
-		data.TableDocuments:        true,
+		data.TableDocuments:         true,
 	}
 
 	actual := make(map[string]bool, len(g.order))
