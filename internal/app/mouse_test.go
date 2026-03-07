@@ -4,6 +4,7 @@
 package app
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -32,6 +33,27 @@ func requireZone(t *testing.T, m *Model, id string) *zone.ZoneInfo {
 		t.Skipf("zone %q not rendered", id)
 	}
 	return z
+}
+
+// drilldownColX returns the X coordinate of the drilldown column's header
+// zone. This is needed because row clicks also select the column, so tests
+// that expect drilldown must click at the drilldown column's X position.
+func drilldownColX(t *testing.T, m *Model, tab *Tab) int {
+	t.Helper()
+	m.View()
+	width := m.effectiveWidth()
+	normalSep := m.styles.TableSeparator().Render(" \u2502 ")
+	vp := computeTableViewport(tab, width, normalSep, m.cur.Symbol())
+	for vi, fi := range vp.VisToFull {
+		if fi < len(tab.Specs) && tab.Specs[fi].Kind == cellDrilldown {
+			z := m.zones.Get(fmt.Sprintf("%s%d", zoneCol, vi))
+			if z != nil && !z.IsZero() {
+				return z.StartX
+			}
+		}
+	}
+	t.Skip("drilldown column zone not rendered")
+	return 0
 }
 
 // TestTabClickSwitchesTab verifies that clicking on a tab changes the
@@ -281,15 +303,16 @@ func TestDoubleClickRowDrillsDown(t *testing.T) {
 	}
 
 	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
 	z := requireZone(t, m, "row-0")
 
 	// First click selects (already selected, but records the click).
-	sendClick(m, z.StartX, z.StartY)
+	sendClick(m, colX, z.StartY)
 	assert.False(t, m.inDetail(), "single click should not trigger drilldown")
 
 	// Second click within threshold triggers drilldown.
 	z = requireZone(t, m, "row-0")
-	sendClick(m, z.StartX, z.StartY)
+	sendClick(m, colX, z.StartY)
 	assert.True(t, m.inDetail(), "double-click should trigger drilldown")
 }
 
@@ -316,9 +339,10 @@ func TestSingleClickOnSelectedRowDoesNotDrill(t *testing.T) {
 	}
 
 	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
 	z := requireZone(t, m, "row-0")
 
-	sendClick(m, z.StartX, z.StartY)
+	sendClick(m, colX, z.StartY)
 	assert.False(t, m.inDetail(), "single click on selected row should not drill down")
 }
 
@@ -345,14 +369,15 @@ func TestDoubleClickExpiredDoesNotDrill(t *testing.T) {
 	}
 
 	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
 	z := requireZone(t, m, "row-0")
 
-	sendClick(m, z.StartX, z.StartY)
+	sendClick(m, colX, z.StartY)
 	// Simulate an expired click by backdating the recorded time.
 	m.lastRowClick.at = m.lastRowClick.at.Add(-time.Second)
 
 	z = requireZone(t, m, "row-0")
-	sendClick(m, z.StartX, z.StartY)
+	sendClick(m, colX, z.StartY)
 	assert.False(t, m.inDetail(), "expired double-click should not trigger drilldown")
 }
 
@@ -379,11 +404,12 @@ func TestDoubleClickDifferentRowDoesNotDrill(t *testing.T) {
 	}
 
 	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
 	z0 := requireZone(t, m, "row-0")
-	sendClick(m, z0.StartX, z0.StartY)
+	sendClick(m, colX, z0.StartY)
 
 	z1 := requireZone(t, m, "row-1")
-	sendClick(m, z1.StartX, z1.StartY)
+	sendClick(m, colX, z1.StartY)
 	assert.False(t, m.inDetail(), "clicking different rows should not trigger drilldown")
 	assert.Equal(t, 1, tab.Table.Cursor(), "second click should select row 1")
 }
