@@ -477,6 +477,29 @@ func cellMatchesPin(pins []filterPin, col int, c cell, magMode bool, currencySym
 	return false
 }
 
+// renderWithNoteSuffix truncates value to fit alongside a right-aligned
+// dimmed line-count suffix (e.g. "+3") within the given width.
+func renderWithNoteSuffix(
+	value string,
+	style lipgloss.Style,
+	width int,
+	suffix string,
+	suffixW int,
+) string {
+	textMaxW := width - suffixW - 1
+	if textMaxW < 1 {
+		textMaxW = 1
+	}
+	truncated := ansi.Truncate(value, textMaxW, symEllipsis)
+	styled := style.Render(truncated)
+	textW := lipgloss.Width(truncated)
+	gap := width - textW - suffixW
+	if gap < 1 {
+		gap = 1
+	}
+	return styled + strings.Repeat(" ", gap) + appStyles.Empty().Render(suffix)
+}
+
 func renderCell(
 	cellValue cell,
 	spec columnSpec,
@@ -557,24 +580,12 @@ func renderCell(
 		if hl == highlightRow {
 			cursorStyle = cursorStyle.Background(surface).Bold(true)
 		}
-		textMaxW := width
 		if noteSuffixW > 0 {
-			textMaxW = width - noteSuffixW - 1
-			if textMaxW < 1 {
-				textMaxW = 1
-			}
+			return renderWithNoteSuffix(value, cursorStyle, width, noteSuffix, noteSuffixW)
 		}
-		truncated := ansi.Truncate(value, textMaxW, symEllipsis)
+		truncated := ansi.Truncate(value, width, symEllipsis)
 		styled := cursorStyle.Render(truncated)
 		textW := lipgloss.Width(truncated)
-		if noteSuffixW > 0 {
-			gap := width - textW - noteSuffixW
-			if gap < 1 {
-				gap = 1
-			}
-			dimSuffix := appStyles.Empty().Render(noteSuffix)
-			return styled + strings.Repeat(" ", gap) + dimSuffix
-		}
 		if pad := width - textW; pad > 0 {
 			if spec.Align == alignRight {
 				return strings.Repeat(" ", pad) + styled
@@ -589,19 +600,7 @@ func renderCell(
 	}
 
 	if noteSuffixW > 0 {
-		textMaxW := width - noteSuffixW - 1
-		if textMaxW < 1 {
-			textMaxW = 1
-		}
-		truncated := ansi.Truncate(value, textMaxW, symEllipsis)
-		styledText := style.Render(truncated)
-		textW := lipgloss.Width(truncated)
-		gap := width - textW - noteSuffixW
-		if gap < 1 {
-			gap = 1
-		}
-		dimSuffix := appStyles.Empty().Render(noteSuffix)
-		return styledText + strings.Repeat(" ", gap) + dimSuffix
+		return renderWithNoteSuffix(value, style, width, noteSuffix, noteSuffixW)
 	}
 
 	aligned := formatCell(value, width, spec.Align)
