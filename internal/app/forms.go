@@ -2091,31 +2091,27 @@ func requiredText(label string) func(string) error {
 	}
 }
 
-func optionalInt(label string) func(string) error {
+// validateWith builds a validator from a parse function. The parse result is
+// discarded; only the error matters. Eliminates repetitive validator factories.
+func validateWith[T any](label string, parse func(string) (T, error)) func(string) error {
 	return func(input string) error {
-		if _, err := data.ParseOptionalInt(input); err != nil {
+		if _, err := parse(input); err != nil {
 			return data.FieldError(label, err)
 		}
 		return nil
 	}
+}
+
+func optionalInt(label string) func(string) error {
+	return validateWith(label, data.ParseOptionalInt)
 }
 
 func optionalInterval(label string) func(string) error {
-	return func(input string) error {
-		if _, err := data.ParseIntervalMonths(input); err != nil {
-			return data.FieldError(label, err)
-		}
-		return nil
-	}
+	return validateWith(label, data.ParseIntervalMonths)
 }
 
 func optionalFloat(label string) func(string) error {
-	return func(input string) error {
-		if _, err := data.ParseOptionalFloat(input); err != nil {
-			return data.FieldError(label, err)
-		}
-		return nil
-	}
+	return validateWith(label, data.ParseOptionalFloat)
 }
 
 // endDateAfterStart validates that end date is a valid optional date and,
@@ -2146,30 +2142,15 @@ func endDateAfterStart(startDate, endDate *string) func(string) error {
 }
 
 func optionalDate(label string) func(string) error {
-	return func(input string) error {
-		if _, err := data.ParseOptionalDate(input); err != nil {
-			return data.FieldError(label, err)
-		}
-		return nil
-	}
+	return validateWith(label, data.ParseOptionalDate)
 }
 
 func optionalMoney(label string, cur locale.Currency) func(string) error {
-	return func(input string) error {
-		if _, err := cur.ParseOptionalCents(input); err != nil {
-			return data.FieldError(label, err)
-		}
-		return nil
-	}
+	return validateWith(label, cur.ParseOptionalCents)
 }
 
 func requiredMoney(label string, cur locale.Currency) func(string) error {
-	return func(input string) error {
-		if _, err := cur.ParseRequiredCents(input); err != nil {
-			return data.FieldError(label, err)
-		}
-		return nil
-	}
+	return validateWith(label, cur.ParseRequiredCents)
 }
 
 func projectFormValues(project data.Project, cur locale.Currency) *projectFormData {

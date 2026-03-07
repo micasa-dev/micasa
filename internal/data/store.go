@@ -955,13 +955,11 @@ func (s *Store) RestoreServiceLog(id uint) error {
 	if err := s.db.Unscoped().First(&entry, id).Error; err != nil {
 		return err
 	}
-	if err := s.requireParentAlive(&MaintenanceItem{}, entry.MaintenanceItemID); err != nil {
-		return parentRestoreError("maintenance item", err)
-	}
-	if entry.VendorID != nil {
-		if err := s.requireParentAlive(&Vendor{}, *entry.VendorID); err != nil {
-			return parentRestoreError("vendor", err)
-		}
+	if err := s.checkParentsAlive([]parentCheck{
+		{&MaintenanceItem{}, &entry.MaintenanceItemID, "maintenance item"},
+		{&Vendor{}, entry.VendorID, "vendor"},
+	}); err != nil {
+		return err
 	}
 	return s.restoreEntity(&ServiceLogEntry{}, DeletionEntityServiceLog, id)
 }
@@ -1360,10 +1358,6 @@ func (s *Store) DeleteAppliance(id uint) error {
 }
 
 func (s *Store) RestoreProject(id uint) error {
-	var project Project
-	if err := s.db.Unscoped().First(&project, id).Error; err != nil {
-		return err
-	}
 	return s.restoreEntity(&Project{}, DeletionEntityProject, id)
 }
 
@@ -1372,11 +1366,11 @@ func (s *Store) RestoreQuote(id uint) error {
 	if err := s.db.Unscoped().First(&quote, id).Error; err != nil {
 		return err
 	}
-	if err := s.requireParentAlive(&Project{}, quote.ProjectID); err != nil {
-		return parentRestoreError("project", err)
-	}
-	if err := s.requireParentAlive(&Vendor{}, quote.VendorID); err != nil {
-		return parentRestoreError("vendor", err)
+	if err := s.checkParentsAlive([]parentCheck{
+		{&Project{}, &quote.ProjectID, "project"},
+		{&Vendor{}, &quote.VendorID, "vendor"},
+	}); err != nil {
+		return err
 	}
 	return s.restoreEntity(&Quote{}, DeletionEntityQuote, id)
 }
@@ -1386,10 +1380,10 @@ func (s *Store) RestoreMaintenance(id uint) error {
 	if err := s.db.Unscoped().First(&item, id).Error; err != nil {
 		return err
 	}
-	if item.ApplianceID != nil {
-		if err := s.requireParentAlive(&Appliance{}, *item.ApplianceID); err != nil {
-			return parentRestoreError("appliance", err)
-		}
+	if err := s.checkParentsAlive([]parentCheck{
+		{&Appliance{}, item.ApplianceID, "appliance"},
+	}); err != nil {
+		return err
 	}
 	return s.restoreEntity(&MaintenanceItem{}, DeletionEntityMaintenance, id)
 }
@@ -1426,6 +1420,26 @@ func (s *Store) requireParentAlive(model any, id uint) error {
 // parentRestoreError returns a user-facing error message for a failed parent
 // alive check, distinguishing soft-deleted parents (restorable) from missing
 // parents (permanently gone).
+// parentCheck describes a parent FK that must be alive before a child can be
+// restored. A nil id means the FK is optional and unset; the check is skipped.
+type parentCheck struct {
+	model any // GORM model pointer -- typed as any because gorm.DB.First accepts any
+	id    *uint
+	label string
+}
+
+func (s *Store) checkParentsAlive(checks []parentCheck) error {
+	for _, c := range checks {
+		if c.id == nil {
+			continue
+		}
+		if err := s.requireParentAlive(c.model, *c.id); err != nil {
+			return parentRestoreError(c.label, err)
+		}
+	}
+	return nil
+}
+
 func parentRestoreError(entity string, err error) error {
 	if errors.Is(err, ErrParentNotFound) {
 		return fmt.Errorf("%s no longer exists", entity)
