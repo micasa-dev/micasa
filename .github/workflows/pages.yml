@@ -7,6 +7,8 @@ on:
   push:
     branches: [main]
     paths: [docs/**, images/**]
+  schedule:
+    - cron: "0 13 * * 4" # Every Thursday at 13:00 UTC (~9 AM ET)
   workflow_dispatch:
 
 permissions:
