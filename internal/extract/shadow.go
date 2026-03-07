@@ -4,6 +4,7 @@
 package extract
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -291,7 +292,7 @@ func remapFK(row map[string]any, fk shadowFKRemap, idMap map[string]map[uint]uin
 	if !ok || v == nil {
 		return
 	}
-	shadowID := toUint(v)
+	shadowID := ParseUint(v)
 	if shadowID == 0 {
 		return
 	}
@@ -325,7 +326,7 @@ func remapDocumentEntity(row map[string]any, idMap map[string]map[uint]uint) {
 	if !ok {
 		return
 	}
-	entityID := toUint(row[data.ColEntityID])
+	entityID := ParseUint(row[data.ColEntityID])
 	if entityID == 0 {
 		return
 	}
@@ -400,8 +401,8 @@ func commitAppliance(store *data.Store, row map[string]any) (uint, error) {
 
 func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (uint, error) {
 	q := data.Quote{}
-	q.ProjectID = toUint(row[data.ColProjectID])
-	q.TotalCents = toInt64(row[data.ColTotalCents])
+	q.ProjectID = ParseUint(row[data.ColProjectID])
+	q.TotalCents = ParseInt64(row[data.ColTotalCents])
 	stringField(row, data.ColNotes, &q.Notes)
 
 	if v := toInt64Ptr(row[data.ColLaborCents]); v != nil {
@@ -415,7 +416,7 @@ func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (
 	// - A real ID (batch-created vendor already committed, or existing vendor)
 	// - 0 / absent (no vendor reference)
 	var vendor data.Vendor
-	vendorID := toUint(row[data.ColVendorID])
+	vendorID := ParseUint(row[data.ColVendorID])
 	if vendorID > 0 {
 		got, err := store.GetVendor(vendorID)
 		if err == nil {
@@ -425,7 +426,7 @@ func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (
 	// Fall back to vendor_name from original operation data (synthetic field
 	// not stored in the shadow table).
 	if vendor.ID == 0 {
-		applyString(opData, "vendor_name", &vendor.Name)
+		stringField(opData, "vendor_name", &vendor.Name)
 	}
 
 	if err := store.CreateQuote(&q, vendor); err != nil {
@@ -438,11 +439,11 @@ func commitMaintenance(store *data.Store, row map[string]any) (uint, error) {
 	m := data.MaintenanceItem{}
 	stringField(row, data.ColName, &m.Name)
 	stringField(row, data.ColNotes, &m.Notes)
-	m.CategoryID = toUint(row[data.ColCategoryID])
-	if v := toUint(row[data.ColApplianceID]); v != 0 {
+	m.CategoryID = ParseUint(row[data.ColCategoryID])
+	if v := ParseUint(row[data.ColApplianceID]); v != 0 {
 		m.ApplianceID = &v
 	}
-	if v := toInt64(row[data.ColIntervalMonths]); v != 0 {
+	if v := ParseInt64(row[data.ColIntervalMonths]); v != 0 {
 		n, err := safeconv.Int(v)
 		if err != nil {
 			return 0, fmt.Errorf("interval_months: %w", err)
@@ -465,7 +466,7 @@ func commitDocument(store *data.Store, row map[string]any) (uint, error) {
 	stringField(row, data.ColFileName, &doc.FileName)
 	stringField(row, data.ColNotes, &doc.Notes)
 	stringField(row, data.ColEntityKind, &doc.EntityKind)
-	doc.EntityID = toUint(row[data.ColEntityID])
+	doc.EntityID = ParseUint(row[data.ColEntityID])
 	if err := store.CreateDocument(&doc); err != nil {
 		return 0, err
 	}
@@ -493,9 +494,9 @@ func commitUpdateDocument(store *data.Store, op Operation) error {
 	if err != nil {
 		return fmt.Errorf("get document %d: %w", rowID, err)
 	}
-	applyString(op.Data, data.ColTitle, &doc.Title)
-	applyString(op.Data, data.ColNotes, &doc.Notes)
-	applyString(op.Data, data.ColEntityKind, &doc.EntityKind)
+	stringField(op.Data, data.ColTitle, &doc.Title)
+	stringField(op.Data, data.ColNotes, &doc.Notes)
+	stringField(op.Data, data.ColEntityKind, &doc.EntityKind)
 	if v, ok := op.Data[data.ColEntityID]; ok {
 		if n := ParseUint(v); n > 0 {
 			doc.EntityID = n
@@ -513,8 +514,8 @@ func commitUpdateMaintenance(store *data.Store, op Operation) error {
 	if err != nil {
 		return fmt.Errorf("get maintenance_item %d: %w", rowID, err)
 	}
-	applyString(op.Data, data.ColName, &item.Name)
-	applyString(op.Data, data.ColNotes, &item.Notes)
+	stringField(op.Data, data.ColName, &item.Name)
+	stringField(op.Data, data.ColNotes, &item.Notes)
 	if v, ok := op.Data[data.ColCategoryID]; ok {
 		if n := ParseUint(v); n > 0 {
 			item.CategoryID = n
@@ -559,28 +560,19 @@ func stringField(row map[string]any, key string, dst *string) {
 	}
 }
 
-// applyString sets *dst from a JSON operation data map value.
-func applyString(d map[string]any, key string, dst *string) {
-	if v, ok := d[key]; ok {
-		if s, ok := v.(string); ok {
-			*dst = s
-		}
-	}
-}
-
-// toUint extracts a uint from types returned by GORM/SQLite map queries.
-func toUint(v any) uint {
+// ParseUint extracts a uint from an arbitrary value. Handles concrete numeric
+// types (from GORM/SQLite map queries), json.Number, and string
+// representations. Returns 0 for nil, negative, or unparsable values.
+func ParseUint(v any) uint {
 	if v == nil {
 		return 0
 	}
 	switch val := v.(type) {
 	case uint:
 		return val
+	case uint64:
+		return uint(val)
 	case int64:
-		if val > 0 {
-			return uint(val)
-		}
-	case float64:
 		if val > 0 {
 			return uint(val)
 		}
@@ -588,16 +580,26 @@ func toUint(v any) uint {
 		if val > 0 {
 			return uint(val)
 		}
-	case uint64:
-		return uint(val)
-	default:
-		return ParseUint(v)
+	case float64:
+		if val > 0 && val <= math.MaxUint {
+			return uint(val)
+		}
+	case json.Number:
+		if n, err := strconv.ParseUint(val.String(), 10, strconv.IntSize); err == nil {
+			return uint(n)
+		}
+	case string:
+		if n, err := strconv.ParseUint(strings.TrimSpace(val), 10, strconv.IntSize); err == nil {
+			return uint(n)
+		}
 	}
 	return 0
 }
 
-// toInt64 extracts an int64 from types returned by GORM/SQLite map queries.
-func toInt64(v any) int64 {
+// ParseInt64 extracts an int64 from an arbitrary value. Handles concrete
+// numeric types (from GORM/SQLite map queries), json.Number, and string
+// representations. Returns 0 for nil or unparsable values.
+func ParseInt64(v any) int64 {
 	if v == nil {
 		return 0
 	}
@@ -613,9 +615,16 @@ func toInt64(v any) int64 {
 			return 0
 		}
 		return int64(val)
+	case string:
+		n, _ := strconv.ParseInt(strings.TrimSpace(val), 10, 64)
+		return n
 	default:
-		return ParseInt64(v)
+		if s, ok := v.(interface{ String() string }); ok {
+			n, _ := strconv.ParseInt(strings.TrimSpace(s.String()), 10, 64)
+			return n
+		}
 	}
+	return 0
 }
 
 // toInt64Ptr returns a pointer to the int64 value, or nil if the value is
@@ -624,35 +633,11 @@ func toInt64Ptr(v any) *int64 {
 	if v == nil {
 		return nil
 	}
-	n := toInt64(v)
+	n := ParseInt64(v)
 	if n == 0 {
 		return nil
 	}
 	return &n
-}
-
-// ParseInt64 extracts an int64 from a JSON value (json.Number, float64,
-// string). Returns 0 for nil or unparsable values.
-func ParseInt64(v any) int64 {
-	if v == nil {
-		return 0
-	}
-	switch val := v.(type) {
-	case int64:
-		return val
-	case float64:
-		return int64(val)
-	case int:
-		return int64(val)
-	case string:
-		n, _ := strconv.ParseInt(strings.TrimSpace(val), 10, 64)
-		return n
-	}
-	if s, ok := v.(interface{ String() string }); ok {
-		n, _ := strconv.ParseInt(strings.TrimSpace(s.String()), 10, 64)
-		return n
-	}
-	return 0
 }
 
 // normalizeValue converts json.Number values to concrete Go types so SQLite

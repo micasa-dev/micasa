@@ -7,9 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"math"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -226,26 +224,6 @@ func ValidateOperations(ops []Operation, allowed map[string]AllowedOps) error {
 		}
 	}
 	return nil
-}
-
-// ParseUint extracts a uint from a JSON value (json.Number, float64, or
-// string). Returns 0 for nil, negative, or unparsable values.
-func ParseUint(v any) uint {
-	switch val := v.(type) {
-	case json.Number:
-		if n, err := strconv.ParseUint(val.String(), 10, strconv.IntSize); err == nil {
-			return uint(n)
-		}
-	case float64:
-		if val > 0 && val <= math.MaxUint {
-			return uint(val)
-		}
-	case string:
-		if n, err := strconv.ParseUint(strings.TrimSpace(val), 10, strconv.IntSize); err == nil {
-			return uint(n)
-		}
-	}
-	return 0
 }
 
 // sortedKeys returns the keys of a map in sorted order.
