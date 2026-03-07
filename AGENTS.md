@@ -8,6 +8,14 @@ You are a coding agent running on a user's computer.
 - Run `/resume-work` at the start of a session to pick up context from
   previous agents (git log, open PRs/issues, uncommitted work, worktrees).
 
+# Codebase map
+
+Read `.claude/codebase/*.md` at the start of every session. These files
+document the project structure, key types, and code patterns so you can
+navigate the codebase without re-exploring from scratch each time. Update
+them when you make structural changes (new packages, renamed types, new
+entity models, major refactors).
+
 # General
 
 - Default expectation: deliver working code, not just a plan. If some details
