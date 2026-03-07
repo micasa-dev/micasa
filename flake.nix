@@ -110,7 +110,10 @@
               settings.flags = "--base-formatter=${pkgs.gofumpt}/bin/gofumpt " + "--max-len=100";
             };
             nixfmt.enable = true;
-            golangci-lint.enable = true;
+            golangci-lint = {
+              enable = true;
+              stages = [ "pre-push" ];
+            };
             actionlint.enable = true;
             statix.enable = true;
             deadnix.enable = true;
@@ -146,6 +149,7 @@
               files = "\\.go$";
               language = "system";
               pass_filenames = false;
+              stages = [ "pre-push" ];
             };
             govulncheck = {
               enable = true;
@@ -154,6 +158,7 @@
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
+              stages = [ "pre-push" ];
             };
             osv-scanner = {
               enable = true;
@@ -162,6 +167,7 @@
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
+              stages = [ "pre-push" ];
             };
             go-generate-check = {
               enable = true;
@@ -170,6 +176,7 @@
               files = "^internal/data/(models|cmd/genmeta/main)\\.go$";
               language = "system";
               pass_filenames = false;
+              stages = [ "pre-push" ];
             };
             vendor-hash-check = {
               enable = true;
@@ -594,6 +601,7 @@
             text = ''
               ${preCommit.shellHook}
               pre-commit run --all-files
+              pre-commit run --all-files --hook-stage pre-push
             '';
           };
 
