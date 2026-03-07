@@ -204,6 +204,8 @@ type Model struct {
 	magMode               bool // easter egg: display numbers as order-of-magnitude
 	confirmHardDelete     bool // true while waiting for y/n on permanent delete
 	hardDeleteID          uint // entity ID pending permanent deletion
+	lastRowClick          rowClickState
+	lastDashClick         rowClickState
 	cur                   locale.Currency
 	status                statusMsg
 	projectTypes          []data.ProjectType

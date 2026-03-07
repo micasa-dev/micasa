@@ -4,7 +4,9 @@
 package app
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
@@ -31,6 +33,27 @@ func requireZone(t *testing.T, m *Model, id string) *zone.ZoneInfo {
 		t.Skipf("zone %q not rendered", id)
 	}
 	return z
+}
+
+// drilldownColX returns the X coordinate of the drilldown column's header
+// zone. This is needed because row clicks also select the column, so tests
+// that expect drilldown must click at the drilldown column's X position.
+func drilldownColX(t *testing.T, m *Model, tab *Tab) int {
+	t.Helper()
+	m.View()
+	width := m.effectiveWidth()
+	normalSep := m.styles.TableSeparator().Render(" \u2502 ")
+	vp := computeTableViewport(tab, width, normalSep, m.cur.Symbol())
+	for vi, fi := range vp.VisToFull {
+		if fi < len(tab.Specs) && tab.Specs[fi].Kind == cellDrilldown {
+			z := m.zones.Get(fmt.Sprintf("%s%d", zoneCol, vi))
+			if z != nil && !z.IsZero() {
+				return z.StartX
+			}
+		}
+	}
+	t.Skip("drilldown column zone not rendered")
+	return 0
 }
 
 // TestTabClickSwitchesTab verifies that clicking on a tab changes the
@@ -77,6 +100,31 @@ func TestRowClickMovesCursor(t *testing.T) {
 
 	sendClick(m, z.StartX, z.StartY)
 	assert.Equal(t, 1, tab.Table.Cursor(), "clicking row-1 should move cursor to row 1")
+}
+
+// TestRowClickSelectsColumn verifies that clicking on a cell within a row
+// also moves the column cursor to the clicked column.
+func TestRowClickSelectsColumn(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	tab := m.effectiveTab()
+	require.NotNil(t, tab)
+	require.Greater(t, len(tab.CellRows), 1, "need at least 2 rows")
+	require.Greater(t, len(tab.Specs), 1, "need at least 2 columns")
+
+	tab.Table.SetCursor(0)
+	tab.ColCursor = 0
+
+	// Get the second column header zone for its X range.
+	colZone := requireZone(t, m, "col-1")
+	// Get a row zone for its Y range.
+	rowZone := requireZone(t, m, "row-1")
+
+	// Click at the X of column 1, Y of row 1.
+	sendClick(m, colZone.StartX, rowZone.StartY)
+	assert.Equal(t, 1, tab.Table.Cursor(), "clicking should move row cursor to row 1")
+	assert.NotEqual(t, 0, tab.ColCursor, "clicking in column 1 area should move column cursor")
 }
 
 // TestScrollWheelMovesCursor verifies that scroll wheel events move the
@@ -232,9 +280,9 @@ func TestMouseNoOpOnRelease(t *testing.T) {
 	assert.Equal(t, before, m.active, "mouse release should not change state")
 }
 
-// TestSelectedRowClickDrillsDown verifies that clicking an already-selected
-// row triggers drilldown (same as pressing enter).
-func TestSelectedRowClickDrillsDown(t *testing.T) {
+// TestDoubleClickRowDrillsDown verifies that double-clicking a row triggers
+// drilldown (same as pressing enter).
+func TestDoubleClickRowDrillsDown(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 
@@ -255,10 +303,115 @@ func TestSelectedRowClickDrillsDown(t *testing.T) {
 	}
 
 	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
 	z := requireZone(t, m, "row-0")
 
-	sendClick(m, z.StartX, z.StartY)
-	assert.True(t, m.inDetail(), "clicking selected row should trigger drilldown")
+	// First click selects (already selected, but records the click).
+	sendClick(m, colX, z.StartY)
+	assert.False(t, m.inDetail(), "single click should not trigger drilldown")
+
+	// Second click within threshold triggers drilldown.
+	z = requireZone(t, m, "row-0")
+	sendClick(m, colX, z.StartY)
+	assert.True(t, m.inDetail(), "double-click should trigger drilldown")
+}
+
+// TestSingleClickOnSelectedRowDoesNotDrill verifies that a single click on
+// an already-selected row does not trigger drilldown.
+func TestSingleClickOnSelectedRowDoesNotDrill(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	tab := m.effectiveTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.CellRows)
+
+	hasDrilldown := false
+	for i, spec := range tab.Specs {
+		if spec.Kind == cellDrilldown {
+			tab.ColCursor = i
+			hasDrilldown = true
+			break
+		}
+	}
+	if !hasDrilldown {
+		t.Skip("no drilldown column available")
+	}
+
+	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
+	z := requireZone(t, m, "row-0")
+
+	sendClick(m, colX, z.StartY)
+	assert.False(t, m.inDetail(), "single click on selected row should not drill down")
+}
+
+// TestDoubleClickExpiredDoesNotDrill verifies that two clicks with too much
+// time between them do not trigger drilldown.
+func TestDoubleClickExpiredDoesNotDrill(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	tab := m.effectiveTab()
+	require.NotNil(t, tab)
+	require.NotEmpty(t, tab.CellRows)
+
+	hasDrilldown := false
+	for i, spec := range tab.Specs {
+		if spec.Kind == cellDrilldown {
+			tab.ColCursor = i
+			hasDrilldown = true
+			break
+		}
+	}
+	if !hasDrilldown {
+		t.Skip("no drilldown column available")
+	}
+
+	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
+	z := requireZone(t, m, "row-0")
+
+	sendClick(m, colX, z.StartY)
+	// Simulate an expired click by backdating the recorded time.
+	m.lastRowClick.at = m.lastRowClick.at.Add(-time.Second)
+
+	z = requireZone(t, m, "row-0")
+	sendClick(m, colX, z.StartY)
+	assert.False(t, m.inDetail(), "expired double-click should not trigger drilldown")
+}
+
+// TestDoubleClickDifferentRowDoesNotDrill verifies that clicking two
+// different rows in quick succession does not trigger drilldown.
+func TestDoubleClickDifferentRowDoesNotDrill(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	tab := m.effectiveTab()
+	require.NotNil(t, tab)
+	require.Greater(t, len(tab.CellRows), 1, "need at least 2 rows")
+
+	hasDrilldown := false
+	for i, spec := range tab.Specs {
+		if spec.Kind == cellDrilldown {
+			tab.ColCursor = i
+			hasDrilldown = true
+			break
+		}
+	}
+	if !hasDrilldown {
+		t.Skip("no drilldown column available")
+	}
+
+	tab.Table.SetCursor(0)
+	colX := drilldownColX(t, m, tab)
+	z0 := requireZone(t, m, "row-0")
+	sendClick(m, colX, z0.StartY)
+
+	z1 := requireZone(t, m, "row-1")
+	sendClick(m, colX, z1.StartY)
+	assert.False(t, m.inDetail(), "clicking different rows should not trigger drilldown")
+	assert.Equal(t, 1, tab.Table.Cursor(), "second click should select row 1")
 }
 
 // TestDashboardScrollWheel verifies that scroll wheel events in the
@@ -279,6 +432,76 @@ func TestDashboardScrollWheel(t *testing.T) {
 
 	sendMouse(m, 10, 10, tea.MouseButtonWheelUp, tea.MouseActionPress)
 	assert.Equal(t, 0, m.dash.cursor, "scroll up in dashboard should move cursor back")
+}
+
+// TestDashboardRowClickSelects verifies that a single click on a dashboard
+// row selects it without jumping.
+func TestDashboardRowClickSelects(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	sendKey(m, "D")
+	if !m.dashboardVisible() {
+		t.Skip("dashboard has no data to display")
+	}
+	require.Greater(t, len(m.dash.nav), 1, "need multiple dashboard nav items")
+
+	m.dash.cursor = 0
+	// Render once to populate all zones including overlay.
+	m.View()
+	oz := m.zones.Get(zoneOverlay)
+	if oz == nil || oz.IsZero() {
+		t.Skip("overlay zone not rendered")
+	}
+	z := requireZone(t, m, "dash-1")
+
+	sendClick(m, z.StartX, z.StartY)
+	assert.True(t, m.dashboardVisible(), "single click should not close dashboard")
+	assert.Equal(t, 1, m.dash.cursor, "single click should move dashboard cursor")
+}
+
+// TestDashboardDoubleClickJumps verifies that double-clicking a dashboard
+// row jumps to the item (closes the dashboard and switches tabs).
+func TestDashboardDoubleClickJumps(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	sendKey(m, "D")
+	if !m.dashboardVisible() {
+		t.Skip("dashboard has no data to display")
+	}
+	require.Greater(t, len(m.dash.nav), 1, "need multiple dashboard nav items")
+
+	// Find a jumpable (non-header, non-info-only) row.
+	jumpIdx := -1
+	for i, nav := range m.dash.nav {
+		if !nav.IsHeader && !nav.InfoOnly {
+			jumpIdx = i
+			break
+		}
+	}
+	if jumpIdx < 0 {
+		t.Skip("no jumpable dashboard row")
+	}
+
+	m.dash.cursor = 0
+	// Render once to populate all zones including overlay.
+	m.View()
+	oz := m.zones.Get(zoneOverlay)
+	if oz == nil || oz.IsZero() {
+		t.Skip("overlay zone not rendered")
+	}
+	z := requireZone(t, m, fmt.Sprintf("dash-%d", jumpIdx))
+
+	// First click selects.
+	sendClick(m, z.StartX, z.StartY)
+	require.True(t, m.dashboardVisible(), "single click should keep dashboard open")
+	require.Equal(t, jumpIdx, m.dash.cursor)
+
+	// Second click within threshold jumps.
+	z = requireZone(t, m, fmt.Sprintf("dash-%d", jumpIdx))
+	sendClick(m, z.StartX, z.StartY)
+	assert.False(t, m.dashboardVisible(), "double-click should close dashboard and jump")
 }
 
 // TestDashboardDismissOnOutsideClick verifies that clicking outside the

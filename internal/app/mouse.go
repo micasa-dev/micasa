@@ -5,9 +5,20 @@ package app
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+// doubleClickThreshold is the maximum duration between two clicks on the
+// same row for them to count as a double-click.
+const doubleClickThreshold = 300 * time.Millisecond
+
+// rowClickState tracks the last row click for double-click detection.
+type rowClickState struct {
+	at  time.Time
+	row int
+}
 
 // Zone ID prefixes for clickable UI regions.
 const (
@@ -92,7 +103,7 @@ func (m *Model) handleLeftClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Row click.
+	// Row click: single click selects row+column, double-click drills down.
 	if tab := m.effectiveTab(); tab != nil {
 		total := len(tab.CellRows)
 		if total > 0 {
@@ -112,18 +123,19 @@ func (m *Model) handleLeftClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			start, end := visibleRange(total, height, cursor)
 			for i := start; i < end; i++ {
 				if m.zones.Get(fmt.Sprintf("%s%d", zoneRow, i)).InBounds(msg) {
-					if i == cursor {
-						// Click on already-selected row: drilldown/enter.
-						if m.mode == modeNormal {
-							if err := m.handleNormalEnter(); err != nil {
-								m.setStatusError(err.Error())
-							}
-							if m.mode == modeForm {
-								return m, m.formInitCmd()
-							}
+					now := time.Now()
+					isDouble := m.lastRowClick.row == i &&
+						!m.lastRowClick.at.IsZero() &&
+						now.Sub(m.lastRowClick.at) <= doubleClickThreshold
+					if isDouble && m.mode == modeNormal {
+						m.lastRowClick = rowClickState{}
+						if err := m.handleNormalEnter(); err != nil {
+							m.setStatusError(err.Error())
 						}
 					} else {
 						tab.Table.SetCursor(i)
+						m.selectClickedColumn(tab, msg)
+						m.lastRowClick = rowClickState{at: now, row: i}
 					}
 					return m, nil
 				}
@@ -208,20 +220,49 @@ func (m *Model) handleHintClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 // handleOverlayClick handles clicks within an active overlay.
 func (m *Model) handleOverlayClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	// Dashboard row clicks.
+	// Dashboard row clicks: single click selects, double-click jumps.
 	if m.dashboardVisible() {
 		for i := range m.dash.nav {
 			if m.zones.Get(fmt.Sprintf("%s%d", zoneDashRow, i)).InBounds(msg) {
-				if i == m.dash.cursor {
+				now := time.Now()
+				isDouble := m.lastDashClick.row == i &&
+					!m.lastDashClick.at.IsZero() &&
+					now.Sub(m.lastDashClick.at) <= doubleClickThreshold
+				if isDouble {
+					m.lastDashClick = rowClickState{}
 					m.dashJump()
 				} else {
 					m.dash.cursor = i
+					m.lastDashClick = rowClickState{at: now, row: i}
 				}
 				return m, nil
 			}
 		}
 	}
 	return m, nil
+}
+
+// selectClickedColumn updates the tab's column cursor to match the column
+// zone the click's X coordinate falls within. Column header zones (col-N)
+// share the same X ranges as body cells, so we reuse them.
+func (m *Model) selectClickedColumn(tab *Tab, msg tea.MouseMsg) {
+	vSpecs, _, _, _, _ := visibleProjection(tab)
+	width := m.effectiveWidth()
+	normalSep := m.styles.TableSeparator().Render(" │ ")
+	vp := computeTableViewport(tab, width, normalSep, m.cur.Symbol())
+	for i := range vSpecs {
+		z := m.zones.Get(fmt.Sprintf("%s%d", zoneCol, i))
+		if z == nil || z.IsZero() {
+			continue
+		}
+		if msg.X >= z.StartX && msg.X <= z.EndX {
+			if i < len(vp.VisToFull) {
+				tab.ColCursor = vp.VisToFull[i]
+				m.updateTabViewport(tab)
+			}
+			return
+		}
+	}
 }
 
 // handleScroll scrolls the active surface by delta lines.
