@@ -2365,7 +2365,7 @@ func (m *Model) startQuickDocumentForm() error {
 }
 
 func (m *Model) startEditDocumentForm(id uint) error {
-	doc, err := m.store.GetDocument(id)
+	doc, err := m.store.GetDocumentMetadata(id)
 	if err != nil {
 		return fmt.Errorf("load document: %w", err)
 	}
@@ -2564,7 +2564,7 @@ func (m *Model) showTesseractHint() {
 }
 
 func (m *Model) inlineEditDocument(id uint, col documentCol) error {
-	doc, err := m.store.GetDocument(id)
+	doc, err := m.store.GetDocumentMetadata(id)
 	if err != nil {
 		return fmt.Errorf("load document: %w", err)
 	}

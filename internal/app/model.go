@@ -1990,7 +1990,9 @@ func (m *Model) handlePullProgress(msg pullProgressMsg) tea.Cmd {
 			docID := *m.ex.pendingExtractionDocID
 			m.ex.pendingExtractionDocID = nil
 			doc, err := m.store.GetDocument(docID)
-			if err == nil {
+			if err != nil {
+				m.setStatusError("load document for extraction: " + err.Error())
+			} else {
 				return m.startExtractionOverlay(
 					docID, doc.FileName, doc.Data, doc.MIMEType, doc.ExtractedText,
 				)
@@ -2105,9 +2107,10 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 	}
 	docID := *m.fs.editID
 
-	// Load the saved document to get its current state.
-	doc, err := m.store.GetDocument(docID)
+	// Load metadata (no BLOB) to decide whether extraction is needed.
+	meta, err := m.store.GetDocumentMetadata(docID)
 	if err != nil {
+		m.setStatusError("load document for extraction: " + err.Error())
 		return nil
 	}
 
@@ -2115,7 +2118,7 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 	llmReady := m.ex.extractionEnabled && m.extractionLLMClient() != nil && m.ex.extractionReady
 
 	// Determine if async extraction is needed.
-	needsExtract := extract.NeedsOCR(m.ex.extractors, doc.MIMEType)
+	needsExtract := extract.NeedsOCR(m.ex.extractors, meta.MIMEType)
 
 	// If nothing async is needed, bail early.
 	if !needsExtract && !llmReady {
@@ -2127,6 +2130,13 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 				return m.checkExtractionModelCmd()
 			}
 		}
+		return nil
+	}
+
+	// Extraction needed -- load the full document with BLOB data.
+	doc, err := m.store.GetDocument(docID)
+	if err != nil {
+		m.setStatusError("load document for extraction: " + err.Error())
 		return nil
 	}
 

@@ -1171,6 +1171,23 @@ func (s *Store) GetDocument(id uint) (Document, error) {
 	return getByID[Document](s, id, identity)
 }
 
+// GetDocumentMetadata loads a document by ID without the Data BLOB,
+// ExtractData, or other heavy columns. Use GetDocument when you need
+// the file bytes.
+func (s *Store) GetDocumentMetadata(id uint) (Document, error) {
+	return getByID[Document](s, id, func(db *gorm.DB) *gorm.DB {
+		return db.Select(metadataDocumentColumns)
+	})
+}
+
+// metadataDocumentColumns includes everything listDocumentColumns has
+// plus ExtractedText, which callers like afterDocumentSave need for
+// extraction decisions.
+var metadataDocumentColumns = append(
+	append([]string(nil), listDocumentColumns...),
+	ColExtractedText,
+)
+
 func (s *Store) CreateDocument(doc *Document) error {
 	if doc.SizeBytes > 0 &&
 		uint64(doc.SizeBytes) > s.maxDocumentSize { //nolint:gosec // SizeBytes is non-negative here

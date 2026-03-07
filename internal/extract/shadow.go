@@ -490,7 +490,7 @@ func commitUpdateDocument(store *data.Store, op Operation) error {
 	if rowID == 0 {
 		return fmt.Errorf("update documents requires id in data")
 	}
-	doc, err := store.GetDocument(rowID)
+	doc, err := store.GetDocumentMetadata(rowID)
 	if err != nil {
 		return fmt.Errorf("get document %d: %w", rowID, err)
 	}
