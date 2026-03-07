@@ -167,7 +167,6 @@ These have been repeatedly requested. Violating them wastes the user's time.
 Use these skills at the indicated times. Each skill contains full procedural
 details; do not duplicate that detail here.
 
-- `/pre-commit-check` -- before every `git commit`
 - `/commit` -- commit conventions (types, scopes, CI trigger phrases)
 - `/create-pr` -- PR body, rebase merges, description maintenance
 - `/audit-docs` -- after features or fixes
@@ -319,8 +318,8 @@ that don't apply to the codebase as a whole.
 - Write the code as well factored and human readable as you possibly can.
 - When running tests directly: `go test -shuffle=on ./...` (all packages,
   shuffled, no `-v`).
-- Run long commands (`go test`, `go build`, `nix run '.#pre-commit'`) in the
-  background so you can continue working while they execute.
+- Run long commands (`go test`, `go build`) in the background so you can
+  continue working while they execute.
 - Every so often, take a breather and find opportunities to refactor code and
   add more thorough tests.
 - "Refactoring" includes **all** code in the repo: Go, JS/CSS in

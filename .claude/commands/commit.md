@@ -5,7 +5,8 @@ Create a commit following this repo's conventions.
 
 ## Before committing
 
-Run `/pre-commit-check` first. Every step must pass.
+Do not run pre-commit hooks manually -- they run automatically on
+`git commit`. Just make sure the code compiles and tests pass.
 
 ## Commit message format
 
