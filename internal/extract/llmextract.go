@@ -53,6 +53,8 @@ func operationExtractionSystemPrompt(ctx SchemaContext) string {
 
 	b.WriteString("\n")
 	b.WriteString(operationExtractionRules())
+	b.WriteString("\n\n")
+	b.WriteString(operationExtractionExamples)
 	return b.String()
 }
 
@@ -156,6 +158,129 @@ Example:
 10. For maintenance schedules (from manuals), create maintenance_items.
 11. For contractor/vendor cost estimates (bids, proposals), create quotes with the correct project_id and vendor_id. Incidental dollar amounts (e.g. in receipts or manuals) are not quotes.
 12. Only use "create" and "update". No other actions.`
+
+const operationExtractionExamples = `## Worked examples
+
+Below are complete input/output examples for representative document types.
+
+### Example 1: Contractor invoice
+
+Input:
+
+Filename: garcia-plumbing-invoice-2024-11.pdf
+MIME: application/pdf
+
+---
+
+Source: pdftotext
+
+GARCIA PLUMBING LLC
+123 Main St, Springfield IL 62701
+Phone: (217) 555-0147
+
+INVOICE #1042
+Date: 2024-11-15
+
+Bill To: Jane Homeowner
+Project: Master bathroom remodel
+
+Description                     Qty    Rate      Amount
+-------------------------------------------------------
+Rough-in plumbing labor          16h   $95.00   $1,520.00
+PEX tubing 1/2" (100 ft)         1    $89.00      $89.00
+SharkBite fittings (assorted)    12     $8.50     $102.00
+Drain assembly kit                1    $45.00      $45.00
+-------------------------------------------------------
+                          Labor:              $1,520.00
+                       Materials:                $236.00
+                           Total:             $1,756.00
+
+Payment due within 30 days.
+
+Output:
+
+{"operations": [
+  {"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing LLC", "phone": "(217) 555-0147"}},
+  {"action": "create", "table": "projects", "data": {"title": "Master bathroom remodel", "status": "underway"}},
+  {"action": "create", "table": "quotes", "data": {"project_id": 1, "vendor_id": 1, "total_cents": 175600, "labor_cents": 152000, "materials_cents": 23600, "notes": "Invoice #1042, 2024-11-15. 16h rough-in plumbing, PEX tubing, SharkBite fittings, drain assembly."}}
+], "document": {"action": "update", "data": {"id": 42, "title": "Garcia Plumbing invoice #1042", "entity_kind": "quote", "entity_id": 1}}}
+
+### Example 2: Appliance manual
+
+Input:
+
+Filename: bosch-500-dishwasher-manual.pdf
+MIME: application/pdf
+
+---
+
+Source: pdftotext
+
+Bosch 500 Series Dishwasher
+Model: SHPM65Z55N
+Use & Care Manual
+
+MAINTENANCE SCHEDULE
+
+To keep your dishwasher running efficiently, perform the following at the
+recommended intervals:
+
+- Clean the filter assembly: every 1 month. Remove the filter at the bottom
+  of the tub, rinse under running water, and replace.
+- Inspect and clean spray arms: every 6 months. Remove both spray arms and
+  clear any debris from the nozzles with a toothpick.
+- Run a cleaning cycle: every 3 months. Place a dishwasher-safe cup of white
+  vinegar on the top rack and run a hot cycle empty.
+- Check the door gasket: every 6 months. Wipe the rubber seal around the door
+  with a damp cloth; replace if cracked or worn.
+
+Output:
+
+{"operations": [
+  {"action": "create", "table": "appliances", "data": {"name": "Dishwasher", "brand": "Bosch", "model_number": "SHPM65Z55N", "notes": "500 Series"}},
+  {"action": "create", "table": "maintenance_items", "data": {"name": "Clean dishwasher filter assembly", "appliance_id": 1, "interval_months": 1, "notes": "Remove filter at bottom of tub, rinse under running water, replace."}},
+  {"action": "create", "table": "maintenance_items", "data": {"name": "Inspect and clean dishwasher spray arms", "appliance_id": 1, "interval_months": 6, "notes": "Remove both spray arms, clear debris from nozzles with a toothpick."}},
+  {"action": "create", "table": "maintenance_items", "data": {"name": "Run dishwasher cleaning cycle", "appliance_id": 1, "interval_months": 3, "notes": "Place a dishwasher-safe cup of white vinegar on top rack, run hot cycle empty."}},
+  {"action": "create", "table": "maintenance_items", "data": {"name": "Check dishwasher door gasket", "appliance_id": 1, "interval_months": 6, "notes": "Wipe rubber seal around door with damp cloth; replace if cracked or worn."}}
+], "document": {"action": "update", "data": {"id": 7, "title": "Bosch 500 Series dishwasher manual", "entity_kind": "appliance", "entity_id": 1}}}
+
+### Example 3: Home inspection report
+
+Input:
+
+Filename: annual-inspection-2024.pdf
+MIME: application/pdf
+
+---
+
+Source: tesseract
+
+HOME INSPECTION REPORT
+Date: 2024-09-20
+Inspector: Midwest Home Inspectors
+
+FINDINGS
+
+1. HVAC System (Carrier 24ACC636A003)
+   - Condenser coil has visible corrosion on lower fins.
+   - Recommend professional cleaning and evaluation within 60 days.
+
+2. Roof
+   - Three cracked shingles on south-facing slope near chimney flashing.
+   - Minor issue; repair before winter to prevent water intrusion.
+
+3. Water Heater (Rheem PROG50-38N RH67)
+   - Anode rod not inspected in over 3 years; likely depleted.
+   - Replace anode rod to extend tank life. Estimated cost: $150-200.
+
+Output:
+
+{"operations": [
+  {"action": "create", "table": "vendors", "data": {"name": "Midwest Home Inspectors"}},
+  {"action": "create", "table": "incidents", "data": {"title": "HVAC condenser coil corrosion", "description": "Condenser coil has visible corrosion on lower fins. Recommend professional cleaning and evaluation within 60 days.", "status": "open", "severity": "soon", "date_noticed": "2024-09-20", "appliance_id": 5}},
+  {"action": "create", "table": "incidents", "data": {"title": "Cracked roof shingles near chimney", "description": "Three cracked shingles on south-facing slope near chimney flashing. Repair before winter to prevent water intrusion.", "status": "open", "severity": "soon", "date_noticed": "2024-09-20", "location": "Roof, south-facing slope"}},
+  {"action": "create", "table": "incidents", "data": {"title": "Water heater anode rod depleted", "description": "Anode rod not inspected in over 3 years; likely depleted. Replace anode rod to extend tank life.", "status": "open", "severity": "soon", "date_noticed": "2024-09-20", "cost_cents": 17500, "appliance_id": 8}}
+], "document": {"action": "update", "data": {"id": 15, "title": "Annual home inspection 2024", "notes": "Inspection by Midwest Home Inspectors, 2024-09-20. Findings: HVAC corrosion, cracked roof shingles, water heater anode rod.", "entity_kind": "vendor", "entity_id": 1}}}`
 
 // StripCodeFences removes markdown code fences that LLMs sometimes wrap
 // around JSON output. Handles fences anywhere in the text (not just at

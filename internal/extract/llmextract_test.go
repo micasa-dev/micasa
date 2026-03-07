@@ -184,6 +184,30 @@ func TestOperationExtractionRules_CoversAllTables(t *testing.T) {
 	assert.Contains(t, rules, "Document field")
 }
 
+func TestBuildExtractionPrompt_ContainsFewShotExamples(t *testing.T) {
+	t.Parallel()
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:    1,
+		Filename: "test.pdf",
+		MIME:     "application/pdf",
+		Schema: SchemaContext{
+			DDL: map[string]string{
+				data.TableVendors: "CREATE TABLE `vendors` (`id` integer)",
+			},
+		},
+		Sources: []TextSource{{Tool: "pdftotext", Text: "text"}},
+	})
+
+	sys := msgs[0].Content
+	assert.Contains(t, sys, "Worked examples")
+	assert.Contains(t, sys, "Contractor invoice")
+	assert.Contains(t, sys, "Appliance manual")
+	assert.Contains(t, sys, "Home inspection report")
+	assert.Contains(t, sys, "Garcia Plumbing LLC")
+	assert.Contains(t, sys, "SHPM65Z55N")
+	assert.Contains(t, sys, "Midwest Home Inspectors")
+}
+
 // --- Schema context formatting tests ---
 
 func TestFormatDDLBlock(t *testing.T) {
