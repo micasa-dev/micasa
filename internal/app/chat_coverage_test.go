@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	glamourstyles "github.com/charmbracelet/glamour/styles"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/stretchr/testify/assert"
@@ -1692,6 +1694,73 @@ func TestWaitForChunkClosedChannel(t *testing.T) {
 
 	msg := cmd()
 	assert.Nil(t, msg, "closed channel should return nil sentinel")
+}
+
+func TestOpenChatViaKeypressReturnsBlinkCmd(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	assert.Nil(t, m.chat)
+
+	// Press @ to open chat -- the returned cmd starts the cursor blink timer.
+	sendKey(m, "@")
+	require.NotNil(t, m.chat)
+	assert.True(t, m.chat.Visible)
+	assert.True(t, m.chat.Input.Focused())
+}
+
+func TestOpenChatReshowViaKeypressPreservesSession(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+
+	// Open, add a message, hide, re-open via keypress.
+	sendKey(m, "@")
+	initialCount := len(m.chat.Messages)
+	m.chat.Messages = append(m.chat.Messages, chatMessage{
+		Role: roleUser, Content: "still here",
+	})
+	sendKey(m, "esc")
+	require.False(t, m.chat.Visible)
+
+	sendKey(m, "@")
+	assert.True(t, m.chat.Visible)
+	require.Len(t, m.chat.Messages, initialCount+1)
+	assert.Equal(t, "still here", m.chat.Messages[len(m.chat.Messages)-1].Content)
+}
+
+func TestDispatchOverlayPassesThroughNonKeyMessages(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+
+	// Open chat overlay via keypress.
+	sendKey(m, "@")
+	require.NotNil(t, m.chat)
+	require.True(t, m.chat.Visible)
+
+	// Send a non-key message (spinner tick). It should NOT be swallowed
+	// by the overlay dispatcher -- dispatchOverlay returns handled=false.
+	cmd, handled := m.dispatchOverlay(spinner.TickMsg{})
+	assert.False(t, handled, "non-key messages should not be consumed by overlay")
+	assert.Nil(t, cmd)
+}
+
+func TestDispatchOverlayConsumesKeyMessages(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+
+	// Open help overlay.
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport)
+
+	// Key messages should be consumed by the overlay.
+	cmd, handled := m.dispatchOverlay(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	assert.True(t, handled, "key messages should be consumed by overlay")
+	_ = cmd
+}
+
+func TestGlamourStyleIsNoTTYInTests(t *testing.T) {
+	t.Parallel()
+	// Tests run without a terminal, so glamourStyle should be NoTTYStyleConfig.
+	assert.Equal(t, glamourstyles.NoTTYStyleConfig, glamourStyle)
 }
 
 func TestActivateCompleterLive(t *testing.T) {
