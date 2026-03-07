@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
+	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -204,4 +206,86 @@ func TestFilePickerTitleShowsCurrentDir(t *testing.T) {
 	parent := shortenHome(filepath.Dir(root))
 	assert.Contains(t, title, parent,
 		"title should update to show the parent directory")
+}
+
+func TestQuickDocumentCtrlSSavesWithoutExtraction(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "invoice.txt"), []byte("hello"), 0o600))
+	t.Chdir(root)
+
+	m := newTestModelWithStore(t)
+
+	// Configure an LLM client so extraction WOULD be triggered if the
+	// deferred path ran. This is the key condition that exposes the bug.
+	client, err := llm.NewClient("ollama", "http://localhost:11434", "test", "", 30*time.Second)
+	require.NoError(t, err)
+	m.ex.extractionClient = client
+	m.ex.extractionEnabled = true
+	m.ex.extractionReady = true
+
+	require.NoError(t, m.startQuickDocumentForm())
+	require.Equal(t, modeForm, m.mode)
+
+	// Simulate file selection by setting the form data path directly.
+	fd, ok := m.fs.formData.(*documentFormData)
+	require.True(t, ok)
+	require.True(t, fd.DeferCreate)
+	fd.FilePath = filepath.Join(root, "invoice.txt")
+
+	// ctrl+s should save the document without triggering extraction.
+	sendKey(m, keyCtrlS)
+
+	assert.Nil(t, m.ex.extraction,
+		"ctrl+s on quick-add form should not start extraction overlay")
+	assert.NotEqual(t, modeForm, m.mode,
+		"form should close after ctrl+s save")
+
+	// Document should be persisted in the DB.
+	docs, err := m.store.ListDocuments(false)
+	require.NoError(t, err)
+	require.Len(t, docs, 1)
+	assert.Equal(t, "invoice.txt", docs[0].FileName)
+}
+
+func TestQuickDocumentCtrlSParseErrorShowsStatus(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	m := newTestModelWithStore(t)
+	require.NoError(t, m.startQuickDocumentForm())
+
+	// Point at a non-existent file to trigger a parse error.
+	fd, ok := m.fs.formData.(*documentFormData)
+	require.True(t, ok)
+	fd.FilePath = filepath.Join(root, "no-such-file.txt")
+
+	sendKey(m, keyCtrlS)
+
+	assert.Equal(t, statusError, m.status.Kind,
+		"parse failure should surface a status error")
+	assert.Equal(t, modeForm, m.mode,
+		"form should remain open on error")
+}
+
+func TestQuickDocumentCtrlSFileTooLargeShowsStatus(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "huge.txt")
+	require.NoError(t, os.WriteFile(file, []byte("data"), 0o600))
+	t.Chdir(root)
+
+	m := newTestModelWithStore(t)
+	// Set max size to 1 byte so the 4-byte file exceeds it.
+	require.NoError(t, m.store.SetMaxDocumentSize(1))
+
+	require.NoError(t, m.startQuickDocumentForm())
+	fd, ok := m.fs.formData.(*documentFormData)
+	require.True(t, ok)
+	fd.FilePath = file
+
+	sendKey(m, keyCtrlS)
+
+	assert.Equal(t, statusError, m.status.Kind,
+		"oversized file should surface a status error")
+	assert.Equal(t, modeForm, m.mode,
+		"form should remain open on error")
 }
