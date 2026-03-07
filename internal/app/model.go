@@ -2178,10 +2178,14 @@ func (m *Model) saveForm() tea.Cmd {
 
 // saveFormInPlace persists the form data without closing the form,
 // so the user can continue editing after a Ctrl+S save.
+//
+// Ctrl+S is a quiet save: it never triggers the extraction pipeline.
+// Extraction only runs on form completion (Enter) via saveForm.
 func (m *Model) saveFormInPlace() tea.Cmd {
-	// Deferred creation: Ctrl+S acts the same as Enter for quick-add.
+	// Quick-add documents: create the document directly without
+	// triggering extraction. Use Enter for the deferred extraction flow.
 	if fd, ok := m.fs.formData.(*documentFormData); ok && fd.DeferCreate {
-		return m.saveDeferredDocumentForm()
+		return m.saveQuickDocumentDirect()
 	}
 	kind := m.fs.formKind
 	isCreate := m.fs.editID == nil
@@ -2200,7 +2204,29 @@ func (m *Model) saveFormInPlace() tea.Cmd {
 			selectRowByID(tab, *m.fs.editID)
 		}
 	}
-	return m.afterDocumentSaveIfNeeded(kind)
+	return nil
+}
+
+// saveQuickDocumentDirect creates a document from the quick-add form
+// without opening the extraction overlay. Called by ctrl+s; the Enter
+// path (saveForm -> saveDeferredDocumentForm) handles deferred extraction.
+func (m *Model) saveQuickDocumentDirect() tea.Cmd {
+	result, err := m.parseDocumentFormData()
+	if err != nil {
+		m.setStatusError(err.Error())
+		return nil
+	}
+	doc := result.Doc
+	if err := m.store.CreateDocument(&doc); err != nil {
+		m.setStatusError(err.Error())
+		return nil
+	}
+	m.reloadAfterMutation()
+	m.exitForm()
+	if result.ExtractErr != nil {
+		m.setStatusInfo(fmt.Sprintf("extraction incomplete: %s", result.ExtractErr))
+	}
+	return nil
 }
 
 // afterDocumentSaveIfNeeded triggers async LLM extraction for document forms.
