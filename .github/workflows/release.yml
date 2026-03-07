@@ -5,7 +5,7 @@ name: Release Artifacts
 
 on:
   release:
-    types: [published]
+    types: [created]
 
 concurrency:
   group: release-artifacts
@@ -51,6 +51,11 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.event.release.tag_name }}" --draft=false
 
       - name: Clean up untagged GHCR images
         env:

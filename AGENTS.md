@@ -225,6 +225,8 @@ details; do not duplicate that detail here.
   Fix commands to work under PowerShell.
 - **Reproduction steps in PRs and issues**: Every bug-fix PR and bug-report
   issue MUST include numbered steps to reproduce.
+- **No test plans in PRs**: Omit the "Test plan" section entirely unless
+  something genuinely cannot be automated.
 - **No mass-history-cleanup logs**: Don't log git history rewrites.
 - **CLAUDE.md changes go on the working branch**: Never edit CLAUDE.md as
   uncommitted changes in the main checkout.
