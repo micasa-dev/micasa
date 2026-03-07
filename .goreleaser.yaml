@@ -3,6 +3,10 @@
 
 version: 2
 
+before:
+  hooks:
+    - go mod vendor
+
 builds:
   - main: ./cmd/micasa
     binary: micasa
@@ -63,6 +67,12 @@ dockers_v2:
       "org.opencontainers.image.documentation": https://micasa.dev/docs/
       "org.opencontainers.image.licenses": Apache-2.0
       "org.opencontainers.image.version": "{{ .Version }}"
+
+source:
+  enabled: true
+  prefix_template: "{{ .ProjectName }}-{{ .Version }}/"
+  files:
+    - vendor/**
 
 release:
   mode: keep-existing
