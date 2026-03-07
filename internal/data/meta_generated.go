@@ -8,6 +8,7 @@ package data
 // Table name constants derived from GORM model structs.
 const (
 	TableAppliances            = "appliances"
+	TableChatInputs            = "chat_inputs"
 	TableDeletionRecords       = "deletion_records"
 	TableDocuments             = "documents"
 	TableHouseProfiles         = "house_profiles"
@@ -18,6 +19,7 @@ const (
 	TableProjects              = "projects"
 	TableQuotes                = "quotes"
 	TableServiceLogEntries     = "service_log_entries"
+	TableSettings              = "settings"
 	TableVendors               = "vendors"
 )
 
@@ -59,10 +61,12 @@ const (
 	ColHOAName           = "hoa_name"
 	ColHeatingType       = "heating_type"
 	ColID                = "id"
+	ColInput             = "input"
 	ColInsuranceCarrier  = "insurance_carrier"
 	ColInsurancePolicy   = "insurance_policy"
 	ColInsuranceRenewal  = "insurance_renewal"
 	ColIntervalMonths    = "interval_months"
+	ColKey               = "key"
 	ColLaborCents        = "labor_cents"
 	ColLastServicedAt    = "last_serviced_at"
 	ColLocation          = "location"
@@ -101,6 +105,7 @@ const (
 	ColTitle             = "title"
 	ColTotalCents        = "total_cents"
 	ColUpdatedAt         = "updated_at"
+	ColValue             = "value"
 	ColVendorID          = "vendor_id"
 	ColWarrantyExpiry    = "warranty_expiry"
 	ColWaterSource       = "water_source"
@@ -108,3 +113,24 @@ const (
 	ColWiringType        = "wiring_type"
 	ColYearBuilt         = "year_built"
 )
+
+// Models returns a pointer to every GORM model struct in source order.
+// Used by AutoMigrate and FK introspection.
+func Models() []any {
+	return []any{
+		&HouseProfile{},
+		&ProjectType{},
+		&Vendor{},
+		&Project{},
+		&Quote{},
+		&MaintenanceCategory{},
+		&Appliance{},
+		&MaintenanceItem{},
+		&Incident{},
+		&ServiceLogEntry{},
+		&Document{},
+		&DeletionRecord{},
+		&Setting{},
+		&ChatInput{},
+	}
+}

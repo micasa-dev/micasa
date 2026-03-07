@@ -59,6 +59,20 @@ const (
 	DocumentEntityIncident    = "incident"
 )
 
+// EntityKindToTable maps document entity_kind values to their
+// corresponding table names. Document uses a manual polymorphic
+// pattern (EntityKind + EntityID) rather than GORM's polymorphic
+// tags, so this mapping cannot be derived via schema introspection.
+var EntityKindToTable = map[string]string{
+	DocumentEntityProject:     TableProjects,
+	DocumentEntityQuote:       TableQuotes,
+	DocumentEntityMaintenance: TableMaintenanceItems,
+	DocumentEntityAppliance:   TableAppliances,
+	DocumentEntityServiceLog:  TableServiceLogEntries,
+	DocumentEntityVendor:      TableVendors,
+	DocumentEntityIncident:    TableIncidents,
+}
+
 type HouseProfile struct {
 	ID               uint `gorm:"primaryKey"`
 	Nickname         string
@@ -246,4 +260,21 @@ type DeletionRecord struct {
 	TargetID   uint       `gorm:"index"`
 	DeletedAt  time.Time  `gorm:"index"`
 	RestoredAt *time.Time `gorm:"index:idx_entity_restored,priority:2"`
+}
+
+// Setting is a simple key-value store for app preferences that persist
+// across sessions (e.g. last-used LLM model). Stored in SQLite so a
+// single "micasa backup backup.db" captures everything.
+type Setting struct {
+	Key       string `gorm:"primaryKey"`
+	Value     string
+	UpdatedAt time.Time
+}
+
+// ChatInput stores a single chat prompt for cross-session history.
+// Ordered by creation time, newest last.
+type ChatInput struct {
+	ID        uint   `gorm:"primaryKey"`
+	Input     string `gorm:"not null"`
+	CreatedAt time.Time
 }

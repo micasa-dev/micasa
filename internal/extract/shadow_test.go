@@ -765,6 +765,290 @@ func TestRemapFK(t *testing.T) {
 	assert.Nil(t, row["vendor_id"])
 }
 
+// --- fkGraph tests ---
+
+func TestFKGraph_AllCreatablesPresent(t *testing.T) {
+	t.Parallel()
+	g := creatableFKs
+
+	expected := map[string]bool{
+		data.TableVendors:          true,
+		data.TableAppliances:       true,
+		data.TableQuotes:           true,
+		data.TableMaintenanceItems: true,
+		data.TableDocuments:        true,
+	}
+
+	actual := make(map[string]bool, len(g.order))
+	for _, table := range g.order {
+		actual[table] = true
+	}
+	assert.Equal(t, expected, actual)
+}
+
+func TestFKGraph_OrderRespectsRelationships(t *testing.T) {
+	t.Parallel()
+	g := creatableFKs
+
+	pos := make(map[string]int, len(g.order))
+	for i, table := range g.order {
+		pos[table] = i
+	}
+
+	for table, remaps := range g.remaps {
+		for _, fk := range remaps {
+			assert.Less(t, pos[fk.Table], pos[table],
+				"%s (pos %d) must come before %s (pos %d) due to FK %s",
+				fk.Table, pos[fk.Table], table, pos[table], fk.Column)
+		}
+	}
+}
+
+func TestFKGraph_KnownRemaps(t *testing.T) {
+	t.Parallel()
+	g := creatableFKs
+
+	quoteRemaps := g.remaps[data.TableQuotes]
+	var quoteFKs []string
+	for _, r := range quoteRemaps {
+		quoteFKs = append(quoteFKs, r.Column)
+	}
+	assert.Contains(t, quoteFKs, data.ColVendorID)
+
+	maintRemaps := g.remaps[data.TableMaintenanceItems]
+	var maintFKs []string
+	for _, r := range maintRemaps {
+		maintFKs = append(maintFKs, r.Column)
+	}
+	assert.Contains(t, maintFKs, data.ColApplianceID)
+}
+
+func TestFKGraph_DocumentsLast(t *testing.T) {
+	t.Parallel()
+	g := creatableFKs
+	assert.Equal(t, data.TableDocuments, g.order[len(g.order)-1])
+}
+
+func TestShadowDB_CommitReversedOrder_QuoteBeforeVendor(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, err := store.ProjectTypes()
+	require.NoError(t, err)
+	require.NoError(t, store.CreateProject(&data.Project{
+		Title:         "Kitchen Remodel",
+		ProjectTypeID: types[0].ID,
+		Status:        data.ProjectStatusPlanned,
+	}))
+	projects, err := store.ListProjects(false)
+	require.NoError(t, err)
+	projectID := projects[0].ID
+
+	sdb, err := NewShadowDB(store)
+	require.NoError(t, err)
+
+	// Ops deliberately in REVERSED order: quote first, then vendor.
+	ops := []Operation{
+		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
+			"vendor_id":   jn("1"),
+			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"total_cents": jn("150000"),
+		}},
+		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
+			"name": "Garcia Plumbing",
+		}},
+	}
+	require.NoError(t, sdb.Stage(ops))
+	require.NoError(t, sdb.Commit(store, ops))
+
+	vendors, err := store.ListVendors(false)
+	require.NoError(t, err)
+	require.Len(t, vendors, 1)
+
+	quotes, err := store.ListQuotes(false)
+	require.NoError(t, err)
+	require.Len(t, quotes, 1)
+	assert.Equal(t, vendors[0].ID, quotes[0].VendorID)
+	assert.Equal(t, projectID, quotes[0].ProjectID)
+}
+
+func TestShadowDB_CommitReversedOrder_MaintenanceBeforeAppliance(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+	catID := cats[0].ID
+
+	sdb, err := NewShadowDB(store)
+	require.NoError(t, err)
+
+	// Reversed: maintenance_item first, then appliance.
+	ops := []Operation{
+		{Action: ActionCreate, Table: data.TableMaintenanceItems, Data: map[string]any{
+			"name":            "Replace HVAC Filter",
+			"appliance_id":    jn("1"),
+			"category_id":     json.Number(fmt.Sprintf("%d", catID)),
+			"interval_months": jn("3"),
+		}},
+		{Action: ActionCreate, Table: data.TableAppliances, Data: map[string]any{
+			"name":     "HVAC Unit",
+			"brand":    "Carrier",
+			"location": "Basement",
+		}},
+	}
+	require.NoError(t, sdb.Stage(ops))
+	require.NoError(t, sdb.Commit(store, ops))
+
+	appliances, err := store.ListAppliances(false)
+	require.NoError(t, err)
+	require.Len(t, appliances, 1)
+
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.NotNil(t, items[0].ApplianceID)
+	assert.Equal(t, appliances[0].ID, *items[0].ApplianceID)
+}
+
+func TestShadowDB_CommitReversedOrder_DocumentBeforeVendor(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	sdb, err := NewShadowDB(store)
+	require.NoError(t, err)
+
+	// Reversed: document first, then vendor.
+	ops := []Operation{
+		{Action: ActionCreate, Table: data.TableDocuments, Data: map[string]any{
+			"title":       "Vendor Invoice",
+			"entity_kind": "vendor",
+			"entity_id":   jn("1"),
+		}},
+		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
+			"name": "DocVendor",
+		}},
+	}
+	require.NoError(t, sdb.Stage(ops))
+	require.NoError(t, sdb.Commit(store, ops))
+
+	vendors, err := store.ListVendors(false)
+	require.NoError(t, err)
+	require.Len(t, vendors, 1)
+
+	docs, err := store.ListDocuments(false)
+	require.NoError(t, err)
+	require.Len(t, docs, 1)
+	assert.Equal(t, "vendor", docs[0].EntityKind)
+	assert.Equal(t, vendors[0].ID, docs[0].EntityID)
+}
+
+func TestShadowDB_CommitReversedOrder_FullChain(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, err := store.ProjectTypes()
+	require.NoError(t, err)
+	require.NoError(t, store.CreateProject(&data.Project{
+		Title:         "Full Chain Project",
+		ProjectTypeID: types[0].ID,
+		Status:        data.ProjectStatusPlanned,
+	}))
+	projects, err := store.ListProjects(false)
+	require.NoError(t, err)
+	projectID := projects[0].ID
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	catID := cats[0].ID
+
+	sdb, err := NewShadowDB(store)
+	require.NoError(t, err)
+
+	// Everything reversed: documents, quotes, maintenance, appliances, vendors.
+	ops := []Operation{
+		{Action: ActionCreate, Table: data.TableDocuments, Data: map[string]any{
+			"title":       "Quote Doc",
+			"entity_kind": "quote",
+			"entity_id":   jn("1"),
+		}},
+		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
+			"vendor_id":   jn("1"),
+			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"total_cents": jn("250000"),
+		}},
+		{Action: ActionCreate, Table: data.TableMaintenanceItems, Data: map[string]any{
+			"name":            "Filter Change",
+			"appliance_id":    jn("1"),
+			"category_id":     json.Number(fmt.Sprintf("%d", catID)),
+			"interval_months": jn("6"),
+		}},
+		{Action: ActionCreate, Table: data.TableAppliances, Data: map[string]any{
+			"name":  "Furnace",
+			"brand": "Lennox",
+		}},
+		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
+			"name": "Full Chain Vendor",
+		}},
+	}
+	require.NoError(t, sdb.Stage(ops))
+	require.NoError(t, sdb.Commit(store, ops))
+
+	vendors, err := store.ListVendors(false)
+	require.NoError(t, err)
+	require.Len(t, vendors, 1)
+
+	quotes, err := store.ListQuotes(false)
+	require.NoError(t, err)
+	require.Len(t, quotes, 1)
+	assert.Equal(t, vendors[0].ID, quotes[0].VendorID)
+
+	appliances, err := store.ListAppliances(false)
+	require.NoError(t, err)
+	require.Len(t, appliances, 1)
+
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.NotNil(t, items[0].ApplianceID)
+	assert.Equal(t, appliances[0].ID, *items[0].ApplianceID)
+
+	docs, err := store.ListDocuments(false)
+	require.NoError(t, err)
+	require.Len(t, docs, 1)
+	assert.Equal(t, "quote", docs[0].EntityKind)
+}
+
+func TestShadowDB_CommitQuoteWithoutProjectID_Fails(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	sdb, err := NewShadowDB(store)
+	require.NoError(t, err)
+
+	// LLM produces a vendor + quote but omits project_id entirely.
+	ops := []Operation{
+		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
+			"name": "Sierra Structures",
+		}},
+		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
+			"vendor_id":   jn("1"),
+			"vendor_name": "Sierra Structures",
+			"total_cents": jn("485400"),
+		}},
+	}
+	require.NoError(t, sdb.Stage(ops))
+	err = sdb.Commit(store, ops)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id")
+
+	// Transaction should have rolled back -- no vendor either.
+	vendors, err := store.ListVendors(false)
+	require.NoError(t, err)
+	assert.Empty(t, vendors)
+}
+
 func TestRemapDocumentEntity(t *testing.T) {
 	t.Parallel()
 	idMap := map[string]map[uint]uint{

@@ -111,7 +111,7 @@ var ExtractionTableDefs = []TableDef{
 			{Name: "notes", Type: ColTypeString},
 		},
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"total_cents"}},
+			{Action: ActionCreate, Required: []string{"project_id", "total_cents"}},
 		},
 	},
 	{

@@ -93,6 +93,8 @@ func main() {
 	writeConstBlock(&buf, "// Table name constants derived from GORM model structs.", tableConsts)
 	buf.WriteByte('\n')
 	writeConstBlock(&buf, "// Column name constants derived from GORM model structs.", colConsts)
+	buf.WriteByte('\n')
+	writeModelsFunc(&buf, structs)
 
 	src, err := format.Source(buf.Bytes())
 	if err != nil {
@@ -123,6 +125,20 @@ func writeConstBlock(buf *bytes.Buffer, comment string, consts map[string]string
 		fmt.Fprintf(buf, "\t%s = %q\n", k, consts[k])
 	}
 	buf.WriteString(")\n")
+}
+
+// writeModelsFunc emits a Models() function that returns pointers to every
+// GORM model struct, in source order.
+func writeModelsFunc(buf *bytes.Buffer, structs []modelStruct) {
+	buf.WriteString("// Models returns a pointer to every GORM model struct in source order.\n")
+	buf.WriteString("// Used by AutoMigrate and FK introspection.\n")
+	buf.WriteString("func Models() []any {\n")
+	buf.WriteString("\treturn []any{\n")
+	for _, s := range structs {
+		fmt.Fprintf(buf, "\t\t&%s{},\n", s.name)
+	}
+	buf.WriteString("\t}\n")
+	buf.WriteString("}\n")
 }
 
 type modelStruct struct {
