@@ -2510,16 +2510,10 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 	}
 	keyMsg, ok := msg.(tea.KeyMsg)
 	if !ok {
-		// Forward non-key messages (e.g. cursor blink) to the chat
-		// textinput so the cursor keeps blinking. Without this, VHS
-		// recordings freeze after streaming because no events trigger
-		// View() redraws.
-		if m.chat != nil && m.chat.Visible && m.chat.Input.Focused() {
-			var cmd tea.Cmd
-			m.chat.Input, cmd = m.chat.Input.Update(msg)
-			return cmd, true
-		}
-		return nil, true
+		// Non-key messages (cursor blink, spinner ticks, etc.) should not
+		// be swallowed by the overlay dispatcher. Return false so the
+		// caller's normal Update path can handle them.
+		return nil, false
 	}
 	return handler(keyMsg), true
 }
