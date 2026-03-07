@@ -9,3 +9,6 @@ coverage:
     patch:
       default:
         informational: true
+
+comment:
+  layout: "files"
