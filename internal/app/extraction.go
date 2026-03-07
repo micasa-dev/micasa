@@ -1475,11 +1475,13 @@ func (m *Model) renderOperationPreviewSection(innerW int, interactive bool) stri
 	// Tab bar: active tab highlighted in explore mode, all dimmed otherwise.
 	tabParts := make([]string, 0, len(groups)*2)
 	for i, g := range groups {
+		var rendered string
 		if interactive && i == ex.previewTab {
-			tabParts = append(tabParts, m.styles.TabActive().Render(g.name))
+			rendered = m.styles.TabActive().Render(g.name)
 		} else {
-			tabParts = append(tabParts, m.styles.TabInactive().Render(g.name))
+			rendered = m.styles.TabInactive().Render(g.name)
 		}
+		tabParts = append(tabParts, m.zones.Mark(fmt.Sprintf("%s%d", zoneExtTab, i), rendered))
 		if i < len(groups)-1 {
 			tabParts = append(tabParts, "   ")
 		}

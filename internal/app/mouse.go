@@ -34,6 +34,7 @@ const (
 	// Extraction preview uses distinct prefixes to avoid colliding with
 	// main table row-N/col-N zones during overlay compositing. Without
 	// separate IDs the scanner mis-pairs interleaved markers.
+	zoneExtTab = "ext-tab-"
 	zoneExtRow = "ext-row-"
 	zoneExtCol = "ext-col-"
 )
@@ -246,8 +247,16 @@ func (m *Model) handleOverlayClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Extraction preview clicks: select row/column in explore mode.
+	// Extraction preview clicks: tab switch, row select, column select.
 	if ex := m.ex.extraction; ex != nil && ex.Visible && ex.exploring {
+		for i := range ex.previewGroups {
+			if m.zones.Get(fmt.Sprintf("%s%d", zoneExtTab, i)).InBounds(msg) {
+				ex.previewTab = i
+				ex.previewRow = 0
+				ex.previewCol = 0
+				return m, nil
+			}
+		}
 		if g := ex.activePreviewGroup(); g != nil {
 			for i := range g.cells {
 				if m.zones.Get(fmt.Sprintf("%s%d", zoneExtRow, i)).InBounds(msg) {

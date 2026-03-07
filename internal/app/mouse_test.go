@@ -30,6 +30,7 @@ func sendClick(m *Model, x, y int) {
 func requireZone(t *testing.T, m *Model, id string) *zone.ZoneInfo {
 	t.Helper()
 	m.View()
+	m.View()
 	z := m.zones.Get(id)
 	if z == nil || z.IsZero() {
 		t.Skipf("zone %q not rendered", id)
@@ -657,4 +658,30 @@ func TestExtractionClickIgnoredWhenNotExploring(t *testing.T) {
 	})
 	assert.Equal(t, 0, ex.previewRow,
 		"clicking row in non-explore mode should not update preview cursor")
+}
+
+// TestExtractionTabClickSwitchesTab verifies that clicking a tab in the
+// extraction preview switches the active preview tab.
+func TestExtractionTabClickSwitchesTab(t *testing.T) {
+	t.Parallel()
+	m := newExploreModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "Alpha"}},
+		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
+			"total_cents": 100, "vendor_name": "Alpha",
+		}},
+	})
+	ex := m.ex.extraction
+	require.Equal(t, 0, ex.previewTab)
+	require.GreaterOrEqual(t, len(ex.previewGroups), 2, "need at least 2 preview groups")
+
+	z := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtTab, 1))
+
+	m.handleOverlayClick(tea.MouseMsg{
+		X: z.StartX, Y: z.StartY,
+		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+	})
+	assert.Equal(t, 1, ex.previewTab,
+		"clicking ext-tab-1 should switch to second preview tab")
+	assert.Equal(t, 0, ex.previewRow, "tab switch should reset row cursor")
+	assert.Equal(t, 0, ex.previewCol, "tab switch should reset column cursor")
 }
