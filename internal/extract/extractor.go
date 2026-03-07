@@ -29,8 +29,8 @@ type Extractor interface {
 }
 
 // DefaultExtractors returns the standard extractors in priority order:
-// pdftotext, plaintext, PDF OCR, image OCR. Zero values for maxPages
-// and timeout cause the concrete extractors to use their own defaults.
+// pdftotext, plaintext, PDF OCR, image OCR. maxPages of 0 means no limit
+// (all pages). Zero timeout causes the concrete extractor to use its default.
 func DefaultExtractors(maxPages int, timeout time.Duration) []Extractor {
 	return []Extractor{
 		&PDFTextExtractor{Timeout: timeout},
@@ -63,7 +63,7 @@ func ExtractorTimeout(extractors []Extractor) time.Duration {
 }
 
 // ExtractorMaxPages returns the max pages from the first PDFOCRExtractor
-// in the list, or 0 (meaning "use default") if none is found.
+// in the list, or 0 (meaning "no limit") if none is found.
 func ExtractorMaxPages(extractors []Extractor) int {
 	for _, ext := range extractors {
 		if ocr, ok := ext.(*PDFOCRExtractor); ok {
@@ -152,11 +152,7 @@ func (e *PDFOCRExtractor) Extract(ctx context.Context, data []byte) (TextSource,
 	if len(data) == 0 {
 		return TextSource{}, nil
 	}
-	maxPages := e.MaxPages
-	if maxPages <= 0 {
-		maxPages = DefaultMaxExtractPages
-	}
-	text, tsv, err := ocrPDF(ctx, data, maxPages)
+	text, tsv, err := ocrPDF(ctx, data, e.MaxPages)
 	if err != nil {
 		return TextSource{}, err
 	}

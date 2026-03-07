@@ -16,9 +16,9 @@ import (
 	"sync"
 )
 
-// DefaultMaxExtractPages is the default page limit for extraction. Front-loaded info
-// (specs, warranty, maintenance) is typically in the first pages.
-const DefaultMaxExtractPages = 20
+// DefaultMaxExtractPages is the default page limit for extraction.
+// 0 means no limit (all pages are processed).
+const DefaultMaxExtractPages = 0
 
 // ocrPageResult holds the OCR output for a single page.
 type ocrPageResult struct {

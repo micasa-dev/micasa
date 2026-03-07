@@ -92,6 +92,7 @@ type extractionLogState struct {
 
 	// Per-tool image acquisition state (non-nil during acquisition phase).
 	acquireTools []extract.AcquireToolState
+	skippedPages int // pages beyond maxPages cap (0 = all processed)
 
 	// Channel references for the waitFor loop pattern.
 	extractCh <-chan extract.ExtractProgress
@@ -572,7 +573,12 @@ func (m *Model) handleExtractionProgress(msg extractionProgressMsg) tea.Cmd {
 		// OCR phase: show page progress (tool states persist for rendering).
 		switch p.Phase {
 		case "extract":
-			step.Detail = fmt.Sprintf("page %d/%d", p.Page, p.Total)
+			detail := fmt.Sprintf("page %d/%d", p.Page, p.Total)
+			if p.Skipped > 0 {
+				detail += fmt.Sprintf(" +%d skipped", p.Skipped)
+			}
+			step.Detail = detail
+			ex.skippedPages = p.Skipped
 		}
 		return waitForExtractProgress(ex.ID, ex.extractCh)
 	}
@@ -583,6 +589,7 @@ func (m *Model) handleExtractionProgress(msg extractionProgressMsg) tea.Cmd {
 	nChars := len(strings.TrimSpace(p.Text))
 	step.Detail = p.Tool
 	step.Metric = fmt.Sprintf("%d chars", nChars)
+	ex.skippedPages = p.Skipped
 	ex.advanceCursor()
 
 	// Store output as explorable logs.
@@ -1645,6 +1652,15 @@ func (m *Model) renderExtractionStep(
 			b.WriteString(ex.Spinner.View())
 			b.WriteString(" ")
 			b.WriteString(m.styles.ExtRunning().Render(info.Detail))
+		}
+		// Show skipped-pages note when pages were capped.
+		if ex.skippedPages > 0 && info.Status != stepRunning {
+			b.WriteByte('\n')
+			b.WriteString(pipeIndent)
+			b.WriteString(pipe)
+			b.WriteString(hint.Render(fmt.Sprintf(
+				"%d pg skipped (max_extract_pages)", ex.skippedPages,
+			)))
 		}
 		return b.String()
 	}

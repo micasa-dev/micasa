@@ -227,8 +227,8 @@ internal/
 # Model for document extraction. Defaults to llm.model.
 # model = "qwen2.5:7b"
 
-# Maximum pages to OCR for scanned documents. Default: 20.
-# max_extract_pages = 20
+# Maximum pages to OCR for scanned documents. 0 = no limit. Default: 0.
+# max_extract_pages = 0
 
 # Set to false to disable LLM-powered extraction even when LLM is configured.
 # When disabled, no structured data is extracted from documents.

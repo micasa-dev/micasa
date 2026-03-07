@@ -20,15 +20,16 @@ type AcquireToolState struct {
 
 // ExtractProgress reports incremental progress from ExtractWithProgress.
 type ExtractProgress struct {
-	Tool  string // extractor tool name (set on Done)
-	Desc  string // human description (set on Done)
-	Phase string // e.g. "extract"
-	Page  int    // current page (1-indexed)
-	Total int    // total pages (0 until known)
-	Done  bool   // all phases finished
-	Text  string // accumulated text (set on Done)
-	Data  []byte // structured data (set on Done)
-	Err   error  // set on failure
+	Tool    string // extractor tool name (set on Done)
+	Desc    string // human description (set on Done)
+	Phase   string // e.g. "extract"
+	Page    int    // current page (1-indexed)
+	Total   int    // total pages (0 until known)
+	Skipped int    // pages beyond maxPages cap (0 when no limit)
+	Done    bool   // all phases finished
+	Text    string // accumulated text (set on Done)
+	Data    []byte // structured data (set on Done)
+	Err     error  // set on failure
 
 	// AcquireTools carries per-tool state during the rasterization+OCR
 	// phase. Non-nil while pages are being processed.
@@ -109,10 +110,6 @@ func ocrPDFWithProgress(
 		ch <- ExtractProgress{Done: true}
 		return
 	}
-	if maxPages <= 0 {
-		maxPages = DefaultMaxExtractPages
-	}
-
 	tmpDir, err := os.MkdirTemp("", "micasa-ocr-*")
 	if err != nil {
 		ch <- ExtractProgress{Err: fmt.Errorf("create temp dir: %w", err), Done: true}
@@ -135,7 +132,11 @@ func ocrPDFWithProgress(
 		}
 		return
 	}
+
+	// Determine how many pages were skipped by the maxPages cap.
+	var skipped int
 	if maxPages > 0 && pageCount > maxPages {
+		skipped = pageCount - maxPages
 		pageCount = maxPages
 	}
 	if pageCount == 0 {
@@ -176,6 +177,7 @@ func ocrPDFWithProgress(
 				Phase:        "extract",
 				Page:         completed,
 				Total:        total,
+				Skipped:      skipped,
 				AcquireTools: []AcquireToolState{*toolState},
 			}:
 			case <-ctx.Done():
@@ -193,10 +195,11 @@ func ocrPDFWithProgress(
 
 	text, tsv := collectOCRResults(ocrResults)
 	ch <- ExtractProgress{
-		Tool: "tesseract",
-		Desc: "Text recognized from rasterized page images.",
-		Done: true,
-		Text: text,
-		Data: tsv,
+		Tool:    "tesseract",
+		Desc:    "Text recognized from rasterized page images.",
+		Done:    true,
+		Text:    text,
+		Data:    tsv,
+		Skipped: skipped,
 	}
 }

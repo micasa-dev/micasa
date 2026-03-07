@@ -235,8 +235,7 @@ type Extraction struct {
 	Model string `toml:"model" env:"MICASA_EXTRACTION_MODEL"`
 
 	// MaxExtractPages is the maximum number of pages for async extraction of scanned
-	// documents. Front-loaded info (specs, warranty) is typically in the
-	// first pages. Default: 20.
+	// documents. 0 means no limit (all pages). Default: 0.
 	MaxExtractPages int `toml:"max_extract_pages" env:"MICASA_MAX_EXTRACT_PAGES"`
 
 	// Enabled controls whether LLM-powered extraction runs when a document
@@ -315,7 +314,7 @@ const (
 	DefaultLLMTimeout           = 5 * time.Minute
 	DefaultLLMExtractionTimeout = DefaultLLMTimeout
 	DefaultCacheTTL             = 30 * 24 * time.Hour // 30 days
-	DefaultMaxExtractPages      = 20
+	DefaultMaxExtractPages      = 0
 	DefaultTextTimeout          = 30 * time.Second
 	configRelPath               = "micasa/config.toml"
 )
@@ -522,9 +521,6 @@ func LoadFromPath(path string) (Config, error) {
 			"extraction.max_extract_pages must be non-negative, got %d",
 			cfg.Extraction.MaxExtractPages,
 		)
-	}
-	if cfg.Extraction.MaxExtractPages == 0 {
-		cfg.Extraction.MaxExtractPages = DefaultMaxExtractPages
 	}
 
 	return cfg, nil
@@ -1025,8 +1021,8 @@ model = "` + DefaultModel + `"
 # Default: "5m". Increase for slow local models or complex documents.
 # llm_timeout = "5m"
 
-# Maximum pages for async extraction of scanned documents. Default: 20.
-# max_extract_pages = 20
+# Maximum pages for async extraction of scanned documents. 0 = no limit. Default: 0.
+# max_extract_pages = 0
 
 # Set to false to disable LLM-powered extraction even when LLM is configured.
 # When disabled, no structured data is extracted from documents.

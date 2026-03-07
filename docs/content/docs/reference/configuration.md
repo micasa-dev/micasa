@@ -109,7 +109,7 @@ micasa backup --source /path/to/micasa.db ~/backups/snapshot.db
 | `MICASA_EXTRACTION_ENABLED` | `true` | `extraction.enabled` | Enable/disable LLM extraction |
 | `MICASA_EXTRACTION_THINKING` | `false` | `extraction.thinking` | Enable model thinking for extraction |
 | `MICASA_TEXT_TIMEOUT` | `30s` | `extraction.text_timeout` | pdftotext timeout |
-| `MICASA_MAX_EXTRACT_PAGES` | `20` | `extraction.max_extract_pages` | Max pages to OCR per document |
+| `MICASA_MAX_EXTRACT_PAGES` | `0` | `extraction.max_extract_pages` | Max pages to OCR per document (0 = no limit) |
 | `MICASA_LLM_THINKING` | (unset) | `llm.thinking` | Enable model thinking for chat |
 | `MICASA_CURRENCY` | (auto-detect) | `locale.currency` | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
 
@@ -273,8 +273,8 @@ model = "qwen3"
 # Increase if you routinely process very large PDFs.
 # text_timeout = "30s"
 
-# Maximum pages to OCR for scanned documents. Default: 20.
-# max_extract_pages = 20
+# Maximum pages to OCR for scanned documents. 0 = no limit. Default: 0.
+# max_extract_pages = 0
 
 # Set to false to disable LLM-powered extraction.
 # When disabled, no structured data is extracted from documents.
@@ -359,7 +359,7 @@ dates, vendor matching) from uploaded documents.
 |-----|------|---------|-------------|
 | `model` | string | (chat model) | **Deprecated.** Use `[llm.extraction] model` instead. Falls back to `llm.model` if empty. |
 | `text_timeout` | string | `"30s"` | Max time for `pdftotext` to run. Go duration syntax, e.g. `"1m"`. Increase for very large PDFs. |
-| `max_extract_pages` | int | `20` | Maximum pages to OCR per scanned document. Front-loaded info is typically in the first pages. |
+| `max_extract_pages` | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
 | `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. When disabled, no structured data is extracted from documents. |
 | `thinking` | bool | `false` | **Deprecated.** Use `[llm.extraction] thinking` instead. |
 
