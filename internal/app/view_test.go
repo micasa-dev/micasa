@@ -779,7 +779,18 @@ func renderTestHeader(
 	headerSpecs := annotateMoneyHeaders(specs, cur)
 	vpSorts := make([]sortEntry, len(sorts))
 	copy(vpSorts, sorts)
-	return renderHeaderRow(headerSpecs, widths, seps, 0, vpSorts, false, false, nil, zone.New())
+	return renderHeaderRow(
+		headerSpecs,
+		widths,
+		seps,
+		0,
+		vpSorts,
+		false,
+		false,
+		nil,
+		zone.New(),
+		zoneCol,
+	)
 }
 
 // Regression: user reported "ID" truncated to "I" on the quotes table

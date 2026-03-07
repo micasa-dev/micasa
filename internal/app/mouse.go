@@ -30,6 +30,12 @@ const (
 	zoneHouse      = "house-header"
 	zoneBreadcrumb = "breadcrumb-back"
 	zoneOverlay    = "overlay"
+
+	// Extraction preview uses distinct prefixes to avoid colliding with
+	// main table row-N/col-N zones during overlay compositing. Without
+	// separate IDs the scanner mis-pairs interleaved markers.
+	zoneExtRow = "ext-row-"
+	zoneExtCol = "ext-col-"
 )
 
 // handleMouse dispatches mouse events to the appropriate handler.
@@ -239,7 +245,44 @@ func (m *Model) handleOverlayClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
+
+	// Extraction preview clicks: select row/column in explore mode.
+	if ex := m.ex.extraction; ex != nil && ex.Visible && ex.exploring {
+		if g := ex.activePreviewGroup(); g != nil {
+			for i := range g.cells {
+				if m.zones.Get(fmt.Sprintf("%s%d", zoneExtRow, i)).InBounds(msg) {
+					ex.previewRow = i
+					m.selectExtractionPreviewColumn(ex, g, msg)
+					return m, nil
+				}
+			}
+			for i := range g.specs {
+				if m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, i)).InBounds(msg) {
+					ex.previewCol = i
+					return m, nil
+				}
+			}
+		}
+	}
+
 	return m, nil
+}
+
+// selectExtractionPreviewColumn updates the extraction preview column cursor
+// to match the column zone the click's X coordinate falls within.
+func (m *Model) selectExtractionPreviewColumn(
+	ex *extractionLogState, g *previewTableGroup, msg tea.MouseMsg,
+) {
+	for i := range g.specs {
+		z := m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, i))
+		if z == nil || z.IsZero() {
+			continue
+		}
+		if msg.X >= z.StartX && msg.X <= z.EndX {
+			ex.previewCol = i
+			return
+		}
+	}
 }
 
 // selectClickedColumn updates the tab's column cursor to match the column

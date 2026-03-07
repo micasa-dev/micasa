@@ -898,6 +898,7 @@ func (m *Model) tableView(tab *Tab) string {
 		vp.HasRight,
 		vp.LinkCells,
 		m.zones,
+		zoneCol,
 	)
 	divider := renderDivider(vp.Widths, vp.PlainSeps, normalDiv, m.styles.TableSeparator())
 
@@ -941,6 +942,7 @@ func (m *Model) tableView(tab *Tab) string {
 		effectiveHeight,
 		pinCtx,
 		m.zones,
+		zoneRow,
 	)
 
 	// Assemble body (header + divider + data rows).

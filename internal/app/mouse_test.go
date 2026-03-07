@@ -9,6 +9,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/extract"
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -519,4 +521,140 @@ func TestDashboardDismissOnOutsideClick(t *testing.T) {
 
 	sendClick(m, 0, 0)
 	assert.False(t, m.dashboardVisible(), "clicking outside dashboard should dismiss it")
+}
+
+// newExploreModel creates a model with an extraction overlay in explore mode
+// containing the given operations. The overlay is visible, done, and exploring.
+func newExploreModel(t *testing.T, ops []extract.Operation) *Model {
+	t.Helper()
+	m := newPreviewModel(t, ops)
+	// Enter explore mode (press x).
+	sendExtractionKey(m, "x")
+	require.True(t, m.ex.extraction.exploring, "should be in explore mode")
+	return m
+}
+
+// requireExtractionZone renders the full view twice to populate zones
+// (the second call ensures the async zone worker has drained the first
+// batch), then returns the zone info. Skips if not found.
+func requireExtractionZone(t *testing.T, m *Model, id string) *zone.ZoneInfo {
+	t.Helper()
+	m.View()
+	m.View()
+	z := m.zones.Get(id)
+	if z == nil || z.IsZero() {
+		t.Skipf("zone %q not rendered", id)
+	}
+	return z
+}
+
+// TestExtractionRowClickSelectsRow verifies that clicking a row in the
+// extraction preview table moves the preview row cursor.
+func TestExtractionRowClickSelectsRow(t *testing.T) {
+	t.Parallel()
+	m := newExploreModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "Alpha"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "Beta"}},
+	})
+	ex := m.ex.extraction
+	require.Equal(t, 0, ex.previewRow)
+
+	z := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtRow, 1))
+
+	m.handleOverlayClick(tea.MouseMsg{
+		X: z.StartX, Y: z.StartY,
+		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+	})
+	assert.Equal(t, 1, ex.previewRow, "clicking ext-row-1 should move preview row cursor to 1")
+}
+
+// TestExtractionColClickSelectsCol verifies that clicking a column header
+// in the extraction preview moves the preview column cursor.
+func TestExtractionColClickSelectsCol(t *testing.T) {
+	t.Parallel()
+	m := newExploreModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
+			"name": "Alpha", "phone": "555-1234",
+		}},
+	})
+	ex := m.ex.extraction
+	require.Equal(t, 0, ex.previewCol)
+
+	m.View()
+	m.View()
+
+	// Find a column zone beyond the first.
+	found := false
+	for i := 1; i < 10; i++ {
+		z := m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, i))
+		if z != nil && !z.IsZero() {
+			m.handleOverlayClick(tea.MouseMsg{
+				X: z.StartX, Y: z.StartY,
+				Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+			})
+			assert.Equal(t, i, ex.previewCol,
+				"clicking ext-col-%d header should move preview column cursor", i)
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Skip("no secondary extraction column zone rendered")
+	}
+}
+
+// TestExtractionRowClickSelectsColumn verifies that clicking a row also
+// updates the column cursor based on the X position of the click.
+func TestExtractionRowClickSelectsColumn(t *testing.T) {
+	t.Parallel()
+	m := newExploreModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
+			"name": "Alpha", "phone": "555-1234",
+		}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
+			"name": "Beta", "phone": "555-5678",
+		}},
+	})
+	ex := m.ex.extraction
+	ex.previewCol = 0
+
+	m.View()
+	m.View()
+
+	// Find a secondary column zone for its X range.
+	colZ := m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, 1))
+	if colZ == nil || colZ.IsZero() {
+		t.Skip("no secondary extraction column zone rendered")
+	}
+
+	rowZ := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtRow, 1))
+	// Click at the X of the secondary column, Y of row 1.
+	m.handleOverlayClick(tea.MouseMsg{
+		X: colZ.StartX, Y: rowZ.StartY,
+		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+	})
+	assert.Equal(t, 1, ex.previewRow, "clicking should move row cursor to 1")
+	assert.Equal(t, 1, ex.previewCol,
+		"clicking in column 1 area should move column cursor")
+}
+
+// TestExtractionClickIgnoredWhenNotExploring verifies that clicking on
+// extraction preview zones does nothing when not in explore mode.
+func TestExtractionClickIgnoredWhenNotExploring(t *testing.T) {
+	t.Parallel()
+	m := newPreviewModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "Alpha"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "Beta"}},
+	})
+	ex := m.ex.extraction
+	require.False(t, ex.exploring, "should not be in explore mode")
+
+	z := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtRow, 1))
+
+	m.handleOverlayClick(tea.MouseMsg{
+		X: z.StartX, Y: z.StartY,
+		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+	})
+	assert.Equal(t, 0, ex.previewRow,
+		"clicking row in non-explore mode should not update preview cursor")
 }

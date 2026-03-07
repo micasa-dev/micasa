@@ -82,6 +82,7 @@ func renderHeaderRow(
 	hasLeft, hasRight bool,
 	rows [][]cell,
 	zones *zone.Manager,
+	colZonePrefix string,
 ) string {
 	cells := make([]string, 0, len(specs))
 	last := len(specs) - 1
@@ -109,7 +110,7 @@ func renderHeaderRow(
 		} else {
 			rendered = appStyles.TableHeader().Render(text)
 		}
-		cells = append(cells, zones.Mark(fmt.Sprintf("%s%d", zoneCol, i), rendered))
+		cells = append(cells, zones.Mark(fmt.Sprintf("%s%d", colZonePrefix, i), rendered))
 	}
 	return joinCells(cells, separators)
 }
@@ -354,6 +355,7 @@ func renderRows(
 	height int,
 	pinCtx pinRenderContext,
 	zones *zone.Manager,
+	rowZonePrefix string,
 ) []string {
 	total := len(rows)
 	if total == 0 {
@@ -387,7 +389,7 @@ func renderRows(
 			pinCtx,
 			i,
 		)
-		rendered = append(rendered, zones.Mark(fmt.Sprintf("%s%d", zoneRow, i), row))
+		rendered = append(rendered, zones.Mark(fmt.Sprintf("%s%d", rowZonePrefix, i), row))
 	}
 	return rendered
 }
