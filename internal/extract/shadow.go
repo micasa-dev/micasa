@@ -46,27 +46,6 @@ type shadowFKRemap struct {
 	Table  string // referenced table (e.g. "vendors")
 }
 
-// commitOrder defines the dependency-safe order for committing creatables.
-// Tables with no FK dependencies on other creatables come first.
-var commitOrder = []string{
-	data.TableVendors,
-	data.TableAppliances,
-	data.TableQuotes,
-	data.TableMaintenanceItems,
-	data.TableDocuments,
-}
-
-// fkRemaps maps each creatable table to its FK columns that reference other
-// creatables. Only these need shadow->real remapping; FKs to reference-only
-// tables (projects, categories) pass through unchanged.
-var fkRemaps = map[string][]shadowFKRemap{
-	data.TableVendors:          {},
-	data.TableAppliances:       {},
-	data.TableQuotes:           {{Column: data.ColVendorID, Table: data.TableVendors}},
-	data.TableMaintenanceItems: {{Column: data.ColApplianceID, Table: data.TableAppliances}},
-	data.TableDocuments:        {},
-}
-
 // NewShadowDB creates an in-memory SQLite database and migrates the
 // extraction-relevant tables. Auto-increment IDs are seeded from the real
 // DB so shadow IDs occupy a disjoint range from existing real IDs, making
@@ -83,22 +62,13 @@ func NewShadowDB(store *data.Store) (*ShadowDB, error) {
 		return nil, fmt.Errorf("open shadow db: %w", err)
 	}
 
-	if err := db.AutoMigrate(
-		&data.ProjectType{},
-		&data.MaintenanceCategory{},
-		&data.Project{},
-		&data.Vendor{},
-		&data.Appliance{},
-		&data.Quote{},
-		&data.MaintenanceItem{},
-		&data.Document{},
-	); err != nil {
+	if err := db.AutoMigrate(data.Models()...); err != nil {
 		return nil, fmt.Errorf("shadow db migrate: %w", err)
 	}
 
 	// Seed sqlite_sequence so auto-increment starts after the real DB's
 	// max IDs. This ensures shadow IDs never collide with real IDs.
-	maxIDs, err := store.MaxIDs(commitOrder...)
+	maxIDs, err := store.MaxIDs(creatableFKs.order...)
 	if err != nil {
 		return nil, fmt.Errorf("query max ids: %w", err)
 	}
@@ -227,7 +197,7 @@ func (s *ShadowDB) Commit(store *data.Store, ops []Operation) error {
 func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
 	idMap := make(map[string]map[uint]uint) // table -> shadowID -> realID
 
-	for _, table := range commitOrder {
+	for _, table := range creatableFKs.order {
 		entries := s.created[table]
 		if len(entries) == 0 {
 			continue
@@ -244,7 +214,7 @@ func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
 			}
 
 			// Remap FK columns from shadow IDs to real IDs.
-			for _, fk := range fkRemaps[table] {
+			for _, fk := range creatableFKs.remaps[table] {
 				remapFK(row, fk, idMap)
 			}
 
@@ -303,15 +273,6 @@ func remapFK(row map[string]any, fk shadowFKRemap, idMap map[string]map[uint]uin
 	}
 }
 
-// entityKindToTable maps document entity_kind values to their corresponding
-// creatable table names for ID remapping.
-var entityKindToTable = map[string]string{
-	data.DocumentEntityVendor:      data.TableVendors,
-	data.DocumentEntityQuote:       data.TableQuotes,
-	data.DocumentEntityMaintenance: data.TableMaintenanceItems,
-	data.DocumentEntityAppliance:   data.TableAppliances,
-}
-
 // remapDocumentEntity rewrites entity_id on a document row if entity_kind
 // maps to a creatable table whose IDs were remapped.
 func remapDocumentEntity(row map[string]any, idMap map[string]map[uint]uint) {
@@ -322,7 +283,7 @@ func remapDocumentEntity(row map[string]any, idMap map[string]map[uint]uint) {
 			kind = string(b)
 		}
 	}
-	table, ok := entityKindToTable[kind]
+	table, ok := creatableFKs.entityKindToTable[kind]
 	if !ok {
 		return
 	}
@@ -402,6 +363,9 @@ func commitAppliance(store *data.Store, row map[string]any) (uint, error) {
 func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (uint, error) {
 	q := data.Quote{}
 	q.ProjectID = ParseUint(row[data.ColProjectID])
+	if q.ProjectID == 0 {
+		return 0, fmt.Errorf("quote requires a project_id referencing an existing project")
+	}
 	q.TotalCents = ParseInt64(row[data.ColTotalCents])
 	stringField(row, data.ColNotes, &q.Notes)
 

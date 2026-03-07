@@ -13,23 +13,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// Setting is a simple key-value store for app preferences that persist
-// across sessions (e.g. last-used LLM model). Stored in SQLite so a
-// single "micasa backup backup.db" captures everything.
-type Setting struct {
-	Key       string `gorm:"primaryKey"`
-	Value     string
-	UpdatedAt time.Time
-}
-
-// ChatInput stores a single chat prompt for cross-session history.
-// Ordered by creation time, newest last.
-type ChatInput struct {
-	ID        uint   `gorm:"primaryKey"`
-	Input     string `gorm:"not null"`
-	CreatedAt time.Time
-}
-
 const (
 	settingLLMModel          = "llm.model"
 	settingShowDashboard     = "ui.show_dashboard"
