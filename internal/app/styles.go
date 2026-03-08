@@ -272,6 +272,7 @@ func (s *Styles) WarrantyExpired() lipgloss.Style { return s.fgDanger }
 func (s *Styles) Pinned() lipgloss.Style        { return s.fgMuted }
 func (s *Styles) LinkIndicator() lipgloss.Style { return s.fgMuted }
 func (s *Styles) FilterMark() lipgloss.Style    { return s.fgMuted }
+func (s *Styles) ExtSkipLog() lipgloss.Style    { return s.fgMuted }
 
 // --- Foreground(border) ---
 
@@ -351,6 +352,7 @@ func (s *Styles) CalSelected() lipgloss.Style      { return s.calSelected }
 func (s *Styles) ModelActiveHL() lipgloss.Style    { return s.modelActiveHL }
 func (s *Styles) ModelRemoteHL() lipgloss.Style    { return s.modelRemoteHL }
 func (s *Styles) DeletedCell() lipgloss.Style      { return s.deletedCell }
+func (s *Styles) ExtSkipped() lipgloss.Style       { return s.deletedCell }
 func (s *Styles) OverlayBox() lipgloss.Style       { return s.overlayBox }
 func (s *Styles) Breadcrumb() lipgloss.Style       { return s.breadcrumb }
 func (s *Styles) BlinkCursor() lipgloss.Style      { return s.blinkCursor }

@@ -47,6 +47,7 @@ const (
 	stepRunning
 	stepDone
 	stepFailed
+	stepSkipped
 )
 
 // extractionStepInfo tracks the state of a single extraction step.
@@ -125,6 +126,10 @@ type extractionLogState struct {
 	previewRow    int                 // row cursor within active tab
 	previewCol    int                 // column cursor within active tab
 
+	// LLM ping state: ping runs concurrently with earlier steps.
+	llmPingDone bool  // true once ping completed (success or fail)
+	llmPingErr  error // non-nil if LLM was unreachable
+
 	// Model picker: inline model selection before rerunning LLM step.
 	modelPicker *modelCompleter // non-nil when picker is showing
 	modelFilter string          // current filter text for fuzzy matching
@@ -178,7 +183,7 @@ func (ex *extractionLogState) cursorStep() extractionStep {
 // steps collapse their log content by default.
 func (ex *extractionLogState) stepDefaultExpanded(si extractionStep) bool {
 	info := ex.Steps[si]
-	if info.Status == stepRunning || info.Status == stepFailed {
+	if info.Status == stepRunning || info.Status == stepFailed || info.Status == stepSkipped {
 		// Ext with tools: collapsed by default while running since
 		// the parent header shows the combined percentage.
 		if si == stepExtract && len(ex.acquireTools) > 0 && info.Status == stepRunning {
@@ -198,8 +203,8 @@ func (ex *extractionLogState) stepExpanded(si extractionStep) bool {
 	return ex.stepDefaultExpanded(si)
 }
 
-// advanceCursor moves the cursor to the latest settled (done/failed) step.
-// In manual mode (after user presses j/k) this is a no-op.
+// advanceCursor moves the cursor to the latest settled (done/failed/skipped)
+// step. In manual mode (after user presses j/k) this is a no-op.
 func (ex *extractionLogState) advanceCursor() {
 	if ex.cursorManual {
 		return
@@ -207,7 +212,7 @@ func (ex *extractionLogState) advanceCursor() {
 	active := ex.activeSteps()
 	for i := len(active) - 1; i >= 0; i-- {
 		s := ex.Steps[active[i]].Status
-		if s == stepDone || s == stepFailed {
+		if s == stepDone || s == stepFailed || s == stepSkipped {
 			ex.cursor = i
 			ex.toolCursor = -1
 			return
@@ -235,6 +240,12 @@ type extractionLLMChunkMsg struct {
 	Content string
 	Done    bool
 	Err     error
+}
+
+// extractionLLMPingMsg delivers the result of a background LLM ping.
+type extractionLLMPingMsg struct {
+	ID  uint64
+	Err error // nil = reachable, non-nil = unreachable
 }
 
 // --- Overlay lifecycle ---
@@ -336,6 +347,11 @@ func (m *Model) startExtractionOverlay(
 		state.Steps[stepExtract].Status = stepRunning
 		state.Steps[stepExtract].Started = time.Now()
 		cmd = asyncExtractCmd(ctx, state)
+		// Ping LLM concurrently so we know before OCR finishes whether
+		// the LLM endpoint is reachable.
+		if needsLLM {
+			return tea.Batch(cmd, m.llmPingCmd(state), state.Spinner.Tick)
+		}
 	} else if needsLLM {
 		state.Steps[stepLLM].Status = stepRunning
 		state.Steps[stepLLM].Started = time.Now()
@@ -464,6 +480,23 @@ func waitForExtractProgress(id uint64, ch <-chan extract.ExtractProgress) tea.Cm
 	}, extractionProgressMsg{ID: id, Progress: extract.ExtractProgress{Done: true}})
 }
 
+// llmPingCmd fires a background ping to the LLM endpoint. The result is
+// delivered via extractionLLMPingMsg so the extraction can skip the LLM
+// step early if the server is unreachable.
+func (m *Model) llmPingCmd(state *extractionLogState) tea.Cmd {
+	client := m.extractionLLMClient()
+	if client == nil {
+		return nil
+	}
+	id := state.ID
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), llm.QuickOpTimeout)
+		defer cancel()
+		err := client.Ping(ctx)
+		return extractionLLMPingMsg{ID: id, Err: err}
+	}
+}
+
 // llmExtractCmd starts LLM document analysis with streaming.
 func (m *Model) llmExtractCmd(ctx context.Context, ex *extractionLogState) tea.Cmd {
 	client := m.extractionLLMClient()
@@ -560,14 +593,8 @@ func (m *Model) handleExtractionProgress(msg extractionProgressMsg) tea.Cmd {
 		ex.HasError = true
 		ex.advanceCursor()
 		// Extraction failed but LLM can still run on whatever text exists.
-		if ex.hasLLM {
-			client := m.extractionLLMClient()
-			if client != nil {
-				ex.Steps[stepLLM].Status = stepRunning
-				ex.Steps[stepLLM].Started = time.Now()
-				ex.Steps[stepLLM].Detail = m.extractionModelLabel()
-				return m.llmExtractCmd(ex.ctx, ex)
-			}
+		if cmd := m.maybeStartLLMStep(ex); cmd != nil {
+			return cmd
 		}
 		ex.Done = true
 		if m.isBgExtraction(ex) {
@@ -624,20 +651,63 @@ func (m *Model) handleExtractionProgress(msg extractionProgressMsg) tea.Cmd {
 		ex.extractedText = p.Text
 	}
 
-	// Advance to LLM step if configured.
-	if ex.hasLLM {
-		client := m.extractionLLMClient()
-		if client != nil {
-			ex.Steps[stepLLM].Status = stepRunning
-			ex.Steps[stepLLM].Started = time.Now()
-			ex.Steps[stepLLM].Detail = m.extractionModelLabel()
-			return m.llmExtractCmd(ex.ctx, ex)
-		}
+	// Advance to LLM step if configured and reachable.
+	if cmd := m.maybeStartLLMStep(ex); cmd != nil {
+		return cmd
 	}
 
 	ex.Done = true
 	if m.isBgExtraction(ex) {
 		m.setStatusInfo(fmt.Sprintf("Extracted: %s", ex.Filename))
+	}
+	return nil
+}
+
+// maybeStartLLMStep attempts to advance to the LLM step. If the concurrent
+// ping determined the LLM is unreachable, the step is marked skipped and nil
+// is returned. Otherwise it starts the LLM streaming command.
+func (m *Model) maybeStartLLMStep(ex *extractionLogState) tea.Cmd {
+	if !ex.hasLLM {
+		return nil
+	}
+	// Already marked skipped by the ping handler.
+	if ex.Steps[stepLLM].Status == stepSkipped {
+		return nil
+	}
+	client := m.extractionLLMClient()
+	if client == nil {
+		return nil
+	}
+	ex.Steps[stepLLM].Status = stepRunning
+	ex.Steps[stepLLM].Started = time.Now()
+	ex.Steps[stepLLM].Detail = m.extractionModelLabel()
+	return m.llmExtractCmd(ex.ctx, ex)
+}
+
+// handleExtractionLLMPing processes the background LLM ping result.
+func (m *Model) handleExtractionLLMPing(msg extractionLLMPingMsg) tea.Cmd {
+	ex := m.findExtraction(msg.ID)
+	if ex == nil {
+		return nil
+	}
+	ex.llmPingDone = true
+	ex.llmPingErr = msg.Err
+
+	if msg.Err != nil {
+		// Mark LLM as skipped immediately so the strikethrough renders
+		// in real time, even while earlier steps are still running.
+		ex.Steps[stepLLM].Status = stepSkipped
+		ex.Steps[stepLLM].Detail = m.extractionModelLabel()
+		ex.Steps[stepLLM].Logs = append(ex.Steps[stepLLM].Logs, msg.Err.Error())
+
+		// If extraction already finished, the pipeline is done.
+		if ex.Steps[stepExtract].Status == stepDone || ex.Steps[stepExtract].Status == stepFailed {
+			ex.Done = true
+			ex.advanceCursor()
+			if m.isBgExtraction(ex) {
+				m.setStatusInfo(fmt.Sprintf("Extracted: %s (LLM skipped)", ex.Filename))
+			}
+		}
 	}
 	return nil
 }
@@ -870,8 +940,10 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 		ex.CancelFn = cancel
 	}
 
-	// Reset LLM state.
+	// Reset LLM state (including any prior ping failure).
 	ex.llmAccum.Reset()
+	ex.llmPingDone = false
+	ex.llmPingErr = nil
 	ex.operations = nil
 	ex.closeShadowDB()
 	ex.previewGroups = nil
@@ -1604,6 +1676,9 @@ func (m *Model) renderExtractionStep(
 	case stepFailed:
 		icon = m.styles.ExtFail().Render("xx") + " "
 		nameStyle = m.styles.ExtFailed()
+	case stepSkipped:
+		icon = m.styles.ExtPending().Render("na") + " "
+		nameStyle = m.styles.ExtPending()
 	}
 
 	hasTools := si == stepExtract && len(ex.acquireTools) > 0
@@ -1670,7 +1745,9 @@ func (m *Model) renderExtractionStep(
 		hdr.WriteString("  ")
 		hdr.WriteString(hint.Render(fmt.Sprintf("%*s", cols.Elapsed, e)))
 	}
-	if si == stepLLM && info.Status == stepDone && ex.Done && focused && ex.modelPicker == nil {
+	llmTerminal := info.Status == stepDone || info.Status == stepFailed ||
+		info.Status == stepSkipped
+	if si == stepLLM && llmTerminal && ex.Done && focused && ex.modelPicker == nil {
 		hdr.WriteString("  ")
 		hdr.WriteString(m.styles.ExtRerun().Render("r model"))
 	}
@@ -1783,7 +1860,7 @@ func (m *Model) renderExtractionStep(
 	raw := strings.Join(info.Logs, "\n")
 
 	var rendered string
-	if si == stepLLM {
+	if si == stepLLM && info.Status != stepSkipped {
 		// Pretty-print JSON, then render as a fenced code block via glamour.
 		formatted := raw
 		var buf bytes.Buffer
@@ -1792,6 +1869,8 @@ func (m *Model) renderExtractionStep(
 		}
 		md := fmt.Sprintf("```json\n%s\n```", formatted)
 		rendered = strings.TrimSpace(ex.renderMarkdown(md, logW))
+	} else if info.Status == stepSkipped {
+		rendered = m.styles.ExtSkipLog().Render(wordWrap(raw, logW))
 	} else {
 		rendered = m.styles.HeaderHint().Render(wordWrap(raw, logW))
 	}

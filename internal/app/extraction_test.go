@@ -2439,3 +2439,145 @@ func TestExtractionCursor_ManualModeViaUpKey(t *testing.T) {
 	assert.True(t, ex.cursorManual, "k should engage manual mode")
 	assert.Equal(t, 0, ex.cursor, "k should navigate back to text step")
 }
+
+// --- LLM ping ---
+
+func TestExtractionLLMPing_FailSkipsLLMStep(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepRunning,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	id := ex.ID
+
+	// Ping comes back with an error while extraction is still running.
+	m.Update(extractionLLMPingMsg{ID: id, Err: errors.New("connection refused")})
+	assert.True(t, ex.llmPingDone)
+	require.Error(t, ex.llmPingErr)
+	// LLM step should be skipped immediately (strikethrough in real time).
+	assert.Equal(t, stepSkipped, ex.Steps[stepLLM].Status)
+	assert.False(t, ex.Done, "pipeline not done -- extraction still running")
+
+	// Now extraction finishes -- LLM should be skipped, not started.
+	m.Update(extractionProgressMsg{
+		ID: id,
+		Progress: extract.ExtractProgress{
+			Done: true,
+			Tool: "tesseract",
+			Text: "some ocr text",
+		},
+	})
+	assert.Equal(t, stepSkipped, ex.Steps[stepLLM].Status)
+	assert.True(t, ex.Done)
+	require.NotEmpty(t, ex.Steps[stepLLM].Logs)
+	assert.Contains(t, ex.Steps[stepLLM].Logs[0], "connection refused")
+}
+
+func TestExtractionLLMPing_FailAfterExtractDone(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	id := ex.ID
+
+	// Extraction already done when ping fails -- LLM skipped immediately.
+	m.Update(extractionLLMPingMsg{ID: id, Err: errors.New("unreachable")})
+	assert.Equal(t, stepSkipped, ex.Steps[stepLLM].Status)
+	assert.True(t, ex.Done)
+}
+
+func TestExtractionLLMPing_SuccessAllowsLLM(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepRunning,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	id := ex.ID
+
+	// Ping succeeds.
+	m.Update(extractionLLMPingMsg{ID: id, Err: nil})
+	assert.True(t, ex.llmPingDone)
+	require.NoError(t, ex.llmPingErr)
+	// LLM still pending -- extraction hasn't finished.
+	assert.Equal(t, stepPending, ex.Steps[stepLLM].Status)
+}
+
+func TestExtractionSkippedStep_Navigable(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepSkipped,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+
+	// advanceCursor should land on skipped step.
+	ex.advanceCursor()
+	assert.Equal(t, 2, ex.cursor)
+
+	// j/k navigation: skipped step should be reachable.
+	sendExtractionKey(m, "k")
+	assert.Equal(t, 1, ex.cursor)
+	sendExtractionKey(m, "j")
+	assert.Equal(t, 2, ex.cursor)
+}
+
+func TestExtractionSkippedStep_DefaultExpanded(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepSkipped,
+	})
+	ex := m.ex.extraction
+	ex.Steps[stepLLM] = extractionStepInfo{
+		Status: stepSkipped,
+		Logs:   []string{"connection refused"},
+	}
+
+	assert.True(t, ex.stepDefaultExpanded(stepLLM),
+		"skipped step should auto-expand to show error")
+	_ = m // keep linter happy
+}
+
+func TestExtractionSkippedStep_RerunHintShows(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepSkipped,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+
+	// Position cursor on LLM step.
+	ex.advanceCursor()
+	assert.Equal(t, stepLLM, ex.cursorStep())
+
+	view := m.buildExtractionOverlay()
+	assert.Contains(t, view, "r model",
+		"rerun hint should appear for skipped LLM step")
+}
+
+func TestExtractionRerun_ClearsPingState(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepSkipped,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	ex.llmPingDone = true
+	ex.llmPingErr = errors.New("was unreachable")
+
+	// Simulate rerun (which resets LLM state).
+	m.rerunLLMExtraction()
+	assert.False(t, ex.llmPingDone, "ping state should be cleared on rerun")
+	assert.NoError(t, ex.llmPingErr, "ping error should be cleared on rerun")
+}
