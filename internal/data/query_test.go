@@ -129,6 +129,76 @@ func TestReadOnlyQueryAllowsDeletedAtColumn(t *testing.T) {
 	assert.Equal(t, []string{"id"}, cols)
 }
 
+func TestReadOnlyQueryAllowsWithCTE(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	cols, _, err := store.ReadOnlyQuery(
+		"WITH cte AS (SELECT name FROM project_types) SELECT name FROM cte LIMIT 1",
+	)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"name"}, cols)
+}
+
+func TestReadOnlyQueryRejectsCommentHiddenInsert(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	// Leading comment hides the real statement from naive prefix checks.
+	_, _, err := store.ReadOnlyQuery("-- SELECT\nINSERT INTO projects (title) VALUES ('hack')")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "only SELECT")
+}
+
+func TestReadOnlyQueryRejectsBlockCommentHiddenInsert(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	_, _, err := store.ReadOnlyQuery("/* SELECT */ INSERT INTO projects (title) VALUES ('hack')")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "only SELECT")
+}
+
+func TestReadOnlyQueryExplainRejectsSubqueryWrite(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	// A SELECT that embeds a write via a subquery should be caught by EXPLAIN.
+	// This might fail at the keyword layer or at EXPLAIN -- either way it must
+	// be rejected.
+	_, _, err := store.ReadOnlyQuery(
+		"SELECT * FROM projects WHERE id IN (DELETE FROM projects RETURNING id)",
+	)
+	require.Error(t, err)
+}
+
+func TestStripLeadingComments(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"no comments", "SELECT 1", "SELECT 1"},
+		{"line comment", "-- comment\nSELECT 1", "SELECT 1"},
+		{"block comment", "/* comment */ SELECT 1", "SELECT 1"},
+		{"nested comments", "-- line\n/* block */ SELECT 1", "SELECT 1"},
+		{"whitespace and comment", "  \n  -- comment\n  SELECT 1", "SELECT 1"},
+		{"only comment no newline", "-- comment", ""},
+		{"unclosed block comment", "/* never closed", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, stripLeadingComments(tt.input))
+		})
+	}
+}
+
+func TestFirstWord(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "SELECT", firstWord("SELECT * FROM t"))
+	assert.Equal(t, "INSERT", firstWord("INSERT INTO t"))
+	assert.Equal(t, "word", firstWord("word"))
+	assert.Equal(t, "", firstWord(""))
+}
+
 func TestContainsWord(t *testing.T) {
 	t.Parallel()
 	assert.True(t, containsWord("SELECT * DELETE FROM", "DELETE"))
