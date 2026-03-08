@@ -6,6 +6,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1104,6 +1105,9 @@ func writeConfigPerm(t *testing.T, content string, perm os.FileMode) string {
 }
 
 func TestPermissionWarningWithAPIKey(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.Chmod is a no-op on Windows")
+	}
 	path := writeConfigPerm(t, `[llm]
 api_key = "sk-ant-test"
 `, 0o644)
@@ -1122,6 +1126,9 @@ api_key = "sk-ant-test"
 }
 
 func TestPermissionWarningChatAPIKey(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.Chmod is a no-op on Windows")
+	}
 	path := writeConfigPerm(t, `[llm.chat]
 api_key = "sk-ant-chat"
 provider = "anthropic"
@@ -1139,6 +1146,9 @@ provider = "anthropic"
 }
 
 func TestPermissionWarningExtractionAPIKey(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.Chmod is a no-op on Windows")
+	}
 	path := writeConfigPerm(t, `[llm.extraction]
 api_key = "sk-ant-ext"
 provider = "anthropic"

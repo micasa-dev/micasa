@@ -169,7 +169,10 @@ func (s *ShadowDB) stageCreate(op Operation) error {
 // data for a raw SQL INSERT. Skips "id" (shadow DB auto-assigns) and
 // "vendor_name" (synthetic field, not a real column). Each column name is
 // validated against the allowed schema and double-quoted for defense-in-depth.
-func buildInsert(table string, opData map[string]any) (cols []string, vals []any, placeholders []string, err error) {
+func buildInsert(
+	table string,
+	opData map[string]any,
+) (cols []string, vals []any, placeholders []string, err error) {
 	skip := map[string]bool{data.ColID: true, "vendor_name": true}
 
 	for _, k := range sortedKeys(opData) {
