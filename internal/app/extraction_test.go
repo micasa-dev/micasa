@@ -1279,13 +1279,14 @@ func TestAcquireTools_PersistAfterStepDone(t *testing.T) {
 	ex.acquireTools = []extract.AcquireToolState{
 		{Tool: "pdftocairo", Running: false, Count: 10},
 	}
+	ex.extractedPages = 10
 	m.width = 120
 	m.height = 40
 
-	// Collapsed: parent shows "ocr" and page ratio, children hidden.
+	// Collapsed: parent shows "ocr" and percentage, children hidden.
 	out := m.buildExtractionOverlay()
 	assert.Contains(t, out, "ocr", "parent should show ocr detail")
-	assert.Contains(t, out, "10/10 pp", "parent should show page ratio")
+	assert.Contains(t, out, "100%", "parent should show completion percentage")
 	assert.NotContains(t, out, "pdftocairo", "children hidden when collapsed")
 
 	// Expand to see children.
@@ -1309,12 +1310,13 @@ func TestAcquireTools_ShowDuringRunning(t *testing.T) {
 	ex.acquireTools = []extract.AcquireToolState{
 		{Tool: "pdftocairo", Running: false, Count: 10},
 	}
+	ex.extractedPages = 10
 	m.width = 120
 	m.height = 40
 
 	out := m.buildExtractionOverlay()
 	assert.Contains(t, out, "pdftocairo", "tool lines should show during OCR")
-	assert.Contains(t, out, "10/10 pp", "page ratio should show")
+	assert.Contains(t, out, "100%", "parent should show completion percentage")
 }
 
 func TestAcquireTools_PartialRunning(t *testing.T) {
@@ -1327,12 +1329,13 @@ func TestAcquireTools_PartialRunning(t *testing.T) {
 	ex.acquireTools = []extract.AcquireToolState{
 		{Tool: "pdftocairo", Running: true, Count: 3},
 	}
+	ex.extractedPages = 10
 	m.width = 120
 	m.height = 40
 
 	out := m.buildExtractionOverlay()
 	assert.Contains(t, out, "pdftocairo", "running tool should show")
-	assert.Contains(t, out, "3/3 pp", "in-progress count should show")
+	assert.Contains(t, out, "30%", "parent should show 3/10 = 30%")
 }
 
 func TestAcquireTools_ParentShowsOCRDetail(t *testing.T) {
@@ -1348,13 +1351,14 @@ func TestAcquireTools_ParentShowsOCRDetail(t *testing.T) {
 	ex.acquireTools = []extract.AcquireToolState{
 		{Tool: "pdftocairo", Running: false, Count: 5},
 	}
+	ex.extractedPages = 5
 	m.width = 120
 	m.height = 40
 
 	out := m.buildExtractionOverlay()
 	// Parent header always shows "ocr" detail, not "page X/Y".
 	assert.Contains(t, out, "ocr", "parent should show ocr detail")
-	assert.Contains(t, out, "5/5 pp", "page ratio should show")
+	assert.Contains(t, out, "100%", "parent should show completion percentage")
 	// Running = auto-expanded, children visible.
 	assert.Contains(t, out, "pdftocairo", "children visible when running")
 }
@@ -1543,6 +1547,45 @@ func TestAcquireTools_NonTerminalPageRatioUsesTotal(t *testing.T) {
 	out := m.buildExtractionOverlay()
 	assert.Contains(t, out, "7/20 pp", "non-terminal denominator must be extractedPages")
 	assert.NotContains(t, out, "7/7 pp", "denominator must not equal numerator")
+}
+
+func TestAcquireTools_ParentShowsZeroPercentInitially(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepExtract: stepRunning,
+	})
+	ex := m.ex.extraction
+	ex.Steps[stepExtract] = extractionStepInfo{Status: stepRunning}
+	// Initial state: tools exist but no pages processed yet, total unknown.
+	ex.acquireTools = []extract.AcquireToolState{
+		{Tool: "pdftocairo", Running: true, Count: 0},
+		{Tool: "tesseract", Running: true, Count: 0},
+	}
+	m.width = 120
+	m.height = 40
+
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "0%", "parent should show 0% before any pages complete")
+}
+
+func TestAcquireTools_ParentShowsPipelinePercentage(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepExtract: stepRunning,
+	})
+	ex := m.ex.extraction
+	ex.Steps[stepExtract] = extractionStepInfo{Status: stepRunning}
+	// pdftocairo 8/10, tesseract 3/10 => (8+3)/(10*2) = 55%
+	ex.acquireTools = []extract.AcquireToolState{
+		{Tool: "pdftocairo", Running: true, Count: 8},
+		{Tool: "tesseract", Running: true, Count: 3},
+	}
+	ex.extractedPages = 10
+	m.width = 120
+	m.height = 40
+
+	out := m.buildExtractionOverlay()
+	assert.Contains(t, out, "55%", "parent should show combined pipeline percentage")
 }
 
 func TestHandleExtractionProgress_AcquireToolsSetsExtractedPages(t *testing.T) {

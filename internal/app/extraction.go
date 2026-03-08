@@ -1632,12 +1632,19 @@ func (m *Model) renderExtractionStep(
 		hdr.WriteString(hint.Render(fmt.Sprintf("%-*s", cols.Detail, detail)))
 	}
 	if hasTools {
-		// Parent metric: page ratio from last tool as aggregate progress.
-		lastTool := ex.acquireTools[len(ex.acquireTools)-1]
-		if lastTool.Count > 0 || !lastTool.Running {
-			hdr.WriteString("  ")
-			hdr.WriteString(m.renderPageRatio(lastTool.Count, ex.extractedPages, ex.docPages))
+		// Parent metric: combined pipeline percentage.
+		// Each tool is an equal-weight stage, so
+		// pct = sum(tool.Count) / (total * numTools) * 100.
+		var pct int
+		if denom := ex.extractedPages * len(ex.acquireTools); denom > 0 {
+			var sumCount int
+			for _, ts := range ex.acquireTools {
+				sumCount += ts.Count
+			}
+			pct = sumCount * 100 / denom
 		}
+		hdr.WriteString("  ")
+		hdr.WriteString(m.styles.ExtDone().Render(fmt.Sprintf("%d%%", pct)))
 	} else if cols.Metric > 0 {
 		hdr.WriteString("  ")
 		hdr.WriteString(hint.Render(fmt.Sprintf("%*s", cols.Metric, info.Metric)))
