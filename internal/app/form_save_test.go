@@ -773,6 +773,21 @@ func TestCtrlQCleanFormQuitsImmediately(t *testing.T) {
 	assert.Equal(t, confirmNone, m.confirm, "no confirm needed for clean form")
 }
 
+func TestResetFormStateClearsFormConfirmOnly(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	// Form-related confirm is cleared by resetFormState.
+	m.confirm = confirmFormDiscard
+	m.resetFormState()
+	assert.Equal(t, confirmNone, m.confirm, "form confirm should be cleared")
+
+	// Hard-delete confirm survives resetFormState (not form-related).
+	m.confirm = confirmHardDelete
+	m.resetFormState()
+	assert.Equal(t, confirmHardDelete, m.confirm, "hard-delete confirm should survive form reset")
+}
+
 func TestUserCreatesIncidentWithRelativeDateYesterday(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)

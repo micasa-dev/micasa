@@ -870,6 +870,36 @@ func TestIncidentHardDeleteOnlyWorksOnIncidents(t *testing.T) {
 	)
 }
 
+func TestIncidentHardDeleteOnEmptyTable(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	// Incidents tab with no rows.
+	m.active = tabIndex(tabIncidents)
+	require.NoError(t, m.reloadActiveTab())
+	require.Empty(t, m.activeTab().Rows)
+
+	sendKey(m, "i")
+	sendKey(m, "D")
+	assert.Equal(t, confirmNone, m.confirm, "should not prompt when nothing is selected")
+	assert.Contains(t, m.statusView(), "Nothing selected")
+}
+
+func TestIncidentHardDeleteErrorPath(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	// Set up a hard-delete confirmation with an ID that doesn't exist.
+	m.active = tabIndex(tabIncidents)
+	m.mode = modeEdit
+	m.confirm = confirmHardDelete
+	m.hardDeleteID = 999999
+
+	sendKey(m, "y")
+	assert.Equal(t, confirmNone, m.confirm, "confirm should be cleared even on error")
+	assert.Contains(t, m.statusView(), "not found")
+}
+
 // ---------------------------------------------------------------------------
 // applianceMaintenanceHandler (detail view)
 // ---------------------------------------------------------------------------
