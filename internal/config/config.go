@@ -5,9 +5,11 @@ package config
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -547,6 +549,8 @@ func LoadFromPath(path string) (Config, error) {
 		)
 	}
 
+	checkFilePermissions(&cfg, path)
+
 	return cfg, nil
 }
 
@@ -811,6 +815,37 @@ func collectKeys(t reflect.Type, prefix string) []string {
 		}
 	}
 	return keys
+}
+
+// hasAPIKeys reports whether any API key field is set in the config.
+func (c Config) hasAPIKeys() bool {
+	return c.LLM.APIKey != "" ||
+		c.LLM.Chat.APIKey != "" ||
+		c.LLM.Extraction.APIKey != ""
+}
+
+// checkFilePermissions appends a warning if the config file contains API
+// keys and has permissions more open than owner-only (0600). Skipped on
+// Windows where Unix file permissions do not apply.
+func checkFilePermissions(cfg *Config, path string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+	if !cfg.hasAPIKeys() {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+	const ownerOnly fs.FileMode = 0o600
+	if perm := info.Mode().Perm(); perm&^ownerOnly != 0 {
+		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf(
+			"%s has permissions %04o -- config files with API keys should be %04o; "+
+				"fix with: chmod 600 %s",
+			path, perm, ownerOnly, path,
+		))
+	}
 }
 
 // validateOverrideTimeout validates a per-pipeline timeout string.

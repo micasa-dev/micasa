@@ -5,6 +5,7 @@ package data
 
 import (
 	"errors"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -139,11 +140,17 @@ func ParseIntervalMonths(input string) (int, error) {
 		if err != nil {
 			return 0, ErrInvalidInterval
 		}
+		if y > math.MaxInt/12 {
+			return 0, ErrInvalidInterval
+		}
 		total += y * 12
 	}
 	if monthStr != "" {
 		m, err := strconv.Atoi(monthStr)
 		if err != nil {
+			return 0, ErrInvalidInterval
+		}
+		if total > math.MaxInt-m {
 			return 0, ErrInvalidInterval
 		}
 		total += m

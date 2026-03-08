@@ -6,6 +6,7 @@ package data
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"modernc.org/sqlite"
 )
@@ -64,7 +65,15 @@ func (s *Store) Backup(ctx context.Context, destPath string) error {
 		return err
 	}
 
-	return verifyBackup(destPath)
+	if err := verifyBackup(destPath); err != nil {
+		return err
+	}
+
+	if err := os.Chmod(destPath, 0o600); err != nil {
+		return fmt.Errorf("set backup file permissions: %w", err)
+	}
+
+	return nil
 }
 
 // verifyBackup opens the backup and runs PRAGMA integrity_check to confirm

@@ -128,14 +128,22 @@ func (s *ShadowDB) stageOne(op Operation) error {
 // stageCreate inserts a create operation into the shadow table and records
 // the auto-increment ID assigned by the shadow DB.
 func (s *ShadowDB) stageCreate(op Operation) error {
-	cols, vals, placeholders := buildInsert(op.Data)
+	if err := validateTable(op.Table); err != nil {
+		return err
+	}
+
+	cols, vals, placeholders, err := buildInsert(op.Table, op.Data)
+	if err != nil {
+		return err
+	}
 	if len(cols) == 0 {
 		return fmt.Errorf("no columns to insert")
 	}
 
+	//nolint:gosec // table and column names validated by validateTable and validateColumn
 	sql := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s)",
-		op.Table,
+		quoteIdent(op.Table),
 		strings.Join(cols, ", "),
 		strings.Join(placeholders, ", "),
 	)
@@ -159,19 +167,26 @@ func (s *ShadowDB) stageCreate(op Operation) error {
 
 // buildInsert extracts column names, values, and placeholders from operation
 // data for a raw SQL INSERT. Skips "id" (shadow DB auto-assigns) and
-// "vendor_name" (synthetic field, not a real column).
-func buildInsert(opData map[string]any) (cols []string, vals []any, placeholders []string) {
+// "vendor_name" (synthetic field, not a real column). Each column name is
+// validated against the allowed schema and double-quoted for defense-in-depth.
+func buildInsert(
+	table string,
+	opData map[string]any,
+) (cols []string, vals []any, placeholders []string, err error) {
 	skip := map[string]bool{data.ColID: true, "vendor_name": true}
 
 	for _, k := range sortedKeys(opData) {
 		if skip[k] {
 			continue
 		}
-		cols = append(cols, k)
+		if err := validateColumn(table, k); err != nil {
+			return nil, nil, nil, err
+		}
+		cols = append(cols, quoteIdent(k))
 		vals = append(vals, normalizeValue(opData[k]))
 		placeholders = append(placeholders, "?")
 	}
-	return cols, vals, placeholders
+	return cols, vals, placeholders, nil
 }
 
 // CreatedIDs returns the shadow auto-increment IDs for a given table
@@ -695,6 +710,57 @@ func commitUpdateQuote(store *data.Store, op Operation) error {
 		vendor = q.Vendor
 	}
 	return store.UpdateQuote(q, vendor)
+}
+
+// --- identifier validation ---
+
+// allowedColumns maps each allowed table to its set of valid column names,
+// derived from ExtractionOps at init time.
+var allowedColumns = func() map[string]map[string]bool {
+	m := make(map[string]map[string]bool)
+	for _, op := range ExtractionOps {
+		if m[op.Table] == nil {
+			m[op.Table] = make(map[string]bool)
+		}
+		for _, col := range op.Columns {
+			m[op.Table][col.Name] = true
+		}
+	}
+	return m
+}()
+
+// validateTable checks that the table name is in the allowed set and
+// contains only safe characters.
+func validateTable(table string) error {
+	if !data.IsSafeIdentifier(table) {
+		return fmt.Errorf("invalid table name: %q", table)
+	}
+	if _, ok := ExtractionAllowedOps[table]; !ok {
+		return fmt.Errorf("table %q is not in the allowed set", table)
+	}
+	return nil
+}
+
+// validateColumn checks that the column name contains only safe characters
+// and exists in the target table's schema.
+func validateColumn(table, col string) error {
+	if !data.IsSafeIdentifier(col) {
+		return fmt.Errorf("invalid column name: %q", col)
+	}
+	allowed, ok := allowedColumns[table]
+	if !ok {
+		return fmt.Errorf("no column schema for table %q", table)
+	}
+	if !allowed[col] {
+		return fmt.Errorf("column %q not allowed on table %q", col, table)
+	}
+	return nil
+}
+
+// quoteIdent wraps a SQL identifier in double-quotes (SQLite's standard
+// identifier quoting mechanism) as defense-in-depth after validation.
+func quoteIdent(name string) string {
+	return `"` + name + `"`
 }
 
 // --- helpers ---

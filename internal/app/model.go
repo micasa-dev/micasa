@@ -2844,22 +2844,39 @@ var tabKindIndex = func() map[TabKind]int {
 	return m
 }()
 
-// editorBinary returns the user's preferred editor from $EDITOR or $VISUAL.
-// Returns "" if neither is set.
-func editorBinary() string {
-	if e := os.Getenv("EDITOR"); e != "" {
-		return e
+// editorBinary returns the user's preferred editor binary and any extra
+// arguments parsed from $EDITOR or $VISUAL (e.g. "code --wait" yields
+// binary="code", args=["--wait"]). The binary is resolved via exec.LookPath
+// to verify it exists and is executable.
+func editorBinary() (string, []string, error) {
+	raw := os.Getenv("EDITOR")
+	if raw == "" {
+		raw = os.Getenv("VISUAL")
 	}
-	return os.Getenv("VISUAL")
+	if raw == "" {
+		return "", nil, errors.New(
+			"no editor configured: set $EDITOR or $VISUAL to an executable (e.g. export EDITOR=vim)",
+		)
+	}
+
+	parts := strings.Fields(raw)
+	bin, err := exec.LookPath(parts[0])
+	if err != nil {
+		return "", nil, fmt.Errorf(
+			"editor %q not found on $PATH: install it or set $EDITOR to a valid executable: %w",
+			parts[0], err,
+		)
+	}
+	return bin, parts[1:], nil
 }
 
 // launchExternalEditor writes the current notes text to a temp file and
 // launches $EDITOR via tea.ExecProcess. The textarea is closed so the
 // terminal is fully released to the editor.
 func (m *Model) launchExternalEditor() tea.Cmd {
-	editor := editorBinary()
-	if editor == "" {
-		m.setStatusError("Set $EDITOR or $VISUAL to use an external editor.")
+	editor, editorArgs, err := editorBinary()
+	if err != nil {
+		m.setStatusError(err.Error())
 		return nil
 	}
 	if m.fs.notesFieldPtr == nil {
@@ -2892,9 +2909,12 @@ func (m *Model) launchExternalEditor() tea.Cmd {
 
 	m.exitForm()
 
-	cmd := exec.Command( //nolint:gosec,noctx // user-configured editor; no context in tea.Cmd
+	cmdArgs := make([]string, len(editorArgs)+1)
+	copy(cmdArgs, editorArgs)
+	cmdArgs[len(editorArgs)] = f.Name()
+	cmd := exec.Command( //nolint:gosec,noctx // user-configured editor validated via LookPath
 		editor,
-		f.Name(),
+		cmdArgs...,
 	)
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		return editorFinishedMsg{Err: err}

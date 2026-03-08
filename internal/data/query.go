@@ -4,12 +4,20 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
-const maxQueryRows = 200
+const (
+	maxQueryRows = 200
+
+	// readOnlyQueryTimeout caps how long a user-submitted query can run
+	// before being cancelled.
+	readOnlyQueryTimeout = 10 * time.Second
+)
 
 // PragmaColumn mirrors the output of PRAGMA table_info.
 type PragmaColumn struct {
@@ -34,46 +42,95 @@ func (s *Store) TableNames() ([]string, error) {
 // TableColumns returns column metadata for the named table via PRAGMA.
 // The table name is validated to contain only safe characters.
 func (s *Store) TableColumns(table string) ([]PragmaColumn, error) {
-	if !isSafeIdentifier(table) {
+	if !IsSafeIdentifier(table) {
 		return nil, fmt.Errorf("invalid table name: %q", table)
 	}
 	var cols []PragmaColumn
-	//nolint:gosec // table name validated by isSafeIdentifier above
+	//nolint:gosec // table name validated by IsSafeIdentifier above
 	err := s.db.Raw(fmt.Sprintf("PRAGMA table_info(%s)", table)).Scan(&cols).Error
 	return cols, err
 }
 
+// writeOpcodes lists SQLite VDBE opcodes that indicate a write operation.
+// If EXPLAIN output contains any of these, the query mutates state.
+var writeOpcodes = map[string]bool{
+	"OpenWrite":    true,
+	"Delete":       true,
+	"Insert":       true,
+	"InsertInt":    true,
+	"NewRowid":     true,
+	"RowSetAdd":    true,
+	"CreateBtree":  true,
+	"SqlExec":      true,
+	"Destroy":      true,
+	"DropTable":    true,
+	"DropIndex":    true,
+	"DropTrigger":  true,
+	"Clear":        true,
+	"SetCookie":    true,
+	"RealAffinity": false, // read-only, listed for documentation
+}
+
+// disallowedKeywords is the defense-in-depth keyword blocklist. It catches
+// obviously dangerous statements before the more expensive EXPLAIN check.
+var disallowedKeywords = []string{
+	"INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
+	"ATTACH", "DETACH", "PRAGMA", "REINDEX", "VACUUM",
+}
+
 // ReadOnlyQuery executes a validated SELECT query and returns the results as
-// string slices. Only SELECT statements are allowed; result rows are capped
-// at maxQueryRows.
+// string slices. Only SELECT/WITH statements are allowed; result rows are
+// capped at maxQueryRows.
+//
+// Validation is layered for defense-in-depth:
+//  1. Fast prefix check: query must start with SELECT or WITH (after stripping
+//     whitespace and SQL comments).
+//  2. Semicolon check: rejects multi-statement payloads.
+//  3. Keyword blocklist (containsWord): catches obvious mutation keywords.
+//  4. EXPLAIN opcode check: runs EXPLAIN on the query and rejects it if any
+//     write-related VDBE opcodes appear. This is the primary structural
+//     validation and catches attacks that bypass keyword matching.
+//  5. Timeout: the actual query runs under a 10-second context deadline to
+//     prevent long-running queries from hanging the app.
 func (s *Store) ReadOnlyQuery(query string) (columns []string, rows [][]string, err error) {
 	trimmed := strings.TrimSpace(query)
 	if trimmed == "" {
 		return nil, nil, fmt.Errorf("empty query")
 	}
 
-	// Reject multi-statement queries to prevent piggy-backed writes.
+	// --- Layer 1: fast prefix check (comment-aware) ---
+	stripped := stripLeadingComments(trimmed)
+	upper := strings.ToUpper(stripped)
+	if !strings.HasPrefix(upper, "SELECT") && !strings.HasPrefix(upper, "WITH") {
+		return nil, nil, fmt.Errorf(
+			"only SELECT queries are allowed: query starts with %q",
+			firstWord(stripped),
+		)
+	}
+
+	// --- Layer 2: reject multi-statement payloads ---
 	if strings.Contains(trimmed, ";") {
 		return nil, nil, fmt.Errorf("multiple statements are not allowed")
 	}
 
-	upper := strings.ToUpper(trimmed)
-	if !strings.HasPrefix(upper, "SELECT") {
-		return nil, nil, fmt.Errorf("only SELECT queries are allowed")
-	}
-	// Reject statements that could modify data even if they start with SELECT.
-	// Use word-boundary matching so column names like "deleted_at" don't
-	// trigger a false positive on "DELETE".
-	for _, kw := range []string{
-		"INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
-		"ATTACH", "DETACH", "PRAGMA", "REINDEX", "VACUUM",
-	} {
-		if containsWord(upper, kw) {
+	// --- Layer 3: keyword blocklist (defense-in-depth) ---
+	upperFull := strings.ToUpper(trimmed)
+	for _, kw := range disallowedKeywords {
+		if containsWord(upperFull, kw) {
 			return nil, nil, fmt.Errorf("query contains disallowed keyword: %s", kw)
 		}
 	}
 
-	sqlRows, err := s.db.Raw(trimmed).Rows()
+	// --- Layer 4: EXPLAIN opcode validation ---
+	if err := s.explainIsReadOnly(trimmed); err != nil {
+		return nil, nil, err
+	}
+
+	// --- Layer 5: execute with timeout ---
+	ctx, cancel := context.WithTimeout(context.Background(), readOnlyQueryTimeout)
+	defer cancel()
+
+	sqlRows, err := s.db.WithContext(ctx).Raw(trimmed).Rows()
 	if err != nil {
 		return nil, nil, fmt.Errorf("execute query: %w", err)
 	}
@@ -109,6 +166,90 @@ func (s *Store) ReadOnlyQuery(query string) (columns []string, rows [][]string, 
 		rows = append(rows, row)
 	}
 	return columns, rows, sqlRows.Err()
+}
+
+// explainIsReadOnly runs EXPLAIN on the query and inspects the resulting VDBE
+// program for write-related opcodes. Returns nil if the query is read-only, or
+// an error describing which opcode was found.
+func (s *Store) explainIsReadOnly(query string) error {
+	explainRows, err := s.db.Raw("EXPLAIN " + query).Rows()
+	if err != nil {
+		return fmt.Errorf("EXPLAIN validation failed: %w", err)
+	}
+	defer func() { _ = explainRows.Close() }()
+
+	cols, err := explainRows.Columns()
+	if err != nil {
+		return fmt.Errorf("EXPLAIN columns: %w", err)
+	}
+
+	// Find the "opcode" column index. EXPLAIN output columns are:
+	// addr, opcode, p1, p2, p3, p4, p5, comment
+	opcodeIdx := -1
+	for i, c := range cols {
+		if strings.ToLower(c) == "opcode" {
+			opcodeIdx = i
+			break
+		}
+	}
+	if opcodeIdx < 0 {
+		return fmt.Errorf("EXPLAIN output missing opcode column")
+	}
+
+	for explainRows.Next() {
+		values := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
+		for i := range values {
+			ptrs[i] = &values[i]
+		}
+		if err := explainRows.Scan(ptrs...); err != nil {
+			return fmt.Errorf("scan EXPLAIN row: %w", err)
+		}
+		opcode := fmt.Sprintf("%v", values[opcodeIdx])
+		if writeOpcodes[opcode] {
+			return fmt.Errorf(
+				"query rejected: EXPLAIN revealed write operation %q -- only read-only queries are allowed",
+				opcode,
+			)
+		}
+	}
+	return explainRows.Err()
+}
+
+// stripLeadingComments removes leading SQL comments (both -- line comments
+// and /* block comments */) and whitespace so the true first keyword can be
+// checked. This prevents attackers from hiding a non-SELECT statement behind
+// comment syntax.
+func stripLeadingComments(s string) string {
+	for {
+		s = strings.TrimSpace(s)
+		if strings.HasPrefix(s, "--") {
+			if nl := strings.IndexByte(s, '\n'); nl >= 0 {
+				s = s[nl+1:]
+			} else {
+				return ""
+			}
+		} else if strings.HasPrefix(s, "/*") {
+			if end := strings.Index(s, "*/"); end >= 0 {
+				s = s[end+2:]
+			} else {
+				return ""
+			}
+		} else {
+			return s
+		}
+	}
+}
+
+// firstWord returns the first whitespace-delimited token in s, or s itself
+// if there is no whitespace. Used for error messages.
+func firstWord(s string) string {
+	if i := strings.IndexFunc(s, func(r rune) bool {
+		return r == ' ' || r == '\t' || r == '\n' || r == '\r'
+	}); i >= 0 {
+		return s[:i]
+	}
+	return s
 }
 
 // DataDump exports every row of every user table as readable text, suitable
@@ -287,9 +428,9 @@ func formatColumnValue(col, val string) string {
 	return col + ": " + val
 }
 
-// isSafeIdentifier returns true if s contains only alphanumerics and
-// underscores -- safe for interpolation into a PRAGMA statement.
-func isSafeIdentifier(s string) bool {
+// IsSafeIdentifier returns true if s contains only alphanumerics and
+// underscores -- safe for interpolation into SQL statements.
+func IsSafeIdentifier(s string) bool {
 	if s == "" {
 		return false
 	}

@@ -37,19 +37,49 @@ func (s *Store) ExtractDocument(id uint) (string, error) {
 	// TTL-based eviction in EvictStaleCache treats it as recently used.
 	if info, statErr := os.Stat(cachePath); statErr == nil && info.Size() == doc.SizeBytes {
 		now := time.Now()
-		_ = os.Chtimes(
-			cachePath,
-			now,
-			now,
-		) // best-effort; stale ModTime just means earlier re-extraction
+		// Best-effort: if the file was removed between Stat and Chtimes,
+		// we will recreate it on the next call.
+		_ = os.Chtimes(cachePath, now, now)
 		return cachePath, nil
 	}
 
+	// Atomic write: create a temp file in the same directory (guaranteeing
+	// same filesystem), write data, then rename into place. The rename is
+	// atomic on POSIX, so readers see either the old file or the complete
+	// new file -- never a partial write.
+	tmp, err := os.CreateTemp(cacheDir, ".micasa-cache-*")
+	if err != nil {
+		return "", fmt.Errorf("create temp cache file: %w", err)
+	}
+	tmpPath := tmp.Name()
+
+	// Clean up the temp file on any failure path.
+	ok := false
+	defer func() {
+		if !ok {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if _, err := tmp.Write(doc.Data); err != nil {
+		_ = tmp.Close()
+		return "", fmt.Errorf("write temp cache file: %w", err)
+	}
 	// 0o600: owner read/write only. Windows ignores Unix permission bits;
 	// cached files there inherit the user's default ACL.
-	if err := os.WriteFile(cachePath, doc.Data, 0o600); err != nil {
-		return "", fmt.Errorf("write cached document: %w", err)
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return "", fmt.Errorf("chmod temp cache file: %w", err)
 	}
+	if err := tmp.Close(); err != nil {
+		return "", fmt.Errorf("close temp cache file: %w", err)
+	}
+	//nolint:gosec // tmpPath is constructed from os.CreateTemp, not user input
+	if err := os.Rename(tmpPath, cachePath); err != nil {
+		return "", fmt.Errorf("rename temp cache file: %w", err)
+	}
+
+	ok = true
 	return cachePath, nil
 }
 
