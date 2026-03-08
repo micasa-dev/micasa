@@ -1096,6 +1096,101 @@ func TestExampleTOMLPipelineSections(t *testing.T) {
 	assert.Contains(t, example, "[llm.extraction]")
 }
 
+func writeConfigPerm(t *testing.T, content string, perm os.FileMode) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(path, []byte(content), perm))
+	return path
+}
+
+func TestPermissionWarningWithAPIKey(t *testing.T) {
+	path := writeConfigPerm(t, `[llm]
+api_key = "sk-ant-test"
+`, 0o644)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+
+	var found bool
+	for _, w := range cfg.Warnings {
+		if strings.Contains(w, "permissions") && strings.Contains(w, "0644") {
+			found = true
+			assert.Contains(t, w, "chmod 600")
+			assert.Contains(t, w, path)
+		}
+	}
+	assert.True(t, found, "expected a permission warning for 0644 config with API key")
+}
+
+func TestPermissionWarningChatAPIKey(t *testing.T) {
+	path := writeConfigPerm(t, `[llm.chat]
+api_key = "sk-ant-chat"
+provider = "anthropic"
+`, 0o640)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+
+	var found bool
+	for _, w := range cfg.Warnings {
+		if strings.Contains(w, "permissions") {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected a permission warning for config with llm.chat.api_key")
+}
+
+func TestPermissionWarningExtractionAPIKey(t *testing.T) {
+	path := writeConfigPerm(t, `[llm.extraction]
+api_key = "sk-ant-ext"
+provider = "anthropic"
+`, 0o604)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+
+	var found bool
+	for _, w := range cfg.Warnings {
+		if strings.Contains(w, "permissions") {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected a permission warning for config with llm.extraction.api_key")
+}
+
+func TestNoPermissionWarningWhenSecure(t *testing.T) {
+	path := writeConfigPerm(t, `[llm]
+api_key = "sk-ant-test"
+`, 0o600)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+
+	for _, w := range cfg.Warnings {
+		assert.NotContains(t, w, "permissions",
+			"should not warn when permissions are 0600")
+	}
+}
+
+func TestNoPermissionWarningWithoutAPIKey(t *testing.T) {
+	path := writeConfigPerm(t, `[llm]
+model = "qwen3"
+`, 0o644)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+
+	for _, w := range cfg.Warnings {
+		assert.NotContains(t, w, "permissions",
+			"should not warn about permissions when no API keys are set")
+	}
+}
+
+func TestNoPermissionWarningNoFile(t *testing.T) {
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+
+	for _, w := range cfg.Warnings {
+		assert.NotContains(t, w, "permissions",
+			"should not warn about permissions when config file does not exist")
+	}
+}
+
 func TestNoOverridesBackwardCompatible(t *testing.T) {
 	path := writeConfig(t, `[llm]
 provider = "anthropic"
