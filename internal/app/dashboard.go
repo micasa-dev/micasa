@@ -279,7 +279,7 @@ func (m *Model) loadDashboardAt(now time.Time) error {
 	sortByDays(d.Overdue)
 	sortByDays(d.Upcoming)
 	d.Overdue = capSlice(d.Overdue, 10)
-	d.Upcoming = capSlice(d.Upcoming, 10-len(d.Overdue))
+	d.Upcoming = capSlice(d.Upcoming, 10)
 
 	// Active projects.
 	d.ActiveProjects, err = m.store.ListActiveProjects()

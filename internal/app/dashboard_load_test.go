@@ -4,6 +4,7 @@
 package app
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -323,4 +324,39 @@ func TestLoadDashboardExcludesAppliancesWithoutWarranty(t *testing.T) {
 
 	require.Len(t, m.dash.data.ExpiringWarranties, 1)
 	assert.Equal(t, "Fridge", m.dash.data.ExpiringWarranties[0].Appliance.Name)
+}
+
+func TestLoadDashboardAtOverdueCapDoesNotHideUpcoming(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	cats, _ := m.store.MaintenanceCategories()
+
+	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	// Create 12 overdue items (past due dates).
+	for i := range 12 {
+		pastDue := now.AddDate(0, 0, -(i + 1))
+		require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+			Name:       fmt.Sprintf("Overdue %d", i),
+			CategoryID: cats[0].ID,
+			DueDate:    &pastDue,
+		}))
+	}
+
+	// Create 5 upcoming items (due within 30 days).
+	for i := range 5 {
+		soonDue := now.AddDate(0, 0, i+1)
+		require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+			Name:       fmt.Sprintf("Upcoming %d", i),
+			CategoryID: cats[0].ID,
+			DueDate:    &soonDue,
+		}))
+	}
+
+	require.NoError(t, m.loadDashboardAt(now))
+
+	// Overdue should be capped at 10.
+	assert.Len(t, m.dash.data.Overdue, 10)
+	// Upcoming must NOT be empty — a full overdue list should not hide upcoming.
+	assert.Len(t, m.dash.data.Upcoming, 5)
 }
