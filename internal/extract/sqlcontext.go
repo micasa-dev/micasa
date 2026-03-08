@@ -62,10 +62,11 @@ type ActionDef struct {
 // TableDef defines a table's columns and which actions are allowed.
 // Columns are derived from generated model metadata via columnsFromMeta;
 // each ActionDef specifies required fields and any action-specific extras.
+// Table-wide column exclusions are controlled by the extract:"-" struct tag
+// on model fields, which causes genmeta to omit them from TableExtractColumns.
 type TableDef struct {
 	Table   string
 	Columns []ColumnDef // shared columns across all actions
-	Omit    []string    // columns to exclude from ALL actions
 	Actions []ActionDef
 }
 
@@ -115,7 +116,6 @@ var ExtractionTableDefs = []TableDef{
 	{
 		Table:   data.TableAppliances,
 		Columns: columnsFromMeta(data.TableAppliances),
-		Omit:    []string{"purchase_date", "warranty_expiry"},
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"name"}},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
@@ -137,7 +137,6 @@ var ExtractionTableDefs = []TableDef{
 				data.ProjectStatusAbandoned,
 			},
 		),
-		Omit: []string{"start_date", "end_date", "actual_cents"},
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"title"}},
 		},
@@ -148,7 +147,6 @@ var ExtractionTableDefs = []TableDef{
 			columnsFromMeta(data.TableQuotes),
 			ColumnDef{Name: "vendor_name", Type: ColTypeString},
 		),
-		Omit: []string{"other_cents", "received_date"},
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"project_id", "total_cents"}},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
@@ -159,7 +157,6 @@ var ExtractionTableDefs = []TableDef{
 	{
 		Table:   data.TableMaintenanceItems,
 		Columns: columnsFromMeta(data.TableMaintenanceItems),
-		Omit:    []string{"last_serviced_at", "due_date", "manual_url", "manual_text"},
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"name"}},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
@@ -187,7 +184,6 @@ var ExtractionTableDefs = []TableDef{
 			),
 			ColumnDef{Name: "vendor_name", Type: ColTypeString},
 		),
-		Omit: []string{"previous_status", "date_resolved"},
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"title"}},
 		},
@@ -216,7 +212,6 @@ var ExtractionTableDefs = []TableDef{
 				data.DocumentEntityIncident,
 			},
 		),
-		Omit: []string{"mime_type", "size_bytes", "sha256", "extracted_text"},
 		Actions: []ActionDef{
 			{Action: ActionCreate},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
@@ -253,10 +248,7 @@ var ExtractionOps = func() []TableOp {
 }()
 
 func expandTableOp(td TableDef, ad ActionDef) TableOp {
-	omit := make(map[string]bool, len(td.Omit)+len(ad.Omit))
-	for _, name := range td.Omit {
-		omit[name] = true
-	}
+	omit := make(map[string]bool, len(ad.Omit))
 	for _, name := range ad.Omit {
 		omit[name] = true
 	}

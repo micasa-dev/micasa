@@ -89,8 +89,10 @@ func main() {
 				colConsts[key] = dbName
 
 				// Collect extractable columns: skip auto-managed fields,
-				// binary data, and types we can't map to JSON Schema.
-				if gormAutoFields[ident.Name] || isByteSlice(field.Type) {
+				// binary data, extract:"-" tagged fields, and types
+				// we can't map to JSON Schema.
+				if gormAutoFields[ident.Name] || isByteSlice(field.Type) ||
+					fieldExtractTag(field) == "-" {
 					continue
 				}
 				if jt := jsonSchemaType(field.Type); jt != "" {
@@ -217,6 +219,15 @@ func isAssociation(expr ast.Expr, localStructs map[string]bool) bool {
 		return false
 	}
 	return localStructs[ident.Name]
+}
+
+// fieldExtractTag extracts the "extract" struct tag value from an AST field.
+func fieldExtractTag(field *ast.Field) string {
+	if field.Tag == nil {
+		return ""
+	}
+	raw := field.Tag.Value[1 : len(field.Tag.Value)-1]
+	return reflect.StructTag(raw).Get("extract")
 }
 
 // fieldGormTag extracts the "gorm" struct tag value from an AST field.

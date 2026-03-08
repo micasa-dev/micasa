@@ -40,22 +40,14 @@ var TableExtractColumns = map[string][]MetaColumn{...}
 - `int`, `int64`, `uint`, `float64` and `*` variants -> `"integer"`
 - `time.Time`, `*time.Time` -> `"string"` (dates are strings for the LLM)
 
-### 2. Add table-level Omit to TableDef
+### 2. ~~Add table-level Omit to TableDef~~ Use `extract:"-"` struct tags
 
-Currently `Omit` only exists on `ActionDef`. Add it to `TableDef` too so
-generated columns that aren't yet handled by commit functions can be excluded
-from all actions without repeating the list:
-
-```go
-type TableDef struct {
-    Table   string
-    Columns []ColumnDef
-    Omit    []string    // columns to exclude from ALL actions
-    Actions []ActionDef
-}
-```
-
-Update `expandTableOp` to merge both `td.Omit` and `ad.Omit`.
+~~Initially implemented as a hand-maintained `Omit` list on `TableDef`.~~
+Replaced in #678: fields tagged `extract:"-"` in `models.go` are skipped by
+`genmeta` at generation time, so they never appear in `TableExtractColumns`.
+This eliminates `TableDef.Omit` entirely -- the visibility policy lives next
+to the field definition. Action-level `ActionDef.Omit` remains for per-action
+exclusions (e.g. `file_name` excluded from document updates).
 
 ### 3. Refactor ExtractionTableDefs
 
@@ -94,22 +86,22 @@ Each table definition becomes generated columns + policy annotations. Example:
 },
 ```
 
-### 4. Table-by-table Omit plan (behavioral parity)
+### 4. Table-by-table exclusion plan (behavioral parity)
 
-Generated columns not currently exposed to the LLM are omitted to preserve
-identical behavior. Each can be un-omitted later as commit functions are
-updated to handle them.
+Fields not yet exposed to the LLM are tagged `extract:"-"` on the model
+struct. Removing the tag makes the column automatically appear in the LLM
+schema once the corresponding commit function handles it.
 
-| Table | Generated but omitted |
+| Table | Fields tagged `extract:"-"` |
 |---|---|
 | vendors | (none) |
-| appliances | purchase_date, warranty_expiry |
-| projects | start_date, end_date, actual_cents |
-| quotes | other_cents, received_date |
-| maintenance_items | last_serviced_at, due_date, manual_url, manual_text |
-| incidents | previous_status, date_resolved |
+| appliances | PurchaseDate, WarrantyExpiry |
+| projects | StartDate, EndDate, ActualCents |
+| quotes | OtherCents, ReceivedDate |
+| maintenance_items | LastServicedAt, DueDate, ManualURL, ManualText |
+| incidents | PreviousStatus, DateResolved |
 | service_log_entries | (none) |
-| documents | mime_type, size_bytes, sha256, extracted_text |
+| documents | MIMEType, SizeBytes, ChecksumSHA256, ExtractedText |
 
 ### 5. Consistency test
 

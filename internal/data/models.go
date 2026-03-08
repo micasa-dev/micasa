@@ -158,10 +158,10 @@ type Project struct {
 	ProjectType   ProjectType `gorm:"constraint:OnDelete:RESTRICT;"`
 	Status        string
 	Description   string
-	StartDate     *time.Time
-	EndDate       *time.Time
+	StartDate     *time.Time `                                                                              extract:"-"`
+	EndDate       *time.Time `                                                                              extract:"-"`
 	BudgetCents   *int64
-	ActualCents   *int64
+	ActualCents   *int64     `                                                                              extract:"-"`
 	Documents     []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:project"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -177,8 +177,8 @@ type Quote struct {
 	TotalCents     int64
 	LaborCents     *int64
 	MaterialsCents *int64
-	OtherCents     *int64
-	ReceivedDate   *time.Time
+	OtherCents     *int64     `                                                                            extract:"-"`
+	ReceivedDate   *time.Time `                                                                            extract:"-"`
 	Notes          string
 	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:quote"`
 	CreatedAt      time.Time
@@ -199,8 +199,8 @@ type Appliance struct {
 	Brand          string
 	ModelNumber    string
 	SerialNumber   string
-	PurchaseDate   *time.Time
-	WarrantyExpiry *time.Time `gorm:"index"`
+	PurchaseDate   *time.Time `                                                                                extract:"-"`
+	WarrantyExpiry *time.Time `gorm:"index"                                                                    extract:"-"`
 	Location       string
 	CostCents      *int64
 	Notes          string
@@ -217,11 +217,11 @@ type MaintenanceItem struct {
 	Category       MaintenanceCategory `gorm:"constraint:OnDelete:RESTRICT;"`
 	ApplianceID    *uint               `gorm:"index"`
 	Appliance      Appliance           `gorm:"constraint:OnDelete:SET NULL;"`
-	LastServicedAt *time.Time
+	LastServicedAt *time.Time          `                                                                                  extract:"-"`
 	IntervalMonths int
-	DueDate        *time.Time
-	ManualURL      string
-	ManualText     string
+	DueDate        *time.Time `                                                                                  extract:"-"`
+	ManualURL      string     `                                                                                  extract:"-"`
+	ManualText     string     `                                                                                  extract:"-"`
 	Notes          string
 	CostCents      *int64
 	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:maintenance"`
@@ -235,10 +235,10 @@ type Incident struct {
 	Title          string
 	Description    string
 	Status         string
-	PreviousStatus string
+	PreviousStatus string `                                                                               extract:"-"`
 	Severity       string
 	DateNoticed    time.Time
-	DateResolved   *time.Time
+	DateResolved   *time.Time `                                                                               extract:"-"`
 	Location       string
 	CostCents      *int64
 	ApplianceID    *uint     `gorm:"index"`
@@ -273,11 +273,11 @@ type Document struct {
 	FileName       string `gorm:"column:file_name"`
 	EntityKind     string `gorm:"index:idx_doc_entity"`
 	EntityID       uint   `gorm:"index:idx_doc_entity"`
-	MIMEType       string
-	SizeBytes      int64
-	ChecksumSHA256 string `gorm:"column:sha256"`
+	MIMEType       string `                            extract:"-"`
+	SizeBytes      int64  `                            extract:"-"`
+	ChecksumSHA256 string `gorm:"column:sha256"        extract:"-"`
 	Data           []byte
-	ExtractedText  string
+	ExtractedText  string `                            extract:"-"`
 	ExtractData    []byte `gorm:"column:ocr_data"`
 	Notes          string
 	CreatedAt      time.Time

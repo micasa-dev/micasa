@@ -50,24 +50,17 @@ func TestExtractionColumns_MatchGenerated(t *testing.T) {
 	}
 }
 
-// TestExtractionColumns_OmitColumnsExist verifies that every column listed
-// in a TableDef.Omit or ActionDef.Omit actually exists in the generated
-// metadata. A stale Omit entry (referencing a renamed or removed column)
-// is silently ignored -- this test catches that.
-func TestExtractionColumns_OmitColumnsExist(t *testing.T) {
+// TestExtractionColumns_ActionOmitColumnsExist verifies that every column
+// listed in an ActionDef.Omit actually exists in the generated metadata or
+// the table's Columns list. A stale Omit entry (referencing a renamed or
+// removed column) is silently ignored -- this test catches that.
+func TestExtractionColumns_ActionOmitColumnsExist(t *testing.T) {
 	t.Parallel()
 
 	for _, td := range ExtractionTableDefs {
 		metaNames := make(map[string]bool)
 		for _, m := range data.TableExtractColumns[td.Table] {
 			metaNames[m.Name] = true
-		}
-
-		for _, name := range td.Omit {
-			assert.True(t, metaNames[name],
-				"table %q has table-level Omit for %q which is not in generated metadata",
-				td.Table, name,
-			)
 		}
 
 		for _, ad := range td.Actions {
@@ -95,9 +88,9 @@ func TestExtractionColumns_OmitColumnsExist(t *testing.T) {
 	}
 }
 
-// TestExpandTableOp_MergesOmit verifies that expandTableOp merges both
-// table-level and action-level Omit lists.
-func TestExpandTableOp_MergesOmit(t *testing.T) {
+// TestExpandTableOp_ActionOmit verifies that expandTableOp excludes
+// action-level Omit columns.
+func TestExpandTableOp_ActionOmit(t *testing.T) {
 	t.Parallel()
 
 	td := TableDef{
@@ -106,9 +99,7 @@ func TestExpandTableOp_MergesOmit(t *testing.T) {
 			{Name: "a", Type: ColTypeString},
 			{Name: "b", Type: ColTypeString},
 			{Name: "c", Type: ColTypeString},
-			{Name: "d", Type: ColTypeString},
 		},
-		Omit: []string{"a"},
 		Actions: []ActionDef{
 			{Action: ActionCreate, Omit: []string{"b"}},
 		},
@@ -121,8 +112,7 @@ func TestExpandTableOp_MergesOmit(t *testing.T) {
 		colNames[col.Name] = true
 	}
 
-	assert.False(t, colNames["a"], "table-level Omit should exclude 'a'")
+	assert.True(t, colNames["a"], "'a' should be present")
 	assert.False(t, colNames["b"], "action-level Omit should exclude 'b'")
 	assert.True(t, colNames["c"], "'c' should be present")
-	assert.True(t, colNames["d"], "'d' should be present")
 }
