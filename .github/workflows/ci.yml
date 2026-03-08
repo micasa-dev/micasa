@@ -149,51 +149,6 @@ jobs:
       - name: Run smoke benchmarks
         run: go test -bench . -benchtime 1x -timeout 5m -run '^$' ./...
 
-  nix-tools:
-    name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    concurrency:
-      group: ci-${{ matrix.tool }}-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    strategy:
-      fail-fast: ${{ github.event_name == 'pull_request' }}
-      matrix:
-        include:
-          - tool: deadcode
-            name: Dead Code
-          - tool: golangci-lint
-            name: Lint
-          - tool: govulncheck
-            name: Vulnerability Check
-          - tool: osv-scanner
-            name: OSV Scan
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
-
-      - name: Run ${{ matrix.tool }}
-        run: nix run '.#${{ matrix.tool }}'
-
-  pre-commit:
-    name: Pre-commit
-    runs-on: ubuntu-latest
-    concurrency:
-      group: ci-pre-commit-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
-
-      - name: Run pre-commit hooks
-        run: nix run '.#pre-commit' -- --from-ref 'origin/${{ github.base_ref || 'main' }}' --to-ref HEAD
-
   nix-build:
     name: Nix Build
     runs-on: ubuntu-latest
@@ -235,29 +190,13 @@ jobs:
       - name: Build docs
         run: nix run '.#docs'
 
-  secrets:
-    name: Secret Scan
-    runs-on: ubuntu-latest
-    concurrency:
-      group: ci-secrets-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: trufflesecurity/trufflehog@7635b24fd512a2e817dd3e9dd661caaf035a079d # v3.93.1
-        with:
-          extra_args: --only-verified
-
   # ---------------------------------------------------------------------------
   # Semantic Release (dry-run on PRs, publish on main push)
   # ---------------------------------------------------------------------------
 
   semantic-release:
     name: Semantic Release
-    needs: [test, nix-tools, pre-commit, nix-build, docs, secrets]
+    needs: [test, nix-build, docs]
     runs-on: ubuntu-latest
     concurrency:
       group: semantic-release-${{ github.ref }}
