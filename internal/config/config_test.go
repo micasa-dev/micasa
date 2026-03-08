@@ -1150,9 +1150,7 @@ func TestResolvedFilePickerDir_EmptyFallsBackToDownloadsOrCwd(t *testing.T) {
 func TestFilePickerDir_FromTOML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	path := writeConfig(t, `[documents]
-file_picker_dir = "`+dir+`"
-`)
+	path := writeConfig(t, "[documents]\nfile_picker_dir = '"+dir+"'\n")
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
 	assert.Equal(t, dir, cfg.Documents.FilePickerDir)
