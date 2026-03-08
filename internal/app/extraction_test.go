@@ -2581,3 +2581,141 @@ func TestExtractionRerun_ClearsPingState(t *testing.T) {
 	assert.False(t, ex.llmPingDone, "ping state should be cleared on rerun")
 	assert.NoError(t, ex.llmPingErr, "ping error should be cleared on rerun")
 }
+
+func TestExtractionLLMPing_FailAfterExtractFailed(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepFailed,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	id := ex.ID
+
+	// Extraction already failed when ping fails -- LLM skipped, pipeline done.
+	m.Update(extractionLLMPingMsg{ID: id, Err: errors.New("unreachable")})
+	assert.Equal(t, stepSkipped, ex.Steps[stepLLM].Status)
+	assert.True(t, ex.Done)
+}
+
+func TestExtractionLLMPing_StaleIDIgnored(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepExtract: stepRunning,
+		stepLLM:     stepPending,
+	})
+
+	// Ping with a non-matching ID is silently dropped.
+	m.Update(extractionLLMPingMsg{ID: 99999, Err: errors.New("boom")})
+	assert.Equal(t, stepPending, m.ex.extraction.Steps[stepLLM].Status)
+}
+
+func TestExtractionLLMPing_BgExtractionSkipStatus(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	id := ex.ID
+
+	// Background the extraction.
+	sendExtractionKey(m, keyCtrlB)
+	require.Nil(t, m.ex.extraction)
+	require.Len(t, m.ex.bgExtractions, 1)
+
+	// Ping failure on a background extraction.
+	m.Update(extractionLLMPingMsg{ID: id, Err: errors.New("unreachable")})
+	assert.Equal(t, stepSkipped, ex.Steps[stepLLM].Status)
+	assert.True(t, ex.Done)
+	assert.Contains(t, m.status.Text, "LLM skipped")
+}
+
+func TestMaybeStartLLMStep_NoLLM(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepExtract: stepDone,
+	})
+	ex := m.ex.extraction
+	// hasLLM is false -- should return nil without touching steps.
+	cmd := m.maybeStartLLMStep(ex)
+	assert.Nil(t, cmd)
+}
+
+func TestMaybeStartLLMStep_NilClient(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepExtract: stepDone,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	// hasLLM true but no client configured -- should return nil.
+	cmd := m.maybeStartLLMStep(ex)
+	assert.Nil(t, cmd)
+	assert.Equal(t, stepPending, ex.Steps[stepLLM].Status)
+}
+
+func TestExtractionSkippedStep_RendersNAIcon(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepSkipped,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	ex.Steps[stepLLM].Detail = "qwen3"
+	ex.Steps[stepLLM].Logs = []string{"cannot reach ollama"}
+	ex.advanceCursor()
+
+	view := m.buildExtractionOverlay()
+	assert.Contains(t, view, "na", "skipped icon should render")
+	assert.Contains(t, view, "llm", "step name should render")
+	assert.Contains(t, view, "qwen3", "model detail should render")
+	assert.Contains(t, view, "cannot reach ollama",
+		"error log should render in expanded skipped step")
+}
+
+func TestExtractionSkippedStep_LogNotJSON(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepSkipped,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	ex.Steps[stepLLM].Detail = "qwen3"
+	ex.Steps[stepLLM].Logs = []string{"cannot reach ollama -- start it with ollama serve"}
+	ex.advanceCursor()
+
+	view := m.buildExtractionOverlay()
+	// Should NOT contain JSON code fence markers that glamour would produce.
+	assert.NotContains(t, view, "```",
+		"skipped step log should not be rendered as JSON")
+}
+
+func TestExtractionExtractFails_PingSkipPreventsLLM(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepRunning,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	id := ex.ID
+
+	// Ping fails while extraction is running.
+	m.Update(extractionLLMPingMsg{ID: id, Err: errors.New("unreachable")})
+	assert.Equal(t, stepSkipped, ex.Steps[stepLLM].Status)
+
+	// Extraction then fails too.
+	m.Update(extractionProgressMsg{
+		ID: id,
+		Progress: extract.ExtractProgress{
+			Err: errors.New("tesseract not found"),
+		},
+	})
+	// LLM should still be skipped (not started despite extraction error path).
+	assert.Equal(t, stepSkipped, ex.Steps[stepLLM].Status)
+	assert.True(t, ex.Done)
+}
