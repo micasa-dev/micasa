@@ -2416,11 +2416,15 @@ func (m *Model) newDocumentFilePicker(title string) *huh.FilePicker {
 	if h < 5 {
 		h = 5
 	}
-	// Resolve to absolute path so filepath.Dir can compute the real parent;
-	// the default "." stays stuck (filepath.Dir(".") == ".").
-	dir, err := os.Getwd()
-	if err != nil {
-		dir = "."
+	// Use the configured starting directory (defaults to ~/Downloads).
+	// Fall back to cwd if the configured dir is empty.
+	dir := m.filePickerDir
+	if dir == "" {
+		var err error
+		dir, err = os.Getwd()
+		if err != nil {
+			dir = "."
+		}
 	}
 	short := "\x1b[22m" + dimPath.Render("in "+shortenHome(dir))
 	return huh.NewFilePicker().

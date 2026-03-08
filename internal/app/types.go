@@ -226,6 +226,7 @@ type detailContext struct {
 type Options struct {
 	DBPath           string
 	ConfigPath       string
+	FilePickerDir    string     // starting directory for document file picker
 	LLMConfig        *llmConfig // nil if LLM is not configured
 	ExtractionConfig extractionConfig
 }

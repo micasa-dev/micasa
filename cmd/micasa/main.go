@@ -142,8 +142,9 @@ func (cmd *runCmd) Run() error {
 	}
 
 	opts := app.Options{
-		DBPath:     dbPath,
-		ConfigPath: config.Path(),
+		DBPath:        dbPath,
+		ConfigPath:    config.Path(),
+		FilePickerDir: cfg.Documents.ResolvedFilePickerDir(),
 	}
 
 	chatCfg := cfg.LLM.ChatConfig()

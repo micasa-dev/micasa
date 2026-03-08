@@ -180,6 +180,7 @@ type Model struct {
 	llmClient             *llm.Client
 	llmConfig             *llmConfig // saved for extraction client creation
 	llmExtraContext       string     // user-provided context appended to prompts
+	filePickerDir         string     // starting directory for document file picker
 	ex                    extractState
 	pull                  pullState
 	chat                  *chatState // non-nil when chat overlay is open
@@ -259,6 +260,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		llmClient:       client,
 		llmConfig:       options.LLMConfig,
 		llmExtraContext: extraContext,
+		filePickerDir:   options.FilePickerDir,
 		ex: extractState{
 			extractionProvider:  options.ExtractionConfig.Provider,
 			extractionBaseURL:   options.ExtractionConfig.BaseURL,

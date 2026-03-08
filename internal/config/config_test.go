@@ -623,6 +623,7 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_MAX_DOCUMENT_SIZE":      "documents.max_file_size",
 		"MICASA_CACHE_TTL":              "documents.cache_ttl",
 		"MICASA_CACHE_TTL_DAYS":         "documents.cache_ttl_days",
+		"MICASA_FILE_PICKER_DIR":        "documents.file_picker_dir",
 		"MICASA_EXTRACTION_MODEL":       "extraction.model",
 		"MICASA_MAX_EXTRACT_PAGES":      "extraction.max_extract_pages",
 		"MICASA_EXTRACTION_ENABLED":     "extraction.enabled",
@@ -1119,4 +1120,48 @@ extra_context = "Portland house."
 	assert.Equal(t, chat.Timeout, ex.Timeout)
 	assert.Equal(t, chat.Thinking, ex.Thinking)
 	assert.Equal(t, chat.ExtraContext, ex.ExtraContext)
+}
+
+// --- FilePickerDir ---
+
+func TestResolvedFilePickerDir_ConfiguredDirExists(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	d := Documents{FilePickerDir: dir}
+	assert.Equal(t, dir, d.ResolvedFilePickerDir())
+}
+
+func TestResolvedFilePickerDir_ConfiguredDirMissing(t *testing.T) {
+	t.Parallel()
+	d := Documents{FilePickerDir: "/nonexistent/path/that/does/not/exist"}
+	result := d.ResolvedFilePickerDir()
+	// Should fall back to Downloads or cwd, not the missing dir.
+	assert.NotEqual(t, "/nonexistent/path/that/does/not/exist", result)
+	assert.NotEmpty(t, result)
+}
+
+func TestResolvedFilePickerDir_EmptyFallsBackToDownloadsOrCwd(t *testing.T) {
+	t.Parallel()
+	d := Documents{}
+	result := d.ResolvedFilePickerDir()
+	assert.NotEmpty(t, result)
+}
+
+func TestFilePickerDir_FromTOML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := writeConfig(t, `[documents]
+file_picker_dir = "`+dir+`"
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, dir, cfg.Documents.FilePickerDir)
+}
+
+func TestFilePickerDir_FromEnv(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("MICASA_FILE_PICKER_DIR", dir)
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, dir, cfg.Documents.FilePickerDir)
 }

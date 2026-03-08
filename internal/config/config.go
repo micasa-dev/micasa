@@ -212,6 +212,30 @@ type Documents struct {
 	// CacheTTLDays is deprecated; use CacheTTL instead. Kept for backward
 	// compatibility. Bare integer interpreted as days.
 	CacheTTLDays *int `toml:"cache_ttl_days,omitempty" env:"MICASA_CACHE_TTL_DAYS"`
+
+	// FilePickerDir is the starting directory for the document file picker.
+	// Default: the system Downloads folder (e.g. ~/Downloads).
+	FilePickerDir string `toml:"file_picker_dir" env:"MICASA_FILE_PICKER_DIR"`
+}
+
+// ResolvedFilePickerDir returns the starting directory for the file picker.
+// Uses the configured value if set and the directory exists, otherwise falls
+// back to the system Downloads folder, then the current working directory.
+func (d Documents) ResolvedFilePickerDir() string {
+	if d.FilePickerDir != "" {
+		if info, err := os.Stat(d.FilePickerDir); err == nil && info.IsDir() {
+			return d.FilePickerDir
+		}
+	}
+	if dir := xdg.UserDirs.Download; dir != "" {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+	}
+	if dir, err := os.Getwd(); err == nil {
+		return dir
+	}
+	return "."
 }
 
 // CacheTTLDuration returns the resolved cache TTL as a time.Duration.
@@ -1011,6 +1035,10 @@ model = "` + DefaultModel + `"
 # Accepts "30d", "720h", or bare integers (seconds). Set to "0s" to disable.
 # Default: 30d.
 # cache_ttl = "30d"
+
+# Starting directory for the document file picker.
+# Default: system Downloads folder (~/Downloads on most systems).
+# file_picker_dir = "/home/user/Documents"
 
 [extraction]
 # Timeout for pdftotext. Go duration syntax: "30s", "1m", etc. Default: "30s".
