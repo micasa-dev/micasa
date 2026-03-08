@@ -253,8 +253,6 @@ jobs:
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     permissions:
       contents: write
-    outputs:
-      tag: ${{ steps.release-check.outputs.tag }}
     steps:
       - name: Generate app token
         id: app-token
@@ -275,31 +273,7 @@ jobs:
       - name: Install semantic-release
         run: npm install -g semantic-release@25.0.3 @semantic-release/exec@7.1.0 @semantic-release/git@10.0.1
 
-      - name: Save pre-release version
-        id: pre
-        run: echo "version=$(cat VERSION 2>/dev/null)" >> "$GITHUB_OUTPUT"
-
       - name: Run semantic-release
         run: npx semantic-release ${{ github.event_name == 'pull_request' && '--dry-run' || '' }}
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-
-      - name: Check for new release
-        id: release-check
-        run: |
-          NEW_VERSION=$(cat VERSION)
-          if [ "$NEW_VERSION" != "${{ steps.pre.outputs.version }}" ]; then
-            echo "tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-          fi
-
-  release:
-    name: Release Artifacts
-    needs: [semantic-release]
-    if: needs.semantic-release.outputs.tag != ''
-    permissions:
-      contents: write
-      packages: write
-    uses: ./.github/workflows/release.yml
-    with:
-      tag: ${{ needs.semantic-release.outputs.tag }}
-    secrets: inherit
