@@ -42,11 +42,11 @@ func (s *Store) TableNames() ([]string, error) {
 // TableColumns returns column metadata for the named table via PRAGMA.
 // The table name is validated to contain only safe characters.
 func (s *Store) TableColumns(table string) ([]PragmaColumn, error) {
-	if !isSafeIdentifier(table) {
+	if !IsSafeIdentifier(table) {
 		return nil, fmt.Errorf("invalid table name: %q", table)
 	}
 	var cols []PragmaColumn
-	//nolint:gosec // table name validated by isSafeIdentifier above
+	//nolint:gosec // table name validated by IsSafeIdentifier above
 	err := s.db.Raw(fmt.Sprintf("PRAGMA table_info(%s)", table)).Scan(&cols).Error
 	return cols, err
 }
@@ -428,9 +428,9 @@ func formatColumnValue(col, val string) string {
 	return col + ": " + val
 }
 
-// isSafeIdentifier returns true if s contains only alphanumerics and
-// underscores -- safe for interpolation into a PRAGMA statement.
-func isSafeIdentifier(s string) bool {
+// IsSafeIdentifier returns true if s contains only alphanumerics and
+// underscores -- safe for interpolation into SQL statements.
+func IsSafeIdentifier(s string) bool {
 	if s == "" {
 		return false
 	}

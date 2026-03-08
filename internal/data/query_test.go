@@ -209,12 +209,12 @@ func TestContainsWord(t *testing.T) {
 
 func TestIsSafeIdentifier(t *testing.T) {
 	t.Parallel()
-	assert.True(t, isSafeIdentifier(TableProjects))
-	assert.True(t, isSafeIdentifier(TableHouseProfiles))
-	assert.True(t, isSafeIdentifier("table123"))
-	assert.False(t, isSafeIdentifier(""))
-	assert.False(t, isSafeIdentifier("table; DROP"))
-	assert.False(t, isSafeIdentifier("table'name"))
+	assert.True(t, IsSafeIdentifier(TableProjects))
+	assert.True(t, IsSafeIdentifier(TableHouseProfiles))
+	assert.True(t, IsSafeIdentifier("table123"))
+	assert.False(t, IsSafeIdentifier(""))
+	assert.False(t, IsSafeIdentifier("table; DROP"))
+	assert.False(t, IsSafeIdentifier("table'name"))
 }
 
 func TestDataDump(t *testing.T) {
