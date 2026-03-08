@@ -172,11 +172,18 @@ func (ex *extractionLogState) cursorStep() extractionStep {
 
 // stepDefaultExpanded returns the default expanded state for a step before
 // any user toggle. Running and failed steps auto-expand so the cursor
-// tracks progress. Once done, only the LLM step stays expanded (streaming
-// output); text and ext steps collapse their log content by default.
+// tracks progress. The ext/ocr step stays collapsed by default while
+// running since the parent header shows combined progress. Once done,
+// only the LLM step stays expanded (streaming output); text and ext
+// steps collapse their log content by default.
 func (ex *extractionLogState) stepDefaultExpanded(si extractionStep) bool {
 	info := ex.Steps[si]
 	if info.Status == stepRunning || info.Status == stepFailed {
+		// Ext with tools: collapsed by default while running since
+		// the parent header shows the combined percentage.
+		if si == stepExtract && len(ex.acquireTools) > 0 && info.Status == stepRunning {
+			return false
+		}
 		return true
 	}
 	return si == stepLLM && info.Status == stepDone
@@ -987,12 +994,9 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		}
 	case keyEnter:
 		si := ex.cursorStep()
-		status := ex.Steps[si].Status
-		if status == stepDone || status == stepFailed {
+		// Only toggle from the parent header, not from a child tool line.
+		if si != stepExtract || len(ex.acquireTools) == 0 || ex.toolCursor == -1 {
 			ex.expanded[si] = !ex.stepExpanded(si)
-			if si == stepExtract && len(ex.acquireTools) > 0 {
-				ex.toolCursor = -1
-			}
 		}
 	case keyR:
 		if ex.Done && ex.hasLLM && ex.cursorStep() == stepLLM {
@@ -1361,6 +1365,12 @@ func (m *Model) buildExtractionPipelineOverlay(
 	ex.Viewport.Height = vpH
 	ex.Viewport.SetContent(stepContent)
 
+	// When content fits entirely, reset any stale scroll offset so the
+	// top of the pipeline stays visible (e.g. after collapsing a step).
+	if contentLines <= vpH {
+		ex.Viewport.SetYOffset(0)
+	}
+
 	if vpH < contentLines && !ex.exploring {
 		si := ex.cursorStep()
 		streaming := ex.Steps[si].Status == stepRunning
@@ -1420,7 +1430,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 	} else {
 		hints = append(hints, m.helpItem(keyJ+"/"+keyK, "navigate"))
 		cursorStatus := ex.Steps[ex.cursorStep()].Status
-		if ex.Done || cursorStatus == stepDone || cursorStatus == stepFailed {
+		if cursorStatus != stepPending {
 			hints = append(hints, m.helpItem(symReturn, "expand"))
 		}
 		if hasOps {
@@ -1433,8 +1443,8 @@ func (m *Model) buildExtractionPipelineOverlay(
 			hints = append(hints, m.helpItem(keyEsc, "discard"))
 		} else {
 			hints = append(hints,
-				m.helpItem(keyCtrlC, "interrupt"),
-				m.helpItem(keyCtrlB, "background"),
+				m.helpItem(symCtrlC, "int"),
+				m.helpItem(symCtrlB, "bg"),
 				m.helpItem(keyEsc, "cancel"),
 			)
 		}

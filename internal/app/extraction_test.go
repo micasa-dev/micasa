@@ -181,19 +181,23 @@ func TestExtractionEnter_TogglesFailedStep(t *testing.T) {
 	assert.False(t, ex.expanded[stepExtract], "enter on auto-expanded failed step should collapse")
 }
 
-func TestExtractionEnter_NoOpOnRunningStep(t *testing.T) {
+func TestExtractionEnter_TogglesRunningStep(t *testing.T) {
 	t.Parallel()
 	m := newExtractionModel(t, map[extractionStep]stepStatus{
 		stepText:    stepDone,
 		stepExtract: stepRunning,
 	})
 	ex := m.ex.extraction
-	ex.Done = true
-	ex.cursor = 1 // force onto running step (shouldn't happen in practice)
+	ex.cursor = 1
+	ex.cursorManual = true
 
+	// Running steps are auto-expanded. First enter should collapse.
 	sendExtractionKey(m, "enter")
-	_, set := ex.expanded[stepExtract]
-	assert.False(t, set, "enter should not toggle running step")
+	assert.False(t, ex.expanded[stepExtract], "enter on running step should collapse")
+
+	// Second enter should re-expand.
+	sendExtractionKey(m, "enter")
+	assert.True(t, ex.expanded[stepExtract], "enter should re-expand running step")
 }
 
 // --- Rerun cursor relocation ---
@@ -1311,6 +1315,7 @@ func TestAcquireTools_ShowDuringRunning(t *testing.T) {
 		{Tool: "pdftocairo", Running: false, Count: 10},
 	}
 	ex.extractedPages = 10
+	ex.expanded[stepExtract] = true // ext/ocr defaults to collapsed; expand for this test
 	m.width = 120
 	m.height = 40
 
@@ -1330,6 +1335,7 @@ func TestAcquireTools_PartialRunning(t *testing.T) {
 		{Tool: "pdftocairo", Running: true, Count: 3},
 	}
 	ex.extractedPages = 10
+	ex.expanded[stepExtract] = true // ext/ocr defaults to collapsed; expand for this test
 	m.width = 120
 	m.height = 40
 
@@ -1352,6 +1358,7 @@ func TestAcquireTools_ParentShowsOCRDetail(t *testing.T) {
 		{Tool: "pdftocairo", Running: false, Count: 5},
 	}
 	ex.extractedPages = 5
+	ex.expanded[stepExtract] = true // ext/ocr defaults to collapsed; expand for this test
 	m.width = 120
 	m.height = 40
 
@@ -1359,8 +1366,7 @@ func TestAcquireTools_ParentShowsOCRDetail(t *testing.T) {
 	// Parent header always shows "ocr" detail, not "page X/Y".
 	assert.Contains(t, out, "ocr", "parent should show ocr detail")
 	assert.Contains(t, out, "100%", "parent should show completion percentage")
-	// Running = auto-expanded, children visible.
-	assert.Contains(t, out, "pdftocairo", "children visible when running")
+	assert.Contains(t, out, "pdftocairo", "children visible when expanded")
 }
 
 func TestAcquireTools_CollapseHidesChildren(t *testing.T) {
@@ -1497,7 +1503,7 @@ func TestExtraction_ExtCollapsedSkipsChildren(t *testing.T) {
 	assert.Equal(t, -1, ex.toolCursor, "collapsed ext should land on parent")
 }
 
-func TestExtraction_EnterCollapsesExtToParent(t *testing.T) {
+func TestExtraction_EnterOnChildIsNoOp(t *testing.T) {
 	t.Parallel()
 	m, ex := newExtToolModel(t)
 
@@ -1509,15 +1515,53 @@ func TestExtraction_EnterCollapsesExtToParent(t *testing.T) {
 	sendExtractionKey(m, "j")
 	assert.Equal(t, 0, ex.toolCursor, "on first child")
 
-	// Enter collapses and resets to parent.
+	// Enter on a child should not toggle the parent.
 	sendExtractionKey(m, "enter")
-	assert.False(t, ex.stepExpanded(stepExtract), "should be collapsed")
-	assert.Equal(t, -1, ex.toolCursor, "should reset to parent")
+	assert.True(t, ex.stepExpanded(stepExtract), "should stay expanded")
+	assert.Equal(t, 0, ex.toolCursor, "should stay on child")
+}
 
-	// Enter again expands, still on parent.
+func TestExtraction_EnterOnExtParentToggles(t *testing.T) {
+	t.Parallel()
+	m, ex := newExtToolModel(t)
+
+	// Navigate to ext parent (done step, default collapsed).
+	sendExtractionKey(m, "j")
+	assert.Equal(t, -1, ex.toolCursor, "on parent")
+	assert.False(t, ex.stepExpanded(stepExtract), "done ext starts collapsed")
+
+	// Enter expands from parent.
 	sendExtractionKey(m, "enter")
 	assert.True(t, ex.stepExpanded(stepExtract), "should be expanded")
-	assert.Equal(t, -1, ex.toolCursor, "should stay on parent after expand")
+
+	// Enter again collapses.
+	sendExtractionKey(m, "enter")
+	assert.False(t, ex.stepExpanded(stepExtract), "should be collapsed")
+	assert.Equal(t, -1, ex.toolCursor, "should stay on parent")
+}
+
+func TestExtraction_CollapseResetsViewportOffset(t *testing.T) {
+	t.Parallel()
+	m, ex := newExtToolModel(t)
+	ex.cursorManual = true
+
+	// Expand ext step and render to populate viewport.
+	ex.expanded[stepExtract] = true
+	m.buildExtractionOverlay()
+
+	// Simulate a scroll offset as if user had scrolled down.
+	ex.Viewport.SetYOffset(2)
+
+	// Collapse via Enter on parent.
+	sendExtractionKey(m, "j")
+	sendExtractionKey(m, "enter")
+
+	// Re-render to trigger offset correction.
+	out := m.buildExtractionOverlay()
+
+	// The text step header should be visible (offset reset to 0).
+	assert.Contains(t, out, "text", "text step should be visible after collapse")
+	assert.Equal(t, 0, ex.Viewport.YOffset, "viewport offset should reset when content fits")
 }
 
 // --- Ext child rendering coverage ---
@@ -1631,10 +1675,10 @@ func TestAcquireTools_NonTerminalRunningRenderedDim(t *testing.T) {
 		{Tool: "tesseract", Running: true, Count: 0},
 	}
 	ex.extractedPages = 10
+	ex.expanded[stepExtract] = true // ext/ocr defaults to collapsed; expand for this test
 	m.width = 120
 	m.height = 40
 
-	// Running = auto-expanded, both children visible.
 	out := m.buildExtractionOverlay()
 	assert.Contains(t, out, "pdftocairo", "running non-terminal tool visible")
 	assert.Contains(t, out, "tesseract", "running terminal tool visible")

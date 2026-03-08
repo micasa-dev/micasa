@@ -113,6 +113,8 @@ const (
 	symDown   = "\u2193" // ↓
 	symLeft   = "\u2190" // ←
 	symRight  = "\u2192" // →
+	symCtrlB  = "^b"
+	symCtrlC  = "^c"
 
 	// Box drawing.
 	symHLine      = "\u2500" // ─
