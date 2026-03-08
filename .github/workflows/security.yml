@@ -13,20 +13,12 @@ permissions:
   contents: read
 
 jobs:
-  nix-security:
-    name: ${{ matrix.name }}
+  govulncheck:
+    name: Vulnerability Check
     runs-on: ubuntu-latest
     concurrency:
-      group: security-${{ matrix.tool }}-${{ github.ref }}
+      group: security-govulncheck-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    strategy:
-      fail-fast: ${{ github.event_name == 'pull_request' }}
-      matrix:
-        include:
-          - tool: govulncheck
-            name: Vulnerability Check
-          - tool: osv-scanner
-            name: OSV Scan
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -34,8 +26,24 @@ jobs:
 
       - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
 
-      - name: Run ${{ matrix.tool }}
-        run: nix run '.#${{ matrix.tool }}'
+      - name: Run govulncheck
+        run: nix run '.#govulncheck'
+
+  osv-scanner:
+    name: OSV Scan
+    runs-on: ubuntu-latest
+    concurrency:
+      group: security-osv-scanner-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
+
+      - name: Run osv-scanner
+        run: nix run '.#osv-scanner'
 
   secrets:
     name: Secret Scan

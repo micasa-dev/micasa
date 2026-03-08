@@ -13,20 +13,12 @@ permissions:
   contents: read
 
 jobs:
-  nix-lint:
-    name: ${{ matrix.name }}
+  deadcode:
+    name: Dead Code
     runs-on: ubuntu-latest
     concurrency:
-      group: lint-${{ matrix.tool }}-${{ github.ref }}
+      group: lint-deadcode-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    strategy:
-      fail-fast: ${{ github.event_name == 'pull_request' }}
-      matrix:
-        include:
-          - tool: deadcode
-            name: Dead Code
-          - tool: golangci-lint
-            name: Lint
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -34,8 +26,24 @@ jobs:
 
       - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
 
-      - name: Run ${{ matrix.tool }}
-        run: nix run '.#${{ matrix.tool }}'
+      - name: Run deadcode
+        run: nix run '.#deadcode'
+
+  golangci-lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    concurrency:
+      group: lint-golangci-lint-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
+
+      - name: Run golangci-lint
+        run: nix run '.#golangci-lint'
 
   pre-commit:
     name: Pre-commit
