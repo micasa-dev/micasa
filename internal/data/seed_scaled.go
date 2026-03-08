@@ -35,6 +35,10 @@ func (s *Store) SeedScaledData(years int) (SeedSummary, error) {
 func (s *Store) SeedScaledDataFrom(h *fake.HomeFaker, years int) (SeedSummary, error) {
 	var summary SeedSummary
 
+	if years > 1000 {
+		return summary, fmt.Errorf("seed: years parameter %d exceeds maximum of 1000", years)
+	}
+
 	var count int64
 	if err := s.db.Model(&HouseProfile{}).Count(&count).Error; err != nil {
 		return summary, fmt.Errorf("check existing data: %w", err)
@@ -103,9 +107,15 @@ func (s *Store) SeedScaledDataFrom(h *fake.HomeFaker, years int) (SeedSummary, e
 	// Track used vendor names to avoid unique constraint violations.
 	usedVendorNames := make(map[string]bool)
 	createVendor := func(v *Vendor) error {
-		// Disambiguate if the name is already taken.
+		// Disambiguate if the name is already taken (cap at 1000 attempts).
 		base := v.Name
 		for attempt := 2; usedVendorNames[v.Name]; attempt++ {
+			if attempt > 1000 {
+				return fmt.Errorf(
+					"seed: failed to disambiguate vendor name %q after 1000 attempts",
+					base,
+				)
+			}
 			v.Name = fmt.Sprintf("%s %d", base, attempt)
 		}
 		usedVendorNames[v.Name] = true
