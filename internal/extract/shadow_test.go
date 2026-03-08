@@ -832,6 +832,54 @@ func TestFKGraph_DocumentsLast(t *testing.T) {
 	assert.Equal(t, data.TableDocuments, g.order[len(g.order)-1])
 }
 
+func TestFKGraph_EntityKindToTableMatchesDataPackage(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, data.EntityKindToTable, creatableFKs.entityKindToTable)
+}
+
+func TestBuildFKGraph_IgnoresNonPolymorphicHasMany(t *testing.T) {
+	t.Parallel()
+
+	type child struct {
+		ID       uint `gorm:"primaryKey"`
+		ParentID uint
+	}
+	type parent struct {
+		ID       uint    `gorm:"primaryKey"`
+		Children []child // non-polymorphic HasMany
+	}
+
+	allowed := map[string]AllowedOps{
+		"parents":  {Insert: true},
+		"children": {Insert: true},
+	}
+	g, err := buildFKGraph([]any{&parent{}, &child{}}, allowed)
+	require.NoError(t, err)
+	assert.Empty(t, g.entityKindToTable)
+}
+
+func TestBuildFKGraph_IgnoresPolymorphicToNonDocuments(t *testing.T) {
+	t.Parallel()
+
+	type comment struct {
+		ID         uint `gorm:"primaryKey"`
+		EntityKind string
+		EntityID   uint
+	}
+	type owner struct {
+		ID       uint      `gorm:"primaryKey"`
+		Comments []comment `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:own"`
+	}
+
+	allowed := map[string]AllowedOps{
+		"owners":   {Insert: true},
+		"comments": {Insert: true},
+	}
+	g, err := buildFKGraph([]any{&owner{}, &comment{}}, allowed)
+	require.NoError(t, err)
+	assert.Empty(t, g.entityKindToTable)
+}
+
 func TestShadowDB_CommitReversedOrder_QuoteBeforeVendor(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)

@@ -180,12 +180,15 @@ func collectStructs(f *ast.File) ([]modelStruct, map[string]bool) {
 	return structs, names
 }
 
-// isAssociation returns true when the field type (after removing pointer)
-// matches a local exported struct name. GORM treats these as associations,
-// not DB columns.
+// isAssociation returns true when the field type (after removing pointer or
+// slice wrapper) matches a local exported struct name. GORM treats these as
+// associations (BelongsTo, HasMany, etc.), not DB columns.
 func isAssociation(expr ast.Expr, localStructs map[string]bool) bool {
 	if star, ok := expr.(*ast.StarExpr); ok {
 		expr = star.X
+	}
+	if arr, ok := expr.(*ast.ArrayType); ok {
+		expr = arr.Elt
 	}
 	ident, ok := expr.(*ast.Ident)
 	if !ok {

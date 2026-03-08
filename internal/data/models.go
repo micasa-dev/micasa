@@ -4,9 +4,12 @@
 package data
 
 import (
+	"fmt"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 const (
@@ -59,18 +62,39 @@ const (
 	DocumentEntityIncident    = "incident"
 )
 
-// EntityKindToTable maps document entity_kind values to their
-// corresponding table names. Document uses a manual polymorphic
-// pattern (EntityKind + EntityID) rather than GORM's polymorphic
-// tags, so this mapping cannot be derived via schema introspection.
-var EntityKindToTable = map[string]string{
-	DocumentEntityProject:     TableProjects,
-	DocumentEntityQuote:       TableQuotes,
-	DocumentEntityMaintenance: TableMaintenanceItems,
-	DocumentEntityAppliance:   TableAppliances,
-	DocumentEntityServiceLog:  TableServiceLogEntries,
-	DocumentEntityVendor:      TableVendors,
-	DocumentEntityIncident:    TableIncidents,
+// EntityKindToTable maps document entity_kind values (polymorphicValue)
+// to their corresponding table names. Derived from GORM polymorphic
+// tags via schema introspection at init time.
+var EntityKindToTable = BuildEntityKindToTable(Models())
+
+// BuildEntityKindToTable derives the entity_kind-to-table mapping from
+// GORM polymorphic tags on the given models. Each model with a polymorphic
+// HasMany to the documents table contributes one entry:
+// polymorphicValue -> owner table name.
+func BuildEntityKindToTable(models []any) map[string]string {
+	namer := schema.NamingStrategy{}
+	cacheStore := &sync.Map{}
+
+	result := make(map[string]string)
+
+	for _, model := range models {
+		s, err := schema.Parse(model, cacheStore, namer)
+		if err != nil {
+			panic(fmt.Sprintf("BuildEntityKindToTable: parse %T: %v", model, err))
+		}
+
+		for _, rel := range s.Relationships.HasMany {
+			if rel.Polymorphic == nil {
+				continue
+			}
+			if rel.FieldSchema.Table != TableDocuments {
+				continue
+			}
+			result[rel.Polymorphic.Value] = s.Table
+		}
+	}
+
+	return result
 }
 
 type HouseProfile struct {
@@ -121,6 +145,7 @@ type Vendor struct {
 	Phone       string
 	Website     string
 	Notes       string
+	Documents   []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:vendor"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
@@ -137,6 +162,7 @@ type Project struct {
 	EndDate       *time.Time
 	BudgetCents   *int64
 	ActualCents   *int64
+	Documents     []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:project"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DeletedAt     gorm.DeletedAt `gorm:"index"`
@@ -154,6 +180,7 @@ type Quote struct {
 	OtherCents     *int64
 	ReceivedDate   *time.Time
 	Notes          string
+	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:quote"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
@@ -177,6 +204,7 @@ type Appliance struct {
 	Location       string
 	CostCents      *int64
 	Notes          string
+	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:appliance"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
@@ -196,6 +224,7 @@ type MaintenanceItem struct {
 	ManualText     string
 	Notes          string
 	CostCents      *int64
+	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:maintenance"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
@@ -217,6 +246,7 @@ type Incident struct {
 	VendorID       *uint     `gorm:"index"`
 	Vendor         Vendor    `gorm:"constraint:OnDelete:SET NULL;"`
 	Notes          string
+	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:incident"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
@@ -231,6 +261,7 @@ type ServiceLogEntry struct {
 	Vendor            Vendor `gorm:"constraint:OnDelete:SET NULL;"`
 	CostCents         *int64
 	Notes             string
+	Documents         []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:service_log"`
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	DeletedAt         gorm.DeletedAt `gorm:"index"`

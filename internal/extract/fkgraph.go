@@ -21,9 +21,10 @@ type fkGraph struct {
 	// remaps maps each creatable table to the FK columns that reference
 	// other creatables and need shadow->real ID remapping during commit.
 	remaps map[string][]shadowFKRemap
-	// entityKindToTable maps document entity_kind values to creatable
-	// table names, for polymorphic entity_id remapping. Derived from
-	// data.EntityKindToTable filtered to the creatable set.
+	// entityKindToTable maps document entity_kind (polymorphicValue)
+	// to creatable table names, for polymorphic entity_id remapping.
+	// Derived from GORM polymorphic HasMany relationships filtered to
+	// the creatable set.
 	entityKindToTable map[string]string
 }
 
@@ -48,9 +49,11 @@ var creatableFKs = func() fkGraph {
 // topologically sorted so every dependency is committed before its
 // dependents.
 //
-// Documents are treated specially: they use polymorphic entity_kind/entity_id
-// references (not GORM BelongsTo), so they are forced to depend on all
-// other creatables to ensure correct entity_id remapping.
+// Polymorphic HasMany relationships to the documents table are detected
+// via GORM schema introspection. Tables with such relationships contribute
+// to the entity-kind-to-table mapping, and the documents table is forced
+// to depend on all polymorphic targets so entity_id remapping always
+// finds the real ID.
 func buildFKGraph(models []any, allowed map[string]AllowedOps) (fkGraph, error) {
 	namer := schema.NamingStrategy{}
 	cacheStore := &sync.Map{}
@@ -106,28 +109,31 @@ func buildFKGraph(models []any, allowed map[string]AllowedOps) (fkGraph, error) 
 		}
 	}
 
-	// Documents use polymorphic entity_kind/entity_id and can reference
-	// any other creatable. Force them to depend on all others so entity_id
-	// remapping always finds the real ID.
-	if creatableSet[data.TableDocuments] {
-		for table := range creatableSet {
-			if table != data.TableDocuments {
-				deps[data.TableDocuments][table] = true
+	// Discover polymorphic HasMany -> documents relationships from schema
+	// metadata. Each owning model's polymorphicValue maps to its table name.
+	// The documents table is forced to depend on every polymorphic target
+	// so entity_id remapping always finds the real ID.
+	ekToTable := make(map[string]string)
+	for table := range creatableSet {
+		s, ok := allSchemas[table]
+		if !ok {
+			continue
+		}
+		for _, rel := range s.Relationships.HasMany {
+			if rel.Polymorphic == nil || rel.FieldSchema.Table != data.TableDocuments {
+				continue
 			}
+			if !creatableSet[rel.FieldSchema.Table] {
+				continue
+			}
+			ekToTable[rel.Polymorphic.Value] = table
+			deps[data.TableDocuments][table] = true
 		}
 	}
 
 	order, err := toposort(creatableSet, deps)
 	if err != nil {
 		return fkGraph{}, err
-	}
-
-	// Filter data.EntityKindToTable to creatable tables only.
-	ekToTable := make(map[string]string)
-	for kind, table := range data.EntityKindToTable {
-		if creatableSet[table] {
-			ekToTable[kind] = table
-		}
 	}
 
 	return fkGraph{order: order, remaps: remaps, entityKindToTable: ekToTable}, nil
