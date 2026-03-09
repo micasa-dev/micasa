@@ -462,7 +462,7 @@ func TestExtractionFromFile(t *testing.T) {
 	path := writeConfig(t, `[extraction]
 model = "qwen2.5:7b"
 max_pages = 10
-enabled = false
+enable = false
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -485,7 +485,7 @@ func TestExtractionResolvedModel(t *testing.T) {
 func TestExtractionEnvOverrides(t *testing.T) {
 	t.Setenv("MICASA_EXTRACTION_MODEL", "phi3")
 	t.Setenv("MICASA_EXTRACTION_MAX_PAGES", "5")
-	t.Setenv("MICASA_EXTRACTION_ENABLED", "false")
+	t.Setenv("MICASA_EXTRACTION_ENABLE", "false")
 
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
@@ -510,7 +510,7 @@ func TestInvalidEnvVarReturnsError(t *testing.T) {
 		wantMsg string
 	}{
 		{"MICASA_EXTRACTION_MAX_PAGES", "not-a-number", "expected integer"},
-		{"MICASA_EXTRACTION_ENABLED", "maybe", "expected true or false"},
+		{"MICASA_EXTRACTION_ENABLE", "maybe", "expected true or false"},
 		{"MICASA_DOCUMENTS_MAX_FILE_SIZE", "lots", "expected byte size"},
 		{"MICASA_DOCUMENTS_CACHE_TTL", "forever", "expected duration"},
 		{"MICASA_DOCUMENTS_CACHE_TTL_DAYS", "many", "expected integer"},
@@ -631,10 +631,14 @@ func TestEnvVars(t *testing.T) {
 
 		"MICASA_EXTRACTION_MODEL":        "extraction.model",
 		"MICASA_EXTRACTION_MAX_PAGES":    "extraction.max_pages",
+		"MICASA_EXTRACTION_ENABLE":       "extraction.enable",
 		"MICASA_EXTRACTION_ENABLED":      "extraction.enabled",
 		"MICASA_EXTRACTION_TEXT_TIMEOUT": "extraction.text_timeout",
 		"MICASA_EXTRACTION_LLM_TIMEOUT":  "extraction.llm_timeout",
 		"MICASA_EXTRACTION_THINKING":     "extraction.thinking",
+
+		"MICASA_EXTRACTION_OCR_ENABLE":               "extraction.ocr.enable",
+		"MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD": "extraction.ocr.confidence_threshold",
 
 		"MICASA_LOCALE_CURRENCY": "locale.currency",
 
@@ -737,6 +741,85 @@ func TestMaxPagesEnvMigrationChain(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 20, cfg.Extraction.MaxPages,
 		"MICASA_MAX_EXTRACT_PAGES (newer) should take precedence")
+}
+
+func TestEnabledTOMLMigration(t *testing.T) {
+	path := writeConfig(t, "[extraction]\nenabled = false\n")
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Extraction.IsEnabled())
+	require.Len(t, cfg.Warnings, 1)
+	assert.Contains(t, cfg.Warnings[0], "extraction.enabled")
+	assert.Contains(t, cfg.Warnings[0], "extraction.enable")
+}
+
+func TestEnabledTOMLMigrationIgnoredWhenNewKeySet(t *testing.T) {
+	path := writeConfig(t, "[extraction]\nenabled = true\nenable = false\n")
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Extraction.IsEnabled(), "new key takes precedence")
+	require.Len(t, cfg.Warnings, 1)
+	assert.Contains(t, cfg.Warnings[0], "extraction.enabled")
+}
+
+func TestEnabledEnvMigration(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_ENABLED", "false")
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.False(t, cfg.Extraction.IsEnabled())
+	require.Len(t, cfg.Warnings, 1)
+	assert.Contains(t, cfg.Warnings[0], "MICASA_EXTRACTION_ENABLED")
+	assert.Contains(t, cfg.Warnings[0], "MICASA_EXTRACTION_ENABLE")
+}
+
+func TestEnabledEnvIgnoredWhenNewEnvSet(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_ENABLED", "true")
+	t.Setenv("MICASA_EXTRACTION_ENABLE", "false")
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.False(t, cfg.Extraction.IsEnabled())
+	assert.Empty(t, cfg.Warnings)
+}
+
+// --- OCR config ---
+
+func TestOCRDefaults(t *testing.T) {
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.True(t, cfg.Extraction.IsOCREnabled())
+	assert.Equal(t, 0, cfg.Extraction.OCR.ConfidenceThreshold)
+}
+
+func TestOCRFromFile(t *testing.T) {
+	path := writeConfig(t, "[extraction.ocr]\nenable = false\nconfidence_threshold = 70\n")
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Extraction.IsOCREnabled())
+	assert.Equal(t, 70, cfg.Extraction.OCR.ConfidenceThreshold)
+}
+
+func TestOCREnvOverrides(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_OCR_ENABLE", "false")
+	t.Setenv("MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD", "80")
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.False(t, cfg.Extraction.IsOCREnabled())
+	assert.Equal(t, 80, cfg.Extraction.OCR.ConfidenceThreshold)
+}
+
+func TestOCRConfidenceThresholdValidation(t *testing.T) {
+	t.Run("rejects negative", func(t *testing.T) {
+		path := writeConfig(t, "[extraction.ocr]\nconfidence_threshold = -1\n")
+		_, err := LoadFromPath(path)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "confidence_threshold must be 0-100")
+	})
+	t.Run("rejects over 100", func(t *testing.T) {
+		path := writeConfig(t, "[extraction.ocr]\nconfidence_threshold = 101\n")
+		_, err := LoadFromPath(path)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "confidence_threshold must be 0-100")
+	})
 }
 
 // --- Per-pipeline LLM config ---

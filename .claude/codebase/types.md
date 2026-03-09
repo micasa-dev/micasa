@@ -120,7 +120,8 @@ Col* (e.g., ColID = "id", ColName = "name", ColDeletedAt = "deleted_at")
 - LLM (provider, model, baseURL, apiKey, timeout, thinking, extraContext)
   - Chat/Extraction overrides (LLMChatOverride, LLMExtractionOverride)
 - Documents (MaxFileSize ByteSize, CacheTTL Duration)
-- Extraction (MaxPages int, Enabled *bool, TextTimeout, LLMTimeout)
+- Extraction (MaxPages int, Enable *bool, TextTimeout, LLMTimeout)
+  - OCR (Enable *bool, ConfidenceThreshold int)
 - Locale (Currency string)
 
 ### Defaults

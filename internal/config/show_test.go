@@ -38,7 +38,7 @@ func TestShowConfigDefaults(t *testing.T) {
 	assert.Contains(t, out, `max_file_size = "50 MiB"`)
 	assert.Contains(t, out, `cache_ttl = "30d"`)
 	assert.Contains(t, out, "max_pages = 0")
-	assert.Contains(t, out, "enabled = true")
+	assert.Contains(t, out, "enable = true")
 	assert.Contains(t, out, `text_timeout = "30s"`)
 
 	assert.NotContains(t, out, "cache_ttl_days")
@@ -63,7 +63,7 @@ cache_ttl = "7d"
 
 [extraction]
 max_pages = 10
-enabled = false
+enable = false
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ cache_ttl = "7d"
 
 [extraction]
 max_pages = 10
-enabled = false
+enable = false
 text_timeout = "1m"
 `)
 	orig, err := LoadFromPath(path)

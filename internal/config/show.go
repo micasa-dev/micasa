@@ -28,6 +28,7 @@ var hiddenPaths = map[string]bool{
 // "DEPRECATED: use <replacement>" warning.
 var deprecatedPaths = map[string]string{
 	"documents.cache_ttl_days": "documents.cache_ttl",
+	"extraction.enabled":       "extraction.enable",
 	"extraction.model":         "llm.extraction.model",
 	"extraction.thinking":      "llm.extraction.thinking",
 }
@@ -74,9 +75,13 @@ func (c Config) forDisplay() Config {
 		d.Documents.CacheTTL = &Duration{dur}
 	}
 	// CacheTTLDays preserved when user-set so the dump warns about it.
-	if d.Extraction.Enabled == nil {
+	if d.Extraction.Enable == nil {
 		t := true
-		d.Extraction.Enabled = &t
+		d.Extraction.Enable = &t
+	}
+	if d.Extraction.OCR.Enable == nil {
+		t := true
+		d.Extraction.OCR.Enable = &t
 	}
 	if d.Extraction.TextTimeout == "" {
 		d.Extraction.TextTimeout = DefaultTextTimeout.String()

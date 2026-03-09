@@ -118,11 +118,13 @@ You can always infer the env var name from the config key.
 | `MICASA_DOCUMENTS_CACHE_TTL_DAYS` | -- | `documents.cache_ttl_days` | Deprecated; use `MICASA_DOCUMENTS_CACHE_TTL` |
 | `MICASA_DOCUMENTS_FILE_PICKER_DIR` | (Downloads) | `documents.file_picker_dir` | Starting directory for the file picker |
 | `MICASA_EXTRACTION_MODEL` | (chat model) | `extraction.model` | LLM model for document extraction |
-| `MICASA_EXTRACTION_ENABLED` | `true` | `extraction.enabled` | Enable/disable LLM extraction |
+| `MICASA_EXTRACTION_ENABLE` | `true` | `extraction.enable` | Enable/disable LLM extraction |
 | `MICASA_EXTRACTION_THINKING` | `false` | `extraction.thinking` | Enable model thinking for extraction |
 | `MICASA_EXTRACTION_TEXT_TIMEOUT` | `30s` | `extraction.text_timeout` | pdftotext timeout |
 | `MICASA_EXTRACTION_MAX_PAGES` | `0` | `extraction.max_pages` | Max pages to OCR per document (0 = no limit) |
 | `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | `extraction.llm_timeout` | LLM extraction timeout |
+| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | `extraction.ocr.enable` | Enable/disable OCR on documents |
+| `MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD` | `0` | `extraction.ocr.confidence_threshold` | Min tesseract confidence (0-100) |
 | `MICASA_LOCALE_CURRENCY` | (auto-detect) | `locale.currency` | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
 
 {{% details title="Deprecated env var names" closed="true" %}}
@@ -141,6 +143,7 @@ warning. They will be removed in a future release.
 | `MICASA_MAX_EXTRACT_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
 | `MICASA_TEXT_TIMEOUT` | `MICASA_EXTRACTION_TEXT_TIMEOUT` |
 | `MICASA_MAX_OCR_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
+| `MICASA_EXTRACTION_ENABLED` | `MICASA_EXTRACTION_ENABLE` |
 | `MICASA_EXTRACTION_MODEL` | `MICASA_LLM_EXTRACTION_MODEL` |
 | `MICASA_EXTRACTION_THINKING` | `MICASA_LLM_EXTRACTION_THINKING` |
 
@@ -393,8 +396,18 @@ dates, vendor matching) from uploaded documents.
 | `model` | string | (chat model) | **Deprecated.** Use `[llm.extraction] model` instead. Falls back to `llm.model` if empty. |
 | `text_timeout` | string | `"30s"` | Max time for `pdftotext` to run. Go duration syntax, e.g. `"1m"`. Increase for very large PDFs. |
 | `max_pages` | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
-| `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. When disabled, no structured data is extracted from documents. |
+| `enable` | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run (see `[extraction.ocr]`). |
+| `enabled` | bool | -- | **Deprecated.** Use `enable` instead. |
 | `thinking` | bool | `false` | **Deprecated.** Use `[llm.extraction] thinking` instead. |
+
+### `[extraction.ocr]` section
+
+OCR sub-pipeline settings. Requires `tesseract` and `pdftocairo`.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enable` | bool | `true` | Set to `false` to disable OCR on documents. When disabled, scanned pages and images produce no text. |
+| `confidence_threshold` | int | `0` | Minimum tesseract word confidence (0-100) to keep. Words below this threshold are dropped. 0 means no filtering. |
 
 ### `[locale]` section
 

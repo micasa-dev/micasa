@@ -264,9 +264,13 @@ type Extraction struct {
 	// documents. 0 means no limit (all pages). Default: 0.
 	MaxPages int `toml:"max_pages"`
 
-	// Enabled controls whether LLM-powered extraction runs when a document
-	// is uploaded. When disabled, no structured data is extracted -- OCR and
-	// pdftotext are internal pipeline steps, not standalone features. Default: true.
+	// Enable controls whether LLM-powered structured extraction runs when
+	// a document is uploaded. When disabled, no structured data is extracted
+	// from documents. OCR and pdftotext still run independently (controlled
+	// by [extraction.ocr]) to populate the document's stored text. Default: true.
+	Enable *bool `toml:"enable,omitempty"`
+
+	// Enabled is the deprecated spelling; migrated to Enable on load.
 	Enabled *bool `toml:"enabled,omitempty"`
 
 	// TextTimeout is the maximum time to wait for pdftotext. Go duration
@@ -281,13 +285,37 @@ type Extraction struct {
 	// Supported values: none, low, medium, high, auto.
 	// Empty string = don't send (server default). Default: empty.
 	Thinking string `toml:"thinking,omitempty"`
+
+	// OCR holds settings for the OCR sub-pipeline.
+	OCR OCR `toml:"ocr" doc:"OCR sub-pipeline. Requires tesseract and pdftocairo."`
+}
+
+// OCR holds settings for the OCR sub-pipeline within extraction.
+type OCR struct {
+	// Enable controls whether OCR runs on uploaded documents.
+	// When disabled, scanned pages and images produce no text. Default: true.
+	Enable *bool `toml:"enable,omitempty"`
+
+	// ConfidenceThreshold is the minimum tesseract word confidence (0-100)
+	// to keep in OCR output. Words below this threshold are dropped.
+	// 0 means no filtering (all words kept). Default: 0.
+	ConfidenceThreshold int `toml:"confidence_threshold"`
 }
 
 // IsEnabled returns whether LLM extraction is enabled. Defaults to true
 // when the field is unset.
 func (e Extraction) IsEnabled() bool {
-	if e.Enabled != nil {
-		return *e.Enabled
+	if e.Enable != nil {
+		return *e.Enable
+	}
+	return true
+}
+
+// IsOCREnabled returns whether OCR is enabled. Defaults to true when
+// the field is unset.
+func (e Extraction) IsOCREnabled() bool {
+	if e.OCR.Enable != nil {
+		return *e.OCR.Enable
 	}
 	return true
 }
@@ -524,6 +552,13 @@ func LoadFromPath(path string) (Config, error) {
 		return cfg, fmt.Errorf(
 			"extraction.max_pages must be non-negative, got %d",
 			cfg.Extraction.MaxPages,
+		)
+	}
+
+	if cfg.Extraction.OCR.ConfidenceThreshold < 0 || cfg.Extraction.OCR.ConfidenceThreshold > 100 {
+		return cfg, fmt.Errorf(
+			"extraction.ocr.confidence_threshold must be 0-100, got %d",
+			cfg.Extraction.OCR.ConfidenceThreshold,
 		)
 	}
 
@@ -905,6 +940,17 @@ func migrateRenamedKeys(cfg *Config, md toml.MetaData, path string) {
 		)
 	}
 
+	// extraction.enabled -> extraction.enable (v1.78)
+	if md.IsDefined("extraction", "enabled") {
+		if !md.IsDefined("extraction", "enable") {
+			cfg.Extraction.Enable = cfg.Extraction.Enabled
+		}
+		cfg.Warnings = append(cfg.Warnings,
+			"extraction.enabled is deprecated -- use extraction.enable instead",
+		)
+	}
+	cfg.Extraction.Enabled = nil // never propagate the deprecated field
+
 	// extraction.model -> llm.extraction.model (v1.59)
 	if md.IsDefined("extraction", "model") && !md.IsDefined("llm", "extraction", "model") {
 		cfg.LLM.Extraction.Model = cfg.Extraction.Model
@@ -926,6 +972,9 @@ func migrateRenamedKeys(cfg *Config, md toml.MetaData, path string) {
 // replacements. Processed newest-first so that the most recent intermediate
 // name wins when multiple generations of the same variable are set.
 var envRenames = []struct{ old, canonical string }{
+	// v1.78: extraction.enabled -> extraction.enable.
+	{"MICASA_EXTRACTION_ENABLED", "MICASA_EXTRACTION_ENABLE"},
+
 	// v1.77: env var names now derived from dotted config paths.
 	{"MICASA_CURRENCY", "MICASA_LOCALE_CURRENCY"},
 	{"MICASA_MAX_DOCUMENT_SIZE", "MICASA_DOCUMENTS_MAX_FILE_SIZE"},
@@ -1102,6 +1151,10 @@ model = "` + DefaultModel + `"
 # file_picker_dir = "/home/user/Documents"
 
 [extraction]
+# Set to false to disable LLM-powered structured extraction. OCR and pdftotext
+# still run (see [extraction.ocr]) to populate document text for search/display.
+# enable = true
+
 # Timeout for pdftotext. Go duration syntax: "30s", "1m", etc. Default: "30s".
 # Increase if you routinely process very large PDFs.
 # text_timeout = "30s"
@@ -1113,9 +1166,14 @@ model = "` + DefaultModel + `"
 # Maximum pages for async extraction of scanned documents. 0 = no limit. Default: 0.
 # max_pages = 0
 
-# Set to false to disable LLM-powered extraction even when LLM is configured.
-# When disabled, no structured data is extracted from documents.
-# enabled = true
+# [extraction.ocr]
+# Set to false to disable OCR on uploaded documents. When disabled, scanned
+# pages and images produce no text. Default: true.
+# enable = true
+
+# Minimum tesseract word confidence (0-100) to keep. Words below this
+# threshold are dropped. 0 = no filtering. Default: 0.
+# confidence_threshold = 0
 
 [locale]
 # ISO 4217 currency code. Stored in the database on first run; after that the

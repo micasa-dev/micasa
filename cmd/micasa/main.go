@@ -162,6 +162,8 @@ func (cmd *runCmd) Run() error {
 	extractors := extract.DefaultExtractors(
 		cfg.Extraction.MaxPages,
 		cfg.Extraction.TextTimeoutDuration(),
+		cfg.Extraction.IsOCREnabled(),
+		cfg.Extraction.OCR.ConfidenceThreshold,
 	)
 	opts.SetExtraction(
 		exCfg.Provider,
