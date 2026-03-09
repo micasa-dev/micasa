@@ -205,7 +205,7 @@ type Documents struct {
 	// MaxFileSize is the largest file that can be imported as a document
 	// attachment. Accepts unitized strings ("50 MiB") or bare integers
 	// (bytes). Default: 50 MiB.
-	MaxFileSize ByteSize `toml:"max_file_size"`
+	MaxFileSize ByteSize `toml:"max_file_size" default:"52428800"`
 
 	// CacheTTL is the preferred cache lifetime setting. Accepts unitized
 	// strings ("30d", "720h") or bare integers (seconds). Default: 30d.
@@ -363,9 +363,6 @@ func Load() (Config, error) {
 func LoadFromPath(path string) (Config, error) {
 	var cfg Config
 	data.ApplyDefaults(&cfg)
-	// MaxFileSize derives from data.MaxDocumentSize (can't express a
-	// Go constant in a struct tag).
-	cfg.Documents.MaxFileSize = ByteSize(data.MaxDocumentSize)
 
 	if _, err := os.Stat(path); err == nil {
 		md, err := toml.DecodeFile(path, &cfg)

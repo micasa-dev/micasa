@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -172,7 +171,7 @@ func TestMalformedConfigReturnsError(t *testing.T) {
 func TestDefaultMaxDocumentSize(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
-	assert.Equal(t, data.MaxDocumentSize, cfg.Documents.MaxFileSize.Bytes())
+	assert.Equal(t, uint64(50<<20), cfg.Documents.MaxFileSize.Bytes())
 }
 
 func TestMaxDocumentSizeFromFileInteger(t *testing.T) {

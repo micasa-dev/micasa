@@ -131,7 +131,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	return &Store{db: db, maxDocumentSize: MaxDocumentSize}, nil
+	return &Store{db: db}, nil
 }
 
 // MaxDocumentSize returns the configured maximum file size for document imports.

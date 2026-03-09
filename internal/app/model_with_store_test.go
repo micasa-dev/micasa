@@ -25,6 +25,7 @@ func newTestModelWithStore(t *testing.T) *Model {
 	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
 	store, err := data.Open(path)
 	require.NoError(t, err)
+	require.NoError(t, store.SetMaxDocumentSize(50<<20))
 	t.Cleanup(func() { _ = store.Close() })
 
 	store.SetCurrency(locale.DefaultCurrency())
