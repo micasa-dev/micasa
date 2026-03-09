@@ -73,6 +73,9 @@ func StructDefault[T any](fieldName string) string {
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.Elem()
 	}
+	if rt.Kind() != reflect.Struct {
+		return ""
+	}
 
 	f, ok := rt.FieldByName(fieldName)
 	if !ok {

@@ -148,3 +148,8 @@ func TestStructDefault_interfaceType(t *testing.T) {
 	got := StructDefault[any]("Anything")
 	assert.Empty(t, got)
 }
+
+func TestStructDefault_primitiveType(t *testing.T) {
+	got := StructDefault[int]("Field")
+	assert.Empty(t, got)
+}

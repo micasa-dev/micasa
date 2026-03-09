@@ -63,9 +63,12 @@ fallback).
 | LLM       | Timeout     | `default:"5m"`                       |
 | Documents | MaxFileSize | `default:"52428800"` (50 MiB)        |
 
-Replaces the hand-written `defaults()` function with `ApplyDefaults(&cfg)`.
+Replaces the hand-written `defaults()` function and `data.MaxDocumentSize`
+constant -- the tag is the single source of truth for the 50 MiB default.
 
 ### Store (`internal/data/store.go`)
 
-`RestoreIncident` status fallback now uses `StructDefault[Incident]("Status")`
-instead of a hardcoded `IncidentStatusOpen` constant.
+- `RestoreIncident` status fallback uses `StructDefault[Incident]("Status")`
+  instead of a hardcoded `IncidentStatusOpen` constant.
+- `Store.Open()` no longer bakes in a document size default; callers set it
+  from config via `SetMaxDocumentSize`.
