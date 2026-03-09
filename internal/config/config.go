@@ -345,16 +345,6 @@ const (
 	configRelPath               = "micasa/config.toml"
 )
 
-// defaults returns a Config with all default values populated from
-// `default` struct tags, plus runtime-derived values that can't be
-// expressed as string literals in tags.
-func defaults() Config {
-	var cfg Config
-	data.ApplyDefaults(&cfg)
-	cfg.Documents.MaxFileSize = ByteSize(data.MaxDocumentSize)
-	return cfg
-}
-
 // Path returns the expected config file path (XDG_CONFIG_HOME/micasa/config.toml).
 func Path() string {
 	return filepath.Join(xdg.ConfigHome, configRelPath)
@@ -371,7 +361,11 @@ func Load() (Config, error) {
 // falls back to defaults for any unset fields, and applies environment
 // variable overrides last.
 func LoadFromPath(path string) (Config, error) {
-	cfg := defaults()
+	var cfg Config
+	data.ApplyDefaults(&cfg)
+	// MaxFileSize derives from data.MaxDocumentSize (can't express a
+	// Go constant in a struct tag).
+	cfg.Documents.MaxFileSize = ByteSize(data.MaxDocumentSize)
 
 	if _, err := os.Stat(path); err == nil {
 		md, err := toml.DecodeFile(path, &cfg)

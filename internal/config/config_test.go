@@ -599,8 +599,9 @@ func TestKeys(t *testing.T) {
 	assert.Contains(t, keys, "llm.base_url")
 	assert.Contains(t, keys, "documents.max_file_size")
 	assert.Contains(t, keys, "extraction.max_pages")
-	// Verify every key is resolvable against defaults.
-	cfg := defaults()
+	// Verify every key is resolvable against a default config.
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
 	for _, k := range keys {
 		_, err := cfg.Get(k)
 		assert.NoError(t, err, "key %q should be resolvable", k)
