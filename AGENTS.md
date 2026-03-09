@@ -236,10 +236,12 @@ details; do not duplicate that detail here.
   model fields directly. Internal/unit tests are permitted only after
   user-interaction tests exist and only when you judge them genuinely
   necessary as supplements.
-- **Regression tests are strict TDD**: Write a test that reproduces the
-  bug first, confirm it fails, then iterate on the fix until the test
-  passes. Do not game this by wildly mutating code just to satisfy the
-  test -- fix the actual root cause.
+- **Test-first for all feature work and bug fixes**: Write tests that
+  fully describe the desired behavior before writing the implementation.
+  Confirm they fail, then implement to make them pass. Tests are the
+  spec -- if the tests pass but the feature is incomplete or the bug
+  still reproduces, the tests are wrong. Do not game this by wildly
+  mutating code just to satisfy the test -- fix the actual root cause.
 - **Use `testify/assert` and `testify/require`**: `require` for
   preconditions, `assert` for assertions. No bare `t.Fatal`/`t.Error`.
 - **Test every error path**: Every function that can fail needs at least
