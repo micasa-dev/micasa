@@ -64,7 +64,7 @@ type houseFormData struct {
 type projectFormData struct {
 	Title         string
 	ProjectTypeID uint
-	Status        string
+	Status        string `default:"planned"`
 	Budget        string
 	Actual        string
 	StartDate     string
@@ -112,8 +112,8 @@ type maintenanceFormData struct {
 
 type serviceLogFormData struct {
 	MaintenanceItemID uint
-	ServicedAt        string
-	VendorID          uint // 0 = self
+	ServicedAt        string `default:"today"`
+	VendorID          uint   // 0 = self
 	Cost              string
 	Notes             string
 }
@@ -153,9 +153,9 @@ type documentParseResult struct {
 type incidentFormData struct {
 	Title        string
 	Description  string
-	Status       string
-	Severity     string
-	DateNoticed  string
+	Status       string `default:"open"`
+	Severity     string `default:"soon"`
+	DateNoticed  string `default:"today"`
 	DateResolved string
 	Location     string
 	Cost         string
@@ -269,9 +269,8 @@ func (m *Model) startHouseForm() {
 }
 
 func (m *Model) startProjectForm() {
-	values := &projectFormData{
-		Status: data.ProjectStatusPlanned,
-	}
+	values := &projectFormData{}
+	data.ApplyDefaults(values)
 	options := projectTypeOptions(m.projectTypes)
 	if len(options) > 0 {
 		values.ProjectTypeID = options[0].Value
@@ -577,11 +576,8 @@ func (m *Model) openMaintenanceForm(
 }
 
 func (m *Model) startIncidentForm() error {
-	values := &incidentFormData{
-		Status:      data.IncidentStatusOpen,
-		Severity:    data.IncidentSeveritySoon,
-		DateNoticed: time.Now().Format(data.DateLayout),
-	}
+	values := &incidentFormData{}
+	data.ApplyDefaults(values)
 	appliances, err := m.store.ListAppliances(false)
 	if err != nil {
 		return fmt.Errorf("list appliances: %w", err)
@@ -1317,8 +1313,8 @@ func (m *Model) inlineEditAppliance(id uint, col applianceCol) error {
 func (m *Model) startServiceLogForm(maintenanceItemID uint) error {
 	values := &serviceLogFormData{
 		MaintenanceItemID: maintenanceItemID,
-		ServicedAt:        time.Now().Format(data.DateLayout),
 	}
+	data.ApplyDefaults(values)
 	vendorOpts := vendorOpts("Self (homeowner)", m.vendors)
 	form := huh.NewForm(
 		huh.NewGroup(

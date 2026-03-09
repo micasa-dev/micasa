@@ -50,11 +50,11 @@ type LLM struct {
 	// BaseURL is the base URL for the provider's API.
 	// Default varies by provider (e.g. http://localhost:11434 for Ollama).
 	// No /v1 suffix needed -- the provider handles path construction.
-	BaseURL string `toml:"base_url"`
+	BaseURL string `toml:"base_url" default:"http://localhost:11434"`
 
 	// Model is the model identifier passed in chat requests.
 	// Default: qwen3
-	Model string `toml:"model"`
+	Model string `toml:"model" default:"qwen3"`
 
 	// APIKey is the authentication credential. Required for cloud
 	// providers (Anthropic, OpenAI, OpenRouter, etc.). Leave empty for local
@@ -69,7 +69,7 @@ type LLM struct {
 	// Timeout is the maximum time for a single LLM response (including
 	// streaming). Go duration string, e.g. "5m", "10m". Default: "5m".
 	// Quick operations (ping, model listing) use a shorter fixed deadline.
-	Timeout string `toml:"timeout"`
+	Timeout string `toml:"timeout" default:"5m"`
 
 	// Thinking controls the model's reasoning effort level. Supported values:
 	// none, low, medium, high, auto. Empty string = don't send (server default).
@@ -205,7 +205,7 @@ type Documents struct {
 	// MaxFileSize is the largest file that can be imported as a document
 	// attachment. Accepts unitized strings ("50 MiB") or bare integers
 	// (bytes). Default: 50 MiB.
-	MaxFileSize ByteSize `toml:"max_file_size"`
+	MaxFileSize ByteSize `toml:"max_file_size" default:"52428800"`
 
 	// CacheTTL is the preferred cache lifetime setting. Accepts unitized
 	// strings ("30d", "720h") or bare integers (seconds). Default: 30d.
@@ -345,21 +345,12 @@ const (
 	configRelPath               = "micasa/config.toml"
 )
 
-// defaults returns a Config with all default values populated.
+// defaults returns a Config with all default values populated from
+// `default` struct tags.
 func defaults() Config {
-	return Config{
-		LLM: LLM{
-			BaseURL: DefaultBaseURL,
-			Model:   DefaultModel,
-			Timeout: DefaultLLMTimeout.String(),
-		},
-		Documents: Documents{
-			MaxFileSize: ByteSize(data.MaxDocumentSize),
-		},
-		Extraction: Extraction{
-			MaxPages: DefaultMaxPages,
-		},
-	}
+	var cfg Config
+	data.ApplyDefaults(&cfg)
+	return cfg
 }
 
 // Path returns the expected config file path (XDG_CONFIG_HOME/micasa/config.toml).

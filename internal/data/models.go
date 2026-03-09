@@ -156,12 +156,12 @@ type Project struct {
 	Title         string
 	ProjectTypeID uint
 	ProjectType   ProjectType `gorm:"constraint:OnDelete:RESTRICT;"`
-	Status        string
+	Status        string      `                                                                              default:"planned"`
 	Description   string
-	StartDate     *time.Time `                                                                              extract:"-"`
-	EndDate       *time.Time `                                                                              extract:"-"`
+	StartDate     *time.Time `                                                                                                extract:"-"`
+	EndDate       *time.Time `                                                                                                extract:"-"`
 	BudgetCents   *int64
-	ActualCents   *int64     `                                                                              extract:"-"`
+	ActualCents   *int64     `                                                                                                extract:"-"`
 	Documents     []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:project"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -234,11 +234,11 @@ type Incident struct {
 	ID             uint `gorm:"primaryKey"`
 	Title          string
 	Description    string
-	Status         string
-	PreviousStatus string `                                                                               extract:"-"`
-	Severity       string
-	DateNoticed    time.Time
-	DateResolved   *time.Time `                                                                               extract:"-"`
+	Status         string     `                                                                               default:"open"`
+	PreviousStatus string     `                                                                                              extract:"-"`
+	Severity       string     `                                                                               default:"soon"`
+	DateNoticed    time.Time  `                                                                               default:"now"`
+	DateResolved   *time.Time `                                                                                              extract:"-"`
 	Location       string
 	CostCents      *int64
 	ApplianceID    *uint     `gorm:"index"`

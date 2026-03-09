@@ -1037,7 +1037,7 @@ func (s *Store) RestoreIncident(id uint) error {
 	}
 	restoreStatus := item.PreviousStatus
 	if restoreStatus == "" {
-		restoreStatus = IncidentStatusOpen
+		restoreStatus = StructDefault[Incident]("Status")
 	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Model(&Incident{}).
