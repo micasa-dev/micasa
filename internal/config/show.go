@@ -83,9 +83,6 @@ func (c Config) forDisplay() Config {
 		t := true
 		d.Extraction.OCR.Enable = &t
 	}
-	if d.Extraction.TextTimeout == "" {
-		d.Extraction.TextTimeout = DefaultTextTimeout.String()
-	}
 	if d.Locale.Currency == "" {
 		d.Locale.Currency = detectCurrencyCode()
 	}

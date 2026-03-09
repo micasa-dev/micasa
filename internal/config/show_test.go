@@ -39,7 +39,6 @@ func TestShowConfigDefaults(t *testing.T) {
 	assert.Contains(t, out, `cache_ttl = "30d"`)
 	assert.Contains(t, out, "max_pages = 0")
 	assert.Contains(t, out, "enable = true")
-	assert.Contains(t, out, `text_timeout = "30s"`)
 
 	assert.NotContains(t, out, "cache_ttl_days")
 	assert.NotContains(t, out, "[llm.chat]")
@@ -96,7 +95,6 @@ cache_ttl = "7d"
 [extraction]
 max_pages = 10
 enable = false
-text_timeout = "1m"
 `)
 	orig, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -123,7 +121,6 @@ text_timeout = "1m"
 		parsed.Documents.CacheTTLDuration())
 	assert.Equal(t, orig.Extraction.MaxPages, parsed.Extraction.MaxPages)
 	assert.Equal(t, orig.Extraction.IsEnabled(), parsed.Extraction.IsEnabled())
-	assert.Equal(t, orig.Extraction.TextTimeout, parsed.Extraction.TextTimeout)
 
 	// API keys are hidden -- the parsed config must NOT have them.
 	assert.Empty(t, parsed.LLM.APIKey)

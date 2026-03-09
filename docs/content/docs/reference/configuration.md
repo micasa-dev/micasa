@@ -120,7 +120,6 @@ You can always infer the env var name from the config key.
 | `MICASA_EXTRACTION_MODEL` | (chat model) | `extraction.model` | LLM model for document extraction |
 | `MICASA_EXTRACTION_ENABLE` | `true` | `extraction.enable` | Enable/disable LLM extraction |
 | `MICASA_EXTRACTION_THINKING` | `false` | `extraction.thinking` | Enable model thinking for extraction |
-| `MICASA_EXTRACTION_TEXT_TIMEOUT` | `30s` | `extraction.text_timeout` | pdftotext timeout |
 | `MICASA_EXTRACTION_MAX_PAGES` | `0` | `extraction.max_pages` | Max pages to OCR per document (0 = no limit) |
 | `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | `extraction.llm_timeout` | LLM extraction timeout |
 | `MICASA_EXTRACTION_OCR_ENABLE` | `true` | `extraction.ocr.enable` | Enable/disable OCR on documents |
@@ -141,7 +140,6 @@ warning. They will be removed in a future release.
 | `MICASA_CURRENCY` | `MICASA_LOCALE_CURRENCY` |
 | `MICASA_EXTRACTION_MAX_EXTRACT_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
 | `MICASA_MAX_EXTRACT_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
-| `MICASA_TEXT_TIMEOUT` | `MICASA_EXTRACTION_TEXT_TIMEOUT` |
 | `MICASA_MAX_OCR_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
 | `MICASA_EXTRACTION_ENABLED` | `MICASA_EXTRACTION_ENABLE` |
 | `MICASA_EXTRACTION_MODEL` | `MICASA_LLM_EXTRACTION_MODEL` |
@@ -305,10 +303,6 @@ model = "qwen3"
 # with small, fast models optimized for structured JSON output.
 # model = "qwen2.5:7b"
 
-# Timeout for pdftotext. Go duration syntax: "30s", "1m", etc. Default: "30s".
-# Increase if you routinely process very large PDFs.
-# text_timeout = "30s"
-
 # Maximum pages to OCR for scanned documents. 0 = no limit. Default: 0.
 # max_pages = 0
 
@@ -394,7 +388,6 @@ dates, vendor matching) from uploaded documents.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `model` | string | (chat model) | **Deprecated.** Use `[llm.extraction] model` instead. Falls back to `llm.model` if empty. |
-| `text_timeout` | string | `"30s"` | Max time for `pdftotext` to run. Go duration syntax, e.g. `"1m"`. Increase for very large PDFs. |
 | `max_pages` | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
 | `enable` | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run (see `[extraction.ocr]`). |
 | `enabled` | bool | -- | **Deprecated.** Use `enable` instead. |

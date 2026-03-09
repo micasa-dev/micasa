@@ -161,7 +161,7 @@ func (cmd *runCmd) Run() error {
 	exCfg := cfg.LLM.ExtractionConfig()
 	extractors := extract.DefaultExtractors(
 		cfg.Extraction.MaxPages,
-		cfg.Extraction.TextTimeoutDuration(),
+		0, // pdftotext uses its own internal default timeout (30s)
 		cfg.Extraction.IsOCREnabled(),
 		cfg.Extraction.OCR.ConfidenceThreshold,
 	)

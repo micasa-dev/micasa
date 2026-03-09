@@ -273,10 +273,6 @@ type Extraction struct {
 	// Enabled is the deprecated spelling; migrated to Enable on load.
 	Enabled *bool `toml:"enabled,omitempty"`
 
-	// TextTimeout is the maximum time to wait for pdftotext. Go duration
-	// string, e.g. "30s", "1m". Default: "30s".
-	TextTimeout string `toml:"text_timeout"`
-
 	// LLMTimeout is the maximum time to wait for the LLM extraction
 	// inference step. Go duration string, e.g. "5m", "90s". Default: "5m".
 	LLMTimeout string `toml:"llm_timeout"`
@@ -320,19 +316,6 @@ func (e Extraction) IsOCREnabled() bool {
 	return true
 }
 
-// TextTimeoutDuration returns the parsed text extraction timeout, falling
-// back to DefaultTextTimeout if the value is empty or unparseable.
-func (e Extraction) TextTimeoutDuration() time.Duration {
-	if e.TextTimeout == "" {
-		return DefaultTextTimeout
-	}
-	d, err := time.ParseDuration(e.TextTimeout)
-	if err != nil {
-		return DefaultTextTimeout
-	}
-	return d
-}
-
 // LLMTimeoutDuration returns the parsed LLM extraction timeout, falling
 // back to DefaultLLMExtractionTimeout if the value is empty or unparseable.
 func (e Extraction) LLMTimeoutDuration() time.Duration {
@@ -369,7 +352,6 @@ const (
 	DefaultLLMExtractionTimeout = DefaultLLMTimeout
 	DefaultCacheTTL             = 30 * 24 * time.Hour // 30 days
 	DefaultMaxPages             = 0
-	DefaultTextTimeout          = 30 * time.Second
 	configRelPath               = "micasa/config.toml"
 )
 
@@ -514,22 +496,6 @@ func LoadFromPath(path string) (Config, error) {
 			"documents.cache_ttl must be non-negative, got %s",
 			cfg.Documents.CacheTTL.Duration,
 		)
-	}
-
-	if cfg.Extraction.TextTimeout != "" {
-		d, err := time.ParseDuration(cfg.Extraction.TextTimeout)
-		if err != nil {
-			return cfg, fmt.Errorf(
-				"extraction.text_timeout: invalid duration %q -- use Go syntax like \"30s\" or \"1m\"",
-				cfg.Extraction.TextTimeout,
-			)
-		}
-		if d <= 0 {
-			return cfg, fmt.Errorf(
-				"extraction.text_timeout must be positive, got %s",
-				cfg.Extraction.TextTimeout,
-			)
-		}
 	}
 
 	if cfg.Extraction.LLMTimeout != "" {
@@ -983,7 +949,6 @@ var envRenames = []struct{ old, canonical string }{
 	{"MICASA_FILE_PICKER_DIR", "MICASA_DOCUMENTS_FILE_PICKER_DIR"},
 	{"MICASA_EXTRACTION_MAX_EXTRACT_PAGES", "MICASA_EXTRACTION_MAX_PAGES"},
 	{"MICASA_MAX_EXTRACT_PAGES", "MICASA_EXTRACTION_MAX_PAGES"},
-	{"MICASA_TEXT_TIMEOUT", "MICASA_EXTRACTION_TEXT_TIMEOUT"},
 
 	// v1.59
 	{"MICASA_EXTRACTION_MODEL", "MICASA_LLM_EXTRACTION_MODEL"},
@@ -1154,10 +1119,6 @@ model = "` + DefaultModel + `"
 # Set to false to disable LLM-powered structured extraction. OCR and pdftotext
 # still run (see [extraction.ocr]) to populate document text for search/display.
 # enable = true
-
-# Timeout for pdftotext. Go duration syntax: "30s", "1m", etc. Default: "30s".
-# Increase if you routinely process very large PDFs.
-# text_timeout = "30s"
 
 # Timeout for LLM extraction inference. Go duration syntax: "5m", "90s", etc.
 # Default: "5m". Increase for slow local models or complex documents.

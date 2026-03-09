@@ -629,13 +629,12 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_DOCUMENTS_CACHE_TTL_DAYS":  "documents.cache_ttl_days",
 		"MICASA_DOCUMENTS_FILE_PICKER_DIR": "documents.file_picker_dir",
 
-		"MICASA_EXTRACTION_MODEL":        "extraction.model",
-		"MICASA_EXTRACTION_MAX_PAGES":    "extraction.max_pages",
-		"MICASA_EXTRACTION_ENABLE":       "extraction.enable",
-		"MICASA_EXTRACTION_ENABLED":      "extraction.enabled",
-		"MICASA_EXTRACTION_TEXT_TIMEOUT": "extraction.text_timeout",
-		"MICASA_EXTRACTION_LLM_TIMEOUT":  "extraction.llm_timeout",
-		"MICASA_EXTRACTION_THINKING":     "extraction.thinking",
+		"MICASA_EXTRACTION_MODEL":       "extraction.model",
+		"MICASA_EXTRACTION_MAX_PAGES":   "extraction.max_pages",
+		"MICASA_EXTRACTION_ENABLE":      "extraction.enable",
+		"MICASA_EXTRACTION_ENABLED":     "extraction.enabled",
+		"MICASA_EXTRACTION_LLM_TIMEOUT": "extraction.llm_timeout",
+		"MICASA_EXTRACTION_THINKING":    "extraction.thinking",
 
 		"MICASA_EXTRACTION_OCR_ENABLE":               "extraction.ocr.enable",
 		"MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD": "extraction.ocr.confidence_threshold",
@@ -668,7 +667,7 @@ func TestEnvVarName(t *testing.T) {
 	}{
 		{"llm.model", "MICASA_LLM_MODEL"},
 		{"documents.max_file_size", "MICASA_DOCUMENTS_MAX_FILE_SIZE"},
-		{"extraction.text_timeout", "MICASA_EXTRACTION_TEXT_TIMEOUT"},
+		{"extraction.llm_timeout", "MICASA_EXTRACTION_LLM_TIMEOUT"},
 		{"locale.currency", "MICASA_LOCALE_CURRENCY"},
 		{"llm.chat.provider", "MICASA_LLM_CHAT_PROVIDER"},
 	}
@@ -1158,7 +1157,6 @@ func TestDeprecatedEnvVarRenames(t *testing.T) {
 		{"MICASA_MAX_DOCUMENT_SIZE", "MICASA_DOCUMENTS_MAX_FILE_SIZE", "100 MiB"},
 		{"MICASA_CACHE_TTL", "MICASA_DOCUMENTS_CACHE_TTL", "7d"},
 		{"MICASA_FILE_PICKER_DIR", "MICASA_DOCUMENTS_FILE_PICKER_DIR", "/tmp"},
-		{"MICASA_TEXT_TIMEOUT", "MICASA_EXTRACTION_TEXT_TIMEOUT", "1m"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.old, func(t *testing.T) {
