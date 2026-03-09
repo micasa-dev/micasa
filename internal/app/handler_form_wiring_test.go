@@ -666,6 +666,29 @@ func TestMaintenanceHandlerInlineEditColumns(t *testing.T) {
 	require.NotNil(t, m.fs.editID)
 }
 
+func TestMaintenanceHandlerInlineEditSeason(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	h := maintenanceHandler{}
+	cats, _ := m.store.MaintenanceCategories()
+
+	m.fs.formData = &maintenanceFormData{
+		Name:       "InlineSeason Item",
+		CategoryID: cats[0].ID,
+		Season:     data.SeasonSpring,
+	}
+	require.NoError(t, h.SubmitForm(m))
+	_, meta, _, _ := h.Load(m.store, false)
+	id := meta[0].ID
+
+	// Season column opens form overlay (select).
+	m.exitForm()
+	m.closeInlineInput()
+	require.NoError(t, h.InlineEdit(m, id, int(maintenanceColSeason)))
+	assert.Nil(t, m.inlineInput, "season should use form overlay, not inline input")
+	assert.Equal(t, modeForm, m.mode)
+}
+
 // Step 7: Inline edit "Next" column sets due date via calendar, clears interval,
 // and persists the change to the database.
 func TestMaintenanceInlineEditNextSetsDueDateAndSaves(t *testing.T) {

@@ -185,6 +185,7 @@ const (
 	maintenanceColID maintenanceCol = iota
 	maintenanceColItem
 	maintenanceColCategory
+	maintenanceColSeason
 	maintenanceColAppliance
 	maintenanceColLast
 	maintenanceColNext
@@ -198,6 +199,7 @@ func maintenanceColumnSpecs() []columnSpec {
 		idColumnSpec(),
 		{Title: "Item", Min: 12, Max: 26, Flex: true},
 		{Title: "Category", Min: 10, Max: 14},
+		{Title: "Season", Min: 6, Max: 8, Kind: cellStatus},
 		{
 			Title: "Appliance",
 			Min:   10,
@@ -359,6 +361,7 @@ func applianceMaintenanceRows(
 				{Value: fmt.Sprintf("%d", item.ID), Kind: cellReadonly},
 				{Value: item.Name, Kind: cellText},
 				{Value: item.Category.Name, Kind: cellText},
+				maintenanceSeasonCell(item.Season),
 				dateCell(item.LastServicedAt, cellDate),
 				dateCell(nextDue, cellUrgency),
 				intervalCell,
@@ -672,6 +675,13 @@ func quoteRows(
 	})
 }
 
+func maintenanceSeasonCell(season string) cell {
+	if season == "" {
+		return cell{Kind: cellStatus, Null: true}
+	}
+	return cell{Value: season, Kind: cellStatus}
+}
+
 func maintenanceRows(
 	items []data.MaintenanceItem,
 	logCounts map[uint]int,
@@ -693,6 +703,7 @@ func maintenanceRows(
 				{Value: fmt.Sprintf("%d", item.ID), Kind: cellReadonly},
 				{Value: item.Name, Kind: cellText},
 				{Value: item.Category.Name, Kind: cellText},
+				maintenanceSeasonCell(item.Season),
 				appCell,
 				dateCell(item.LastServicedAt, cellDate),
 				dateCell(nextDue, cellUrgency),

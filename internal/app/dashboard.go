@@ -20,6 +20,7 @@ const (
 	dashSectionIncidents = "Incidents"
 	dashSectionOverdue   = "Overdue"
 	dashSectionUpcoming  = "Upcoming"
+	dashSectionSeasonal  = "Seasonal"
 	dashSectionProjects  = "Active Projects"
 	dashSectionExpiring  = "Expiring Soon"
 )
@@ -41,6 +42,7 @@ func (m *Model) dashboardHeader() string {
 type dashboardData struct {
 	Overdue            []maintenanceUrgency
 	Upcoming           []maintenanceUrgency
+	Seasonal           []data.MaintenanceItem
 	ActiveProjects     []data.Project
 	OpenIncidents      []data.Incident
 	ExpiringWarranties []warrantyStatus
@@ -50,6 +52,7 @@ type dashboardData struct {
 func (d dashboardData) empty() bool {
 	return len(d.Overdue) == 0 &&
 		len(d.Upcoming) == 0 &&
+		len(d.Seasonal) == 0 &&
 		len(d.ActiveProjects) == 0 &&
 		len(d.OpenIncidents) == 0 &&
 		len(d.ExpiringWarranties) == 0 &&
@@ -281,6 +284,13 @@ func (m *Model) loadDashboardAt(now time.Time) error {
 	d.Overdue = capSlice(d.Overdue, 10)
 	d.Upcoming = capSlice(d.Upcoming, 10)
 
+	// Seasonal maintenance (items tagged with the current season).
+	currentSeason := data.SeasonForMonth(now.Month())
+	d.Seasonal, err = m.store.ListMaintenanceBySeason(currentSeason)
+	if err != nil {
+		return fmt.Errorf("load seasonal maintenance: %w", err)
+	}
+
 	// Active projects.
 	d.ActiveProjects, err = m.store.ListActiveProjects()
 	if err != nil {
@@ -380,6 +390,10 @@ func (m *Model) buildDashNav() {
 		d.Upcoming, tabMaintenance, dashSectionUpcoming,
 		func(e maintenanceUrgency) uint { return e.Item.ID },
 	))
+	add(dashSectionSeasonal, dashNavSection(
+		d.Seasonal, tabMaintenance, dashSectionSeasonal,
+		func(item data.MaintenanceItem) uint { return item.ID },
+	))
 	add(dashSectionProjects, dashNavSection(
 		d.ActiveProjects, tabProjects, dashSectionProjects,
 		func(p data.Project) uint { return p.ID },
@@ -472,6 +486,14 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 			title:   dashSectionUpcoming,
 			headers: []string{"", "due"},
 			rows:    upcomingRows,
+		})
+	}
+
+	if seasonalRows := m.dashSeasonalRows(); len(seasonalRows) > 0 {
+		sections = append(sections, dashSection{
+			title:   dashSectionSeasonal,
+			headers: []string{"", "category"},
+			rows:    seasonalRows,
 		})
 	}
 
@@ -662,6 +684,21 @@ func (m *Model) maintUrgencyRows(
 				{Text: daysText(e.DaysFromNow), Style: durStyle, Align: alignRight},
 			},
 			Target: &dashNavEntry{Tab: tabMaintenance, ID: e.Item.ID},
+		})
+	}
+	return rows
+}
+
+func (m *Model) dashSeasonalRows() []dashRow {
+	d := m.dash.data
+	rows := make([]dashRow, 0, len(d.Seasonal))
+	for _, item := range d.Seasonal {
+		rows = append(rows, dashRow{
+			Cells: []dashCell{
+				{Text: item.Name, Style: m.styles.DashValue()},
+				{Text: item.Category.Name, Style: m.styles.DashLabel()},
+			},
+			Target: &dashNavEntry{Tab: tabMaintenance, ID: item.ID},
 		})
 	}
 	return rows

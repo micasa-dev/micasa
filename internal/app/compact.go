@@ -27,6 +27,11 @@ var statusLabels = map[string]string{
 	"urgent":   "urg",
 	"soon":     "soon",
 	"whenever": "low",
+	// Seasons.
+	"spring": "spr",
+	"summer": "sum",
+	"fall":   "fall",
+	"winter": "win",
 }
 
 // statusLabel returns the short display label for a status value.

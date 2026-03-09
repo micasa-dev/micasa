@@ -488,6 +488,159 @@ func TestUserEditsMaintenanceFromIntervalToNone(t *testing.T) {
 	assert.Empty(t, cells[int(maintenanceColEvery)].Value)
 }
 
+// User creates a maintenance item with a season tag.
+func TestUserCreatesMaintenanceWithSeason(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.fs.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Clean Gutters"
+	values.Season = data.SeasonSpring
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	// Verify persisted to DB.
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, data.SeasonSpring, items[0].Season)
+
+	// Verify table column renders the season.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.CellRows)
+	seasonCell := tab.CellRows[0][int(maintenanceColSeason)]
+	assert.Equal(t, data.SeasonSpring, seasonCell.Value)
+	assert.Equal(t, cellStatus, seasonCell.Kind)
+}
+
+// User edits a maintenance item to change its season.
+func TestUserEditsMaintenanceSeason(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+
+	// Create with spring.
+	openAddForm(m)
+	values, ok := m.fs.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Service AC"
+	values.Season = data.SeasonSpring
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	tab.Table.SetCursor(0)
+	id := tab.Rows[0].ID
+
+	// Open full edit form via ID column.
+	sendKey(m, "i")
+	tab.ColCursor = int(maintenanceColID)
+	sendKey(m, "e")
+	require.Equal(t, modeForm, m.mode)
+
+	editValues, ok := m.fs.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	assert.Equal(t, data.SeasonSpring, editValues.Season,
+		"edit form should pre-fill existing season")
+
+	// Change to fall.
+	editValues.Season = data.SeasonFall
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	item, err := m.store.GetMaintenance(id)
+	require.NoError(t, err)
+	assert.Equal(t, data.SeasonFall, item.Season)
+}
+
+// User creates a maintenance item without a season (defaults to none).
+func TestUserCreatesMaintenanceWithoutSeason(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+	openAddForm(m)
+
+	values, ok := m.fs.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "General Checkup"
+	// Season left empty (default).
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Empty(t, items[0].Season)
+
+	// Table cell should be null.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.CellRows)
+	seasonCell := tab.CellRows[0][int(maintenanceColSeason)]
+	assert.True(t, seasonCell.Null, "empty season should produce a null cell")
+}
+
+// User inline-edits the Season column on a maintenance item.
+func TestUserInlineEditsMaintenanceSeason(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.active = tabIndex(tabMaintenance)
+
+	// Create with spring season.
+	openAddForm(m)
+	values, ok := m.fs.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	values.Name = "Service AC"
+	values.Season = data.SeasonSpring
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
+
+	// Reload and position on the maintenance tab.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	tab.Table.SetCursor(0)
+	id := tab.Rows[0].ID
+
+	// Enter edit mode, position on the Season column, press 'e'.
+	sendKey(m, "i")
+	tab.ColCursor = int(maintenanceColSeason)
+	sendKey(m, "e")
+	require.Equal(t, modeForm, m.mode, "Season inline edit should open form overlay")
+
+	// The form data should reflect the current season.
+	fd, ok := m.fs.formData.(*maintenanceFormData)
+	require.True(t, ok)
+	assert.Equal(t, data.SeasonSpring, fd.Season)
+
+	// Change to winter and save.
+	fd.Season = data.SeasonWinter
+	sendKey(m, "ctrl+s")
+
+	// Verify DB was updated.
+	item, err := m.store.GetMaintenance(id)
+	require.NoError(t, err)
+	assert.Equal(t, data.SeasonWinter, item.Season)
+
+	// Verify table cell updated after reload.
+	m.reloadAll()
+	require.NoError(t, m.reloadActiveTab())
+	tab = m.activeTab()
+	require.NotEmpty(t, tab.CellRows)
+	seasonCell := tab.CellRows[0][int(maintenanceColSeason)]
+	assert.Equal(t, data.SeasonWinter, seasonCell.Value)
+}
+
 // When ScheduleType is "due_date", stale IntervalMonths values are ignored.
 func TestScheduleTypeDueDateIgnoresStaleInterval(t *testing.T) {
 	t.Parallel()

@@ -45,6 +45,12 @@ const (
 	IncidentSeverityWhenever = "whenever"
 )
 
+const (
+	SeasonSpring = "spring"
+	SeasonSummer = "summer"
+	SeasonFall   = "fall"
+	SeasonWinter = "winter"
+)
 // Document entity kind values for polymorphic linking.
 const (
 	DocumentEntityNone        = ""
@@ -212,7 +218,8 @@ type MaintenanceItem struct {
 	Category       MaintenanceCategory `gorm:"constraint:OnDelete:RESTRICT;"`
 	ApplianceID    *uint               `gorm:"index"`
 	Appliance      Appliance           `gorm:"constraint:OnDelete:SET NULL;"`
-	LastServicedAt *time.Time          `                                                                                  extract:"-"`
+	Season         string
+	LastServicedAt *time.Time `                                                                                  extract:"-"`
 	IntervalMonths int
 	DueDate        *time.Time `                                                                                  extract:"-"`
 	ManualURL      string     `                                                                                  extract:"-"`

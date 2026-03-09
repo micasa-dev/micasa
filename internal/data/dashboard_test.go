@@ -63,6 +63,74 @@ func TestListMaintenanceWithScheduleDueDate(t *testing.T) {
 	assert.Equal(t, "With DueDate", items[0].Name)
 }
 
+func TestListMaintenanceBySeason(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	cat := MaintenanceCategory{Name: "SeasonCat"}
+	require.NoError(t, store.db.Create(&cat).Error)
+
+	require.NoError(t, store.db.Create(&MaintenanceItem{
+		Name: "Spring Item", CategoryID: cat.ID, Season: SeasonSpring,
+	}).Error)
+	require.NoError(t, store.db.Create(&MaintenanceItem{
+		Name: "Fall Item", CategoryID: cat.ID, Season: SeasonFall,
+	}).Error)
+	require.NoError(t, store.db.Create(&MaintenanceItem{
+		Name: "No Season", CategoryID: cat.ID,
+	}).Error)
+
+	items, err := store.ListMaintenanceBySeason(SeasonSpring)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "Spring Item", items[0].Name)
+}
+
+func TestListMaintenanceBySeasonExcludesDeleted(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	cat := MaintenanceCategory{Name: "SeasonDelCat"}
+	require.NoError(t, store.db.Create(&cat).Error)
+
+	require.NoError(t, store.db.Create(&MaintenanceItem{
+		Name: "Active Spring", CategoryID: cat.ID, Season: SeasonSpring,
+	}).Error)
+	item := MaintenanceItem{
+		Name: "Deleted Spring", CategoryID: cat.ID, Season: SeasonSpring,
+	}
+	require.NoError(t, store.db.Create(&item).Error)
+	require.NoError(t, store.DeleteMaintenance(item.ID))
+
+	items, err := store.ListMaintenanceBySeason(SeasonSpring)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "Active Spring", items[0].Name)
+}
+
+func TestSeasonForMonth(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		month    time.Month
+		expected string
+	}{
+		{time.January, SeasonWinter},
+		{time.February, SeasonWinter},
+		{time.March, SeasonSpring},
+		{time.April, SeasonSpring},
+		{time.May, SeasonSpring},
+		{time.June, SeasonSummer},
+		{time.July, SeasonSummer},
+		{time.August, SeasonSummer},
+		{time.September, SeasonFall},
+		{time.October, SeasonFall},
+		{time.November, SeasonFall},
+		{time.December, SeasonWinter},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.expected, SeasonForMonth(tt.month),
+			"month %s should be %s", tt.month, tt.expected)
+	}
+}
+
 func TestListActiveProjects(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)

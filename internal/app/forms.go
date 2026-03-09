@@ -100,6 +100,7 @@ type maintenanceFormData struct {
 	Name           string
 	CategoryID     uint
 	ApplianceID    uint // 0 means none
+	Season         string
 	ScheduleType   scheduleType
 	LastServiced   string
 	IntervalMonths string
@@ -476,6 +477,10 @@ func (m *Model) startMaintenanceForm() error {
 				Title("Category").
 				Options(catOptions...).
 				Value(&values.CategoryID),
+			huh.NewSelect[string]().
+				Title("Season").
+				Options(seasonOptions()...).
+				Value(&values.Season),
 			huh.NewSelect[uint]().
 				Title("Appliance").
 				Options(appOpts...).
@@ -535,6 +540,10 @@ func (m *Model) openMaintenanceForm(
 				Title("Category").
 				Options(catOptions...).
 				Value(&values.CategoryID),
+			huh.NewSelect[string]().
+				Title("Season").
+				Options(seasonOptions()...).
+				Value(&values.Season),
 			huh.NewSelect[uint]().
 				Title("Appliance").
 				Options(appOptions...).
@@ -865,6 +874,30 @@ func incidentSeverityOptions() []huh.Option[string] {
 	opts := make([]huh.Option[string], len(severities))
 	for i, s := range severities {
 		label := statusLabel(s.value)
+		colored := lipgloss.NewStyle().Foreground(s.color).Render(label)
+		opts[i] = huh.NewOption(colored, s.value)
+	}
+	return withOrdinals(opts)
+}
+
+func seasonOptions() []huh.Option[string] {
+	type entry struct {
+		value string
+		color lipgloss.AdaptiveColor
+	}
+	seasons := []entry{
+		{"", textDim},
+		{data.SeasonSpring, success},
+		{data.SeasonSummer, warning},
+		{data.SeasonFall, secondary},
+		{data.SeasonWinter, accent},
+	}
+	opts := make([]huh.Option[string], len(seasons))
+	for i, s := range seasons {
+		label := "(none)"
+		if s.value != "" {
+			label = statusLabel(s.value)
+		}
 		colored := lipgloss.NewStyle().Foreground(s.color).Render(label)
 		opts[i] = huh.NewOption(colored, s.value)
 	}
@@ -1240,6 +1273,11 @@ func (m *Model) inlineEditMaintenance(id uint, col maintenanceCol) error {
 		field := huh.NewSelect[uint]().Title("Category").
 			Options(catOptions...).
 			Value(&values.CategoryID)
+		m.openInlineEdit(id, field, values)
+	case maintenanceColSeason:
+		field := huh.NewSelect[string]().Title("Season").
+			Options(seasonOptions()...).
+			Value(&values.Season)
 		m.openInlineEdit(id, field, values)
 	case maintenanceColAppliance:
 		appliances, loadErr := m.store.ListAppliances(false)
@@ -1996,6 +2034,7 @@ func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
 		Name:           strings.TrimSpace(values.Name),
 		CategoryID:     values.CategoryID,
 		ApplianceID:    appID,
+		Season:         values.Season,
 		LastServicedAt: lastServiced,
 		IntervalMonths: interval,
 		DueDate:        dueDate,
@@ -2186,6 +2225,7 @@ func maintenanceFormValues(item data.MaintenanceItem, cur locale.Currency) *main
 		Name:           item.Name,
 		CategoryID:     item.CategoryID,
 		ApplianceID:    appID,
+		Season:         item.Season,
 		ScheduleType:   sched,
 		LastServiced:   data.FormatDate(item.LastServicedAt),
 		IntervalMonths: formatInterval(item.IntervalMonths),

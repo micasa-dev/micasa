@@ -375,6 +375,14 @@ func (s *Styles) StatusStyle(key string) (lipgloss.Style, bool) {
 		return s.fgTextDim, true
 	case "abandoned", "urgent":
 		return s.fgDanger, true
+	case "spring":
+		return s.fgSuccess, true
+	case "summer":
+		return s.fgWarning, true
+	case "fall":
+		return s.fgSecondary, true
+	case "winter":
+		return s.fgAccent, true
 	default:
 		return lipgloss.Style{}, false
 	}

@@ -92,6 +92,7 @@ const (
 	ColReceivedDate      = "received_date"
 	ColRestoredAt        = "restored_at"
 	ColRoofType          = "roof_type"
+	ColSeason            = "season"
 	ColSerialNumber      = "serial_number"
 	ColServicedAt        = "serviced_at"
 	ColSeverity          = "severity"
@@ -218,6 +219,7 @@ var TableExtractColumns = map[string][]metaColumn{
 		{Name: "name", JSONType: "string"},
 		{Name: "category_id", JSONType: "integer"},
 		{Name: "appliance_id", JSONType: "integer"},
+		{Name: "season", JSONType: "string"},
 		{Name: "interval_months", JSONType: "integer"},
 		{Name: "notes", JSONType: "string"},
 		{Name: "cost_cents", JSONType: "integer"},

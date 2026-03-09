@@ -422,11 +422,71 @@ func TestMaintenanceHandlerSyncFixedValues(t *testing.T) {
 	h := maintenanceHandler{}
 	specs := []columnSpec{
 		{Title: "Category"},
+		{Title: "Season"},
 		{Title: "Item"},
 	}
 	h.SyncFixedValues(m, specs)
 
 	assert.NotEmpty(t, specs[0].FixedValues, "expected FixedValues for Category column")
+	assert.NotEmpty(t, specs[1].FixedValues, "expected FixedValues for Season column")
+	assert.Equal(t, []string{
+		data.SeasonSpring,
+		data.SeasonSummer,
+		data.SeasonFall,
+		data.SeasonWinter,
+	}, specs[1].FixedValues)
+}
+
+func TestMaintenanceHandlerCreateWithSeasonRoundTrip(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	h := maintenanceHandler{}
+	cats, _ := m.store.MaintenanceCategories()
+
+	m.fs.formData = &maintenanceFormData{
+		Name:       "Winterize Sprinklers",
+		CategoryID: cats[0].ID,
+		Season:     data.SeasonFall,
+	}
+	require.NoError(t, h.SubmitForm(m))
+
+	_, _, cells, err := h.Load(m.store, false)
+	require.NoError(t, err)
+	require.Len(t, cells, 1)
+	seasonCell := cells[0][int(maintenanceColSeason)]
+	assert.Equal(t, data.SeasonFall, seasonCell.Value)
+	assert.Equal(t, cellStatus, seasonCell.Kind)
+}
+
+func TestMaintenanceHandlerEditSeasonRoundTrip(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	h := maintenanceHandler{}
+	cats, _ := m.store.MaintenanceCategories()
+
+	m.fs.formData = &maintenanceFormData{
+		Name:       "Clean Gutters",
+		CategoryID: cats[0].ID,
+		Season:     data.SeasonSpring,
+	}
+	require.NoError(t, h.SubmitForm(m))
+	_, meta, _, _ := h.Load(m.store, false)
+	id := meta[0].ID
+
+	// Edit to change season.
+	editID := id
+	m.fs.editID = &editID
+	m.fs.formData = &maintenanceFormData{
+		Name:       "Clean Gutters",
+		CategoryID: cats[0].ID,
+		Season:     data.SeasonWinter,
+	}
+	require.NoError(t, h.SubmitForm(m))
+	m.fs.editID = nil
+
+	item, err := m.store.GetMaintenance(id)
+	require.NoError(t, err)
+	assert.Equal(t, data.SeasonWinter, item.Season)
 }
 
 // ---------------------------------------------------------------------------

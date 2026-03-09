@@ -239,6 +239,12 @@ func (maintenanceHandler) SyncFixedValues(m *Model, specs []columnSpec) {
 		catNames[i] = c.Name
 	}
 	setFixedValues(specs, "Category", catNames)
+	setFixedValues(specs, "Season", []string{
+		data.SeasonSpring,
+		data.SeasonSummer,
+		data.SeasonFall,
+		data.SeasonWinter,
+	})
 }
 
 // ---------------------------------------------------------------------------

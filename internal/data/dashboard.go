@@ -25,6 +25,36 @@ func (s *Store) ListMaintenanceWithSchedule() ([]MaintenanceItem, error) {
 	return items, err
 }
 
+// SeasonForMonth returns the season constant for a given calendar month.
+// Northern hemisphere: Mar-May spring, Jun-Aug summer, Sep-Nov fall, Dec-Feb winter.
+func SeasonForMonth(m time.Month) string {
+	switch m {
+	case time.March, time.April, time.May:
+		return SeasonSpring
+	case time.June, time.July, time.August:
+		return SeasonSummer
+	case time.September, time.October, time.November:
+		return SeasonFall
+	default:
+		return SeasonWinter
+	}
+}
+
+// ListMaintenanceBySeason returns non-deleted maintenance items tagged with
+// the given season, preloading Category and Appliance.
+func (s *Store) ListMaintenanceBySeason(season string) ([]MaintenanceItem, error) {
+	var items []MaintenanceItem
+	err := s.db.
+		Where(ColSeason+" = ?", season).
+		Preload("Category").
+		Preload("Appliance", func(q *gorm.DB) *gorm.DB {
+			return q.Unscoped()
+		}).
+		Order(ColName + " asc, " + ColID + " desc").
+		Find(&items).Error
+	return items, err
+}
+
 // ListActiveProjects returns non-deleted projects with status "underway" or
 // "delayed", preloading ProjectType.
 func (s *Store) ListActiveProjects() ([]Project, error) {

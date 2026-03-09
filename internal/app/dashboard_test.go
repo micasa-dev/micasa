@@ -247,6 +247,45 @@ func TestDashboardViewWithData(t *testing.T) {
 	assert.Contains(t, view, "overdue")
 }
 
+func TestDashboardViewSeasonalSection(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.width = 120
+	m.height = 40
+
+	m.dash.data = dashboardData{
+		Seasonal: []data.MaintenanceItem{
+			{ID: 1, Name: "Clean Gutters", Season: data.SeasonSpring},
+			{ID: 2, Name: "Service AC", Season: data.SeasonSpring},
+		},
+	}
+	m.dash.expanded = map[string]bool{
+		dashSectionSeasonal: true,
+	}
+	m.prepareDashboardView()
+
+	view := m.dashboardView(50, 120)
+	assert.Contains(t, view, "Clean Gutters")
+	assert.Contains(t, view, "Service AC")
+	assert.Contains(t, view, "Seasonal")
+}
+
+func TestDashboardSeasonalEmpty(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.width = 120
+	m.height = 40
+
+	m.dash.data = dashboardData{
+		Seasonal: nil,
+	}
+	m.prepareDashboardView()
+
+	view := m.dashboardView(50, 120)
+	assert.NotContains(t, view, "Seasonal",
+		"seasonal section should not appear when there are no seasonal items")
+}
+
 func TestDashboardViewIncidentsFirst(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)

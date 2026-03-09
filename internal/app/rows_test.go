@@ -127,12 +127,12 @@ func TestMaintenanceRows(t *testing.T) {
 	rows, meta, cells := maintenanceRows(items, logCounts, nil)
 	require.Len(t, rows, 1)
 	assert.Equal(t, uint(1), meta[0].ID)
-	assert.Equal(t, "HVAC Filter", cells[0][1].Value)
-	assert.Equal(t, "HVAC", cells[0][2].Value)
-	assert.Equal(t, "AC Unit", cells[0][3].Value)
-	assert.Equal(t, uint(5), cells[0][3].LinkID)
-	assert.Equal(t, "3m", cells[0][6].Value)
-	assert.Equal(t, "4", cells[0][7].Value)
+	assert.Equal(t, "HVAC Filter", cells[0][int(maintenanceColItem)].Value)
+	assert.Equal(t, "HVAC", cells[0][int(maintenanceColCategory)].Value)
+	assert.Equal(t, "AC Unit", cells[0][int(maintenanceColAppliance)].Value)
+	assert.Equal(t, uint(5), cells[0][int(maintenanceColAppliance)].LinkID)
+	assert.Equal(t, "3m", cells[0][int(maintenanceColEvery)].Value)
+	assert.Equal(t, "4", cells[0][int(maintenanceColLog)].Value)
 }
 
 func TestMaintenanceRowsDocCount(t *testing.T) {
@@ -155,9 +155,10 @@ func TestMaintenanceRowsNoAppliance(t *testing.T) {
 		{ID: 1, Name: "Gutters", Category: data.MaintenanceCategory{Name: "Exterior"}},
 	}
 	_, _, cells := maintenanceRows(items, nil, nil)
-	assert.Empty(t, cells[0][3].Value)
-	assert.True(t, cells[0][3].Null, "nil appliance should produce a null cell")
-	assert.Zero(t, cells[0][3].LinkID)
+	appCol := int(maintenanceColAppliance)
+	assert.Empty(t, cells[0][appCol].Value)
+	assert.True(t, cells[0][appCol].Null, "nil appliance should produce a null cell")
+	assert.Zero(t, cells[0][appCol].LinkID)
 }
 
 // Step 12: Due-date items use the same urgency cell kind as interval items,
@@ -183,6 +184,38 @@ func TestMaintenanceRowsDueDateUrgencyCell(t *testing.T) {
 	everyCell := cells[0][int(maintenanceColEvery)]
 	assert.Empty(t, everyCell.Value)
 	assert.True(t, everyCell.Null, "non-recurring items should have NULL interval")
+}
+
+func TestMaintenanceRowsSeasonCell(t *testing.T) {
+	t.Parallel()
+	items := []data.MaintenanceItem{
+		{
+			ID:       1,
+			Name:     "Clean Gutters",
+			Season:   data.SeasonSpring,
+			Category: data.MaintenanceCategory{Name: "Exterior"},
+		},
+	}
+	_, _, cells := maintenanceRows(items, nil, nil)
+	seasonCell := cells[0][int(maintenanceColSeason)]
+	assert.Equal(t, data.SeasonSpring, seasonCell.Value)
+	assert.Equal(t, cellStatus, seasonCell.Kind,
+		"season should render as cellStatus for badge styling and pin-filtering")
+}
+
+func TestMaintenanceRowsNoSeason(t *testing.T) {
+	t.Parallel()
+	items := []data.MaintenanceItem{
+		{
+			ID:       1,
+			Name:     "Oil Furnace",
+			Category: data.MaintenanceCategory{Name: "HVAC"},
+		},
+	}
+	_, _, cells := maintenanceRows(items, nil, nil)
+	seasonCell := cells[0][int(maintenanceColSeason)]
+	assert.Empty(t, seasonCell.Value)
+	assert.True(t, seasonCell.Null, "empty season should produce a null cell")
 }
 
 func TestApplianceRows(t *testing.T) {
