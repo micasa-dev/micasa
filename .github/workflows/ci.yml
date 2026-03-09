@@ -17,8 +17,34 @@ env:
   TZ: UTC
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.detect.outputs.go }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          sparse-checkout: .github/detect-go-changes.bash
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Check for Go-related changes
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          go=$(bash .github/detect-go-changes.bash \
+            "${{ github.event_name }}" \
+            "${{ github.event.pull_request.number }}" \
+            "${{ github.event.before }}" \
+            "${{ github.sha }}")
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+
   test:
     name: Build & Test (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ${{ matrix.os }}
     concurrency:
       group: ci-test-${{ matrix.os }}-${{ github.ref }}
@@ -133,6 +159,8 @@ jobs:
 
   benchmarks:
     name: Benchmarks (smoke)
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ci-benchmarks-${{ github.ref }}
@@ -151,6 +179,8 @@ jobs:
 
   nix-build:
     name: Nix Build
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ci-nix-build-${{ github.ref }}
@@ -196,7 +226,11 @@ jobs:
 
   semantic-release:
     name: Semantic Release
-    needs: [test, nix-build, docs]
+    needs: [changes, test, nix-build, docs]
+    if: >-
+      always()
+      && !contains(needs.*.result, 'failure')
+      && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     concurrency:
       group: semantic-release-${{ github.ref }}
@@ -227,3 +261,17 @@ jobs:
         run: npx semantic-release ${{ github.event_name == 'pull_request' && '--dry-run' || '' }}
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  # ---------------------------------------------------------------------------
+  # Gate: single required check that rolls up all jobs above.
+  # After merging, update the repo ruleset to require only "CI / Result".
+  # ---------------------------------------------------------------------------
+
+  result:
+    name: CI / Result
+    if: always()
+    needs: [changes, test, benchmarks, nix-build, docs, semantic-release]
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')

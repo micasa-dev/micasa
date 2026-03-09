@@ -13,8 +13,34 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.detect.outputs.go }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          sparse-checkout: .github/detect-go-changes.bash
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Check for Go-related changes
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          go=$(bash .github/detect-go-changes.bash \
+            "${{ github.event_name }}" \
+            "${{ github.event.pull_request.number }}" \
+            "${{ github.event.before }}" \
+            "${{ github.sha }}")
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+
   govulncheck:
     name: Vulnerability Check
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: security-govulncheck-${{ github.ref }}
@@ -31,6 +57,8 @@ jobs:
 
   osv-scanner:
     name: OSV Scan
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: security-osv-scanner-${{ github.ref }}
@@ -63,6 +91,8 @@ jobs:
 
   codeql:
     name: CodeQL (Go)
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: security-codeql-${{ github.ref }}
@@ -91,3 +121,12 @@ jobs:
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+
+  result:
+    name: Security / Result
+    if: always()
+    needs: [changes, govulncheck, osv-scanner, secrets, codeql]
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
