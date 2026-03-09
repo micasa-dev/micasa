@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -172,7 +171,7 @@ func TestMalformedConfigReturnsError(t *testing.T) {
 func TestDefaultMaxDocumentSize(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
-	assert.Equal(t, data.MaxDocumentSize, cfg.Documents.MaxFileSize.Bytes())
+	assert.Equal(t, uint64(50<<20), cfg.Documents.MaxFileSize.Bytes())
 }
 
 func TestMaxDocumentSizeFromFileInteger(t *testing.T) {
@@ -599,8 +598,9 @@ func TestKeys(t *testing.T) {
 	assert.Contains(t, keys, "llm.base_url")
 	assert.Contains(t, keys, "documents.max_file_size")
 	assert.Contains(t, keys, "extraction.max_pages")
-	// Verify every key is resolvable against defaults.
-	cfg := defaults()
+	// Verify every key is resolvable against a default config.
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
 	for _, k := range keys {
 		_, err := cfg.Get(k)
 		assert.NoError(t, err, "key %q should be resolvable", k)

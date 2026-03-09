@@ -131,7 +131,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	return &Store{db: db, maxDocumentSize: MaxDocumentSize}, nil
+	return &Store{db: db}, nil
 }
 
 // MaxDocumentSize returns the configured maximum file size for document imports.
@@ -1037,7 +1037,7 @@ func (s *Store) RestoreIncident(id uint) error {
 	}
 	restoreStatus := item.PreviousStatus
 	if restoreStatus == "" {
-		restoreStatus = IncidentStatusOpen
+		restoreStatus = StructDefault[Incident]("Status")
 	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Model(&Incident{}).

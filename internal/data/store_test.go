@@ -1655,6 +1655,7 @@ func newTestStore(t *testing.T) *Store {
 	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
 	store, err := Open(path)
 	require.NoError(t, err)
+	require.NoError(t, store.SetMaxDocumentSize(50<<20))
 	t.Cleanup(func() { _ = store.Close() })
 	return store
 }
