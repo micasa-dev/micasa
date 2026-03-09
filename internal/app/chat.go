@@ -345,8 +345,10 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 		messages = append(messages, history...)
 		messages = append(messages, llm.Message{Role: roleUser, Content: query})
 
-		ctx, cancel := context.WithCancel(context.Background())
-
+		//nolint:gosec // cancel stored in CancelFn, called on ctrl+c
+		ctx, cancel := context.WithCancel(
+			context.Background(),
+		)
 		streamCh, err := client.ChatStream(ctx, messages)
 		if err != nil {
 			return sqlStreamStartedMsg{

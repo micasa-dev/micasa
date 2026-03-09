@@ -275,7 +275,11 @@ func TestPdfPageCount_ValidPDF(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, data, 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, data, 0o600),
+	)
 
 	count, err := pdfPageCount(context.Background(), pdfPath)
 	require.NoError(t, err)
@@ -290,7 +294,11 @@ func TestPdfPageCount_InvalidPDF(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "corrupt.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, []byte("corrupt data"), 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, []byte("corrupt data"), 0o600),
+	)
 
 	_, err := pdfPageCount(context.Background(), pdfPath)
 	assert.Error(t, err)
@@ -309,7 +317,11 @@ func TestPdfPageCount_ContextCancelled(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, data, 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, data, 0o600),
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -335,7 +347,11 @@ func TestOcrPage_ValidPDF(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, data, 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, data, 0o600),
+	)
 
 	result := ocrPage(context.Background(), pdfPath, 1, nil)
 	require.NoError(t, result.err)
@@ -351,7 +367,11 @@ func TestOcrPage_InvalidPDF(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "corrupt.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, []byte("corrupt data"), 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, []byte("corrupt data"), 0o600),
+	)
 
 	result := ocrPage(context.Background(), pdfPath, 1, nil)
 	assert.Error(t, result.err)
@@ -370,7 +390,11 @@ func TestOcrPage_ContextCancelled(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, data, 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, data, 0o600),
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -812,7 +836,11 @@ func TestOcrPDFPages_ValidPDF(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, data, 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, data, 0o600),
+	)
 
 	pageCount, err := pdfPageCount(context.Background(), pdfPath)
 	require.NoError(t, err)
@@ -844,7 +872,11 @@ func TestOcrPDFPages_ContextCancelled(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, data, 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, data, 0o600),
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -867,7 +899,11 @@ func TestOcrPDFPages_ProgressReporting(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	require.NoError(t, os.WriteFile(pdfPath, data, 0o600))
+	//nolint:gosec // path is tmpDir + constant filename
+	require.NoError(
+		t,
+		os.WriteFile(pdfPath, data, 0o600),
+	)
 
 	pageDone := make(chan struct{}, 2)
 	results := ocrPDFPages(context.Background(), pdfPath, 1, nil, pageDone)

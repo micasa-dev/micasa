@@ -269,7 +269,10 @@ func (m *Model) startExtractionOverlay(
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
 	sp.Style = appStyles.AccentText()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	//nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
+	ctx, cancel := context.WithCancel(
+		context.Background(),
+	)
 
 	// Text extraction only applies to PDFs and text files; skip for images.
 	hasText := !extract.IsImageMIME(mime)
@@ -935,9 +938,9 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 
 	// Replace a cancelled context so the rerun has a live one.
 	if ex.ctx.Err() != nil {
-		ctx, cancel := context.WithCancel(
+		ctx, cancel := context.WithCancel( //nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
 			context.Background(),
-		) //nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
+		)
 		ex.ctx = ctx
 		ex.CancelFn = cancel
 	}
