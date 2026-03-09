@@ -879,8 +879,9 @@ func columnWidths(
 	// Content exceeds terminal width — apply Max constraints.
 	widths := make([]int, columnCount)
 	for i, w := range natural {
-		if specs[i].Max > 0 && w > specs[i].Max {
-			w = specs[i].Max
+		if specs[i].Max > 0 &&
+			w > specs[i].Max { //nolint:gosec // specs and natural have equal length (columnCount)
+			w = specs[i].Max //nolint:gosec // same bounds
 		}
 		widths[i] = w
 	}

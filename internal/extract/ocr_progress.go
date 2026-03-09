@@ -73,7 +73,7 @@ func ocrImageWithProgress(ctx context.Context, data []byte, ch chan<- ExtractPro
 	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
 	imgPath := filepath.Join(tmpDir, "input.png")
-	if err := os.WriteFile(imgPath, data, 0o600); err != nil {
+	if err := os.WriteFile(imgPath, data, 0o600); err != nil { //nolint:gosec // path is tmpDir + constant filename
 		ch <- ExtractProgress{Err: fmt.Errorf("write temp image: %w", err), Done: true}
 		return
 	}

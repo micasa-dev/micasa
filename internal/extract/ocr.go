@@ -38,7 +38,7 @@ func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, err
 	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	if err := os.WriteFile(pdfPath, data, 0o600); err != nil {
+	if err := os.WriteFile(pdfPath, data, 0o600); err != nil { //nolint:gosec // path is tmpDir + constant filename
 		return "", nil, fmt.Errorf("write temp pdf: %w", err)
 	}
 
@@ -271,7 +271,7 @@ func ocrImage(ctx context.Context, data []byte) (string, []byte, error) {
 	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
 	imgPath := filepath.Join(tmpDir, "input")
-	if err := os.WriteFile(imgPath, data, 0o600); err != nil {
+	if err := os.WriteFile(imgPath, data, 0o600); err != nil { //nolint:gosec // path is tmpDir + constant filename
 		return "", nil, fmt.Errorf("write temp image: %w", err)
 	}
 

@@ -935,7 +935,9 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 
 	// Replace a cancelled context so the rerun has a live one.
 	if ex.ctx.Err() != nil {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(
+			context.Background(),
+		) //nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
 		ex.ctx = ctx
 		ex.CancelFn = cancel
 	}

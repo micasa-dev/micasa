@@ -120,7 +120,9 @@ func TestCancellationDuringSQLGeneration(t *testing.T) {
 	m := newTestModel(t)
 	m.openChat()
 
-	_, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(
+		context.Background(),
+	) //nolint:gosec // cancel stored in CancelFn, called by ctrl+c
 	m.chat.CurrentQuery = testQuestion
 	m.chat.Streaming = true
 	m.chat.StreamingSQL = true
@@ -150,7 +152,9 @@ func TestCancellationDuringAnswerStreaming(t *testing.T) {
 	m := newTestModel(t)
 	m.openChat()
 
-	_, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(
+		context.Background(),
+	) //nolint:gosec // cancel stored in CancelFn, called by ctrl+c
 	m.chat.CurrentQuery = testQuestion
 	m.chat.Streaming = true
 	m.chat.StreamingSQL = false // stage 2
