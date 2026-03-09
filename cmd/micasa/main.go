@@ -175,6 +175,8 @@ func (cmd *runCmd) Run() error {
 		extractors,
 		cfg.Extraction.IsEnabled(),
 		cfg.Extraction.LLMTimeoutDuration(),
+		cfg.Extraction.IsOCRTSV(),
+		cfg.Extraction.OCRSpatialConfThreshold(),
 	)
 
 	model, err := app.NewModel(store, opts)

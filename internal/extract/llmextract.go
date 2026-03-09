@@ -13,12 +13,14 @@ import (
 
 // ExtractionPromptInput holds the inputs for building an extraction prompt.
 type ExtractionPromptInput struct {
-	DocID     uint
-	Filename  string
-	MIME      string
-	SizeBytes int64
-	Schema    SchemaContext
-	Sources   []TextSource
+	DocID         uint
+	Filename      string
+	MIME          string
+	SizeBytes     int64
+	Schema        SchemaContext
+	Sources       []TextSource
+	SendTSV       bool // send spatial layout annotations from tesseract OCR
+	ConfThreshold int  // confidence threshold for spatial annotations
 }
 
 // BuildExtractionPrompt creates the system and user messages for document
@@ -26,14 +28,17 @@ type ExtractionPromptInput struct {
 // rows; the LLM outputs a JSON array of operations.
 func BuildExtractionPrompt(in ExtractionPromptInput) []llm.Message {
 	return []llm.Message{
-		{Role: "system", Content: operationExtractionSystemPrompt(in.Schema)},
+		{Role: "system", Content: operationExtractionSystemPrompt(in.Schema, in.SendTSV)},
 		{Role: "user", Content: operationExtractionUserMessage(in)},
 	}
 }
 
-func operationExtractionSystemPrompt(ctx SchemaContext) string {
+func operationExtractionSystemPrompt(ctx SchemaContext, sendTSV bool) string {
 	var b strings.Builder
 	b.WriteString(operationExtractionPreamble)
+	if sendTSV {
+		b.WriteString(operationExtractionTSVPreamble)
+	}
 
 	b.WriteString("\n\n## Database schema\n\n")
 	b.WriteString(FormatDDLBlock(ctx.DDL, ExtractionTables))
@@ -68,14 +73,25 @@ func operationExtractionUserMessage(in ExtractionPromptInput) string {
 	fmt.Fprintf(&b, "Size: %d bytes\n", in.SizeBytes)
 
 	for _, src := range in.Sources {
-		if strings.TrimSpace(src.Text) == "" {
+		// When SendTSV is enabled and the source has TSV data, send
+		// a compact spatial format (line-level bounding boxes) instead
+		// of reconstructed plain text.
+		content := strings.TrimSpace(src.Text)
+		hasSpatial := in.SendTSV && len(src.Data) > 0
+		if hasSpatial {
+			content = strings.TrimSpace(SpatialTextFromTSV(src.Data, in.ConfThreshold))
+		}
+		if content == "" {
 			continue
 		}
 		fmt.Fprintf(&b, "\n---\n\n## Source: %s\n", src.Tool)
 		if src.Desc != "" {
 			b.WriteString(src.Desc + "\n\n")
 		}
-		b.WriteString(src.Text)
+		if hasSpatial {
+			b.WriteString(spatialFormatHint)
+		}
+		b.WriteString(content)
 	}
 
 	return b.String()
@@ -86,6 +102,12 @@ const operationExtractionPreamble = `You are a document extraction assistant for
 Note: In this application, "quotes" means contractor/vendor cost estimates (bids for home projects), not quoted text or quotation marks. Create a quotes row when a document contains a cost estimate from a contractor or vendor, but not when dollar amounts appear in other contexts (e.g. receipts, manuals, general text).
 
 You may receive text from multiple extraction sources. Each source is labeled with its tool and a description. Multiple OCR sources may contain overlapping or duplicate text because different extraction methods (digital text extraction, OCR) process the same pages independently. Deduplicate the information: extract each fact once regardless of how many sources mention it. When multiple sources are present, prefer digital text extraction for clean output, and use OCR output for scanned content. Reconcile any conflicts by trusting the more plausible reading.`
+
+const operationExtractionTSVPreamble = `
+
+OCR sources include spatial layout annotations. Each line is prefixed with a bounding box: [left,top,width]. Use the coordinates to understand document layout -- especially for invoices, forms, and tables where spatial relationships between labels and values matter. When OCR confidence is low, a confidence score is appended: [left,top,width;conf]. Prefer high-confidence readings when reconciling conflicts.`
+
+const spatialFormatHint = "Each line is prefixed with [left,top,width]. Low-confidence lines include [left,top,width;conf]. Use coordinates to infer spatial layout (column alignment, vertical proximity).\n\n"
 
 // operationExtractionRules builds the rules and allowed-operations section
 // of the extraction prompt dynamically from ExtractionTableDefs so the prompt

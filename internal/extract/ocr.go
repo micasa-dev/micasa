@@ -355,6 +355,132 @@ func textFromTSV(tsv []byte) string {
 	return result.String()
 }
 
+// DefaultOCRConfThreshold is the default confidence threshold below which
+// OCR confidence annotations are included in spatial output. Lines with
+// min confidence >= this threshold omit the confidence score to save tokens.
+const DefaultOCRConfThreshold = 70
+
+// SpatialTextFromTSV converts tesseract TSV output into a compact spatial
+// format with line-level bounding boxes. Each output line has the form:
+//
+//	[left,top,width] word1 word2 ...
+//
+// When the minimum confidence for a line falls below confThreshold, the
+// confidence is appended:
+//
+//	[left,top,width;minConf] word1 word2 ...
+//
+// Lines within the same block/paragraph are separated by newlines; block
+// breaks produce a blank line.
+func SpatialTextFromTSV(tsv []byte, confThreshold int) string {
+	lines := bytes.Split(tsv, []byte("\n"))
+	if len(lines) < 2 {
+		return ""
+	}
+
+	type lineAccum struct {
+		words               []string
+		left, top, right    int
+		minConf             int
+		block, par, lineNum int
+	}
+
+	var result strings.Builder
+	var cur *lineAccum
+	first := true
+
+	flush := func() {
+		if cur == nil || len(cur.words) == 0 {
+			return
+		}
+		if !first {
+			result.WriteByte('\n')
+		}
+		first = false
+		w := cur.right - cur.left
+		if cur.minConf < confThreshold {
+			fmt.Fprintf(&result, "[%d,%d,%d;%d] %s",
+				cur.left, cur.top, w, cur.minConf,
+				strings.Join(cur.words, " "))
+		} else {
+			fmt.Fprintf(&result, "[%d,%d,%d] %s",
+				cur.left, cur.top, w,
+				strings.Join(cur.words, " "))
+		}
+		cur = nil
+	}
+
+	var lastBlock, lastPar int
+	firstLine := true
+
+	for _, line := range lines[1:] { // skip header
+		fields := bytes.Split(line, []byte("\t"))
+		if len(fields) < 12 {
+			continue
+		}
+
+		word := strings.TrimSpace(string(fields[11]))
+		if word == "" {
+			continue
+		}
+
+		block := atoi(fields[2])
+		par := atoi(fields[3])
+		lineNum := atoi(fields[4])
+		left := atoi(fields[6])
+		top := atoi(fields[7])
+		width := atoi(fields[8])
+		conf := atoi(fields[10])
+
+		// Detect line/block/paragraph changes.
+		newLine := firstLine || lineNum != cur.lineNum ||
+			block != cur.block || par != cur.par
+
+		if !firstLine && newLine {
+			// Insert block/paragraph break before flushing.
+			if block != lastBlock || par != lastPar {
+				flush()
+				result.WriteByte('\n') // blank line for block break
+			} else {
+				flush()
+			}
+		}
+		firstLine = false
+		lastBlock = block
+		lastPar = par
+
+		if cur == nil {
+			cur = &lineAccum{
+				left:    left,
+				top:     top,
+				right:   left + width,
+				minConf: conf,
+				block:   block,
+				par:     par,
+				lineNum: lineNum,
+			}
+		}
+
+		cur.words = append(cur.words, word)
+		// Expand bounding box to cover this word.
+		if left < cur.left {
+			cur.left = left
+		}
+		if top < cur.top {
+			cur.top = top
+		}
+		if right := left + width; right > cur.right {
+			cur.right = right
+		}
+		if conf < cur.minConf {
+			cur.minConf = conf
+		}
+	}
+	flush()
+
+	return result.String()
+}
+
 // atoi parses a byte slice as an integer, returning 0 on failure.
 func atoi(b []byte) int {
 	n := 0
