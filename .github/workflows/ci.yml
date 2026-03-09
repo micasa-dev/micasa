@@ -37,7 +37,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.25"
 
@@ -142,7 +142,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.25"
 
@@ -160,7 +160,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.25"
 
@@ -169,7 +169,7 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
+      - uses: cachix/install-nix-action@19effe9fe722874e6d46dd7182e4b8b7a43c4a99 # v31.10.0
 
       - name: Build with Nix
         run: nix build '.#micasa'
@@ -185,7 +185,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
+      - uses: cachix/install-nix-action@19effe9fe722874e6d46dd7182e4b8b7a43c4a99 # v31.10.0
 
       - name: Build docs
         run: nix run '.#docs'
@@ -206,7 +206,7 @@ jobs:
     steps:
       - name: Generate app token
         id: app-token
-        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -216,7 +216,7 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: lts/*
 

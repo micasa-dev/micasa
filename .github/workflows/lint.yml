@@ -24,7 +24,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
+      - uses: cachix/install-nix-action@19effe9fe722874e6d46dd7182e4b8b7a43c4a99 # v31.10.0
 
       - name: Run deadcode
         run: nix run '.#deadcode'
@@ -40,7 +40,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
+      - uses: cachix/install-nix-action@19effe9fe722874e6d46dd7182e4b8b7a43c4a99 # v31.10.0
 
       - name: Run golangci-lint
         run: nix run '.#golangci-lint'
@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
+      - uses: cachix/install-nix-action@19effe9fe722874e6d46dd7182e4b8b7a43c4a99 # v31.10.0
 
       - name: Run pre-commit hooks
         run: nix run '.#pre-commit' -- --from-ref 'origin/${{ github.base_ref || 'main' }}' --to-ref HEAD
