@@ -292,22 +292,17 @@ type OCR struct {
 	// When disabled, scanned pages and images produce no text. Default: true.
 	Enable *bool `toml:"enable,omitempty"`
 
-	// ConfidenceThreshold is the minimum tesseract word confidence (0-100)
-	// to keep in OCR output. Words below this threshold are dropped.
-	// 0 means no filtering (all words kept). Default: 0.
-	ConfidenceThreshold int `toml:"confidence_threshold"`
-
 	// TSV sends spatial layout annotations (line-level bounding boxes
 	// and confidence scores) from tesseract OCR to the LLM alongside text.
 	// This helps extraction accuracy for invoices and forms with tabular
 	// data, at ~2x token overhead. Default: true.
 	TSV *bool `toml:"tsv,omitempty"`
 
-	// SpatialConfThresholdVal is the confidence threshold (0-100) below
+	// ConfidenceThresholdVal is the confidence threshold (0-100) below
 	// which OCR confidence annotations are included in spatial layout
 	// output. Lines with min confidence >= this value omit the score to
 	// save tokens. Set to 0 to never show confidence. Default: 70.
-	SpatialConfThresholdVal *int `toml:"spatial_conf_threshold,omitempty"`
+	ConfidenceThresholdVal *int `toml:"confidence_threshold,omitempty"`
 }
 
 // IsEnabled returns whether LLM extraction is enabled. Defaults to true
@@ -356,11 +351,11 @@ func (e Extraction) IsOCRTSV() bool {
 	return true
 }
 
-// OCRSpatialConfThreshold returns the confidence threshold below which
-// OCR confidence annotations appear in spatial output. Defaults to 70.
-func (e Extraction) OCRSpatialConfThreshold() int {
-	if e.OCR.SpatialConfThresholdVal != nil {
-		return *e.OCR.SpatialConfThresholdVal
+// OCRConfThreshold returns the confidence threshold below which OCR
+// confidence annotations appear in spatial output. Defaults to 70.
+func (e Extraction) OCRConfThreshold() int {
+	if e.OCR.ConfidenceThresholdVal != nil {
+		return *e.OCR.ConfidenceThresholdVal
 	}
 	return 70
 }
@@ -560,16 +555,9 @@ func LoadFromPath(path string) (Config, error) {
 		)
 	}
 
-	if cfg.Extraction.OCR.ConfidenceThreshold < 0 || cfg.Extraction.OCR.ConfidenceThreshold > 100 {
+	if t := cfg.Extraction.OCRConfThreshold(); t < 0 || t > 100 {
 		return cfg, fmt.Errorf(
-			"extraction.ocr.confidence_threshold must be 0-100, got %d",
-			cfg.Extraction.OCR.ConfidenceThreshold,
-		)
-	}
-
-	if t := cfg.Extraction.OCRSpatialConfThreshold(); t < 0 || t > 100 {
-		return cfg, fmt.Errorf(
-			"extraction.ocr.spatial_conf_threshold must be 0-100, got %d", t,
+			"extraction.ocr.confidence_threshold must be 0-100, got %d", t,
 		)
 	}
 

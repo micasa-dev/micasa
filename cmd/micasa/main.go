@@ -163,7 +163,6 @@ func (cmd *runCmd) Run() error {
 		cfg.Extraction.MaxPages,
 		0, // pdftotext uses its own internal default timeout (30s)
 		cfg.Extraction.IsOCREnabled(),
-		cfg.Extraction.OCR.ConfidenceThreshold,
 	)
 	opts.SetExtraction(
 		exCfg.Provider,
@@ -176,7 +175,7 @@ func (cmd *runCmd) Run() error {
 		cfg.Extraction.IsEnabled(),
 		cfg.Extraction.LLMTimeoutDuration(),
 		cfg.Extraction.IsOCRTSV(),
-		cfg.Extraction.OCRSpatialConfThreshold(),
+		cfg.Extraction.OCRConfThreshold(),
 	)
 
 	model, err := app.NewModel(store, opts)

@@ -246,28 +246,6 @@ func TestAtoi(t *testing.T) {
 	}
 }
 
-func TestFilterTSVByConfidence(t *testing.T) {
-	t.Parallel()
-	tsv := []byte(
-		"level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
-			"5\t1\t1\t1\t1\t1\t100\t200\t50\t12\t96\tHigh\n" +
-			"5\t1\t1\t1\t1\t2\t160\t200\t50\t12\t30\tLow\n" +
-			"5\t1\t1\t1\t2\t1\t100\t220\t50\t12\t70\tBorder\n",
-	)
-
-	filtered := filterTSVByConfidence(tsv, 70)
-	text := textFromTSV(filtered)
-	assert.Contains(t, text, "High")
-	assert.NotContains(t, text, "Low")
-	assert.Contains(t, text, "Border")
-}
-
-func TestFilterTSVByConfidence_Empty(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, []byte(nil), filterTSVByConfidence(nil, 70))
-	assert.Equal(t, []byte(""), filterTSVByConfidence([]byte(""), 70))
-}
-
 func TestIsImageMIME(t *testing.T) {
 	t.Parallel()
 	assert.True(t, IsImageMIME("image/png"))

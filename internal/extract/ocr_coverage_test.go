@@ -807,7 +807,7 @@ func TestExtractWithProgress_PDF_InvalidData(t *testing.T) {
 		context.Background(),
 		[]byte("not a pdf"),
 		"application/pdf",
-		DefaultExtractors(5, 0, true, 0),
+		DefaultExtractors(5, 0, true),
 	)
 
 	var gotErr bool
@@ -1018,7 +1018,7 @@ func TestExtractWithProgress_Image_InvalidData(t *testing.T) {
 		context.Background(),
 		[]byte("not an image"),
 		"image/png",
-		DefaultExtractors(5, 0, true, 0),
+		DefaultExtractors(5, 0, true),
 	)
 
 	var gotErr bool

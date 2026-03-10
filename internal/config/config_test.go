@@ -636,10 +636,9 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_EXTRACTION_LLM_TIMEOUT": "extraction.llm_timeout",
 		"MICASA_EXTRACTION_THINKING":    "extraction.thinking",
 
-		"MICASA_EXTRACTION_OCR_ENABLE":                   "extraction.ocr.enable",
-		"MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD":     "extraction.ocr.confidence_threshold",
-		"MICASA_EXTRACTION_OCR_TSV":                      "extraction.ocr.tsv",
-		"MICASA_EXTRACTION_OCR_SPATIAL_CONF_THRESHOLD":   "extraction.ocr.spatial_conf_threshold",
+		"MICASA_EXTRACTION_OCR_ENABLE":               "extraction.ocr.enable",
+		"MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD": "extraction.ocr.confidence_threshold",
+		"MICASA_EXTRACTION_OCR_TSV":                  "extraction.ocr.tsv",
 
 		"MICASA_LOCALE_CURRENCY": "locale.currency",
 
@@ -789,15 +788,15 @@ func TestOCRDefaults(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 	assert.True(t, cfg.Extraction.IsOCREnabled())
-	assert.Equal(t, 0, cfg.Extraction.OCR.ConfidenceThreshold)
+	assert.Equal(t, 70, cfg.Extraction.OCRConfThreshold())
 }
 
 func TestOCRFromFile(t *testing.T) {
-	path := writeConfig(t, "[extraction.ocr]\nenable = false\nconfidence_threshold = 70\n")
+	path := writeConfig(t, "[extraction.ocr]\nenable = false\nconfidence_threshold = 50\n")
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
 	assert.False(t, cfg.Extraction.IsOCREnabled())
-	assert.Equal(t, 70, cfg.Extraction.OCR.ConfidenceThreshold)
+	assert.Equal(t, 50, cfg.Extraction.OCRConfThreshold())
 }
 
 func TestOCREnvOverrides(t *testing.T) {
@@ -806,7 +805,7 @@ func TestOCREnvOverrides(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 	assert.False(t, cfg.Extraction.IsOCREnabled())
-	assert.Equal(t, 80, cfg.Extraction.OCR.ConfidenceThreshold)
+	assert.Equal(t, 80, cfg.Extraction.OCRConfThreshold())
 }
 
 func TestOCRConfidenceThresholdValidation(t *testing.T) {
@@ -1466,61 +1465,6 @@ func TestExtractionOCRTSVEnvInvalidReturnsError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MICASA_EXTRACTION_OCR_TSV")
 	assert.Contains(t, err.Error(), "expected true or false")
-}
-
-// --- OCR spatial confidence threshold ---
-
-func TestExtractionOCRSpatialConfThresholdDefault70(t *testing.T) {
-	cfg, err := LoadFromPath(noConfig(t))
-	require.NoError(t, err)
-	assert.Equal(t, 70, cfg.Extraction.OCRSpatialConfThreshold(),
-		"OCR spatial confidence threshold should default to 70")
-}
-
-func TestExtractionOCRSpatialConfThresholdFromTOML(t *testing.T) {
-	path := writeConfig(t, "[extraction.ocr]\nspatial_conf_threshold = 50\n")
-	cfg, err := LoadFromPath(path)
-	require.NoError(t, err)
-	assert.Equal(t, 50, cfg.Extraction.OCRSpatialConfThreshold())
-}
-
-func TestExtractionOCRSpatialConfThresholdFromTOMLZero(t *testing.T) {
-	path := writeConfig(t, "[extraction.ocr]\nspatial_conf_threshold = 0\n")
-	cfg, err := LoadFromPath(path)
-	require.NoError(t, err)
-	assert.Equal(t, 0, cfg.Extraction.OCRSpatialConfThreshold(),
-		"zero threshold should disable confidence annotations")
-}
-
-func TestExtractionOCRSpatialConfThresholdFromEnv(t *testing.T) {
-	t.Setenv("MICASA_EXTRACTION_OCR_SPATIAL_CONF_THRESHOLD", "80")
-	cfg, err := LoadFromPath(noConfig(t))
-	require.NoError(t, err)
-	assert.Equal(t, 80, cfg.Extraction.OCRSpatialConfThreshold())
-}
-
-func TestExtractionOCRSpatialConfThresholdEnvInvalidReturnsError(t *testing.T) {
-	t.Setenv("MICASA_EXTRACTION_OCR_SPATIAL_CONF_THRESHOLD", "high")
-	_, err := LoadFromPath(noConfig(t))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MICASA_EXTRACTION_OCR_SPATIAL_CONF_THRESHOLD")
-}
-
-func TestExtractionOCRSpatialConfThresholdOutOfRange(t *testing.T) {
-	t.Parallel()
-	path := writeConfig(t, "[extraction.ocr]\nspatial_conf_threshold = 101\n")
-	_, err := LoadFromPath(path)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "extraction.ocr.spatial_conf_threshold")
-	assert.Contains(t, err.Error(), "0-100")
-}
-
-func TestExtractionOCRSpatialConfThresholdNegative(t *testing.T) {
-	t.Parallel()
-	path := writeConfig(t, "[extraction.ocr]\nspatial_conf_threshold = -1\n")
-	_, err := LoadFromPath(path)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "extraction.ocr.spatial_conf_threshold")
 }
 
 func TestFilePickerDir_FromTOML(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 // and gracefully degrades when its dependencies are unavailable.
 type Pipeline struct {
 	LLMClient     *llm.Client   // nil = skip LLM extraction
-	Extractors    []Extractor   // nil = DefaultExtractors(0, 0, true, 0)
+	Extractors    []Extractor   // nil = DefaultExtractors(0, 0, true)
 	Schema        SchemaContext // DDL + entity rows for prompt
 	DocID         uint          // document ID for UPDATE operations
 	SendTSV       bool          // send spatial layout annotations to LLM
@@ -74,7 +74,7 @@ func (p *Pipeline) Run(
 
 	extractors := p.Extractors
 	if extractors == nil {
-		extractors = DefaultExtractors(0, 0, true, 0)
+		extractors = DefaultExtractors(0, 0, true)
 	}
 
 	// Run all matching, available extractors.

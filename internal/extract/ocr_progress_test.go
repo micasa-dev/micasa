@@ -22,7 +22,7 @@ func TestExtractWithProgress_EmptyData(t *testing.T) {
 		context.Background(),
 		nil,
 		"application/pdf",
-		DefaultExtractors(20, 0, true, 0),
+		DefaultExtractors(20, 0, true),
 	)
 	msg := <-ch
 	assert.True(t, msg.Done)
@@ -41,7 +41,7 @@ func TestExtractWithProgress_EmptyImage(t *testing.T) {
 		context.Background(),
 		nil,
 		"image/png",
-		DefaultExtractors(20, 0, true, 0),
+		DefaultExtractors(20, 0, true),
 	)
 	msg := <-ch
 	assert.True(t, msg.Done)
@@ -61,7 +61,7 @@ func TestExtractWithProgress_ContextCancelled(t *testing.T) {
 		ctx,
 		[]byte("fake image data"),
 		"image/png",
-		DefaultExtractors(20, 0, true, 0),
+		DefaultExtractors(20, 0, true),
 	)
 
 	var gotErr bool
@@ -92,7 +92,7 @@ func TestExtractWithProgress_Image_Integration(t *testing.T) {
 		context.Background(),
 		data,
 		"image/png",
-		DefaultExtractors(20, 0, true, 0),
+		DefaultExtractors(20, 0, true),
 	)
 
 	var progressCount int
@@ -132,7 +132,7 @@ func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 		context.Background(),
 		data,
 		"application/pdf",
-		DefaultExtractors(5, 0, true, 0),
+		DefaultExtractors(5, 0, true),
 	)
 
 	var phases []string
