@@ -205,6 +205,7 @@ overlay has two modes. See the
 | <kbd>x</kbd>       | Enter explore mode (when operations are available) |
 | <kbd>a</kbd>       | Accept results (when extraction is done with no errors) |
 | <kbd>r</kbd>       | Rerun LLM step (when LLM step is complete) |
+| <kbd>ctrl+b</kbd>  | Background the extraction (continue working while it runs) |
 | <kbd>esc</kbd>     | Cancel extraction and close overlay |
 
 ### Explore mode

@@ -124,6 +124,10 @@ with a JSON Schema constraint that produces structured database operations
 the document itself. The operations are validated against a strict allowlist
 before display.
 
+When no LLM is configured (or when OCR/text extraction alone is sufficient),
+you can still accept the text and OCR results without running the LLM step.
+The extracted text is saved to the document for full-text search regardless.
+
 **This feature is early-stage.** Results vary significantly by model, document
 type, and text quality. Invoices and quotes with clear line items tend to work
 best; complex multi-page documents or poor OCR output often produce incomplete
@@ -160,6 +164,7 @@ apply them. On error the overlay stays open showing which step failed. Press
 | Key | Action |
 |-----|--------|
 | <kbd>a</kbd> | Accept results (when done, no errors) |
+| <kbd>ctrl+b</kbd> | Background the extraction (continue working while it runs) |
 | <kbd>esc</kbd> | Cancel / exit explore mode |
 | <kbd>j</kbd>/<kbd>k</kbd> | Navigate steps (pipeline) or rows (explore) |
 | <kbd>h</kbd>/<kbd>l</kbd> | Navigate columns (explore) |

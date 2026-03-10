@@ -30,7 +30,7 @@ Your house is quietly plotting to break while you sleep -- and you're dreaming a
 - **Is the dishwasher still under warranty?** Appliance tracking with purchase dates, warranty status, and maintenance history tied to each one.
 - **The basement is leaking again.** Log incidents with severity and location, link them to appliances and vendors, and resolve them when fixed.
 - **Who did we use last time?** A vendor directory with contact info, quote history, and every job they've done for you.
-- **Where's the warranty card?** Attach files (manuals, invoices, photos) directly to projects and appliances. Stored as BLOBs in the same SQLite file -- one `cp` backs up everything. Full-text search (`ctrl+f`) finds documents by title, notes, or extracted text. When an LLM is configured, PDFs and images are automatically processed through an extraction pipeline (text extraction, OCR, LLM) that pre-fills form fields with structured data.
+- **Where's the warranty card?** Attach files (manuals, invoices, photos) directly to projects and appliances. Stored as BLOBs in the same SQLite file -- `micasa backup` backs up everything. Full-text search (`ctrl+f`) finds documents by title, notes, or extracted text. When an LLM is configured, PDFs and images are automatically processed through an extraction pipeline (text extraction, OCR, LLM) that pre-fills form fields with structured data.
 - **How much have I spent on plumbing?** Press `@` to chat with a local LLM about your data. It writes the SQL, runs the query, and summarizes the results -- all on your machine.
 
 ## Keyboard driven
@@ -69,7 +69,7 @@ micasa                # start fresh with your own house
 micasa --print-path   # show where the database lives
 ```
 
-> One SQLite file. Your data, your machine. Back it up with `cp`.
+> One SQLite file. Your data, your machine. Back it up with `micasa backup`.
 
 Need Nix or container install options? See the full [installation guide](https://micasa.dev/docs/getting-started/installation/).
 

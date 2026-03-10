@@ -91,7 +91,12 @@
 
       <div class="feature">
         <p class="feature-q">Where&rsquo;s the warranty card?</p>
-        <p class="feature-a">Attach files&mdash;manuals, invoices, photos&mdash;directly to projects and appliances. Stored in the same SQLite file. Full-text search finds any document by title, notes, or extracted text. PDFs and scanned documents are automatically OCR&rsquo;d and analyzed.</p>
+        <p class="feature-a">Attach files&mdash;manuals, invoices, photos&mdash;directly to projects and appliances. Stored in the same SQLite file. Full-text search finds any document by title, notes, or extracted text. When an LLM is configured, PDFs and scanned documents are automatically OCR&rsquo;d and analyzed.</p>
+      </div>
+
+      <div class="feature">
+        <p class="feature-q">How much have I spent on plumbing?</p>
+        <p class="feature-a">Chat with a local LLM about your data. It writes the SQL, runs the query, and summarizes the results&mdash;all on your machine.</p>
       </div>
 
     </div>
@@ -104,7 +109,11 @@
     <h2>Get <span class="accent">started</span></h2>
     <div class="install-steps">
       <div>
-        <p>Install with Go (1.25+):</p>
+        <p><a href="https://brew.sh">Homebrew</a> (macOS and Linux):</p>
+        <pre><code>brew install micasa</code></pre>
+      </div>
+      <p class="install-or">or with Go (1.25+):</p>
+      <div>
         <pre><code>go install github.com/cpcloud/micasa/cmd/micasa@latest</code></pre>
       </div>
       <p class="install-or">or grab a binary from the <a href="https://github.com/cpcloud/micasa/releases/latest">latest release</a></p>
