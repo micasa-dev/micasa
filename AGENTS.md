@@ -202,6 +202,9 @@ details; do not duplicate that detail here.
 - **Use `writeShellApplication`** not `writeShellScriptBin` for Nix shell
   scripts. Use **`pkgs.python3.pkgs`** not `pkgs.python3Packages`.
 - **Nix package mappings**: `benchstat` is in `nixpkgs#goperf`.
+- **Run Python through Nix**: If Nix is available, always run Python via
+  `nix run 'nixpkgs#python3' -- $@`. Never use a bare `python` or `python3`
+  command directly.
 
 ### Git and CI
 
