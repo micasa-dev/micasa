@@ -1011,9 +1011,9 @@ func TestApplianceMaintenanceInlineEditSeasonDispatchesCorrectly(t *testing.T) {
 	require.NoError(t, err)
 	id := meta[0].ID
 
-	// In the sub-table (Appliance column removed), Season is at index 3.
-	// Since 3 < skipAt (maintenanceColAppliance=4), no remap occurs and
-	// col 3 maps directly to maintenanceColSeason (3) in the full table.
+	// In the sub-table (Appliance column removed), Season is at sub-table
+	// index 3. Since that's below the skipAt (maintenanceColAppliance),
+	// skipColEdit passes it through to maintenanceColSeason in the full table.
 	m.exitForm()
 	m.closeInlineInput()
 	require.NoError(t, h.InlineEdit(m, id, 3))
