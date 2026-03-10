@@ -1336,8 +1336,9 @@ func TestInsightsRows_WithItems(t *testing.T) {
 	assert.Equal(t, tabAppliances, rows[0].Target.Tab)
 	assert.Equal(t, uint(5), rows[0].Target.ID)
 	assert.False(t, rows[0].Target.InfoOnly)
-	// EntityID 0 should be InfoOnly (no specific entity to jump to).
-	assert.True(t, rows[1].Target.InfoOnly)
+	// EntityID 0 with a valid tab should still navigate to the tab.
+	assert.Equal(t, tabMaintenance, rows[1].Target.Tab)
+	assert.False(t, rows[1].Target.InfoOnly)
 }
 
 func TestInsightsSection_AppearsAfterResultMsg(t *testing.T) {

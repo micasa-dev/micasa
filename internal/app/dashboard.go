@@ -1136,9 +1136,6 @@ func (m *Model) dashInsightsRows() []dashRow {
 				ID:      item.EntityID,
 				Section: dashSectionInsights,
 			}
-			if item.EntityID == 0 {
-				target.InfoOnly = true
-			}
 		}
 		rows = append(rows, dashRow{
 			Cells: []dashCell{
