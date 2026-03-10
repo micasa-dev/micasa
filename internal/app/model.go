@@ -158,11 +158,35 @@ type pullState struct {
 	progress progress.Model     // bubbles progress bar widget
 }
 
+// insightCategory groups insights by urgency/type.
+type insightCategory string
+
+const (
+	insightAttention insightCategory = "attention"
+	insightStale     insightCategory = "stale"
+	insightPattern   insightCategory = "pattern"
+)
+
+// insightCategoryLabel returns the dashboard section header for a category.
+func insightCategoryLabel(c insightCategory) string {
+	switch c {
+	case insightAttention:
+		return "Needs Attention"
+	case insightStale:
+		return "Gone Quiet"
+	case insightPattern:
+		return "Patterns"
+	default:
+		return "Other"
+	}
+}
+
 // insightItem is one LLM-generated insight for the dashboard.
 type insightItem struct {
-	Text     string `json:"text"`
-	Tab      string `json:"tab"`
-	EntityID uint   `json:"entity_id"`
+	Text     string          `json:"text"`
+	Tab      string          `json:"tab"`
+	EntityID uint            `json:"entity_id"`
+	Category insightCategory `json:"category"`
 }
 
 // insightsState tracks the async insights fetch.
@@ -174,6 +198,8 @@ type insightsState struct {
 	generatedAt time.Time
 	cancel      context.CancelFunc
 	generation  uint64 // monotonic; correlates results with requests
+	streamCh    <-chan llm.StreamChunk
+	streamBuf   strings.Builder
 }
 
 // dashState groups dashboard overlay fields.
@@ -420,25 +446,57 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case extractionLLMPingMsg:
 		return m, m.handleExtractionLLMPing(typed)
 	case insightsResultMsg:
-		// Discard stale results from canceled requests.
+		// Error before streaming started (no data, stream init failure).
 		if typed.Generation != m.dash.insights.generation {
 			return m, nil
 		}
 		m.dash.insights.loading = false
 		m.dash.insights.cancel = nil
-		if typed.Err != nil {
-			m.dash.insights.err = typed.Err
-		} else {
-			m.dash.insights.items = typed.Items
-			m.dash.insights.stale = false
-			m.dash.insights.err = nil
-			m.dash.insights.generatedAt = time.Now()
-		}
+		m.dash.insights.streamCh = nil
+		m.dash.insights.err = typed.Err
 		m.buildDashNav()
-		if len(m.dash.insights.items) > 0 {
-			return m, insightsStaleTick()
-		}
 		return m, nil
+	case insightsStreamStartedMsg:
+		if typed.Generation != m.dash.insights.generation {
+			return m, nil
+		}
+		m.dash.insights.streamCh = typed.Channel
+		return m, waitForInsightChunk(typed.Channel, typed.Generation)
+	case insightsChunkMsg:
+		if typed.Generation != m.dash.insights.generation {
+			return m, nil
+		}
+		if typed.Err != nil {
+			m.dash.insights.loading = false
+			m.dash.insights.cancel = nil
+			m.dash.insights.streamCh = nil
+			m.dash.insights.err = typed.Err
+			m.buildDashNav()
+			return m, nil
+		}
+		m.dash.insights.streamBuf.WriteString(typed.Content)
+		m.dash.insights.items = parsePartialInsights(
+			m.dash.insights.streamBuf.String(),
+		)
+		m.buildDashNav()
+		if typed.Done {
+			m.dash.insights.loading = false
+			m.dash.insights.cancel = nil
+			m.dash.insights.streamCh = nil
+			m.dash.insights.stale = false
+			m.dash.insights.generatedAt = time.Now()
+			if len(m.dash.insights.items) == 0 {
+				m.dash.insights.err = fmt.Errorf(
+					"model returned empty response -- try a larger context_length or smaller dataset",
+				)
+			}
+			m.dash.insights.streamBuf.Reset()
+			if len(m.dash.insights.items) > 0 {
+				return m, insightsStaleTick()
+			}
+			return m, nil
+		}
+		return m, waitForInsightChunk(m.dash.insights.streamCh, typed.Generation)
 	case insightsStaleTickMsg:
 		if m.showDashboard && len(m.dash.insights.items) > 0 {
 			return m, insightsStaleTick()

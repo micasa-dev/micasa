@@ -307,8 +307,8 @@ func TestBuildInsightsPromptIncludesCurrentDate(t *testing.T) {
 func TestBuildInsightsPromptIncludesPreamble(t *testing.T) {
 	t.Parallel()
 	prompt := BuildInsightsPrompt("", testNow, "")
-	assert.Contains(t, prompt, "home maintenance advisor")
-	assert.Contains(t, prompt, "proactive insights")
+	assert.Contains(t, prompt, "home maintenance analyst")
+	assert.Contains(t, prompt, "non-obvious patterns")
 }
 
 func TestBuildInsightsPromptIncludesGuidelines(t *testing.T) {
@@ -316,7 +316,10 @@ func TestBuildInsightsPromptIncludesGuidelines(t *testing.T) {
 	prompt := BuildInsightsPrompt("", testNow, "")
 	assert.Contains(t, prompt, "Output format")
 	assert.Contains(t, prompt, "entity_id")
-	assert.Contains(t, prompt, "Appliance age vs typical lifespan")
+	assert.Contains(t, prompt, `"category"`)
+	assert.Contains(t, prompt, "attention")
+	assert.Contains(t, prompt, "stale")
+	assert.Contains(t, prompt, "pattern")
 }
 
 func TestBuildInsightsPromptIncludesExtraContext(t *testing.T) {
@@ -349,10 +352,11 @@ func TestInsightsJSONSchemaStructure(t *testing.T) {
 	assert.Contains(t, itemProps, "text")
 	assert.Contains(t, itemProps, "tab")
 	assert.Contains(t, itemProps, "entity_id")
+	assert.Contains(t, itemProps, "category")
 
 	required, ok := items["required"].([]string)
 	require.True(t, ok)
-	assert.ElementsMatch(t, []string{"text", "tab", "entity_id"}, required)
+	assert.ElementsMatch(t, []string{"text", "tab", "entity_id", "category"}, required)
 }
 
 func TestInsightsJSONSchemaTabEnum(t *testing.T) {

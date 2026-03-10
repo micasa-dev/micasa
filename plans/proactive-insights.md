@@ -54,8 +54,9 @@ Urgent/actionable items stay on top; insights are supplementary analysis.
   JSON object `{"insights": [{text, tab, entity_id}, ...]}` via
   `WithJSONSchema`. Emphasizes cross-entity observations, max 5-7 items, no
   duplication of existing dashboard sections.
-- **Non-streaming**: uses `ChatComplete()` since output is a small JSON object.
-  Runs via `tea.Cmd` returning an `insightsResultMsg`.
+- **Streaming**: uses `ChatStream()` so insight items appear incrementally in
+  the dashboard as each complete JSON object finishes streaming. Partial JSON is
+  parsed on each chunk using bracket-balanced extraction.
 - **State**: `insightsState` struct on `dashState`. Tracks results, loading
   flag, staleness, error, generated-at timestamp, cancel func.
 - **Mutations**: `reloadAfterMutation()` sets `insightsStale = true`. Next
@@ -68,9 +69,10 @@ Urgent/actionable items stay on top; insights are supplementary analysis.
 ```go
 // insightItem is one LLM-generated insight.
 type insightItem struct {
-    Text     string  `json:"text"`
-    Tab      string  `json:"tab"`       // tab name for navigation
-    EntityID uint    `json:"entity_id"` // minimum 1; references a specific entity
+    Text     string          `json:"text"`
+    Tab      string          `json:"tab"`       // tab name for navigation
+    EntityID uint            `json:"entity_id"` // minimum 1; references a specific entity
+    Category insightCategory `json:"category"`  // "attention", "stale", or "pattern"
 }
 
 // insightsState tracks the async insights fetch.
@@ -104,7 +106,6 @@ type insightsState struct {
 - Per-pipeline LLM overrides for insights
 - Persisting insights across sessions
 - Notification badge outside dashboard
-- Streaming insights
 
 ## Implementation plan
 

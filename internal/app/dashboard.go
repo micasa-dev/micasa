@@ -972,11 +972,23 @@ func (m *Model) dashToggleAll() {
 // Proactive insights (LLM-powered)
 // ---------------------------------------------------------------------------
 
-// insightsResultMsg delivers the result of an async insights fetch.
-// Generation correlates the result with the request that produced it;
-// stale results from canceled requests are discarded by the handler.
+// insightsResultMsg delivers an error from an insights fetch that failed
+// before streaming could begin (no data, stream start failure).
 type insightsResultMsg struct {
-	Items      []insightItem
+	Err        error
+	Generation uint64
+}
+
+// insightsStreamStartedMsg delivers the stream channel to the update loop.
+type insightsStreamStartedMsg struct {
+	Channel    <-chan llm.StreamChunk
+	Generation uint64
+}
+
+// insightsChunkMsg carries one streamed token from the insights LLM call.
+type insightsChunkMsg struct {
+	Content    string
+	Done       bool
 	Err        error
 	Generation uint64
 }
@@ -1004,11 +1016,11 @@ func (m *Model) cancelInsights() {
 		m.dash.insights.cancel()
 		m.dash.insights.cancel = nil
 	}
+	m.dash.insights.streamCh = nil
 }
 
-// fetchInsights starts an async LLM call to generate proactive insights.
-// Returns a tea.Cmd that resolves to insightsResultMsg. The returned cmd
-// runs in a background goroutine.
+// fetchInsights starts a streaming LLM call to generate proactive insights.
+// Items appear incrementally as each complete JSON object streams in.
 func (m *Model) fetchInsights() tea.Cmd {
 	if !m.insightsWanted() {
 		return nil
@@ -1018,6 +1030,7 @@ func (m *Model) fetchInsights() tea.Cmd {
 	m.dash.insights.loading = true
 	m.dash.insights.err = nil
 	m.dash.insights.generation++
+	m.dash.insights.streamBuf.Reset()
 
 	client := m.llmClient
 	store := m.store
@@ -1046,7 +1059,7 @@ func (m *Model) fetchInsights() tea.Cmd {
 			{Role: "user", Content: "Analyze my home data and provide proactive insights."},
 		}
 
-		raw, err := client.ChatComplete(
+		streamCh, err := client.ChatStream(
 			ctx, messages,
 			llm.WithJSONSchema("insights", llm.InsightsJSONSchema()),
 			llm.WithNoThinking(),
@@ -1054,32 +1067,74 @@ func (m *Model) fetchInsights() tea.Cmd {
 		if err != nil {
 			return insightsResultMsg{Err: err, Generation: gen}
 		}
-		if strings.TrimSpace(raw) == "" {
-			return insightsResultMsg{
-				Err: fmt.Errorf(
-					"model returned empty response -- try a larger context_length or smaller dataset",
-				),
-				Generation: gen,
-			}
-		}
-
-		var result struct {
-			Insights []insightItem `json:"insights"`
-		}
-		if err := json.Unmarshal([]byte(raw), &result); err != nil {
-			return insightsResultMsg{Err: fmt.Errorf("parse insights: %w", err), Generation: gen}
-		}
-
-		// Defense-in-depth: drop insights the LLM returned without a valid entity.
-		valid := result.Insights[:0]
-		for _, item := range result.Insights {
-			if item.EntityID >= 1 {
-				valid = append(valid, item)
-			}
-		}
-
-		return insightsResultMsg{Items: valid, Generation: gen}
+		return insightsStreamStartedMsg{Channel: streamCh, Generation: gen}
 	}
+}
+
+// waitForInsightChunk returns a Cmd that reads the next chunk from the
+// insights stream channel.
+func waitForInsightChunk(ch <-chan llm.StreamChunk, gen uint64) tea.Cmd {
+	return waitForStream(ch, func(c llm.StreamChunk) tea.Msg {
+		return insightsChunkMsg{
+			Content:    c.Content,
+			Done:       c.Done,
+			Err:        c.Err,
+			Generation: gen,
+		}
+	}, insightsChunkMsg{Done: true, Generation: gen})
+}
+
+// parsePartialInsights extracts complete insightItem objects from a partial
+// JSON stream. It finds balanced top-level {...} blocks within the first
+// JSON array and parses each individually, so items appear as they complete.
+func parsePartialInsights(partial string) []insightItem {
+	// Find the opening bracket of the insights array.
+	idx := strings.Index(partial, "[")
+	if idx < 0 {
+		return nil
+	}
+
+	var items []insightItem
+	depth := 0
+	inString := false
+	escaped := false
+	objStart := -1
+	for i := idx; i < len(partial); i++ {
+		ch := partial[i]
+		if escaped {
+			escaped = false
+			continue
+		}
+		if ch == '\\' && inString {
+			escaped = true
+			continue
+		}
+		if ch == '"' {
+			inString = !inString
+			continue
+		}
+		if inString {
+			continue
+		}
+		switch ch {
+		case '{':
+			if depth == 0 {
+				objStart = i
+			}
+			depth++
+		case '}':
+			depth--
+			if depth == 0 && objStart >= 0 {
+				var item insightItem
+				if err := json.Unmarshal([]byte(partial[objStart:i+1]), &item); err == nil &&
+					item.EntityID >= 1 {
+					items = append(items, item)
+				}
+				objStart = -1
+			}
+		}
+	}
+	return items
 }
 
 // refreshInsights cancels any in-flight request and starts a fresh fetch.
@@ -1153,29 +1208,58 @@ func tabAbbrev(tab string) string {
 	return tab
 }
 
-// dashInsightsRows returns dashboard rows for the insights section.
+// dashInsightsRows returns dashboard rows for the insights section,
+// grouped by category with sub-header rows.
 func (m *Model) dashInsightsRows() []dashRow {
 	ins := m.dash.insights
 	if len(ins.items) == 0 {
 		return nil
 	}
-	rows := make([]dashRow, 0, len(ins.items))
+
+	// Group items by category in display order.
+	order := []insightCategory{insightAttention, insightStale, insightPattern}
+	grouped := make(map[insightCategory][]insightItem, len(order))
 	for _, item := range ins.items {
-		target := &dashNavEntry{Section: dashSectionInsights, InfoOnly: true}
-		if tab, ok := tabKindFromString(item.Tab); ok {
-			target = &dashNavEntry{
-				Tab:     tab,
-				ID:      item.EntityID,
-				Section: dashSectionInsights,
-			}
+		grouped[item.Category] = append(grouped[item.Category], item)
+	}
+
+	var rows []dashRow
+	for _, cat := range order {
+		items := grouped[cat]
+		if len(items) == 0 {
+			continue
 		}
+		// Category sub-header row.
 		rows = append(rows, dashRow{
 			Cells: []dashCell{
-				{Text: item.Text, Style: m.styles.DashValue()},
-				{Text: tabAbbrev(item.Tab), Style: m.styles.DashLabel(), Align: alignRight},
+				{
+					Text:  insightCategoryLabel(cat),
+					Style: m.styles.DashLabel(),
+				},
 			},
-			Target: target,
+			Target: &dashNavEntry{Section: dashSectionInsights, InfoOnly: true},
 		})
+		for _, item := range items {
+			target := &dashNavEntry{Section: dashSectionInsights, InfoOnly: true}
+			if tab, ok := tabKindFromString(item.Tab); ok {
+				target = &dashNavEntry{
+					Tab:     tab,
+					ID:      item.EntityID,
+					Section: dashSectionInsights,
+				}
+			}
+			rows = append(rows, dashRow{
+				Cells: []dashCell{
+					{Text: item.Text, Style: m.styles.DashValue()},
+					{
+						Text:  tabAbbrev(item.Tab),
+						Style: m.styles.DashLabel(),
+						Align: alignRight,
+					},
+				},
+				Target: target,
+			})
+		}
 	}
 	return rows
 }

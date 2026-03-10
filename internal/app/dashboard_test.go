@@ -1326,20 +1326,38 @@ func TestInsightsRows_WithItems(t *testing.T) {
 	m := newTestModel(t)
 	m.insightsEnabled = true
 	m.dash.insights.items = []insightItem{
-		{Text: "Water heater is 12y old", Tab: "appliances", EntityID: 5},
-		{Text: "4 HVAC calls this year", Tab: "maintenance", EntityID: 12},
+		{
+			Text:     "Water heater is 12y old",
+			Tab:      "appliances",
+			EntityID: 5,
+			Category: insightAttention,
+		},
+		{
+			Text:     "4 HVAC calls this year",
+			Tab:      "maintenance",
+			EntityID: 12,
+			Category: insightPattern,
+		},
 	}
 	rows := m.dashInsightsRows()
-	require.Len(t, rows, 2)
-	assert.Equal(t, "Water heater is 12y old", rows[0].Cells[0].Text)
-	assert.Equal(t, "Appl.", rows[0].Cells[1].Text)
-	assert.Equal(t, tabAppliances, rows[0].Target.Tab)
-	assert.Equal(t, uint(5), rows[0].Target.ID)
-	assert.False(t, rows[0].Target.InfoOnly)
-	assert.Equal(t, "4 HVAC calls this year", rows[1].Cells[0].Text)
-	assert.Equal(t, tabMaintenance, rows[1].Target.Tab)
-	assert.Equal(t, uint(12), rows[1].Target.ID)
+	// 2 category headers + 2 data rows = 4
+	require.Len(t, rows, 4)
+	// First: attention header.
+	assert.Equal(t, "Needs Attention", rows[0].Cells[0].Text)
+	assert.True(t, rows[0].Target.InfoOnly)
+	// Second: data row.
+	assert.Equal(t, "Water heater is 12y old", rows[1].Cells[0].Text)
+	assert.Equal(t, "Appl.", rows[1].Cells[1].Text)
+	assert.Equal(t, tabAppliances, rows[1].Target.Tab)
+	assert.Equal(t, uint(5), rows[1].Target.ID)
 	assert.False(t, rows[1].Target.InfoOnly)
+	// Third: pattern header.
+	assert.Equal(t, "Patterns", rows[2].Cells[0].Text)
+	// Fourth: data row.
+	assert.Equal(t, "4 HVAC calls this year", rows[3].Cells[0].Text)
+	assert.Equal(t, tabMaintenance, rows[3].Target.Tab)
+	assert.Equal(t, uint(12), rows[3].Target.ID)
+	assert.False(t, rows[3].Target.InfoOnly)
 }
 
 func TestInsightsSection_AppearsAfterResultMsg(t *testing.T) {
@@ -1353,12 +1371,17 @@ func TestInsightsSection_AppearsAfterResultMsg(t *testing.T) {
 	sendKey(m, "D")
 	require.True(t, m.showDashboard)
 
-	// Simulate LLM response arriving via insightsResultMsg.
-	m.Update(insightsResultMsg{
-		Items: []insightItem{
-			{Text: "Water heater is 12y old", Tab: "appliances", EntityID: 1},
+	// Simulate streamed insights arriving.
+	m.dash.insights.items = []insightItem{
+		{
+			Text:     "Water heater is 12y old",
+			Tab:      "appliances",
+			EntityID: 1,
+			Category: insightAttention,
 		},
-	})
+	}
+	m.dash.insights.loading = false
+	m.buildDashNav()
 	m.prepareDashboardView()
 
 	// Expand insights section (last section).
@@ -1431,11 +1454,11 @@ func TestInsightsNav_JumpsToEntityViaKeyboard(t *testing.T) {
 	require.True(t, m.showDashboard)
 
 	// Deliver insights.
-	m.Update(insightsResultMsg{
-		Items: []insightItem{
-			{Text: "Test insight", Tab: "appliances", EntityID: 42},
-		},
-	})
+	m.dash.insights.items = []insightItem{
+		{Text: "Test insight", Tab: "appliances", EntityID: 42, Category: insightAttention},
+	}
+	m.dash.insights.loading = false
+	m.buildDashNav()
 	m.prepareDashboardView()
 
 	// Navigate to the Insights section header with J (jump between sections).
@@ -1452,9 +1475,11 @@ func TestInsightsNav_JumpsToEntityViaKeyboard(t *testing.T) {
 	sendKey(m, "e")
 	m.prepareDashboardView()
 
-	// Move down to the data row.
-	sendKey(m, "j")
+	// Move past category sub-header to the data row.
+	sendKey(m, "j") // category sub-header (InfoOnly)
+	sendKey(m, "j") // actual data row
 	require.False(t, m.dash.nav[m.dash.cursor].IsHeader, "should be on data row")
+	require.False(t, m.dash.nav[m.dash.cursor].InfoOnly, "should not be info-only")
 
 	// Press enter to jump to the entity.
 	sendKey(m, "enter")
@@ -1475,11 +1500,11 @@ func TestInsightsRefreshKey_MarksStale(t *testing.T) {
 	require.True(t, m.showDashboard)
 
 	// Deliver insights so they're cached.
-	m.Update(insightsResultMsg{
-		Items: []insightItem{
-			{Text: "Old insight", Tab: "appliances", EntityID: 1},
-		},
-	})
+	m.dash.insights.items = []insightItem{
+		{Text: "Old insight", Tab: "appliances", EntityID: 1, Category: insightAttention},
+	}
+	m.dash.insights.loading = false
+	m.buildDashNav()
 	m.prepareDashboardView()
 	require.False(t, m.dash.insights.stale)
 
@@ -1500,11 +1525,11 @@ func TestInsightsStale_AfterMutation(t *testing.T) {
 	require.True(t, m.showDashboard)
 
 	// Deliver insights.
-	m.Update(insightsResultMsg{
-		Items: []insightItem{
-			{Text: "Old insight", Tab: "appliances", EntityID: 1},
-		},
-	})
+	m.dash.insights.items = []insightItem{
+		{Text: "Old insight", Tab: "appliances", EntityID: 1, Category: insightAttention},
+	}
+	m.dash.insights.loading = false
+	m.buildDashNav()
 	require.False(t, m.dash.insights.stale)
 
 	// Simulate a data mutation (e.g. user saved an edit).
@@ -1559,7 +1584,7 @@ func TestDashboardVisible_WithInsightsOnly(t *testing.T) {
 
 	// Or if insights have items.
 	m.dash.insights.loading = false
-	m.dash.insights.items = []insightItem{{Text: "test"}}
+	m.dash.insights.items = []insightItem{{Text: "test", Category: insightAttention}}
 	assert.True(t, m.dashboardVisible(), "should show when insights have items")
 
 	// Or if insights have an error.
@@ -1579,4 +1604,111 @@ func TestInsightsStaleness(t *testing.T) {
 	m.dash.insights.generatedAt = time.Now().Add(-2 * time.Minute)
 	s := m.insightsStaleness()
 	assert.Contains(t, s, "ago")
+}
+
+func TestParsePartialInsights(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{"empty", "", 0},
+		{"no array", `{"insights":`, 0},
+		{"array start only", `{"insights": [`, 0},
+		{
+			"one complete item",
+			`{"insights": [{"text": "old heater", "tab": "appliances", "entity_id": 5, "category": "attention"}`,
+			1,
+		},
+		{
+			"one complete, one partial",
+			`{"insights": [{"text": "old heater", "tab": "appliances", "entity_id": 5, "category": "attention"}, {"text": "lots of`,
+			1,
+		},
+		{
+			"two complete",
+			`{"insights": [{"text": "a", "tab": "appliances", "entity_id": 1, "category": "attention"}, {"text": "b", "tab": "maintenance", "entity_id": 2, "category": "pattern"}]}`,
+			2,
+		},
+		{
+			"brace in string",
+			`{"insights": [{"text": "has } brace", "tab": "appliances", "entity_id": 3, "category": "stale"}]}`,
+			1,
+		},
+		{
+			"entity_id zero filtered",
+			`{"insights": [{"text": "a", "tab": "appliances", "entity_id": 0, "category": "attention"}]}`,
+			0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			items := parsePartialInsights(tt.input)
+			assert.Len(t, items, tt.want)
+		})
+	}
+}
+
+func TestInsightsChunkMsg_ItemsAppearIncrementally(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.insightsEnabled = true
+	m.llmClient = testDummyLLMClient(t)
+	m.width = 120
+	m.height = 40
+
+	// Open dashboard.
+	sendKey(m, "D")
+	require.True(t, m.showDashboard)
+
+	// Simulate stream started.
+	m.dash.insights.loading = true
+	m.dash.insights.generation = 1
+
+	// First chunk: partial JSON with one complete item.
+	m.Update(insightsChunkMsg{
+		Content:    `{"insights": [{"text": "old heater", "tab": "appliances", "entity_id": 5, "category": "attention"}`,
+		Generation: 1,
+	})
+	assert.Len(t, m.dash.insights.items, 1)
+	assert.True(t, m.dash.insights.loading)
+
+	// Second chunk: completes another item.
+	m.Update(insightsChunkMsg{
+		Content:    `, {"text": "roof needs check", "tab": "maintenance", "entity_id": 8, "category": "pattern"}`,
+		Generation: 1,
+	})
+	assert.Len(t, m.dash.insights.items, 2)
+	assert.True(t, m.dash.insights.loading)
+
+	// Final chunk: stream done.
+	m.Update(insightsChunkMsg{
+		Content:    `]}`,
+		Done:       true,
+		Generation: 1,
+	})
+	assert.Len(t, m.dash.insights.items, 2)
+	assert.False(t, m.dash.insights.loading)
+	assert.False(t, m.dash.insights.generatedAt.IsZero())
+}
+
+func TestInsightsChunkMsg_StaleGenerationIgnored(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.insightsEnabled = true
+	m.width = 120
+	m.height = 40
+
+	m.dash.insights.generation = 2
+
+	// Chunk from generation 1 should be ignored.
+	m.Update(insightsChunkMsg{
+		Content:    `{"insights": [{"text": "stale", "tab": "appliances", "entity_id": 1}]}`,
+		Done:       true,
+		Generation: 1,
+	})
+	assert.Empty(t, m.dash.insights.items)
 }

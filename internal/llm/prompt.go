@@ -154,11 +154,11 @@ func InsightsJSONSchema() map[string]any {
 					"properties": map[string]any{
 						"text": map[string]any{
 							"type":        "string",
-							"description": "Short, actionable insight (one sentence)",
+							"description": "Short, natural insight (one sentence)",
 						},
 						"tab": map[string]any{
 							"type":        "string",
-							"description": "Target tab for navigation: projects, quotes, maintenance, incidents, appliances, vendors, documents",
+							"description": "Target tab for navigation",
 							"enum": []string{
 								"projects",
 								"quotes",
@@ -174,8 +174,13 @@ func InsightsJSONSchema() map[string]any {
 							"minimum":     1,
 							"description": "Database ID of the specific entity from the data",
 						},
+						"category": map[string]any{
+							"type":        "string",
+							"description": "Insight category",
+							"enum":        []string{"attention", "stale", "pattern"},
+						},
 					},
-					"required": []string{"text", "tab", "entity_id"},
+					"required": []string{"text", "tab", "entity_id", "category"},
 				},
 			},
 		},
@@ -442,38 +447,51 @@ Now answer the user's question based solely on the data provided.`
 
 // ---------- Proactive insights ----------
 
-const insightsPreamble = `You are a home maintenance advisor. Analyze the homeowner's data and surface 3-7 proactive insights they might not have noticed. Focus on cross-entity patterns, aging equipment, spending trends, and maintenance gaps.
+const insightsPreamble = `You are a home maintenance analyst. Your job is to find things the homeowner would NOT easily notice themselves by glancing at their data. Surface non-obvious patterns, forgotten items, and hidden risks.
 
 RULES:
 1. Only use data shown below. Never invent or assume facts.
-2. Do NOT duplicate information that is obviously visible at a glance (e.g. overdue maintenance items, open incidents). Focus on non-obvious patterns and cross-entity observations.
-3. Each insight should be a single short sentence -- concise and actionable.
+2. Do NOT restate what's already obvious (overdue items, open incidents, upcoming dates). The dashboard already shows those. Insights should reveal something the user couldn't trivially see.
+3. Each insight is a single concise sentence. Write naturally -- use the entity's actual name and context-appropriate language (e.g. "interior paint hasn't been touched up since 2022", not "interior paint has not been serviced").
 4. Money values in the data are already formatted as dollars.
-5. Reference specific entity names so the user can find them. NEVER include numeric IDs in the text -- use names only.
+5. NEVER include numeric IDs in the text -- use names only.
 6. Output valid JSON only. No commentary outside the JSON.
-7. Every insight MUST reference a specific entity by its exact "id" from the data. Do not include insights that cannot be tied to a specific entity ID.`
+7. Every insight MUST reference a specific entity by its exact "id" from the data.
+8. No duplicates -- each entity should appear in at most one insight.`
 
 const insightsGuidelines = `## Output format
 
 Return a JSON object with an "insights" array. Each element has:
-- "text": one-sentence insight using NAMES ONLY (NEVER include numeric IDs, database IDs, or numbers like "#5" or "ID 12" in the text)
-- "tab": which app tab is most relevant (projects, quotes, maintenance, incidents, appliances, vendors, documents)
-- "entity_id": the EXACT numeric "id" value shown in the data for that entity. NEVER guess an ID -- only use IDs that appear in the data above. Every insight MUST reference a specific entity. The ID goes HERE, not in the text field.
+- "text": one natural-sounding sentence (use NAMES ONLY, never IDs)
+- "tab": target tab (projects, quotes, maintenance, incidents, appliances, vendors, documents)
+- "entity_id": EXACT numeric "id" from the data
+- "category": one of "attention", "stale", or "pattern"
 
-Example:
+### Categories
+
+**"attention"** -- things that probably need action soon:
+- Appliances approaching or past typical lifespan
+- Warranties expiring within 6 months
+- Spending that's unusually high for what it covers
+- Cross-entity red flags (e.g. an appliance linked to repeated incidents)
+
+**"stale"** -- things the user seemed interested in but never followed through on:
+- Quotes that have been sitting for months without becoming a project
+- Projects stuck in planning/delayed status for a long time
+- Maintenance items created but never actually performed
+
+**"pattern"** -- non-obvious trends across the data:
+- Recurring costs that suggest a maintenance contract would save money
+- Seasonal clustering of incidents or service calls
+- Vendors used repeatedly vs one-offs (concentration risk)
+- Cost outliers compared to similar items
+
+### Example
 {"insights":[
-  {"text":"Water heater is 12 years old -- average lifespan is 10-15 years","tab":"appliances","entity_id":5},
-  {"text":"4 HVAC service calls this year totaling $3,200 -- a maintenance contract might save money","tab":"maintenance","entity_id":8},
-  {"text":"Roof was last inspected 3 years ago","tab":"maintenance","entity_id":12}
+  {"text":"Water heater is 12 years old -- typical lifespan is 10-15 years","tab":"appliances","entity_id":5,"category":"attention"},
+  {"text":"Kitchen remodel was quoted 18 months ago but never started","tab":"quotes","entity_id":3,"category":"stale"},
+  {"text":"4 HVAC calls this year totaling $3,200 -- a service contract might be cheaper","tab":"maintenance","entity_id":8,"category":"pattern"}
 ]}
 
-Focus on:
-- Appliance age vs typical lifespan
-- Recurring maintenance costs that suggest a pattern
-- Warranties expiring in the next 6 months
-- Projects that have been in planning/delayed status for a long time
-- Cost outliers (unusually expensive items)
-- Maintenance items with no recent service history
-- Cross-entity connections (e.g. an appliance linked to many incidents)
-
-Now analyze the data and produce insights.`
+Aim for 3-7 insights total, spread across categories when the data supports it.
+Produce insights now.`
