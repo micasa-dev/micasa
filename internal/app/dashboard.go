@@ -612,7 +612,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		}
 		dimmed := cursorSection != "" && cursorSection != dashSectionInsights
 		hdr := m.dashSectionHeader(dashSectionInsights, 0, dimmed)
-		lines = append(lines, hdr, "  "+m.dash.spinner.View()+" analyzing...")
+		lines = append(lines, hdr, "  "+m.dash.spinner.View()+" analyzing")
 	} else if showInsightsError {
 		if len(lines) > 0 {
 			lines = append(lines, "")

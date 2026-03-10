@@ -1394,7 +1394,7 @@ func TestInsightsSection_LoadingShowsSpinner(t *testing.T) {
 	m.prepareDashboardView()
 
 	overlay := m.buildDashboardOverlay()
-	assert.Contains(t, overlay, "analyzing...")
+	assert.Contains(t, overlay, "analyzing")
 }
 
 func TestInsightsSection_ErrorShowsMutedMessage(t *testing.T) {
