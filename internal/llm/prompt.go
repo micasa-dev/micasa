@@ -456,9 +456,9 @@ RULES:
 const insightsGuidelines = `## Output format
 
 Return a JSON object with an "insights" array. Each element has:
-- "text": one-sentence insight
+- "text": one-sentence insight using NAMES ONLY (NEVER include numeric IDs, database IDs, or numbers like "#5" or "ID 12" in the text)
 - "tab": which app tab is most relevant (projects, quotes, maintenance, incidents, appliances, vendors, documents)
-- "entity_id": the EXACT numeric "id" value shown in the data for that entity. NEVER guess an ID -- only use IDs that appear in the data above. Every insight MUST reference a specific entity.
+- "entity_id": the EXACT numeric "id" value shown in the data for that entity. NEVER guess an ID -- only use IDs that appear in the data above. Every insight MUST reference a specific entity. The ID goes HERE, not in the text field.
 
 Example:
 {"insights":[
