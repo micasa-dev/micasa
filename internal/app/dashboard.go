@@ -624,7 +624,8 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		case insLoading:
 			lines[insightsHeaderLine] += "  " + m.dash.spinner.View()
 		case insError:
-			msg := m.styles.DashSubtitle().Render("  unavailable: " + ins.err.Error())
+			errText, _, _ := strings.Cut(ansi.Strip(ins.err.Error()), "\n")
+			msg := m.styles.DashSubtitle().Render("  unavailable: " + errText)
 			lines = slices.Insert(lines, insightsHeaderLine+1, msg)
 		default:
 			if s := m.insightsStaleness(); s != "" {
@@ -1152,7 +1153,7 @@ func tabAbbrev(tab string) string {
 // dashInsightsRows returns dashboard rows for the insights section.
 func (m *Model) dashInsightsRows() []dashRow {
 	ins := m.dash.insights
-	if ins.loading || len(ins.items) == 0 {
+	if len(ins.items) == 0 {
 		return nil
 	}
 	rows := make([]dashRow, 0, len(ins.items))
