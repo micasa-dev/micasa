@@ -29,6 +29,7 @@ var hiddenPaths = map[string]bool{
 var deprecatedPaths = map[string]string{
 	"documents.cache_ttl_days": "documents.cache_ttl",
 	"extraction.enabled":       "extraction.enable",
+	"extraction.llm_timeout":   "llm.extraction.timeout",
 	"extraction.model":         "llm.extraction.model",
 	"extraction.thinking":      "llm.extraction.thinking",
 }

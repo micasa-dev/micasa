@@ -1229,6 +1229,64 @@ func TestExtractionThinkingEnvMigration(t *testing.T) {
 	assert.True(t, found, "should warn about deprecated env var")
 }
 
+// --- Deprecation: extraction.llm_timeout -> llm.extraction.timeout ---
+
+func TestExtractionLLMTimeoutTOMLMigration(t *testing.T) {
+	path := writeConfig(t, `[extraction]
+llm_timeout = "3m"
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, "3m", cfg.LLM.Extraction.Timeout)
+	require.NotEmpty(t, cfg.Warnings)
+	found := false
+	for _, w := range cfg.Warnings {
+		if strings.Contains(w, "extraction.llm_timeout") &&
+			strings.Contains(w, "llm.extraction.timeout") {
+			found = true
+		}
+	}
+	assert.True(t, found, "should warn about deprecated TOML key")
+}
+
+func TestExtractionLLMTimeoutTOMLMigrationNotOverrideNew(t *testing.T) {
+	path := writeConfig(t, `[llm.extraction]
+timeout = "10m"
+
+[extraction]
+llm_timeout = "3m"
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, "10m", cfg.LLM.Extraction.Timeout,
+		"new config should take precedence over deprecated")
+}
+
+func TestExtractionLLMTimeoutEnvMigration(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_LLM_TIMEOUT", "3m")
+
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, "3m", cfg.LLM.Extraction.Timeout)
+	require.NotEmpty(t, cfg.Warnings)
+	found := false
+	for _, w := range cfg.Warnings {
+		if strings.Contains(w, "MICASA_EXTRACTION_LLM_TIMEOUT") {
+			found = true
+		}
+	}
+	assert.True(t, found, "should warn about deprecated env var")
+}
+
+func TestExtractionLLMTimeoutEnvMigrationNotOverrideNew(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_LLM_TIMEOUT", "3m")
+	t.Setenv("MICASA_LLM_EXTRACTION_TIMEOUT", "10m")
+
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Equal(t, "10m", cfg.LLM.Extraction.Timeout)
+}
+
 func TestConfigGetPipelineKeys(t *testing.T) {
 	cfg := Config{
 		LLM: LLM{

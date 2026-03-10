@@ -15,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/cpcloud/micasa/internal/config"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
 	ollamaPull "github.com/cpcloud/micasa/internal/ollama"
@@ -323,7 +324,7 @@ func (m *Model) chatInferenceTimeout() time.Duration {
 	if m.llmConfig != nil && m.llmConfig.Timeout > 0 {
 		return m.llmConfig.Timeout
 	}
-	return 5 * time.Minute
+	return config.DefaultLLMTimeout
 }
 
 // startSQLStream initiates streaming SQL generation (stage 1).
