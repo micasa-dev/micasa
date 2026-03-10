@@ -541,7 +541,8 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 
 	// Show loading/error state for insights even when there are no items yet.
 	showInsightsLoading := m.insightsEnabled && m.dash.insights.loading
-	showInsightsError := m.insightsEnabled && m.dash.insights.err != nil && !m.dash.insights.loading
+	showInsightsError := m.insightsEnabled && m.dash.insights.err != nil &&
+		!m.dash.insights.loading && len(m.dash.insights.items) == 0
 
 	if len(sections) == 0 && !showInsightsLoading && !showInsightsError {
 		return ""

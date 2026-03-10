@@ -50,9 +50,10 @@ Urgent/actionable items stay on top; insights are supplementary analysis.
 - **Config**: `llm.insights` bool field on `LLM` config struct. Env var
   `MICASA_LLM_INSIGHTS`. Stored as `*bool` for tri-state (nil = default off).
 - **Prompt**: new `BuildInsightsPrompt()` in `internal/llm/prompt.go`. Receives
-  full data dump + schema + date + house profile, instructs LLM to output JSON
-  array of `{text, tab, entity_id}` objects. Emphasizes cross-entity
-  observations, max 5-7 items, no duplication of existing dashboard sections.
+  full data dump + schema + date + house profile, instructs LLM to output a
+  JSON object `{"insights": [{text, tab, entity_id}, ...]}` via
+  `WithJSONSchema`. Emphasizes cross-entity observations, max 5-7 items, no
+  duplication of existing dashboard sections.
 - **Non-streaming**: uses `ChatComplete()` since output is a small JSON array.
   Runs via `tea.Cmd` returning an `insightsResultMsg`.
 - **State**: `insightsState` struct on `dashState`. Tracks results, loading
