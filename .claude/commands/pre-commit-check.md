@@ -4,10 +4,11 @@
 Do NOT run pre-commit hooks manually. The git hooks run automatically on
 `git commit` (pre-commit stage) and `git push` (pre-push stage).
 
-Before committing, just make sure the code compiles and tests pass:
+Before committing, run these checks:
 
-1. `go build ./...` -- verify it compiles
-2. `go test -shuffle=on ./...` -- all packages, shuffled, no `-v`
+1. `nix run '.#pre-commit' -- --from-ref origin/main --to-ref HEAD --verbose` -- run all pre-commit hooks against changed files
+2. `go build ./...` -- verify it compiles
+3. `go test -shuffle=on ./...` -- all packages, shuffled, no `-v`
 
 If the commit hook fails, fix the issue and commit again. Never use
 `--no-verify`.
