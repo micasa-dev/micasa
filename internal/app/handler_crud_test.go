@@ -1012,8 +1012,8 @@ func TestApplianceMaintenanceInlineEditSeasonDispatchesCorrectly(t *testing.T) {
 	id := meta[0].ID
 
 	// In the sub-table (Appliance column removed), Season is at index 3.
-	// skipColEdit must remap this to maintenanceColSeason (4) in the full table,
-	// NOT to maintenanceColAppliance.
+	// Since 3 < skipAt (maintenanceColAppliance=4), no remap occurs and
+	// col 3 maps directly to maintenanceColSeason (3) in the full table.
 	m.exitForm()
 	m.closeInlineInput()
 	require.NoError(t, h.InlineEdit(m, id, 3))
