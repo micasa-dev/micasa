@@ -123,7 +123,7 @@ jobs:
         uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
 
   result:
-    name: Security / Result
+    name: Result
     if: always()
     needs: [changes, govulncheck, osv-scanner, secrets, codeql]
     runs-on: ubuntu-latest
