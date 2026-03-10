@@ -1023,10 +1023,11 @@ func (m *Model) fetchInsights() tea.Cmd {
 	store := m.store
 	extraContext := m.llmExtraContext
 	gen := m.dash.insights.generation
+	timeout := m.chatInferenceTimeout()
 
 	//nolint:gosec // cancel stored in m.dash.insights.cancel
-	ctx, cancel := context.WithCancel(
-		context.Background(),
+	ctx, cancel := context.WithTimeout(
+		context.Background(), timeout,
 	)
 	m.dash.insights.cancel = cancel
 
@@ -1083,6 +1084,8 @@ func (m *Model) fetchInsights() tea.Cmd {
 
 // refreshInsights cancels any in-flight request and starts a fresh fetch.
 func (m *Model) refreshInsights() tea.Cmd {
+	m.cancelInsights()
+	m.dash.insights.loading = false
 	m.dash.insights.stale = true
 	return m.maybeStartInsights()
 }
@@ -1096,9 +1099,9 @@ func (m *Model) maybeStartInsights() tea.Cmd {
 	if m.dash.insights.loading {
 		return nil
 	}
-	// Already have fresh results.
+	// Already have fresh results — just keep the staleness tick running.
 	if len(m.dash.insights.items) > 0 && !m.dash.insights.stale {
-		return nil
+		return insightsStaleTick()
 	}
 	return tea.Batch(m.fetchInsights(), m.dash.spinner.Tick)
 }
