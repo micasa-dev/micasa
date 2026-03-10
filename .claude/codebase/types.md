@@ -1,6 +1,6 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-<!-- verified: 2026-03-07 -->
+<!-- verified: 2026-03-10 -->
 
 # Key Types & Interfaces
 
@@ -53,8 +53,9 @@ Central Bubbletea state. Key fields:
 - Snapshot(store, id) (undoEntry, error)
 - SyncFixedValues(store, specs)
 
-Implementations: projectHandler, quoteHandler, maintenanceHandler,
-incidentHandler, applianceHandler, serviceLogHandler, vendorHandler, documentHandler
+8 implementations (one per entity tab; formHouse is handled separately):
+projectHandler, quoteHandler, maintenanceHandler, incidentHandler,
+applianceHandler, serviceLogHandler, vendorHandler, documentHandler
 
 ### columnSpec (types.go)
 Title, Min/MaxWidth, Flex, Align, Kind (cellKind), Link (FK ref), FixedValues, HideOrder
@@ -86,7 +87,7 @@ Parent info (tab, entity, ID), Breadcrumb string, Tab (the detail sub-tab)
 - Quote - ProjectID, VendorID, total/labor/materials/other (cents)
 - Vendor - name (unique), contact, phone, email, website, notes
 - MaintenanceCategory - lookup table (not soft-deletable)
-- MaintenanceItem - name, categoryID, applianceID?, interval, dueDate, cost
+- MaintenanceItem - name, categoryID, applianceID?, season, interval, dueDate, cost
 - ServiceLogEntry - MaintenanceItemID (CASCADE), vendorID?, date, cost
 - Appliance - name, brand, model, serial, warranty, cost
 - Incident - title, status, severity, dates, applianceID?, vendorID?, cost
@@ -97,6 +98,9 @@ Parent info (tab, entity, ID), Breadcrumb string, Tab (the detail sub-tab)
 
 ### Project Status Constants
 ProjectStatusIdeating, Planned, Quoted, InProgress, Delayed, Completed, Abandoned
+
+### Season Constants
+SeasonSpring, SeasonSummer, SeasonFall, SeasonWinter
 
 ### Incident Constants
 - Status: Open, InProgress, Resolved

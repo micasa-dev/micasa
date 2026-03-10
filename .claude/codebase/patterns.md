@@ -1,6 +1,6 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-<!-- verified: 2026-03-07 -->
+<!-- verified: 2026-03-10 -->
 
 # Code Patterns & Conventions
 
@@ -97,7 +97,7 @@ User edits (keyboard, calendar picker)
 - openAddForm(m) - enters form mode
 - requireZone(t, m, zoneID) - asserts zone exists
 
-### Mandatory Patterns
+### Mandatory Patterns (see AGENTS.md "Testing" for authoritative rules)
 - User-flow tests via keystrokes, never just internal API calls
 - Form tests: openAddForm(m) + set values + sendKey(m, "ctrl+s")
 - Inline edit: sendKey(m, "i") + set ColCursor + sendKey(m, "e")

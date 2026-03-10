@@ -10,9 +10,10 @@ Create a pull request for the current branch.
 
 ## PR conventions
 
-- **Use `--body-file`**: Write the PR body to a file and pass
-  `--body-file` instead of `--body`. This avoids shell-quoting issues
-  that silently corrupt markdown.
+- **Use a HEREDOC for the body**: Pass the PR body via a HEREDOC to
+  avoid shell-quoting issues. Do not write temporary files to `/tmp`.
+  Example: `gh pr create --title "..." --body "$(cat <<'EOF'` ...
+  `EOF` `)"`
 - **Rebase merges only**: This repo uses `gh pr merge --rebase`. No merge
   commits, no squash merges.
 - **No "Test plan" section**: CI covers tests, lint, vet, and build.

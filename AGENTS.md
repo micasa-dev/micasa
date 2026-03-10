@@ -167,6 +167,8 @@ details; do not duplicate that detail here.
 - `/record-demo` -- after any UI/UX feature work; commit the GIF
 - `/new-fk-relationship` -- when adding FK links between soft-deletable entities
 - `/add-entity` -- when adding a new entity model (full wiring checklist)
+- `/pre-commit-check` -- before committing, to verify code compiles and tests pass
+- `/blog-post` -- when writing or updating Hugo blog content in `docs/`
 - `/debug-dump` -- when diagnosing rendering bugs (VHS or live TUI)
 
 ### Shell and tools
