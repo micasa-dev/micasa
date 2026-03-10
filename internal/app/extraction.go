@@ -517,12 +517,14 @@ func (m *Model) llmExtractCmd(ctx context.Context, ex *extractionLogState) tea.C
 			ex.llmCancelFn = cancel
 		}
 		messages := extract.BuildExtractionPrompt(extract.ExtractionPromptInput{
-			DocID:     ex.DocID,
-			Filename:  ex.Filename,
-			MIME:      ex.mime,
-			SizeBytes: int64(len(ex.fileData)),
-			Schema:    schemaCtx,
-			Sources:   ex.sources,
+			DocID:         ex.DocID,
+			Filename:      ex.Filename,
+			MIME:          ex.mime,
+			SizeBytes:     int64(len(ex.fileData)),
+			Schema:        schemaCtx,
+			Sources:       ex.sources,
+			SendTSV:       m.ex.ocrTSV,
+			ConfThreshold: m.ex.ocrConfThreshold,
 		})
 		ch, err := client.ChatStream(
 			llmCtx,
@@ -926,6 +928,18 @@ func (m *Model) commitShadowOperations(ex *extractionLogState, ops []extract.Ope
 	return nil
 }
 
+// toggleExtractionTSV flips the ocrTSV setting and reruns the LLM step
+// so the user can compare extraction quality with and without spatial layout.
+func (m *Model) toggleExtractionTSV() tea.Cmd {
+	m.ex.ocrTSV = !m.ex.ocrTSV
+	if m.ex.ocrTSV {
+		m.setStatusInfo("layout on")
+	} else {
+		m.setStatusInfo("layout off")
+	}
+	return m.rerunLLMExtraction()
+}
+
 // rerunLLMExtraction resets the LLM step and re-runs it.
 func (m *Model) rerunLLMExtraction() tea.Cmd {
 	ex := m.ex.extraction
@@ -1078,6 +1092,10 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 	case keyR:
 		if ex.Done && ex.hasLLM && ex.cursorStep() == stepLLM {
 			return m.activateExtractionModelPicker()
+		}
+	case keyT:
+		if ex.Done && ex.hasLLM {
+			return m.toggleExtractionTSV()
 		}
 	case keyA:
 		if ex.Done {
@@ -1511,6 +1529,13 @@ func (m *Model) buildExtractionPipelineOverlay(
 			hints = append(hints, m.helpItem(keyX, "explore"))
 		}
 		if ex.Done {
+			if ex.hasLLM {
+				label := "layout on"
+				if m.ex.ocrTSV {
+					label = "layout off"
+				}
+				hints = append(hints, m.helpItem(keyT, label))
+			}
 			hints = append(hints, m.helpItem(keyA, "accept"), m.helpItem(keyEsc, "discard"))
 		} else {
 			hints = append(hints,

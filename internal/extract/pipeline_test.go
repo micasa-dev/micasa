@@ -112,7 +112,7 @@ func TestPipeline_OCRIntegration(t *testing.T) {
 	}
 
 	// Both pdftotext and OCR should run for PDFs.
-	p := &Pipeline{Extractors: DefaultExtractors(5, 0, true, 0)}
+	p := &Pipeline{Extractors: DefaultExtractors(5, 0, true)}
 	r := p.Run(context.Background(), data, "sample.pdf", "application/pdf")
 	require.NoError(t, r.Err)
 	assert.True(t, r.HasSource("tesseract"), "OCR always runs for PDFs")
@@ -141,7 +141,7 @@ func TestPipeline_MixedPDF(t *testing.T) {
 		t.Skipf("test fixture not found (pdfunite unavailable?): %s", pdfPath)
 	}
 
-	p := &Pipeline{Extractors: DefaultExtractors(5, 0, true, 0)}
+	p := &Pipeline{Extractors: DefaultExtractors(5, 0, true)}
 	r := p.Run(context.Background(), data, "mixed-inspection.pdf", "application/pdf")
 	require.NoError(t, r.Err)
 

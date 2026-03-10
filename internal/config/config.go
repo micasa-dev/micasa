@@ -292,10 +292,17 @@ type OCR struct {
 	// When disabled, scanned pages and images produce no text. Default: true.
 	Enable *bool `toml:"enable,omitempty"`
 
-	// ConfidenceThreshold is the minimum tesseract word confidence (0-100)
-	// to keep in OCR output. Words below this threshold are dropped.
-	// 0 means no filtering (all words kept). Default: 0.
-	ConfidenceThreshold int `toml:"confidence_threshold"`
+	// TSV sends spatial layout annotations (line-level bounding boxes
+	// and confidence scores) from tesseract OCR to the LLM alongside text.
+	// This helps extraction accuracy for invoices and forms with tabular
+	// data, at ~2x token overhead. Default: true.
+	TSV *bool `toml:"tsv,omitempty"`
+
+	// ConfidenceThresholdVal is the confidence threshold (0-100) below
+	// which OCR confidence annotations are included in spatial layout
+	// output. Lines with min confidence >= this value omit the score to
+	// save tokens. Set to 0 to never show confidence. Default: 70.
+	ConfidenceThresholdVal *int `toml:"confidence_threshold,omitempty"`
 }
 
 // IsEnabled returns whether LLM extraction is enabled. Defaults to true
@@ -333,6 +340,24 @@ func (e Extraction) LLMTimeoutDuration() time.Duration {
 // Returns empty string when unset (server default).
 func (e Extraction) ThinkingLevel() string {
 	return e.Thinking
+}
+
+// IsOCRTSV returns whether spatial layout annotations from tesseract OCR
+// should be sent to the LLM alongside text. Defaults to true.
+func (e Extraction) IsOCRTSV() bool {
+	if e.OCR.TSV != nil {
+		return *e.OCR.TSV
+	}
+	return true
+}
+
+// OCRConfThreshold returns the confidence threshold below which OCR
+// confidence annotations appear in spatial output. Defaults to 70.
+func (e Extraction) OCRConfThreshold() int {
+	if e.OCR.ConfidenceThresholdVal != nil {
+		return *e.OCR.ConfidenceThresholdVal
+	}
+	return 70
 }
 
 // ResolvedModel returns the extraction model, falling back to the given
@@ -530,10 +555,9 @@ func LoadFromPath(path string) (Config, error) {
 		)
 	}
 
-	if cfg.Extraction.OCR.ConfidenceThreshold < 0 || cfg.Extraction.OCR.ConfidenceThreshold > 100 {
+	if t := cfg.Extraction.OCRConfThreshold(); t < 0 || t > 100 {
 		return cfg, fmt.Errorf(
-			"extraction.ocr.confidence_threshold must be 0-100, got %d",
-			cfg.Extraction.OCR.ConfidenceThreshold,
+			"extraction.ocr.confidence_threshold must be 0-100, got %d", t,
 		)
 	}
 
@@ -1136,14 +1160,20 @@ model = "` + DefaultModel + `"
 # Maximum pages for async extraction of scanned documents. 0 = no limit. Default: 0.
 # max_pages = 0
 
-# [extraction.ocr]
+[extraction.ocr]
 # Set to false to disable OCR on uploaded documents. When disabled, scanned
 # pages and images produce no text. Default: true.
 # enable = true
 
-# Minimum tesseract word confidence (0-100) to keep. Words below this
-# threshold are dropped. 0 = no filtering. Default: 0.
-# confidence_threshold = 0
+# Send spatial layout annotations (line-level bounding boxes) from tesseract
+# OCR to the LLM alongside text. Improves extraction accuracy for invoices
+# and forms with tabular data, at ~2x token overhead. Default: true.
+# tsv = true
+
+# Confidence threshold (0-100) for spatial annotations. Lines with OCR
+# confidence below this threshold include a confidence score; lines above
+# omit it to save tokens. Set to 0 to never show confidence. Default: 70.
+# confidence_threshold = 70
 
 [locale]
 # ISO 4217 currency code. Stored in the database on first run; after that the

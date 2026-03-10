@@ -150,7 +150,7 @@ func TestImageOCRExtractor_Available(t *testing.T) {
 
 func TestDefaultExtractors_Order(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	require.Len(t, extractors, 4)
 	assert.Equal(t, "pdftotext", extractors[0].Tool())
 	assert.Equal(t, "plaintext", extractors[1].Tool())
@@ -166,7 +166,7 @@ func TestDefaultExtractors_Order(t *testing.T) {
 
 func TestDefaultExtractors_Passthrough(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(42, 99, true, 0)
+	extractors := DefaultExtractors(42, 99, true)
 	pdfExt, ok := extractors[0].(*PDFTextExtractor)
 	require.True(t, ok)
 	assert.Equal(t, 99, int(pdfExt.Timeout))
@@ -178,50 +178,38 @@ func TestDefaultExtractors_Passthrough(t *testing.T) {
 
 func TestDefaultExtractors_OCRDisabled(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, false, 0)
+	extractors := DefaultExtractors(0, 0, false)
 	require.Len(t, extractors, 2)
 	assert.Equal(t, "pdftotext", extractors[0].Tool())
 	assert.Equal(t, "plaintext", extractors[1].Tool())
-}
-
-func TestDefaultExtractors_ConfidencePassthrough(t *testing.T) {
-	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 70)
-	pdfOCR, ok := extractors[2].(*PDFOCRExtractor)
-	require.True(t, ok)
-	assert.Equal(t, 70, pdfOCR.ConfidenceThreshold)
-
-	imgOCR, ok := extractors[3].(*ImageOCRExtractor)
-	require.True(t, ok)
-	assert.Equal(t, 70, imgOCR.ConfidenceThreshold)
 }
 
 // --- HasMatchingExtractor ---
 
 func TestHasMatchingExtractor_Tesseract_PDF(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	got := HasMatchingExtractor(extractors, "tesseract", "application/pdf")
 	assert.Equal(t, OCRAvailable(), got)
 }
 
 func TestHasMatchingExtractor_Tesseract_Image(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	got := HasMatchingExtractor(extractors, "tesseract", "image/png")
 	assert.Equal(t, ImageOCRAvailable(), got)
 }
 
 func TestHasMatchingExtractor_Pdftotext(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	got := HasMatchingExtractor(extractors, "pdftotext", "application/pdf")
 	assert.Equal(t, HasPDFToText(), got)
 }
 
 func TestHasMatchingExtractor_NoMatch(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	assert.False(t, HasMatchingExtractor(extractors, "tesseract", "text/plain"))
 	assert.False(t, HasMatchingExtractor(extractors, "pdftotext", "image/png"))
 	assert.False(t, HasMatchingExtractor(extractors, "nonexistent", "application/pdf"))
@@ -231,21 +219,21 @@ func TestHasMatchingExtractor_NoMatch(t *testing.T) {
 
 func TestNeedsOCR_PDF(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	got := NeedsOCR(extractors, "application/pdf")
 	assert.Equal(t, OCRAvailable(), got)
 }
 
 func TestNeedsOCR_Image(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	got := NeedsOCR(extractors, "image/png")
 	assert.Equal(t, ImageOCRAvailable(), got)
 }
 
 func TestNeedsOCR_PlainText(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 0, true, 0)
+	extractors := DefaultExtractors(0, 0, true)
 	assert.False(t, NeedsOCR(extractors, "text/plain"))
 }
 
@@ -260,7 +248,7 @@ func TestNeedsOCR_NoOCRExtractors(t *testing.T) {
 
 func TestExtractorTimeout(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(0, 42, true, 0)
+	extractors := DefaultExtractors(0, 42, true)
 	assert.Equal(t, time.Duration(42), ExtractorTimeout(extractors))
 }
 
@@ -272,7 +260,7 @@ func TestExtractorTimeout_NoPDFText(t *testing.T) {
 
 func TestExtractorMaxPages(t *testing.T) {
 	t.Parallel()
-	extractors := DefaultExtractors(15, 0, true, 0)
+	extractors := DefaultExtractors(15, 0, true)
 	assert.Equal(t, 15, ExtractorMaxPages(extractors))
 }
 

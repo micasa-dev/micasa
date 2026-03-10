@@ -32,12 +32,10 @@ type Extractor interface {
 // pdftotext, plaintext, PDF OCR, image OCR. maxPages of 0 means no limit
 // (all pages). Zero timeout causes the concrete extractor to use its default.
 // ocrEnabled controls whether OCR extractors are included (default true).
-// confidenceThreshold filters OCR words below this confidence (0 = no filter).
 func DefaultExtractors(
 	maxPages int,
 	timeout time.Duration,
 	ocrEnabled bool,
-	confidenceThreshold int,
 ) []Extractor {
 	ext := []Extractor{
 		&PDFTextExtractor{Timeout: timeout},
@@ -45,8 +43,8 @@ func DefaultExtractors(
 	}
 	if ocrEnabled {
 		ext = append(ext,
-			&PDFOCRExtractor{MaxPages: maxPages, ConfidenceThreshold: confidenceThreshold},
-			&ImageOCRExtractor{ConfidenceThreshold: confidenceThreshold},
+			&PDFOCRExtractor{MaxPages: maxPages},
+			&ImageOCRExtractor{},
 		)
 	}
 	return ext
@@ -153,8 +151,7 @@ func (e *PlainTextExtractor) Extract(_ context.Context, data []byte) (TextSource
 
 // PDFOCRExtractor wraps ocrPDF for scanned PDF pages.
 type PDFOCRExtractor struct {
-	MaxPages            int
-	ConfidenceThreshold int
+	MaxPages int
 }
 
 func (e *PDFOCRExtractor) Tool() string             { return "tesseract" }
@@ -169,10 +166,6 @@ func (e *PDFOCRExtractor) Extract(ctx context.Context, data []byte) (TextSource,
 	if err != nil {
 		return TextSource{}, err
 	}
-	if e.ConfidenceThreshold > 0 {
-		tsv = filterTSVByConfidence(tsv, e.ConfidenceThreshold)
-		text = textFromTSV(tsv)
-	}
 	return TextSource{
 		Tool: "tesseract",
 		Desc: "Text recognized from rasterized page images. Covers scanned pages that pdftotext misses, but may contain OCR errors.",
@@ -182,9 +175,7 @@ func (e *PDFOCRExtractor) Extract(ctx context.Context, data []byte) (TextSource,
 }
 
 // ImageOCRExtractor wraps ocrImage for direct image OCR.
-type ImageOCRExtractor struct {
-	ConfidenceThreshold int
-}
+type ImageOCRExtractor struct{}
 
 func (e *ImageOCRExtractor) Tool() string             { return "tesseract" }
 func (e *ImageOCRExtractor) Matches(mime string) bool { return IsImageMIME(mime) }
@@ -197,10 +188,6 @@ func (e *ImageOCRExtractor) Extract(ctx context.Context, data []byte) (TextSourc
 	text, tsv, err := ocrImage(ctx, data)
 	if err != nil {
 		return TextSource{}, err
-	}
-	if e.ConfidenceThreshold > 0 {
-		tsv = filterTSVByConfidence(tsv, e.ConfidenceThreshold)
-		text = textFromTSV(tsv)
 	}
 	return TextSource{
 		Tool: "tesseract",

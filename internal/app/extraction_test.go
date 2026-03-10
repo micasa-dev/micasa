@@ -2842,3 +2842,103 @@ func TestAccept_DeferredDoc_WorksWithoutLLMStep(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "better ocr text", full.ExtractedText)
 }
+
+// --- TSV toggle ---
+
+func TestExtractionTSVToggle_TogglesOCRTSV(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+
+	assert.False(t, m.ex.ocrTSV, "ocrTSV should start false in test setup")
+
+	// Press t to toggle layout on.
+	sendExtractionKey(m, keyT)
+	assert.True(t, m.ex.ocrTSV, "t should toggle ocrTSV on")
+
+	// LLM step should be reset for rerun.
+	assert.Equal(t, stepRunning, ex.Steps[stepLLM].Status,
+		"LLM step should be rerunning after toggle")
+}
+
+func TestExtractionTSVToggle_TogglesOff(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	m.ex.ocrTSV = true
+
+	sendExtractionKey(m, keyT)
+	assert.False(t, m.ex.ocrTSV, "t should toggle ocrTSV off")
+}
+
+func TestExtractionTSVToggle_IgnoredWhenNotDone(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepRunning,
+		stepLLM:     stepPending,
+	})
+
+	sendExtractionKey(m, keyT)
+	assert.False(t, m.ex.ocrTSV, "t should be ignored when extraction is not done")
+}
+
+func TestExtractionTSVToggle_IgnoredWithoutLLM(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+
+	sendExtractionKey(m, keyT)
+	assert.False(t, m.ex.ocrTSV, "t should be ignored when no LLM step")
+}
+
+func TestExtractionTSVToggle_StatusMessage(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+
+	sendExtractionKey(m, keyT)
+	assert.Contains(t, m.status.Text, "layout on")
+
+	// Simulate LLM completing again so we can toggle off.
+	ex.Done = true
+	ex.Steps[stepLLM] = extractionStepInfo{Status: stepDone}
+
+	sendExtractionKey(m, keyT)
+	assert.Contains(t, m.status.Text, "layout off")
+}
+
+func TestExtractionTSVToggle_HintShownInFooter(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	m.width = 120
+	m.height = 40
+
+	view := m.View()
+	assert.Contains(t, view, "layout", "footer should show layout hint when done with LLM")
+}

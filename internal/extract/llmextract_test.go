@@ -208,6 +208,202 @@ func TestBuildExtractionPrompt_ContainsFewShotExamples(t *testing.T) {
 	assert.Contains(t, sys, "Midwest Home Inspectors")
 }
 
+// --- OCR TSV prompt tests ---
+
+// sampleTSV is a minimal tesseract TSV fragment for testing.
+const sampleTSV = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
+	"1\t1\t1\t1\t1\t1\t100\t200\t50\t20\t95\tInvoice\n" +
+	"1\t1\t1\t1\t1\t2\t160\t200\t40\t20\t92\t#1042\n"
+
+func TestBuildExtractionPrompt_SpatialSentWhenEnabled(t *testing.T) {
+	t.Parallel()
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "scan.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: DefaultOCRConfThreshold,
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR text.", Text: "Invoice #1042", Data: []byte(sampleTSV)},
+		},
+	})
+
+	require.Len(t, msgs, 2)
+	user := msgs[1].Content
+	// Compact spatial format should appear with bounding boxes.
+	assert.Contains(t, user, "[100,200,")
+	assert.Contains(t, user, "Invoice #1042")
+	// Raw TSV header should NOT appear.
+	assert.NotContains(t, user, "level\tpage_num")
+	// Confidence 92 is above threshold 70, so no confidence annotation on the data line.
+	assert.NotContains(t, user, ";92]")
+}
+
+func TestBuildExtractionPrompt_SpatialNotSentByDefault(t *testing.T) {
+	t.Parallel()
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:    1,
+		Filename: "scan.pdf",
+		MIME:     "application/pdf",
+		// SendTSV defaults to false.
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR text.", Text: "Invoice #1042", Data: []byte(sampleTSV)},
+		},
+	})
+
+	require.Len(t, msgs, 2)
+	user := msgs[1].Content
+	// Plain text should appear.
+	assert.Contains(t, user, "Invoice #1042")
+	// No bounding box annotations.
+	assert.NotContains(t, user, "[100,200,")
+}
+
+func TestBuildExtractionPrompt_SpatialMixedSources(t *testing.T) {
+	t.Parallel()
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "mixed.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: DefaultOCRConfThreshold,
+		Sources: []TextSource{
+			{Tool: "pdftotext", Desc: "Digital text.", Text: "Digital text from pages 1-2"},
+			{Tool: "tesseract", Desc: "OCR text.", Text: "OCR words", Data: []byte(sampleTSV)},
+		},
+	})
+
+	require.Len(t, msgs, 2)
+	user := msgs[1].Content
+	// pdftotext source should still use plain text (no TSV data).
+	assert.Contains(t, user, "Digital text from pages 1-2")
+	// tesseract source should use compact spatial format.
+	assert.Contains(t, user, "[100,200,")
+	assert.Contains(t, user, "Invoice #1042")
+	// The reconstructed plain text for the OCR source should NOT appear.
+	assert.NotContains(t, user, "OCR words")
+}
+
+func TestBuildExtractionPrompt_TSVColumnHintIncluded(t *testing.T) {
+	t.Parallel()
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "scan.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: DefaultOCRConfThreshold,
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR.", Text: "word", Data: []byte(sampleTSV)},
+		},
+	})
+
+	require.Len(t, msgs, 2)
+	user := msgs[1].Content
+	// Should include a hint about how to interpret spatial layout annotations.
+	assert.Contains(t, user, "left,top,width")
+	assert.Contains(t, user, "spatial layout")
+}
+
+func TestBuildExtractionPrompt_TSVSourceWithoutData(t *testing.T) {
+	t.Parallel()
+	// A tesseract source with no Data field should fall back to plain text
+	// even when SendTSV is true.
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "scan.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: DefaultOCRConfThreshold,
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR.", Text: "Fallback text"},
+		},
+	})
+
+	require.Len(t, msgs, 2)
+	user := msgs[1].Content
+	assert.Contains(t, user, "Fallback text")
+}
+
+func TestBuildExtractionPrompt_SpatialFallbackOnEmptyTSV(t *testing.T) {
+	t.Parallel()
+	// TSV with only a header (no data rows) should fall back to plain text.
+	headerOnlyTSV := "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "scan.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: DefaultOCRConfThreshold,
+		Sources: []TextSource{
+			{
+				Tool: "tesseract",
+				Desc: "OCR.",
+				Text: "Fallback plain text",
+				Data: []byte(headerOnlyTSV),
+			},
+		},
+	})
+
+	require.Len(t, msgs, 2)
+	user := msgs[1].Content
+	assert.Contains(t, user, "Fallback plain text",
+		"should fall back to plain text when TSV conversion yields empty")
+	assert.NotContains(t, user, "[",
+		"no bounding boxes when falling back to plain text")
+}
+
+func TestBuildExtractionPrompt_TSVPreambleMentionsSpatial(t *testing.T) {
+	t.Parallel()
+	msgs := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "scan.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: DefaultOCRConfThreshold,
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR.", Text: "word", Data: []byte(sampleTSV)},
+		},
+	})
+
+	require.Len(t, msgs, 2)
+	sys := msgs[0].Content
+	// System prompt should mention spatial layout when TSV is enabled.
+	assert.Contains(t, sys, "spatial")
+}
+
+func TestBuildExtractionPrompt_ConfThresholdThreaded(t *testing.T) {
+	t.Parallel()
+	// sampleTSV has confidence 95 and 92. With threshold 96, the line
+	// should show confidence (min 92 < 96). With threshold 70, it should not.
+	msgsHigh := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "scan.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: 96,
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR.", Text: "Invoice #1042", Data: []byte(sampleTSV)},
+		},
+	})
+	require.Len(t, msgsHigh, 2)
+	assert.Contains(t, msgsHigh[1].Content, ";92]",
+		"confidence should appear when min conf (92) < threshold (96)")
+
+	msgsLow := BuildExtractionPrompt(ExtractionPromptInput{
+		DocID:         1,
+		Filename:      "scan.pdf",
+		MIME:          "application/pdf",
+		SendTSV:       true,
+		ConfThreshold: 70,
+		Sources: []TextSource{
+			{Tool: "tesseract", Desc: "OCR.", Text: "Invoice #1042", Data: []byte(sampleTSV)},
+		},
+	})
+	require.Len(t, msgsLow, 2)
+	assert.NotContains(t, msgsLow[1].Content, ";92]",
+		"confidence should not appear when min conf (92) >= threshold (70)")
+}
+
 // --- Schema context formatting tests ---
 
 func TestFormatDDLBlock(t *testing.T) {

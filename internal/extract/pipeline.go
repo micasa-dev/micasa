@@ -15,10 +15,12 @@ import (
 // OCR, and LLM-powered structured extraction. Each layer is independent
 // and gracefully degrades when its dependencies are unavailable.
 type Pipeline struct {
-	LLMClient  *llm.Client   // nil = skip LLM extraction
-	Extractors []Extractor   // nil = DefaultExtractors(0, 0, true, 0)
-	Schema     SchemaContext // DDL + entity rows for prompt
-	DocID      uint          // document ID for UPDATE operations
+	LLMClient     *llm.Client   // nil = skip LLM extraction
+	Extractors    []Extractor   // nil = DefaultExtractors(0, 0, true)
+	Schema        SchemaContext // DDL + entity rows for prompt
+	DocID         uint          // document ID for UPDATE operations
+	SendTSV       bool          // send spatial layout annotations to LLM
+	ConfThreshold int           // confidence threshold for spatial annotations
 }
 
 // Result holds the output of a pipeline run.
@@ -72,7 +74,7 @@ func (p *Pipeline) Run(
 
 	extractors := p.Extractors
 	if extractors == nil {
-		extractors = DefaultExtractors(0, 0, true, 0)
+		extractors = DefaultExtractors(0, 0, true)
 	}
 
 	// Run all matching, available extractors.
@@ -121,12 +123,14 @@ func (p *Pipeline) extractWithLLM(
 	sizeBytes int64,
 ) ([]Operation, string, error) {
 	messages := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:     p.DocID,
-		Filename:  filename,
-		MIME:      mime,
-		SizeBytes: sizeBytes,
-		Schema:    p.Schema,
-		Sources:   sources,
+		DocID:         p.DocID,
+		Filename:      filename,
+		MIME:          mime,
+		SizeBytes:     sizeBytes,
+		Schema:        p.Schema,
+		Sources:       sources,
+		SendTSV:       p.SendTSV,
+		ConfThreshold: p.ConfThreshold,
 	})
 
 	raw, err := p.LLMClient.ChatComplete(

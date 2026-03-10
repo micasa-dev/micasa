@@ -638,6 +638,7 @@ func TestEnvVars(t *testing.T) {
 
 		"MICASA_EXTRACTION_OCR_ENABLE":               "extraction.ocr.enable",
 		"MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD": "extraction.ocr.confidence_threshold",
+		"MICASA_EXTRACTION_OCR_TSV":                  "extraction.ocr.tsv",
 
 		"MICASA_LOCALE_CURRENCY": "locale.currency",
 
@@ -787,15 +788,15 @@ func TestOCRDefaults(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 	assert.True(t, cfg.Extraction.IsOCREnabled())
-	assert.Equal(t, 0, cfg.Extraction.OCR.ConfidenceThreshold)
+	assert.Equal(t, 70, cfg.Extraction.OCRConfThreshold())
 }
 
 func TestOCRFromFile(t *testing.T) {
-	path := writeConfig(t, "[extraction.ocr]\nenable = false\nconfidence_threshold = 70\n")
+	path := writeConfig(t, "[extraction.ocr]\nenable = false\nconfidence_threshold = 50\n")
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
 	assert.False(t, cfg.Extraction.IsOCREnabled())
-	assert.Equal(t, 70, cfg.Extraction.OCR.ConfidenceThreshold)
+	assert.Equal(t, 50, cfg.Extraction.OCRConfThreshold())
 }
 
 func TestOCREnvOverrides(t *testing.T) {
@@ -804,7 +805,7 @@ func TestOCREnvOverrides(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 	assert.False(t, cfg.Extraction.IsOCREnabled())
-	assert.Equal(t, 80, cfg.Extraction.OCR.ConfidenceThreshold)
+	assert.Equal(t, 80, cfg.Extraction.OCRConfThreshold())
 }
 
 func TestOCRConfidenceThresholdValidation(t *testing.T) {
@@ -1426,6 +1427,44 @@ func TestResolvedFilePickerDir_EmptyFallsBackToDownloadsOrCwd(t *testing.T) {
 	d := Documents{}
 	result := d.ResolvedFilePickerDir()
 	assert.NotEmpty(t, result)
+}
+
+// --- OCR TSV ---
+
+func TestExtractionOCRTSVDefaultTrue(t *testing.T) {
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.True(t, cfg.Extraction.IsOCRTSV(),
+		"OCR TSV should default to true")
+}
+
+func TestExtractionOCRTSVFromTOML(t *testing.T) {
+	path := writeConfig(t, "[extraction.ocr]\ntsv = true\n")
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.True(t, cfg.Extraction.IsOCRTSV())
+}
+
+func TestExtractionOCRTSVFromTOMLFalse(t *testing.T) {
+	path := writeConfig(t, "[extraction.ocr]\ntsv = false\n")
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Extraction.IsOCRTSV())
+}
+
+func TestExtractionOCRTSVFromEnv(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_OCR_TSV", "true")
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.True(t, cfg.Extraction.IsOCRTSV())
+}
+
+func TestExtractionOCRTSVEnvInvalidReturnsError(t *testing.T) {
+	t.Setenv("MICASA_EXTRACTION_OCR_TSV", "maybe")
+	_, err := LoadFromPath(noConfig(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MICASA_EXTRACTION_OCR_TSV")
+	assert.Contains(t, err.Error(), "expected true or false")
 }
 
 func TestFilePickerDir_FromTOML(t *testing.T) {

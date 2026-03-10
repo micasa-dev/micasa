@@ -94,6 +94,8 @@ type extractState struct {
 	extractionTimeout   time.Duration
 	extractionThinking  string
 	extractionEnabled   bool
+	ocrTSV              bool
+	ocrConfThreshold    int
 	extractionClient    *llm.Client
 	extractors          []extract.Extractor
 	extractionReady     bool
@@ -292,8 +294,10 @@ type extractionConfig struct {
 	Thinking            string // reasoning effort level
 	LLMInferenceTimeout time.Duration
 
-	Extractors []extract.Extractor // configured extractors; nil = defaults
-	Enabled    bool                // LLM extraction enabled
+	Extractors       []extract.Extractor // configured extractors; nil = defaults
+	Enabled          bool                // LLM extraction enabled
+	OCRTSV           bool                // send spatial layout annotations to LLM
+	OCRConfThreshold int                 // confidence threshold for spatial annotations
 }
 
 // SetExtraction configures the extraction pipeline on the Options.
@@ -304,6 +308,8 @@ func (o *Options) SetExtraction(
 	extractors []extract.Extractor,
 	enabled bool,
 	llmInferenceTimeout time.Duration,
+	ocrTSV bool,
+	ocrConfThreshold int,
 ) {
 	o.ExtractionConfig = extractionConfig{
 		Provider:            provider,
@@ -315,6 +321,8 @@ func (o *Options) SetExtraction(
 		LLMInferenceTimeout: llmInferenceTimeout,
 		Extractors:          extractors,
 		Enabled:             enabled,
+		OCRTSV:              ocrTSV,
+		OCRConfThreshold:    ocrConfThreshold,
 	}
 }
 

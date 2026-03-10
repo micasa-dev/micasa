@@ -273,6 +273,8 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			extractionTimeout:   options.ExtractionConfig.Timeout,
 			extractionThinking:  options.ExtractionConfig.Thinking,
 			extractionEnabled:   options.ExtractionConfig.Enabled,
+			ocrTSV:              options.ExtractionConfig.OCRTSV,
+			ocrConfThreshold:    options.ExtractionConfig.OCRConfThreshold,
 			extractors:          options.ExtractionConfig.Extractors,
 			llmInferenceTimeout: options.ExtractionConfig.LLMInferenceTimeout,
 		},

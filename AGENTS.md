@@ -205,6 +205,10 @@ details; do not duplicate that detail here.
 
 ### Git and CI
 
+- **Reply to PR review comments**: After addressing a PR review comment,
+  reply to the comment on GitHub (via `gh api .../replies`) explaining
+  how it was addressed (commit hash, what changed, tests added). Do this
+  for every comment, not just some.
 - **Never use `git commit --no-verify`**: No exceptions. Fix every hook
   failure before committing.
 - **Treat all linter/compiler warnings as bugs**: Fix all warnings from
