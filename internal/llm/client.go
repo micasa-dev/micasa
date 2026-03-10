@@ -171,7 +171,7 @@ func (t *numCtxTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.Method == http.MethodPost && req.Body != nil &&
 		strings.HasSuffix(req.URL.Path, "/api/chat") {
 		body, err := io.ReadAll(req.Body)
-		req.Body.Close()
+		_ = req.Body.Close()
 		if err != nil {
 			return nil, fmt.Errorf("read request body: %w", err)
 		}
@@ -187,7 +187,11 @@ func (t *numCtxTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Body = io.NopCloser(bytes.NewReader(body))
 		req.ContentLength = int64(len(body))
 	}
-	return t.base.RoundTrip(req)
+	resp, err := t.base.RoundTrip(req)
+	if err != nil {
+		return nil, fmt.Errorf("num_ctx transport: %w", err)
+	}
+	return resp, nil
 }
 
 func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) {

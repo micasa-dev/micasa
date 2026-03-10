@@ -833,7 +833,10 @@ func TestNumCtxTransport(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/chat" {
 			var body map[string]any
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 			captured = body
 			jsonResponse(w, `{"done":true,"message":{"role":"assistant","content":"hi"}}`)
 			return
@@ -854,7 +857,7 @@ func TestNumCtxTransport(t *testing.T) {
 	require.True(t, ok, "expected options in request body")
 	numCtx, ok := opts["num_ctx"].(float64)
 	require.True(t, ok, "expected num_ctx in options")
-	assert.Equal(t, float64(65536), numCtx)
+	assert.InDelta(t, 65536, numCtx, 0.1)
 }
 
 func TestNumCtxTransport_ZeroUsesDefault(t *testing.T) {
@@ -863,7 +866,10 @@ func TestNumCtxTransport_ZeroUsesDefault(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/chat" {
 			var body map[string]any
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 			captured = body
 			jsonResponse(w, `{"done":true,"message":{"role":"assistant","content":"hi"}}`)
 			return
@@ -884,7 +890,7 @@ func TestNumCtxTransport_ZeroUsesDefault(t *testing.T) {
 	require.True(t, ok)
 	numCtx, ok := opts["num_ctx"].(float64)
 	require.True(t, ok)
-	assert.Equal(t, float64(32000), numCtx, "should use library default when numCtx=0")
+	assert.InDelta(t, 32000, numCtx, 0.1, "should use library default when numCtx=0")
 }
 
 // mockModelLister is a minimal anyllm.ModelLister for synctest-based timeout

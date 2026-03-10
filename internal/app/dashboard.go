@@ -1003,7 +1003,9 @@ func (m *Model) fetchInsights() tea.Cmd {
 	store := m.store
 	extraContext := m.llmExtraContext
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(
+		context.Background(),
+	) //nolint:gosec // cancel stored in m.dash.insights.cancel
 	m.dash.insights.cancel = cancel
 
 	return func() tea.Msg {
