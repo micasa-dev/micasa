@@ -111,18 +111,19 @@ You can always infer the env var name from the config key.
 | `MICASA_LLM_MODEL` | `qwen3` | `llm.model` | LLM model name |
 | `MICASA_LLM_API_KEY` | (empty) | `llm.api_key` | LLM API key for cloud providers |
 | `MICASA_LLM_EXTRA_CONTEXT` | (empty) | `llm.extra_context` | Custom context appended to LLM system prompts |
-| `MICASA_LLM_TIMEOUT` | `5s` | `llm.timeout` | LLM operation timeout |
+| `MICASA_LLM_TIMEOUT` | `5m` | `llm.timeout` | Max time for a single LLM response |
 | `MICASA_LLM_THINKING` | (unset) | `llm.thinking` | Enable model thinking for chat |
 | `MICASA_DOCUMENTS_MAX_FILE_SIZE` | `50 MiB` | `documents.max_file_size` | Max document import size |
 | `MICASA_DOCUMENTS_CACHE_TTL` | `30d` | `documents.cache_ttl` | Document cache lifetime |
 | `MICASA_DOCUMENTS_CACHE_TTL_DAYS` | -- | `documents.cache_ttl_days` | Deprecated; use `MICASA_DOCUMENTS_CACHE_TTL` |
 | `MICASA_DOCUMENTS_FILE_PICKER_DIR` | (Downloads) | `documents.file_picker_dir` | Starting directory for the file picker |
 | `MICASA_EXTRACTION_MODEL` | (chat model) | `extraction.model` | LLM model for document extraction |
-| `MICASA_EXTRACTION_ENABLED` | `true` | `extraction.enabled` | Enable/disable LLM extraction |
+| `MICASA_EXTRACTION_ENABLE` | `true` | `extraction.enable` | Enable/disable LLM extraction |
 | `MICASA_EXTRACTION_THINKING` | `false` | `extraction.thinking` | Enable model thinking for extraction |
-| `MICASA_EXTRACTION_TEXT_TIMEOUT` | `30s` | `extraction.text_timeout` | pdftotext timeout |
 | `MICASA_EXTRACTION_MAX_PAGES` | `0` | `extraction.max_pages` | Max pages to OCR per document (0 = no limit) |
 | `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | `extraction.llm_timeout` | LLM extraction timeout |
+| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | `extraction.ocr.enable` | Enable/disable OCR on documents |
+| `MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD` | `0` | `extraction.ocr.confidence_threshold` | Min tesseract confidence (0-100) |
 | `MICASA_LOCALE_CURRENCY` | (auto-detect) | `locale.currency` | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
 
 {{% details title="Deprecated env var names" closed="true" %}}
@@ -139,8 +140,8 @@ warning. They will be removed in a future release.
 | `MICASA_CURRENCY` | `MICASA_LOCALE_CURRENCY` |
 | `MICASA_EXTRACTION_MAX_EXTRACT_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
 | `MICASA_MAX_EXTRACT_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
-| `MICASA_TEXT_TIMEOUT` | `MICASA_EXTRACTION_TEXT_TIMEOUT` |
 | `MICASA_MAX_OCR_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
+| `MICASA_EXTRACTION_ENABLED` | `MICASA_EXTRACTION_ENABLE` |
 | `MICASA_EXTRACTION_MODEL` | `MICASA_LLM_EXTRACTION_MODEL` |
 | `MICASA_EXTRACTION_THINKING` | `MICASA_LLM_EXTRACTION_THINKING` |
 
@@ -177,12 +178,12 @@ micasa   # uses llama3.3 instead of the default qwen3
 
 ### `MICASA_LLM_TIMEOUT`
 
-Sets the LLM timeout for quick operations (ping, model listing), overriding
-the config file value. Uses Go duration syntax:
+Sets the maximum time for a single LLM response (including streaming),
+overriding the config file value. Uses Go duration syntax:
 
 ```sh
-export MICASA_LLM_TIMEOUT=15s
-micasa   # waits up to 15s for LLM server responses
+export MICASA_LLM_TIMEOUT=10m
+micasa   # waits up to 10m for LLM responses
 ```
 
 ### `MICASA_DOCUMENTS_MAX_FILE_SIZE`
@@ -278,10 +279,10 @@ model = "qwen3"
 # Use this to inject domain-specific details about your house, region, etc.
 # extra_context = "My house is a 1920s craftsman in Portland, OR."
 
-# Timeout for quick LLM server operations (ping, model listing).
-# Go duration syntax: "5s", "10s", "500ms", etc. Default: "5s".
-# Increase if your LLM server is slow to respond.
-# timeout = "5s"
+# Max time for a single LLM response (including streaming).
+# Go duration syntax: "5m", "10m", etc. Default: "5m".
+# Increase for slow models or complex queries.
+# timeout = "5m"
 
 # Enable model thinking mode for chat (e.g. qwen3 <think> blocks).
 # Unset = don't send (server default), true = enable, false = disable.
@@ -301,10 +302,6 @@ model = "qwen3"
 # Model for document extraction. Defaults to llm.model. Extraction works well
 # with small, fast models optimized for structured JSON output.
 # model = "qwen2.5:7b"
-
-# Timeout for pdftotext. Go duration syntax: "30s", "1m", etc. Default: "30s".
-# Increase if you routinely process very large PDFs.
-# text_timeout = "30s"
 
 # Maximum pages to OCR for scanned documents. 0 = no limit. Default: 0.
 # max_pages = 0
@@ -338,7 +335,7 @@ set in `[llm.chat]` and `[llm.extraction]`.
 | `model` | string | `qwen3` | Model identifier sent in chat requests. Must be available on the server. |
 | `api_key` | string | (empty) | Authentication credential. Required for cloud providers (Anthropic, OpenAI, etc.). Leave empty for local servers. |
 | `extra_context` | string | (empty) | Free-form text appended to all LLM system prompts. Useful for telling the model about your house or regional conventions. Currency is handled automatically via `[locale]`. |
-| `timeout` | string | `"5s"` | Max wait time for quick LLM operations (ping, model listing). Go duration syntax, e.g. `"10s"`, `"500ms"`. Increase for slow servers. |
+| `timeout` | string | `"5m"` | Max time for a single LLM response (including streaming). Go duration syntax, e.g. `"10m"`. Increase for slow models. |
 | `thinking` | bool | (unset) | Enable model thinking mode (e.g. qwen3 `<think>` blocks). Unset = don't send the option (server default). |
 
 ### `[llm.chat]` section
@@ -391,10 +388,19 @@ dates, vendor matching) from uploaded documents.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `model` | string | (chat model) | **Deprecated.** Use `[llm.extraction] model` instead. Falls back to `llm.model` if empty. |
-| `text_timeout` | string | `"30s"` | Max time for `pdftotext` to run. Go duration syntax, e.g. `"1m"`. Increase for very large PDFs. |
 | `max_pages` | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
-| `enabled` | bool | `true` | Set to `false` to disable LLM-powered extraction. When disabled, no structured data is extracted from documents. |
+| `enable` | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run (see `[extraction.ocr]`). |
+| `enabled` | bool | -- | **Deprecated.** Use `enable` instead. |
 | `thinking` | bool | `false` | **Deprecated.** Use `[llm.extraction] thinking` instead. |
+
+### `[extraction.ocr]` section
+
+OCR sub-pipeline settings. Requires `tesseract` and `pdftocairo`.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enable` | bool | `true` | Set to `false` to disable OCR on documents. When disabled, scanned pages and images produce no text. |
+| `confidence_threshold` | int | `0` | Minimum tesseract word confidence (0-100) to keep. Words below this threshold are dropped. 0 means no filtering. |
 
 ### `[locale]` section
 

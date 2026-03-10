@@ -367,6 +367,33 @@ func atoi(b []byte) int {
 	return n
 }
 
+// filterTSVByConfidence removes rows from tesseract TSV output whose
+// confidence (column 10) is below the threshold.
+func filterTSVByConfidence(tsv []byte, threshold int) []byte {
+	lines := bytes.Split(tsv, []byte("\n"))
+	if len(lines) < 2 {
+		return tsv
+	}
+	var out bytes.Buffer
+	out.Write(lines[0]) // header
+	out.WriteByte('\n')
+	for _, line := range lines[1:] {
+		if len(line) == 0 {
+			continue
+		}
+		fields := bytes.Split(line, []byte("\t"))
+		if len(fields) < 12 {
+			continue
+		}
+		conf := atoi(fields[10])
+		if conf >= threshold {
+			out.Write(line)
+			out.WriteByte('\n')
+		}
+	}
+	return out.Bytes()
+}
+
 // IsImageMIME reports whether the MIME type is an image format that
 // tesseract can process.
 func IsImageMIME(mime string) bool {

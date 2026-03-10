@@ -38,8 +38,7 @@ func TestShowConfigDefaults(t *testing.T) {
 	assert.Contains(t, out, `max_file_size = "50 MiB"`)
 	assert.Contains(t, out, `cache_ttl = "30d"`)
 	assert.Contains(t, out, "max_pages = 0")
-	assert.Contains(t, out, "enabled = true")
-	assert.Contains(t, out, `text_timeout = "30s"`)
+	assert.Contains(t, out, "enable = true")
 
 	assert.NotContains(t, out, "cache_ttl_days")
 	assert.NotContains(t, out, "[llm.chat]")
@@ -63,7 +62,7 @@ cache_ttl = "7d"
 
 [extraction]
 max_pages = 10
-enabled = false
+enable = false
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -95,8 +94,7 @@ cache_ttl = "7d"
 
 [extraction]
 max_pages = 10
-enabled = false
-text_timeout = "1m"
+enable = false
 `)
 	orig, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -123,7 +121,6 @@ text_timeout = "1m"
 		parsed.Documents.CacheTTLDuration())
 	assert.Equal(t, orig.Extraction.MaxPages, parsed.Extraction.MaxPages)
 	assert.Equal(t, orig.Extraction.IsEnabled(), parsed.Extraction.IsEnabled())
-	assert.Equal(t, orig.Extraction.TextTimeout, parsed.Extraction.TextTimeout)
 
 	// API keys are hidden -- the parsed config must NOT have them.
 	assert.Empty(t, parsed.LLM.APIKey)
@@ -352,9 +349,12 @@ func TestFormatDuration(t *testing.T) {
 	}{
 		{0, "0s"},
 		{5 * time.Second, "5s"},
+		{5 * time.Minute, "5m"},
+		{90 * time.Minute, "90m"},
+		{2 * time.Hour, "2h"},
 		{30 * 24 * time.Hour, "30d"},
 		{7 * 24 * time.Hour, "7d"},
-		{90 * time.Minute, "1h30m0s"},
+		{90*time.Minute + 30*time.Second, "1h30m30s"},
 		{500 * time.Millisecond, "500ms"},
 	}
 	for _, tt := range tests {

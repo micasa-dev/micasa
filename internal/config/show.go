@@ -28,6 +28,7 @@ var hiddenPaths = map[string]bool{
 // "DEPRECATED: use <replacement>" warning.
 var deprecatedPaths = map[string]string{
 	"documents.cache_ttl_days": "documents.cache_ttl",
+	"extraction.enabled":       "extraction.enable",
 	"extraction.model":         "llm.extraction.model",
 	"extraction.thinking":      "llm.extraction.thinking",
 }
@@ -74,12 +75,13 @@ func (c Config) forDisplay() Config {
 		d.Documents.CacheTTL = &Duration{dur}
 	}
 	// CacheTTLDays preserved when user-set so the dump warns about it.
-	if d.Extraction.Enabled == nil {
+	if d.Extraction.Enable == nil {
 		t := true
-		d.Extraction.Enabled = &t
+		d.Extraction.Enable = &t
 	}
-	if d.Extraction.TextTimeout == "" {
-		d.Extraction.TextTimeout = DefaultTextTimeout.String()
+	if d.Extraction.OCR.Enable == nil {
+		t := true
+		d.Extraction.OCR.Enable = &t
 	}
 	if d.Locale.Currency == "" {
 		d.Locale.Currency = detectCurrencyCode()
@@ -335,16 +337,21 @@ func writeAligned(w io.Writer, blk sectionBlock) error {
 	return nil
 }
 
-// FormatDuration formats a duration in a human-friendly way, using day
-// notation for whole-day multiples.
+// FormatDuration formats a duration in a human-friendly way, using
+// clean notation for whole-unit multiples (days, hours, minutes).
 func FormatDuration(d time.Duration) string {
-	if d == 0 {
+	switch {
+	case d == 0:
 		return "0s"
-	}
-	if d%(24*time.Hour) == 0 {
+	case d%(24*time.Hour) == 0:
 		return fmt.Sprintf("%dd", d/(24*time.Hour))
+	case d%time.Hour == 0:
+		return fmt.Sprintf("%dh", d/time.Hour)
+	case d%time.Minute == 0:
+		return fmt.Sprintf("%dm", d/time.Minute)
+	default:
+		return d.String()
 	}
-	return d.String()
 }
 
 // formatTOMLValue formats a reflected value as a TOML value string.
