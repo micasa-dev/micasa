@@ -40,7 +40,19 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           sha=$(git rev-parse HEAD)
-          for check_name in "CI Result" "Lint Result" "Security Result"; do
+
+          # Fetch required check names from the branch ruleset
+          mapfile -t checks < <(
+            gh api "repos/${{ github.repository }}/rules/branches/main" \
+              --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | .[]'
+          )
+
+          if [ ${#checks[@]} -eq 0 ]; then
+            echo "::error::No required status checks found for main. Aborting release."
+            exit 1
+          fi
+
+          for check_name in "${checks[@]}"; do
             conclusion=$(gh api "repos/${{ github.repository }}/commits/$sha/check-runs" \
               --jq "[.check_runs[] | select(.name == \"$check_name\")] | sort_by(.completed_at) | last | .conclusion")
             if [ "$conclusion" != "success" ]; then
