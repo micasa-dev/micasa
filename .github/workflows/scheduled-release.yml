@@ -42,24 +42,27 @@ jobs:
           sha=$(git rev-parse HEAD)
 
           # Fetch required check names from the branch ruleset
-          mapfile -t checks < <(
-            gh api "repos/${{ github.repository }}/rules/branches/main" \
-              --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | .[]'
-          )
+          required=$(gh api "repos/${{ github.repository }}/rules/branches/main" \
+            --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context]')
 
-          if [ ${#checks[@]} -eq 0 ]; then
+          if [ "$(echo "$required" | jq 'length')" -eq 0 ]; then
             echo "::error::No required status checks found for main. Aborting release."
             exit 1
           fi
 
-          for check_name in "${checks[@]}"; do
-            conclusion=$(gh api "repos/${{ github.repository }}/commits/$sha/check-runs" \
-              --jq "[.check_runs[] | select(.name == \"$check_name\")] | sort_by(.completed_at) | last | .conclusion")
-            if [ "$conclusion" != "success" ]; then
-              echo "::error::HEAD ($sha) $check_name is '${conclusion:-none}', expected 'success'. Aborting release."
-              exit 1
-            fi
-          done
+          # Fetch all check runs for HEAD once, then verify each required check
+          gh api "repos/${{ github.repository }}/commits/$sha/check-runs" \
+            --jq '.check_runs | group_by(.name) | map(sort_by(.completed_at) | last | {name, conclusion})' \
+          | jq --argjson required "$required" -e '
+            ($required - [.[].name]) as $missing |
+            if ($missing | length) > 0 then
+              "::error::Missing checks for \($missing | join(", "))" | halt_error(1)
+            else . end |
+            map(select(.name as $n | $required | index($n))) |
+            map(select(.conclusion != "success")) |
+            if length > 0 then
+              map("::error::\(.name) is \(.conclusion // "none"), expected success") | .[] | halt_error(1)
+            else true end'
 
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
