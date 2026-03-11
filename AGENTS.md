@@ -223,7 +223,8 @@ details; do not duplicate that detail here.
 - **Treat all linter/compiler warnings as bugs**: Fix all warnings from
   `golangci-lint`, `staticcheck`, `golines`, or the compiler before
   committing.
-- **Pin Actions to version tags**: Use `@v3.93.1` not `@main`/`@latest`.
+- **Pin GitHub Actions to commit SHAs**: Use `actions/checkout@<sha> # v6`,
+  never `@main` or `@latest`.
 - **No `=` in CI go commands**: PowerShell misparses `=`. Use `-bench .`
   not `-bench=.`.
 - **Respect native shells in CI**: Don't switch Windows steps to `bash`.
@@ -252,7 +253,9 @@ details; do not duplicate that detail here.
   still reproduces, the tests are wrong. Do not game this by wildly
   mutating code just to satisfy the test -- fix the actual root cause.
 - **Use `testify/assert` and `testify/require`**: `require` for
-  preconditions, `assert` for assertions. No bare `t.Fatal`/`t.Error`.
+  preconditions, `assert` for assertions. Prefer `require`/`assert` over
+  bare `t.Fatal`/`t.Error` except for truly unreachable branches or
+  specialized test harness helpers.
 - **Test every error path**: Every function that can fail needs at least
   one test exercising that failure.
 - **Tests over test plans**: Write actual tests that ship with the PR.
