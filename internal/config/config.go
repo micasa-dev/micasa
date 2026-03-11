@@ -582,7 +582,8 @@ func (c Config) Get(key string) (string, error) {
 }
 
 // getField walks a struct value using dot-delimited TOML tag names and returns
-// the leaf value as a string.
+// the leaf value as a string. Returns an error if the key resolves to a
+// section (struct) rather than a scalar value.
 func getField(v reflect.Value, key string) (string, error) {
 	parts := strings.SplitN(key, ".", 2)
 	tag := parts[0]
@@ -605,6 +606,18 @@ func getField(v reflect.Value, key string) (string, error) {
 				return getField(fv.Elem(), parts[1])
 			}
 			return "", fmt.Errorf("key %q: %q is not a section", key, tag)
+		}
+
+		// Reject sections -- use "config get" (e.g., "micasa config get .") instead.
+		ft := f.Type
+		if ft.Kind() == reflect.Pointer {
+			ft = ft.Elem()
+		}
+		if isConfigSection(ft) {
+			return "", fmt.Errorf(
+				"%q is a config section, not a key -- use \"micasa config get\" or \"micasa config get .\" to see the full config",
+				key,
+			)
 		}
 
 		// Leaf field -- format the value.

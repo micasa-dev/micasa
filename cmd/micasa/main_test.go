@@ -147,36 +147,84 @@ func TestConfigCmd(t *testing.T) {
 	t.Parallel()
 	bin := buildTestBinary(t)
 
-	t.Run("LLMModel", func(t *testing.T) {
-		cmd := exec.CommandContext(
-			t.Context(),
-			bin,
-			"config",
-			"chat.llm.model",
-		)
+	t.Run("GetScalar", func(t *testing.T) {
+		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".chat.llm.model")
 		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config chat.llm.model failed: %s", out)
+		require.NoError(t, err, "config get .chat.llm.model failed: %s", out)
 		got := strings.TrimSpace(string(out))
 		assert.NotEmpty(t, got)
+		assert.NotContains(t, got, `"`, "scalar should not be JSON-quoted")
 	})
 
-	t.Run("UnknownKey", func(t *testing.T) {
-		cmd := exec.CommandContext(
-			t.Context(),
-			bin,
-			"config",
-			"bogus.key",
-		)
+	t.Run("GetSection", func(t *testing.T) {
+		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".chat.llm")
 		out, err := cmd.CombinedOutput()
-		require.Error(t, err)
-		assert.Contains(t, string(out), "unknown config key")
+		require.NoError(t, err, "config get .chat.llm failed: %s", out)
+		s := string(out)
+		assert.Contains(t, s, "model =")
+		assert.Contains(t, s, "provider =")
+		assert.NotContains(t, s, "api_key")
 	})
 
-	t.Run("MissingKey", func(t *testing.T) {
+	t.Run("GetNull", func(t *testing.T) {
+		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".bogus")
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "config get .bogus failed: %s", out)
+		assert.Equal(t, "null\n", string(out))
+	})
+
+	t.Run("GetKeys", func(t *testing.T) {
+		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".chat.llm | keys")
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "config get '.chat.llm | keys' failed: %s", out)
+		assert.Contains(t, string(out), `"model"`)
+	})
+
+	t.Run("GetDefaultShowConfig", func(t *testing.T) {
+		cmd := exec.CommandContext(t.Context(), bin, "config", "get")
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "config get (no filter) failed: %s", out)
+		assert.Contains(t, string(out), "[chat.llm]")
+		assert.Contains(t, string(out), "model =")
+	})
+
+	t.Run("GetDefaultViaConfig", func(t *testing.T) {
 		cmd := exec.CommandContext(t.Context(), bin, "config")
 		out, err := cmd.CombinedOutput()
-		require.Error(t, err)
-		assert.Contains(t, string(out), "provide a config key or use --dump")
+		require.NoError(t, err, "config (no args) failed: %s", out)
+		assert.Contains(t, string(out), "[chat.llm]")
+		assert.Contains(t, string(out), "model =")
+	})
+
+	t.Run("EditCreatesConfig", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cmd := exec.CommandContext(t.Context(), bin, "config", "edit")
+		cmd.Env = envWithEditor(tmpDir, noopEditor())
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "config edit failed: %s", out)
+
+		configPath := filepath.Join(tmpDir, "micasa", "config.toml")
+		info, statErr := os.Stat(configPath)
+		require.NoError(t, statErr, "config file should have been created")
+		assert.Positive(t, info.Size(), "config file should not be empty")
+	})
+
+	t.Run("EditExistingConfig", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		dir := filepath.Join(tmpDir, "micasa")
+		require.NoError(t, os.MkdirAll(dir, 0o750))
+		configPath := filepath.Join(dir, "config.toml")
+		original := "[locale]\ncurrency = \"EUR\"\n"
+		require.NoError(t, os.WriteFile(configPath, []byte(original), 0o600))
+
+		cmd := exec.CommandContext(t.Context(), bin, "config", "edit")
+		cmd.Env = envWithEditor(tmpDir, noopEditor())
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "config edit failed: %s", out)
+
+		content, readErr := os.ReadFile(configPath) //nolint:gosec // test reads its own temp file
+		require.NoError(t, readErr)
+		assert.Equal(t, original, string(content), "existing config should be untouched")
 	})
 }
 
@@ -349,4 +397,35 @@ func TestBackupCmd(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, string(out), "not a micasa database")
 	})
+}
+
+// noopEditor returns an editor command that exits 0 without modifying
+// any files. On Windows this uses "cmd /c echo" (ignores extra args
+// safely); on Unix it uses "true".
+func noopEditor() string {
+	if runtime.GOOS == "windows" {
+		return "cmd /c echo"
+	}
+	return "true"
+}
+
+// envWithEditor returns a copy of os.Environ() with EDITOR and VISUAL
+// replaced, and XDG_CONFIG_HOME set to configHome. This avoids the
+// first-occurrence-wins semantics that would let the parent's EDITOR
+// shadow the test's override.
+func envWithEditor(configHome, editor string) []string {
+	var env []string
+	for _, e := range os.Environ() {
+		if strings.HasPrefix(e, "EDITOR=") ||
+			strings.HasPrefix(e, "VISUAL=") ||
+			strings.HasPrefix(e, "XDG_CONFIG_HOME=") {
+			continue
+		}
+		env = append(env, e)
+	}
+	return append(env,
+		"XDG_CONFIG_HOME="+configHome,
+		"EDITOR="+editor,
+		"VISUAL="+editor,
+	)
 }

@@ -20,6 +20,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/cpcloud/micasa/internal/config"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
@@ -2852,8 +2853,12 @@ var tabKindIndex = func() map[TabKind]int {
 
 // editorBinary returns the user's preferred editor binary and any extra
 // arguments parsed from $EDITOR or $VISUAL (e.g. "code --wait" yields
-// binary="code", args=["--wait"]). The binary is resolved via exec.LookPath
-// to verify it exists and is executable.
+// binary="code", args=["--wait"]). On non-Windows platforms, the command
+// is split using POSIX shell-style parsing to handle quoted paths; on
+// Windows, config.SplitEditorCommand uses windows.DecomposeCommandLine to
+// support quoted paths and spaces, with a plain-whitespace split only as a
+// fallback if parsing fails. The binary is resolved via exec.LookPath to
+// verify it exists and is executable.
 func editorBinary() (string, []string, error) {
 	raw := os.Getenv("EDITOR")
 	if raw == "" {
@@ -2865,7 +2870,15 @@ func editorBinary() (string, []string, error) {
 		)
 	}
 
-	parts := strings.Fields(raw)
+	parts, err := config.SplitEditorCommand(raw)
+	if err != nil {
+		return "", nil, fmt.Errorf("parse editor command: %w", err)
+	}
+	if len(parts) == 0 {
+		return "", nil, errors.New(
+			"no editor configured: set $EDITOR or $VISUAL to an executable (e.g. export EDITOR=vim)",
+		)
+	}
 	bin, err := exec.LookPath(parts[0])
 	if err != nil {
 		return "", nil, fmt.Errorf(

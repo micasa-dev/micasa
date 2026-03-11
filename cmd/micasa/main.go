@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 
@@ -26,8 +27,8 @@ var version = "dev"
 type cli struct {
 	Run     runCmd           `cmd:"" default:"withargs" help:"Launch the TUI (default)."`
 	Backup  backupCmd        `cmd:""                    help:"Back up the database to a file."`
-	Config  configCmd        `cmd:""                    help:"Print config values or dump the full resolved config."`
-	Version kong.VersionFlag `                          help:"Show version and exit."                                name:"version"`
+	Config  configCmd        `cmd:""                    help:"Manage application configuration."`
+	Version kong.VersionFlag `                          help:"Show version and exit."            name:"version"`
 }
 
 type runCmd struct {
@@ -43,9 +44,15 @@ type backupCmd struct {
 }
 
 type configCmd struct {
-	Key  string `arg:"" optional:"" help:"Dot-delimited config key (e.g. chat.llm.model, documents.max_file_size)."`
-	Dump bool   `                   help:"Print the fully resolved config as TOML and exit."`
+	Get  configGetCmd  `cmd:"" default:"withargs" help:"Query config values with a jq filter (default: identity)."`
+	Edit configEditCmd `cmd:""                    help:"Open the config file in an editor."`
 }
+
+type configGetCmd struct {
+	Filter string `arg:"" optional:"" help:"jq filter expression, e.g. .chat.llm.model or .extraction (default: identity)."`
+}
+
+type configEditCmd struct{}
 
 func main() {
 	var c cli
@@ -203,22 +210,34 @@ func (cmd *runCmd) resolveDBPath() (string, error) {
 	return data.DefaultDBPath()
 }
 
-func (cmd *configCmd) Run() error {
-	if !cmd.Dump && cmd.Key == "" {
-		return fmt.Errorf("provide a config key or use --dump to print the full config")
-	}
+func (cmd *configGetCmd) Run() error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	if cmd.Dump {
-		return cfg.ShowConfig(os.Stdout)
+	return cfg.Query(os.Stdout, cmd.Filter)
+}
+
+func (cmd *configEditCmd) Run() error {
+	path := config.Path()
+	if err := config.EnsureConfigFile(path); err != nil {
+		return err
 	}
-	val, err := cfg.Get(cmd.Key)
+	name, args, err := config.EditorCommand(path)
 	if err != nil {
 		return err
 	}
-	fmt.Println(val)
+	c := exec.CommandContext( //nolint:gosec // user-controlled editor from $VISUAL/$EDITOR
+		context.Background(),
+		name,
+		args...,
+	)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("run editor: %w", err)
+	}
 	return nil
 }
 

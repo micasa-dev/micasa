@@ -1,7 +1,8 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
-Rebase onto the latest main, address PR review feedback, and fix failing CI.
+Rebase onto the latest main, then iterate until all review feedback is
+addressed and CI is green.
 
 ## 1. Rebase onto main
 
@@ -10,62 +11,53 @@ Rebase onto the latest main, address PR review feedback, and fix failing CI.
 3. If there are conflicts, resolve them, `git add` the resolved files, and
    `git rebase --continue`. Repeat until the rebase completes.
 
-## 2. Address PR review feedback and fix CI (parallel)
+## 2. Review-fix loop
 
-These two steps are independent -- start both in parallel.
+Repeat until there are **zero unresolved threads** and CI is green.
+Squash fixes into the relevant commit (fixup + autosquash) to keep
+history clean.
 
-### 2a. PR review feedback
+### 2a. Address unresolved review feedback
 
-1. Fetch unresolved review threads (use the GraphQL API for threaded context):
+1. Fetch unresolved review threads:
    ```
-   gh api graphql -f query='
-     query($owner:String!, $repo:String!, $pr:Int!) {
-       repository(owner:$owner, name:$repo) {
-         pullRequest(number:$pr) {
-           reviewThreads(first:100) {
-             nodes {
-               id
-               isResolved
-               comments(first:50) {
-                 nodes { id databaseId author{login} body path line }
-               }
-             }
-           }
-         }
-       }
-     }' -f owner=cpcloud -f repo=micasa \
-        -F pr="$(gh pr view --json number --jq '.number')"
+   gh api graphql \
+     -F query=@.claude/graphql/review-threads.graphql \
+     -f owner=cpcloud -f repo=micasa \
+     -F pr="$(gh pr view --json number --jq '.number')"
    ```
+   Filter to `isResolved == false`.
 2. For each **unresolved** thread:
-   - Read the referenced file and line to understand the context
-   - Make the requested change (or explain in a reply why not)
-   - After pushing the fix, reply to the review comment using its
-     `databaseId` from the query:
+   - Read the referenced file and line to understand the context.
+   - Make the requested change (or explain in a reply why not).
+   - Reply to the review comment using its `databaseId`:
      `gh api repos/cpcloud/micasa/pulls/<pr>/comments/<databaseId>/replies -f body='...'`
      Explain how it was addressed (commit hash, what changed).
-   - **Resolve the thread** if you are extremely confident the feedback
-     has been fully addressed. Use the GraphQL mutation:
+   - **Resolve the thread**:
      ```
-     gh api graphql -f query='
-       mutation($id:ID!) { resolveReviewThread(input:{threadId:$id}) {
-         thread { isResolved }
-       }}' -f id=<thread_node_id>
+     gh api graphql \
+       -F query=@.claude/graphql/resolve-thread.graphql \
+       -f id=<thread_node_id>
      ```
-     If there is any doubt the comment hasn't been fully addressed, leave
-     the thread open for the reviewer.
-3. Skip resolved threads -- they need no action.
+     Only leave a thread open if there is genuine doubt it was fully
+     addressed.
+3. If there are no unresolved threads, skip to 2c.
 
 ### 2b. Fix failing CI
 
 Use `/fix-ci` to diagnose and fix each failing job.
 
-## 3. Push and verify
+### 2c. Push and wait
 
-1. `git push --force-with-lease` (safe force push since we rebased)
-2. Wait for CI to start: `gh pr checks --watch --fail-fast`
-3. If new failures appear, loop back to step 2b.
+1. `git push --force-with-lease`
+2. Wait for CI: `gh pr checks --watch --fail-fast`
+3. **Wait for Copilot's review.** Copilot typically takes 5-12 minutes
+   after a push. Poll unresolved threads every 90s (up to 25 min). The
+   first poll that returns results means Copilot has posted -- loop
+   back to 2a. If 25 min pass with zero unresolved threads, Copilot
+   either found nothing or didn't run -- exit the loop.
 
-## 4. Update PR description
+## 3. Update PR description
 
-After all changes are pushed, re-read the PR title and body
-(`gh pr view`) and update them if they no longer match the actual changes.
+After the loop exits, re-read the PR title and body (`gh pr view`) and
+update them if they no longer match the actual changes.
