@@ -358,6 +358,22 @@
           '';
         };
 
+        relnotes = pkgs.writeShellApplication {
+          name = "relnotes";
+          runtimeInputs = [
+            pkgs.nodejs
+            pkgs.glow
+          ];
+          text = ''
+            notes=$(npx -y -p conventional-changelog-cli -- conventional-changelog --config ./.conventionalcommits.js --tag-prefix v)
+            if [[ -n "$notes" ]] && [[ -t 1 ]]; then
+              echo "$notes" | glow --width "$(tput cols)" - | less -FRX
+            else
+              echo "$notes"
+            fi
+          '';
+        };
+
       in
       {
         checks = {
@@ -401,6 +417,8 @@
               pkgs.nodejs
               pkgs.jq
               pkgs.moreutils
+              pkgs.glow
+              relnotes
             ]
             ++ enabledPackages;
           };
