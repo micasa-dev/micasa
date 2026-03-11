@@ -377,7 +377,7 @@ func (c *Client) wrapError(err error) error {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return fmt.Errorf(
 			"%s timed out -- the server may be overloaded or the model is too slow; "+
-				"check timeout settings (llm.timeout, llm.chat.timeout, llm.extraction.timeout) "+
+				"check timeout settings (chat.llm.timeout, extraction.llm.timeout) "+
 				"or try a smaller model",
 			c.providerName,
 		)

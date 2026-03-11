@@ -22,10 +22,11 @@ import (
 )
 
 // Config is the top-level application configuration, loaded from a TOML file.
+// Each section is self-contained; no section's values affect another section.
 type Config struct {
-	LLM        LLM        `toml:"llm"        doc:"LLM provider, model, and connection settings."`
+	Chat       Chat       `toml:"chat"       doc:"Chat (NL-to-SQL) pipeline and its LLM settings."`
+	Extraction Extraction `toml:"extraction" doc:"Document extraction pipeline: LLM, OCR, and pdftotext."`
 	Documents  Documents  `toml:"documents"  doc:"Document attachment limits and caching."`
-	Extraction Extraction `toml:"extraction" doc:"Document extraction pipeline. Requires an LLM; OCR and pdftotext are internal steps, not standalone features."`
 	Locale     Locale     `toml:"locale"     doc:"Locale and currency settings."`
 
 	// Warnings collects non-fatal messages (e.g. deprecations) during load.
@@ -40,146 +41,170 @@ type Locale struct {
 	Currency string `toml:"currency"`
 }
 
-// LLM holds settings for the LLM inference backend.
-type LLM struct {
+// Chat holds settings for the chat (NL-to-SQL) pipeline.
+type Chat struct {
+	// Enable controls whether the chat feature is available in the UI.
+	// Default: true.
+	Enable *bool `toml:"enable,omitempty"`
+
+	// LLM holds the LLM connection settings for the chat pipeline.
+	LLM ChatLLM `toml:"llm" doc:"LLM connection settings for chat."`
+}
+
+// IsEnabled returns whether chat is enabled. Defaults to true.
+func (c Chat) IsEnabled() bool {
+	if c.Enable != nil {
+		return *c.Enable
+	}
+	return true
+}
+
+// ChatLLM holds LLM settings for the chat pipeline. Each field has its
+// own default; no values are inherited from other config sections.
+type ChatLLM struct {
 	// Provider selects which LLM provider to use. Supported values:
 	// ollama, anthropic, openai, openrouter, deepseek, gemini, groq,
-	// mistral, llamacpp, llamafile. Auto-detected when empty.
+	// mistral, llamacpp, llamafile. Auto-detected from base_url and
+	// api_key when empty.
 	Provider string `toml:"provider"`
 
 	// BaseURL is the base URL for the provider's API.
-	// Default varies by provider (e.g. http://localhost:11434 for Ollama).
 	// No /v1 suffix needed -- the provider handles path construction.
 	BaseURL string `toml:"base_url" default:"http://localhost:11434"`
 
 	// Model is the model identifier passed in chat requests.
-	// Default: qwen3
 	Model string `toml:"model" default:"qwen3"`
 
 	// APIKey is the authentication credential. Required for cloud
-	// providers (Anthropic, OpenAI, OpenRouter, etc.). Leave empty for local
-	// servers like Ollama that don't require authentication.
+	// providers; leave empty for local servers like Ollama.
 	APIKey string `toml:"api_key"` //nolint:gosec // config field, not a hardcoded credential
 
-	// ExtraContext is custom text appended to all system prompts.
-	// Useful for domain-specific details: house style, location, etc.
-	// Currency is handled by [locale] section. Optional; defaults to empty.
-	ExtraContext string `toml:"extra_context"`
-
-	// Timeout is the base inference timeout for LLM responses (including
+	// Timeout is the inference timeout for LLM responses (including
 	// streaming). Go duration string, e.g. "5m", "10m". Default: "5m".
-	// Per-pipeline overrides: llm.chat.timeout and llm.extraction.timeout.
 	Timeout string `toml:"timeout" default:"5m"`
 
-	// Thinking controls the model's reasoning effort level. Supported values:
-	// none, low, medium, high, auto. Empty string = don't send (server default).
+	// Thinking controls the model's reasoning effort level.
+	// Supported: none, low, medium, high, auto. Empty = server default.
 	Thinking string `toml:"thinking,omitempty"`
 
-	// Chat holds per-pipeline overrides for the chat (NL-to-SQL) pipeline.
-	// Non-empty fields take precedence over the base values above.
-	Chat LLMChatOverride `toml:"chat" doc:"Per-pipeline LLM overrides for chat. Inherits from [llm]."`
-
-	// Extraction holds per-pipeline overrides for the document extraction
-	// pipeline. Non-empty fields take precedence over the base values above.
-	Extraction LLMExtractionOverride `toml:"extraction" doc:"Per-pipeline LLM overrides for extraction. Inherits from [llm]."`
+	// ExtraContext is custom text appended to chat system prompts.
+	// Useful for domain-specific details: house style, location, etc.
+	ExtraContext string `toml:"extra_context"`
 }
 
-// LLMChatOverride holds optional per-pipeline overrides for the chat
-// pipeline. Empty fields inherit from the parent [llm] section.
-type LLMChatOverride struct {
-	Provider string `toml:"provider"`
-	BaseURL  string `toml:"base_url"`
-	Model    string `toml:"model"`
-	APIKey   string `toml:"api_key"` //nolint:gosec // config field, not a hardcoded credential
-	Timeout  string `toml:"timeout"`
-	Thinking string `toml:"thinking,omitempty"`
-}
-
-// LLMExtractionOverride holds optional per-pipeline overrides for the
-// extraction pipeline. Empty fields inherit from the parent [llm] section.
-type LLMExtractionOverride struct {
-	Provider string `toml:"provider"`
-	BaseURL  string `toml:"base_url"`
-	Model    string `toml:"model"`
-	APIKey   string `toml:"api_key"` //nolint:gosec // config field, not a hardcoded credential
-	Timeout  string `toml:"timeout"`
-	Thinking string `toml:"thinking,omitempty"`
-}
-
-// ResolvedLLM is a fully-resolved LLM configuration for a single pipeline.
-// All fields are populated -- no empty-means-inherit semantics.
-type ResolvedLLM struct {
-	Provider     string
-	BaseURL      string
-	Model        string
-	APIKey       string //nolint:gosec // resolved config field, not a hardcoded credential
-	ExtraContext string
-	Timeout      time.Duration // inference context deadline for this pipeline
-	Thinking     string
-}
-
-// TimeoutDuration returns the parsed LLM timeout, falling back to
+// TimeoutDuration returns the parsed timeout, falling back to
 // DefaultLLMTimeout if the value is empty or unparseable.
-func (l LLM) TimeoutDuration() time.Duration {
-	if l.Timeout == "" {
-		return DefaultLLMTimeout
-	}
-	d, err := time.ParseDuration(l.Timeout)
-	if err != nil {
-		return DefaultLLMTimeout
-	}
-	return d
+func (l ChatLLM) TimeoutDuration() time.Duration {
+	return parseDurationOr(l.Timeout, DefaultLLMTimeout)
 }
 
-// ChatConfig returns the fully-resolved LLM configuration for the chat
-// pipeline. Fields from [llm.chat] override the base [llm] values.
-func (l LLM) ChatConfig() ResolvedLLM {
-	return l.resolvePipeline(
-		l.Chat.Provider, l.Chat.BaseURL, l.Chat.Model,
-		l.Chat.APIKey, l.Chat.Timeout, l.Chat.Thinking,
-	)
+// Extraction holds settings for the document extraction pipeline.
+type Extraction struct {
+	// MaxPages is the maximum number of pages for async extraction of
+	// scanned documents. 0 means no limit. Default: 0.
+	MaxPages int `toml:"max_pages"`
+
+	// LLM holds the LLM connection settings for the extraction pipeline.
+	LLM ExtractionLLM `toml:"llm" doc:"LLM connection settings for extraction."`
+
+	// OCR holds settings for the OCR sub-pipeline.
+	OCR OCR `toml:"ocr" doc:"OCR sub-pipeline. Requires tesseract and pdftocairo."`
 }
 
-// ExtractionConfig returns the fully-resolved LLM configuration for the
-// extraction pipeline. Fields from [llm.extraction] override the base
-// [llm] values.
-func (l LLM) ExtractionConfig() ResolvedLLM {
-	return l.resolvePipeline(
-		l.Extraction.Provider, l.Extraction.BaseURL, l.Extraction.Model,
-		l.Extraction.APIKey, l.Extraction.Timeout, l.Extraction.Thinking,
-	)
+// ExtractionLLM holds LLM settings for the extraction pipeline. Each field
+// has its own default; no values are inherited from other config sections.
+type ExtractionLLM struct {
+	// Enable controls whether LLM-powered structured extraction runs when
+	// a document is uploaded. When disabled, OCR and pdftotext still run
+	// to populate the document's stored text. Default: true.
+	Enable *bool `toml:"enable,omitempty"`
+
+	// Provider selects which LLM provider to use. See ChatLLM.Provider
+	// for supported values. Auto-detected when empty.
+	Provider string `toml:"provider"`
+
+	// BaseURL is the base URL for the provider's API.
+	BaseURL string `toml:"base_url" default:"http://localhost:11434"`
+
+	// Model is the model identifier for extraction. Extraction wants a
+	// small, fast model optimized for structured JSON output.
+	Model string `toml:"model" default:"qwen3"`
+
+	// APIKey is the authentication credential.
+	APIKey string `toml:"api_key"` //nolint:gosec // config field, not a hardcoded credential
+
+	// Timeout is the inference timeout for extraction LLM responses.
+	Timeout string `toml:"timeout" default:"5m"`
+
+	// Thinking controls the model's reasoning effort level.
+	// Supported: none, low, medium, high, auto. Empty = server default.
+	Thinking string `toml:"thinking,omitempty"`
 }
 
-// resolvePipeline merges per-pipeline overrides with the base LLM config.
-func (l LLM) resolvePipeline(
-	provider, baseURL, model, apiKey, timeout, thinking string,
-) ResolvedLLM {
-	resolvedProvider := coalesce(provider, l.Provider)
-	resolvedBaseURL := coalesce(baseURL, l.BaseURL)
-	resolvedAPIKey := coalesce(apiKey, l.APIKey)
-
-	// Re-detect provider when the pipeline has its own connection
-	// settings but no explicit provider.
-	if provider == "" && (baseURL != "" || apiKey != "") {
-		resolvedProvider = detectProvider(resolvedBaseURL, resolvedAPIKey)
+// IsEnabled returns whether LLM extraction is enabled. Defaults to true.
+func (e ExtractionLLM) IsEnabled() bool {
+	if e.Enable != nil {
+		return *e.Enable
 	}
-
-	return ResolvedLLM{
-		Provider:     resolvedProvider,
-		BaseURL:      resolvedBaseURL,
-		Model:        coalesce(model, l.Model),
-		APIKey:       resolvedAPIKey,
-		ExtraContext: l.ExtraContext,
-		Timeout:      parseDurationOr(coalesce(timeout, l.Timeout), DefaultLLMTimeout),
-		Thinking:     coalesce(thinking, l.Thinking),
-	}
+	return true
 }
 
-func coalesce(override, base string) string {
-	if override != "" {
-		return override
+// TimeoutDuration returns the parsed timeout, falling back to
+// DefaultLLMTimeout if the value is empty or unparseable.
+func (e ExtractionLLM) TimeoutDuration() time.Duration {
+	return parseDurationOr(e.Timeout, DefaultLLMTimeout)
+}
+
+// OCR holds settings for the OCR sub-pipeline within extraction.
+type OCR struct {
+	// Enable controls whether OCR runs on uploaded documents.
+	// When disabled, scanned pages and images produce no text.
+	// Default: true.
+	Enable *bool `toml:"enable,omitempty"`
+
+	// TSV holds settings for spatial layout annotations from tesseract OCR.
+	TSV OCRTSV `toml:"tsv" doc:"Spatial layout annotations from tesseract OCR."`
+}
+
+// IsEnabled returns whether OCR is enabled. Defaults to true.
+func (o OCR) IsEnabled() bool {
+	if o.Enable != nil {
+		return *o.Enable
 	}
-	return base
+	return true
+}
+
+// OCRTSV holds settings for spatial layout annotations (line-level bounding
+// boxes and confidence scores) sent from tesseract OCR to the LLM.
+type OCRTSV struct {
+	// Enable controls whether spatial layout annotations are sent to the
+	// LLM alongside text. Improves extraction accuracy for invoices and
+	// forms with tabular data, at ~2x token overhead. Default: true.
+	Enable *bool `toml:"enable,omitempty"`
+
+	// ConfidenceThreshold is the confidence threshold (0-100) below which
+	// OCR confidence annotations are included in spatial layout output.
+	// Lines with min confidence >= this value omit the score to save
+	// tokens. Set to 0 to never show confidence. Default: 70.
+	ConfidenceThreshold *int `toml:"confidence_threshold,omitempty"`
+}
+
+// IsEnabled returns whether TSV spatial annotations are enabled.
+// Defaults to true.
+func (t OCRTSV) IsEnabled() bool {
+	if t.Enable != nil {
+		return *t.Enable
+	}
+	return true
+}
+
+// Threshold returns the confidence threshold below which OCR confidence
+// annotations appear in spatial output. Defaults to 70.
+func (t OCRTSV) Threshold() int {
+	if t.ConfidenceThreshold != nil {
+		return *t.ConfidenceThreshold
+	}
+	return 70
 }
 
 func parseDurationOr(s string, fallback time.Duration) time.Duration {
@@ -252,132 +277,14 @@ func (d Documents) CacheTTLDuration() time.Duration {
 	return DefaultCacheTTL
 }
 
-// Extraction holds settings for the document extraction pipeline
-// (LLM-powered structured pre-fill).
-type Extraction struct {
-	// Model overrides llm.model for extraction. Extraction wants a small,
-	// fast model optimized for structured JSON output. Defaults to the
-	// chat model if empty.
-	Model string `toml:"model"`
-
-	// MaxPages is the maximum number of pages for async extraction of scanned
-	// documents. 0 means no limit (all pages). Default: 0.
-	MaxPages int `toml:"max_pages"`
-
-	// Enable controls whether LLM-powered structured extraction runs when
-	// a document is uploaded. When disabled, no structured data is extracted
-	// from documents. OCR and pdftotext still run independently (controlled
-	// by [extraction.ocr]) to populate the document's stored text. Default: true.
-	Enable *bool `toml:"enable,omitempty"`
-
-	// Enabled is the deprecated spelling; migrated to Enable on load.
-	Enabled *bool `toml:"enabled,omitempty"`
-
-	// LLMTimeout is the maximum time to wait for the LLM extraction
-	// inference step. Go duration string, e.g. "5m", "90s". Default: "5m".
-	LLMTimeout string `toml:"llm_timeout"`
-
-	// Thinking controls the model's reasoning effort level for extraction.
-	// Supported values: none, low, medium, high, auto.
-	// Empty string = don't send (server default). Default: empty.
-	Thinking string `toml:"thinking,omitempty"`
-
-	// OCR holds settings for the OCR sub-pipeline.
-	OCR OCR `toml:"ocr" doc:"OCR sub-pipeline. Requires tesseract and pdftocairo."`
-}
-
-// OCR holds settings for the OCR sub-pipeline within extraction.
-type OCR struct {
-	// Enable controls whether OCR runs on uploaded documents.
-	// When disabled, scanned pages and images produce no text. Default: true.
-	Enable *bool `toml:"enable,omitempty"`
-
-	// TSV sends spatial layout annotations (line-level bounding boxes
-	// and confidence scores) from tesseract OCR to the LLM alongside text.
-	// This helps extraction accuracy for invoices and forms with tabular
-	// data, at ~2x token overhead. Default: true.
-	TSV *bool `toml:"tsv,omitempty"`
-
-	// ConfidenceThresholdVal is the confidence threshold (0-100) below
-	// which OCR confidence annotations are included in spatial layout
-	// output. Lines with min confidence >= this value omit the score to
-	// save tokens. Set to 0 to never show confidence. Default: 70.
-	ConfidenceThresholdVal *int `toml:"confidence_threshold,omitempty"`
-}
-
-// IsEnabled returns whether LLM extraction is enabled. Defaults to true
-// when the field is unset.
-func (e Extraction) IsEnabled() bool {
-	if e.Enable != nil {
-		return *e.Enable
-	}
-	return true
-}
-
-// IsOCREnabled returns whether OCR is enabled. Defaults to true when
-// the field is unset.
-func (e Extraction) IsOCREnabled() bool {
-	if e.OCR.Enable != nil {
-		return *e.OCR.Enable
-	}
-	return true
-}
-
-// LLMTimeoutDuration returns the parsed LLM extraction timeout, falling
-// back to DefaultLLMExtractionTimeout if the value is empty or unparseable.
-func (e Extraction) LLMTimeoutDuration() time.Duration {
-	if e.LLMTimeout == "" {
-		return DefaultLLMExtractionTimeout
-	}
-	d, err := time.ParseDuration(e.LLMTimeout)
-	if err != nil {
-		return DefaultLLMExtractionTimeout
-	}
-	return d
-}
-
-// ThinkingLevel returns the reasoning effort string for extraction.
-// Returns empty string when unset (server default).
-func (e Extraction) ThinkingLevel() string {
-	return e.Thinking
-}
-
-// IsOCRTSV returns whether spatial layout annotations from tesseract OCR
-// should be sent to the LLM alongside text. Defaults to true.
-func (e Extraction) IsOCRTSV() bool {
-	if e.OCR.TSV != nil {
-		return *e.OCR.TSV
-	}
-	return true
-}
-
-// OCRConfThreshold returns the confidence threshold below which OCR
-// confidence annotations appear in spatial output. Defaults to 70.
-func (e Extraction) OCRConfThreshold() int {
-	if e.OCR.ConfidenceThresholdVal != nil {
-		return *e.OCR.ConfidenceThresholdVal
-	}
-	return 70
-}
-
-// ResolvedModel returns the extraction model, falling back to the given
-// chat model if no extraction-specific model is configured.
-func (e Extraction) ResolvedModel(chatModel string) string {
-	if e.Model != "" {
-		return e.Model
-	}
-	return chatModel
-}
-
 const (
-	DefaultBaseURL              = "http://localhost:11434"
-	DefaultModel                = "qwen3"
-	DefaultProvider             = "ollama"
-	DefaultLLMTimeout           = 5 * time.Minute
-	DefaultLLMExtractionTimeout = DefaultLLMTimeout
-	DefaultCacheTTL             = 30 * 24 * time.Hour // 30 days
-	DefaultMaxPages             = 0
-	configRelPath               = "micasa/config.toml"
+	DefaultBaseURL    = "http://localhost:11434"
+	DefaultModel      = "qwen3"
+	DefaultProvider   = "ollama"
+	DefaultLLMTimeout = 5 * time.Minute
+	DefaultCacheTTL   = 30 * 24 * time.Hour // 30 days
+	DefaultMaxPages   = 0
+	configRelPath     = "micasa/config.toml"
 )
 
 // Path returns the expected config file path (XDG_CONFIG_HOME/micasa/config.toml).
@@ -400,104 +307,64 @@ func LoadFromPath(path string) (Config, error) {
 	data.ApplyDefaults(&cfg)
 
 	if _, err := os.Stat(path); err == nil {
-		md, err := toml.DecodeFile(path, &cfg)
-		if err != nil {
+		if _, err := toml.DecodeFile(path, &cfg); err != nil {
 			return cfg, fmt.Errorf("parse %s: %w", path, err)
 		}
-		migrateRenamedKeys(&cfg, md, path)
 	}
 
-	envOverrides := migrateRenamedEnvVars(&cfg)
-
-	if err := applyEnvOverrides(&cfg, envOverrides); err != nil {
+	if err := applyEnvOverrides(&cfg, nil); err != nil {
 		return cfg, err
-	}
-
-	// Clear deprecated Enabled again: applyEnvOverrides may have
-	// repopulated it from MICASA_EXTRACTION_ENABLED.
-	if cfg.Extraction.Enabled != nil {
-		if cfg.Extraction.Enable == nil {
-			cfg.Extraction.Enable = cfg.Extraction.Enabled
-		}
-		cfg.Extraction.Enabled = nil
 	}
 
 	// Normalize base URLs: strip trailing slash and /v1 suffix --
 	// providers handle their own path construction.
-	cfg.LLM.BaseURL = normalizeBaseURL(cfg.LLM.BaseURL)
-	cfg.LLM.Chat.BaseURL = normalizeBaseURL(cfg.LLM.Chat.BaseURL)
-	cfg.LLM.Extraction.BaseURL = normalizeBaseURL(cfg.LLM.Extraction.BaseURL)
+	cfg.Chat.LLM.BaseURL = normalizeBaseURL(cfg.Chat.LLM.BaseURL)
+	cfg.Extraction.LLM.BaseURL = normalizeBaseURL(cfg.Extraction.LLM.BaseURL)
 
-	// Auto-detect provider from base_url and api_key when not explicitly set.
-	if cfg.LLM.Provider == "" {
-		cfg.LLM.Provider = detectProvider(cfg.LLM.BaseURL, cfg.LLM.APIKey)
+	// Auto-detect provider from base_url and api_key when not set.
+	if cfg.Chat.LLM.Provider == "" {
+		cfg.Chat.LLM.Provider = detectProvider(cfg.Chat.LLM.BaseURL, cfg.Chat.LLM.APIKey)
 	}
-
-	// Validate base provider name.
-	if !validProvider(cfg.LLM.Provider) {
-		return cfg, fmt.Errorf(
-			"llm.provider: unknown provider %q -- supported: %s",
-			cfg.LLM.Provider, strings.Join(providerNames(), ", "),
+	if cfg.Extraction.LLM.Provider == "" {
+		cfg.Extraction.LLM.Provider = detectProvider(
+			cfg.Extraction.LLM.BaseURL,
+			cfg.Extraction.LLM.APIKey,
 		)
 	}
 
-	// Validate per-pipeline provider overrides.
-	if cfg.LLM.Chat.Provider != "" && !validProvider(cfg.LLM.Chat.Provider) {
+	// Validate providers.
+	if !validProvider(cfg.Chat.LLM.Provider) {
 		return cfg, fmt.Errorf(
-			"llm.chat.provider: unknown provider %q -- supported: %s",
-			cfg.LLM.Chat.Provider, strings.Join(providerNames(), ", "),
+			"chat.llm.provider: unknown provider %q -- supported: %s",
+			cfg.Chat.LLM.Provider, strings.Join(providerNames(), ", "),
 		)
 	}
-	if cfg.LLM.Extraction.Provider != "" && !validProvider(cfg.LLM.Extraction.Provider) {
+	if !validProvider(cfg.Extraction.LLM.Provider) {
 		return cfg, fmt.Errorf(
-			"llm.extraction.provider: unknown provider %q -- supported: %s",
-			cfg.LLM.Extraction.Provider, strings.Join(providerNames(), ", "),
+			"extraction.llm.provider: unknown provider %q -- supported: %s",
+			cfg.Extraction.LLM.Provider, strings.Join(providerNames(), ", "),
 		)
 	}
 
 	// Validate thinking levels.
-	if cfg.LLM.Thinking != "" && !validThinkingLevel(cfg.LLM.Thinking) {
+	if cfg.Chat.LLM.Thinking != "" && !validThinkingLevel(cfg.Chat.LLM.Thinking) {
 		return cfg, fmt.Errorf(
-			"llm.thinking: invalid level %q -- supported: none, low, medium, high, auto",
-			cfg.LLM.Thinking,
+			"chat.llm.thinking: invalid level %q -- supported: none, low, medium, high, auto",
+			cfg.Chat.LLM.Thinking,
 		)
 	}
-	if cfg.LLM.Chat.Thinking != "" && !validThinkingLevel(cfg.LLM.Chat.Thinking) {
+	if cfg.Extraction.LLM.Thinking != "" && !validThinkingLevel(cfg.Extraction.LLM.Thinking) {
 		return cfg, fmt.Errorf(
-			"llm.chat.thinking: invalid level %q -- supported: none, low, medium, high, auto",
-			cfg.LLM.Chat.Thinking,
-		)
-	}
-	if cfg.LLM.Extraction.Thinking != "" && !validThinkingLevel(cfg.LLM.Extraction.Thinking) {
-		return cfg, fmt.Errorf(
-			"llm.extraction.thinking: invalid level %q -- supported: none, low, medium, high, auto",
-			cfg.LLM.Extraction.Thinking,
-		)
-	}
-	if cfg.Extraction.Thinking != "" && !validThinkingLevel(cfg.Extraction.Thinking) {
-		return cfg, fmt.Errorf(
-			"extraction.thinking: invalid level %q -- supported: none, low, medium, high, auto",
-			cfg.Extraction.Thinking,
+			"extraction.llm.thinking: invalid level %q -- supported: none, low, medium, high, auto",
+			cfg.Extraction.LLM.Thinking,
 		)
 	}
 
 	// Validate timeouts.
-	if cfg.LLM.Timeout != "" {
-		d, err := time.ParseDuration(cfg.LLM.Timeout)
-		if err != nil {
-			return cfg, fmt.Errorf(
-				"llm.timeout: invalid duration %q -- use Go syntax like \"5m\" or \"10m\"",
-				cfg.LLM.Timeout,
-			)
-		}
-		if d <= 0 {
-			return cfg, fmt.Errorf("llm.timeout must be positive, got %s", cfg.LLM.Timeout)
-		}
-	}
-	if err := validateOverrideTimeout(cfg.LLM.Chat.Timeout, "llm.chat"); err != nil {
+	if err := validateTimeout(cfg.Chat.LLM.Timeout, "chat.llm"); err != nil {
 		return cfg, err
 	}
-	if err := validateOverrideTimeout(cfg.LLM.Extraction.Timeout, "llm.extraction"); err != nil {
+	if err := validateTimeout(cfg.Extraction.LLM.Timeout, "extraction.llm"); err != nil {
 		return cfg, err
 	}
 
@@ -532,22 +399,6 @@ func LoadFromPath(path string) (Config, error) {
 		)
 	}
 
-	if cfg.Extraction.LLMTimeout != "" {
-		d, err := time.ParseDuration(cfg.Extraction.LLMTimeout)
-		if err != nil {
-			return cfg, fmt.Errorf(
-				"extraction.llm_timeout: invalid duration %q -- use Go syntax like \"5m\" or \"90s\"",
-				cfg.Extraction.LLMTimeout,
-			)
-		}
-		if d <= 0 {
-			return cfg, fmt.Errorf(
-				"extraction.llm_timeout must be positive, got %s",
-				cfg.Extraction.LLMTimeout,
-			)
-		}
-	}
-
 	if cfg.Extraction.MaxPages < 0 {
 		return cfg, fmt.Errorf(
 			"extraction.max_pages must be non-negative, got %d",
@@ -555,15 +406,33 @@ func LoadFromPath(path string) (Config, error) {
 		)
 	}
 
-	if t := cfg.Extraction.OCRConfThreshold(); t < 0 || t > 100 {
+	if t := cfg.Extraction.OCR.TSV.Threshold(); t < 0 || t > 100 {
 		return cfg, fmt.Errorf(
-			"extraction.ocr.confidence_threshold must be 0-100, got %d", t,
+			"extraction.ocr.tsv.confidence_threshold must be 0-100, got %d", t,
 		)
 	}
 
 	checkFilePermissions(&cfg, path)
 
 	return cfg, nil
+}
+
+// validateTimeout validates a pipeline timeout string.
+func validateTimeout(timeout, prefix string) error {
+	if timeout == "" {
+		return nil
+	}
+	d, err := time.ParseDuration(timeout)
+	if err != nil {
+		return fmt.Errorf(
+			"%s.timeout: invalid duration %q -- use Go syntax like \"5m\" or \"10m\"",
+			prefix, timeout,
+		)
+	}
+	if d <= 0 {
+		return fmt.Errorf("%s.timeout must be positive, got %s", prefix, timeout)
+	}
+	return nil
 }
 
 // applyEnvOverrides walks the Config struct and applies environment variable
@@ -604,7 +473,7 @@ func walkEnvFields(v reflect.Value, prefix string, extra map[string]string) erro
 
 		envVar := EnvVarName(key)
 		val := os.Getenv(envVar)
-		if val == "" {
+		if val == "" && extra != nil {
 			val = extra[envVar]
 		}
 		if val == "" {
@@ -674,8 +543,7 @@ func setFieldFromEnvPtr(fv reflect.Value, envVar, val string) error {
 }
 
 // EnvVars returns a mapping from environment variable names to their
-// dot-delimited config keys. Env var names are derived from dotted paths
-// via [EnvVarName].
+// dot-delimited config keys.
 func EnvVars() map[string]string {
 	m := make(map[string]string)
 	collectEnvVars(reflect.TypeOf(Config{}), "", m)
@@ -707,7 +575,8 @@ func collectEnvVars(t reflect.Type, prefix string, m map[string]string) {
 }
 
 // Get resolves a dot-delimited config key to its string representation.
-// Keys mirror the TOML structure (e.g. "llm.model", "documents.max_file_size").
+// Keys mirror the TOML structure (e.g. "chat.llm.model",
+// "documents.max_file_size").
 func (c Config) Get(key string) (string, error) {
 	return getField(reflect.ValueOf(c), key)
 }
@@ -738,7 +607,7 @@ func getField(v reflect.Value, key string) (string, error) {
 			return "", fmt.Errorf("key %q: %q is not a section", key, tag)
 		}
 
-		// Leaf field — format the value.
+		// Leaf field -- format the value.
 		return formatValue(fv)
 	}
 	return "", fmt.Errorf("unknown config key %q", key)
@@ -762,7 +631,7 @@ func tomlTagName(f reflect.StructField) string {
 //
 //	MICASA_ + UPPER(key with "." replaced by "_")
 //
-// For example "llm.model" becomes "MICASA_LLM_MODEL".
+// For example "chat.llm.model" becomes "MICASA_CHAT_LLM_MODEL".
 func EnvVarName(key string) string {
 	return "MICASA_" + strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
 }
@@ -839,7 +708,7 @@ func collectKeys(t reflect.Type, prefix string) []string {
 			ft = ft.Elem()
 		}
 		if ft.Kind() == reflect.Struct && ft.PkgPath() != "" {
-			// Nested config section — but only recurse into our own types,
+			// Nested config section -- but only recurse into our own types,
 			// not stdlib types like time.Duration.
 			if _, isBytes := reflect.New(ft).Interface().(*ByteSize); isBytes {
 				keys = append(keys, full)
@@ -859,9 +728,8 @@ func collectKeys(t reflect.Type, prefix string) []string {
 
 // hasAPIKeys reports whether any API key field is set in the config.
 func (c Config) hasAPIKeys() bool {
-	return c.LLM.APIKey != "" ||
-		c.LLM.Chat.APIKey != "" ||
-		c.LLM.Extraction.APIKey != ""
+	return c.Chat.LLM.APIKey != "" ||
+		c.Extraction.LLM.APIKey != ""
 }
 
 // checkFilePermissions appends a warning if the config file contains API
@@ -886,142 +754,6 @@ func checkFilePermissions(cfg *Config, path string) {
 			path, perm, ownerOnly, path,
 		))
 	}
-}
-
-// validateOverrideTimeout validates a per-pipeline timeout string.
-func validateOverrideTimeout(timeout, prefix string) error {
-	if timeout == "" {
-		return nil
-	}
-	d, err := time.ParseDuration(timeout)
-	if err != nil {
-		return fmt.Errorf(
-			"%s.timeout: invalid duration %q -- use Go syntax like \"5s\" or \"10s\"",
-			prefix, timeout,
-		)
-	}
-	if d <= 0 {
-		return fmt.Errorf("%s.timeout must be positive, got %s", prefix, timeout)
-	}
-	return nil
-}
-
-// migrateRenamedKeys checks for deprecated TOML keys and migrates their
-// values to the new field names, appending deprecation warnings.
-func migrateRenamedKeys(cfg *Config, md toml.MetaData, path string) {
-	// extraction.max_ocr_pages -> extraction.max_pages (v1.47, updated v1.77)
-	if md.IsDefined("extraction", "max_ocr_pages") {
-		var raw struct {
-			Extraction struct {
-				MaxOCRPages int `toml:"max_ocr_pages"`
-			} `toml:"extraction"`
-		}
-		if _, err := toml.DecodeFile(path, &raw); err == nil && raw.Extraction.MaxOCRPages > 0 {
-			cfg.Extraction.MaxPages = raw.Extraction.MaxOCRPages
-		}
-		cfg.Warnings = append(cfg.Warnings,
-			"extraction.max_ocr_pages is deprecated -- use extraction.max_pages instead",
-		)
-	}
-
-	// extraction.max_extract_pages -> extraction.max_pages (v1.77)
-	if md.IsDefined("extraction", "max_extract_pages") && !md.IsDefined("extraction", "max_pages") {
-		var raw struct {
-			Extraction struct {
-				MaxExtractPages int `toml:"max_extract_pages"`
-			} `toml:"extraction"`
-		}
-		if _, err := toml.DecodeFile(path, &raw); err == nil {
-			cfg.Extraction.MaxPages = raw.Extraction.MaxExtractPages
-		}
-		cfg.Warnings = append(cfg.Warnings,
-			"extraction.max_extract_pages is deprecated -- use extraction.max_pages instead",
-		)
-	}
-
-	// extraction.enabled -> extraction.enable (v1.78)
-	if md.IsDefined("extraction", "enabled") {
-		if !md.IsDefined("extraction", "enable") {
-			cfg.Extraction.Enable = cfg.Extraction.Enabled
-		}
-		cfg.Warnings = append(cfg.Warnings,
-			"extraction.enabled is deprecated -- use extraction.enable instead",
-		)
-	}
-	cfg.Extraction.Enabled = nil // never propagate the deprecated field
-
-	// extraction.model -> llm.extraction.model (v1.59)
-	if md.IsDefined("extraction", "model") && !md.IsDefined("llm", "extraction", "model") {
-		cfg.LLM.Extraction.Model = cfg.Extraction.Model
-		cfg.Warnings = append(cfg.Warnings,
-			"extraction.model is deprecated -- use llm.extraction.model instead",
-		)
-	}
-
-	// extraction.thinking -> llm.extraction.thinking (v1.59)
-	if md.IsDefined("extraction", "thinking") && !md.IsDefined("llm", "extraction", "thinking") {
-		cfg.LLM.Extraction.Thinking = cfg.Extraction.Thinking
-		cfg.Warnings = append(cfg.Warnings,
-			"extraction.thinking is deprecated -- use llm.extraction.thinking instead",
-		)
-	}
-
-	// extraction.llm_timeout -> llm.extraction.timeout (v1.80)
-	if md.IsDefined("extraction", "llm_timeout") && !md.IsDefined("llm", "extraction", "timeout") {
-		cfg.LLM.Extraction.Timeout = cfg.Extraction.LLMTimeout
-		cfg.Warnings = append(cfg.Warnings,
-			"extraction.llm_timeout is deprecated -- use llm.extraction.timeout instead",
-		)
-	}
-}
-
-// envRenames maps deprecated environment variable names to their canonical
-// replacements. Processed newest-first so that the most recent intermediate
-// name wins when multiple generations of the same variable are set.
-var envRenames = []struct{ old, canonical string }{
-	// v1.80: extraction.llm_timeout -> llm.extraction.timeout.
-	{"MICASA_EXTRACTION_LLM_TIMEOUT", "MICASA_LLM_EXTRACTION_TIMEOUT"},
-
-	// v1.78: extraction.enabled -> extraction.enable.
-	{"MICASA_EXTRACTION_ENABLED", "MICASA_EXTRACTION_ENABLE"},
-
-	// v1.77: env var names now derived from dotted config paths.
-	{"MICASA_CURRENCY", "MICASA_LOCALE_CURRENCY"},
-	{"MICASA_MAX_DOCUMENT_SIZE", "MICASA_DOCUMENTS_MAX_FILE_SIZE"},
-	{"MICASA_CACHE_TTL", "MICASA_DOCUMENTS_CACHE_TTL"},
-	{"MICASA_CACHE_TTL_DAYS", "MICASA_DOCUMENTS_CACHE_TTL_DAYS"},
-	{"MICASA_FILE_PICKER_DIR", "MICASA_DOCUMENTS_FILE_PICKER_DIR"},
-	{"MICASA_EXTRACTION_MAX_EXTRACT_PAGES", "MICASA_EXTRACTION_MAX_PAGES"},
-	{"MICASA_MAX_EXTRACT_PAGES", "MICASA_EXTRACTION_MAX_PAGES"},
-
-	// v1.59
-	{"MICASA_EXTRACTION_MODEL", "MICASA_LLM_EXTRACTION_MODEL"},
-	{"MICASA_EXTRACTION_THINKING", "MICASA_LLM_EXTRACTION_THINKING"},
-
-	// v1.47
-	{"MICASA_MAX_OCR_PAGES", "MICASA_EXTRACTION_MAX_PAGES"},
-}
-
-// migrateRenamedEnvVars checks for deprecated environment variable names and
-// returns a map of canonical env var -> value for [applyEnvOverrides] to
-// consume. Does not modify the process environment. Appends deprecation
-// warnings to cfg.Warnings.
-func migrateRenamedEnvVars(cfg *Config) map[string]string {
-	overrides := make(map[string]string)
-	for _, r := range envRenames {
-		val := os.Getenv(r.old)
-		if val == "" {
-			continue
-		}
-		if os.Getenv(r.canonical) != "" || overrides[r.canonical] != "" {
-			continue
-		}
-		overrides[r.canonical] = val
-		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf(
-			"%s is deprecated -- use %s instead", r.old, r.canonical,
-		))
-	}
-	return overrides
 }
 
 // providers lists every supported provider name.
@@ -1089,10 +821,15 @@ func detectProvider(baseURL, apiKey string) string {
 func ExampleTOML() string {
 	return `# micasa configuration
 # Place this file at: ` + Path() + `
+#
+# Each section is self-contained. No section's values affect another section.
 
-[llm]
-# Base LLM settings. Both chat and extraction pipelines inherit these
-# unless overridden in [llm.chat] or [llm.extraction] below.
+[chat]
+# Set to false to hide the chat feature from the UI.
+# enable = true
+
+[chat.llm]
+# LLM connection settings for the chat (NL-to-SQL) pipeline.
 
 # LLM provider. Supported: ollama, anthropic, openai, openrouter,
 # deepseek, gemini, groq, mistral, llamacpp, llamafile.
@@ -1108,42 +845,55 @@ func ExampleTOML() string {
 # Model name passed in chat requests.
 model = "` + DefaultModel + `"
 
-# API key for cloud providers.
-# Not needed for local servers like Ollama.
+# API key for cloud providers. Not needed for local servers like Ollama.
 # api_key = ""
 
-# Optional: custom context appended to all system prompts.
-# Use this to inject domain-specific details about your house, region, etc.
-# extra_context = "My house is a 1920s craftsman in Portland, OR."
-
-# Base inference timeout for LLM responses (including streaming).
-# Go duration syntax: "5m", "10m", etc. Default: "5m".
-# Per-pipeline overrides: llm.chat.timeout and llm.extraction.timeout.
+# Inference timeout (including streaming). Go duration syntax: "5m", "10m".
 # timeout = "5m"
 
 # Model reasoning effort level. Supported: none, low, medium, high, auto.
 # Empty = don't send (server default).
 # thinking = "medium"
 
-# [llm.chat]
-# Per-pipeline overrides for the chat (NL-to-SQL) pipeline.
-# Any field here takes precedence over the base [llm] value.
-# provider = "anthropic"
-# base_url = "https://api.anthropic.com"
-# model = "claude-sonnet-4-5-20250929"
-# api_key = "sk-ant-..."
-# timeout = "5m"     # inference context deadline (default: 5m)
-# thinking = "medium"
+# Custom context appended to chat system prompts.
+# extra_context = "My house is a 1920s craftsman in Portland, OR."
 
-# [llm.extraction]
-# Per-pipeline overrides for document extraction.
+[extraction]
+# Maximum pages for async extraction of scanned documents. 0 = no limit.
+# max_pages = 0
+
+[extraction.llm]
+# LLM connection settings for the document extraction pipeline.
 # Extraction wants a fast model optimized for structured JSON output.
-# provider = "anthropic"
-# base_url = "https://api.anthropic.com"
-# model = "claude-haiku-3-5-20241022"
-# api_key = "sk-ant-..."
-# timeout = "5m"     # inference context deadline (default: 5m)
+
+# Set to false to disable LLM-powered structured extraction. OCR and
+# pdftotext still run to populate document text for search/display.
+# enable = true
+
+# provider = "ollama"
+# base_url = "` + DefaultBaseURL + `"
+model = "` + DefaultModel + `"
+# api_key = ""
+# timeout = "5m"
 # thinking = "low"
+
+[extraction.ocr]
+# Set to false to disable OCR on uploaded documents. When disabled, scanned
+# pages and images produce no text.
+# enable = true
+
+[extraction.ocr.tsv]
+# Spatial layout annotations (line-level bounding boxes) from tesseract OCR.
+# Improves extraction accuracy for invoices and forms with tabular data,
+# at ~2x token overhead.
+
+# Set to false to disable spatial annotations.
+# enable = true
+
+# Confidence threshold (0-100). Lines with OCR confidence below this threshold
+# include a confidence score; lines above omit it to save tokens.
+# Set to 0 to never show confidence.
+# confidence_threshold = 70
 
 [documents]
 # Maximum file size for document imports. Accepts unitized strings or bare
@@ -1152,43 +902,15 @@ model = "` + DefaultModel + `"
 
 # How long to keep extracted document cache entries before evicting on startup.
 # Accepts "30d", "720h", or bare integers (seconds). Set to "0s" to disable.
-# Default: 30d.
 # cache_ttl = "30d"
 
 # Starting directory for the document file picker.
 # Default: system Downloads folder (~/Downloads on most systems).
 # file_picker_dir = "/home/user/Documents"
 
-[extraction]
-# Set to false to disable LLM-powered structured extraction. OCR and pdftotext
-# still run (see [extraction.ocr]) to populate document text for search/display.
-# enable = true
-
-# Deprecated: use [llm.extraction] timeout instead.
-# llm_timeout = "5m"
-
-# Maximum pages for async extraction of scanned documents. 0 = no limit. Default: 0.
-# max_pages = 0
-
-[extraction.ocr]
-# Set to false to disable OCR on uploaded documents. When disabled, scanned
-# pages and images produce no text. Default: true.
-# enable = true
-
-# Send spatial layout annotations (line-level bounding boxes) from tesseract
-# OCR to the LLM alongside text. Improves extraction accuracy for invoices
-# and forms with tabular data, at ~2x token overhead. Default: true.
-# tsv = true
-
-# Confidence threshold (0-100) for spatial annotations. Lines with OCR
-# confidence below this threshold include a confidence score; lines above
-# omit it to save tokens. Set to 0 to never show confidence. Default: 70.
-# confidence_threshold = 70
-
 [locale]
 # ISO 4217 currency code. Stored in the database on first run; after that the
-# database value is authoritative. Override: MICASA_LOCALE_CURRENCY env var.
-# Auto-detected from system locale if not set. Default: USD.
+# database value is authoritative. Auto-detected from system locale if not set.
 # currency = "USD"
 `
 }

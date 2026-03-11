@@ -964,7 +964,7 @@ func TestHTTPStreamingSurvivesPastQuickOpTimeout(t *testing.T) {
 }
 
 // TestHTTPResponseTimeoutKillsHungStream verifies that the HTTP client's
-// response timeout (from llm.timeout config) terminates a stream that
+// response timeout (from chat.llm.timeout / extraction.llm.timeout config) terminates a stream that
 // produces no data for longer than the timeout.
 func TestHTTPResponseTimeoutKillsHungStream(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {

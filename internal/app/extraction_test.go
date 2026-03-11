@@ -1016,7 +1016,7 @@ func TestLLMExtraction_TimeoutError(t *testing.T) {
 	assert.Equal(t, stepFailed, step.Status)
 	require.NotEmpty(t, step.Logs)
 	assert.Contains(t, step.Logs[0], "timed out")
-	assert.Contains(t, step.Logs[0], "llm.extraction.timeout")
+	assert.Contains(t, step.Logs[0], "extraction.llm.timeout")
 }
 
 func TestLLMExtraction_TimeoutError_NonDeadlinePreservesOriginal(t *testing.T) {
@@ -2272,7 +2272,7 @@ func TestModelPicker_SelectionWithIndependentProvider(t *testing.T) {
 
 	// Chat uses ollama on the default port.
 	m.llmClient = testExtractionOllamaClient(t, "chat-model")
-	m.llmConfig = &llmConfig{
+	m.chatCfg = chatConfig{
 		Provider: "ollama",
 		BaseURL:  "http://localhost:11434",
 		Model:    "chat-model",
@@ -2326,7 +2326,7 @@ func TestExtractionClient_IndependentFromChat(t *testing.T) {
 
 	// Chat config: ollama on default port.
 	m.llmClient = testExtractionOllamaClient(t, "chat-model")
-	m.llmConfig = &llmConfig{
+	m.chatCfg = chatConfig{
 		Provider: "ollama",
 		BaseURL:  "http://localhost:11434",
 		Model:    "chat-model",
@@ -2351,36 +2351,30 @@ func TestExtractionClient_IndependentFromChat(t *testing.T) {
 	assert.Equal(t, "extraction-model", m.extractionModelLabel())
 }
 
-// TestExtractionClient_FallsBackToChatConfig verifies that when extraction
-// has no provider/baseURL of its own, extractionLLMClient() fills gaps
-// from the chat config.
-func TestExtractionClient_FallsBackToChatConfig(t *testing.T) {
+// TestExtractionClient_NilWhenNoExtractionModel verifies that when
+// extraction has no model configured, extractionLLMClient() returns nil
+// even if chat has a model. Each pipeline is fully independent.
+func TestExtractionClient_NilWhenNoExtractionModel(t *testing.T) {
 	t.Parallel()
 	m := newExtractionModel(t, map[extractionStep]stepStatus{
 		stepLLM: stepDone,
 	})
 	m.ex.extraction.Done = true
 
-	// Chat config provides the connection.
+	// Chat config is fully configured.
 	m.llmClient = testExtractionOllamaClient(t, "chat-model")
-	m.llmConfig = &llmConfig{
+	m.chatCfg = chatConfig{
 		Provider: "ollama",
 		BaseURL:  "http://localhost:11434",
 		Model:    "chat-model",
 		Timeout:  5 * time.Second,
 	}
 
-	// Extraction overrides only the model.
-	m.ex.extractionModel = "extraction-only-model"
+	// Extraction has no model -- should NOT fall back to chat.
+	m.ex.extractionModel = ""
 
-	client := m.extractionLLMClient()
-	require.NotNil(t, client)
-	assert.Equal(t, "extraction-only-model", client.Model())
-
-	// User opens model picker and sees extraction-specific model.
-	sendExtractionKey(m, "r")
-	require.NotNil(t, m.ex.extraction.modelPicker)
-	assert.Equal(t, "extraction-only-model", m.extractionModelLabel())
+	assert.Nil(t, m.extractionLLMClient(),
+		"extraction should not fall back to chat config")
 }
 
 // TestExtractionClient_NilWhenNoConfig verifies that extractionLLMClient()
@@ -2394,7 +2388,7 @@ func TestExtractionClient_NilWhenNoConfig(t *testing.T) {
 
 	// No chat client, no chat config, no extraction config.
 	m.llmClient = nil
-	m.llmConfig = nil
+	m.chatCfg = chatConfig{}
 	m.ex.extractionModel = ""
 
 	assert.Nil(t, m.extractionLLMClient())

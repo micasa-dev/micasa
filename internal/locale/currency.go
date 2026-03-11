@@ -87,10 +87,6 @@ func ResolveDefault(configured string) (Currency, error) {
 		code = os.Getenv("MICASA_LOCALE_CURRENCY")
 	}
 	if code == "" {
-		// Deprecated; prefer MICASA_LOCALE_CURRENCY.
-		code = os.Getenv("MICASA_CURRENCY")
-	}
-	if code == "" {
 		code = detectCurrencyFromLocale()
 	}
 	if code == "" {

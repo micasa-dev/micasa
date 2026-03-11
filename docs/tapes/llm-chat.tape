@@ -16,7 +16,7 @@ Env NO_COLOR ""
 Env TERM "xterm-256color"
 Env COLORTERM "truecolor"
 Env COLORFGBG "15;0"
-Env MICASA_LLM_MODEL "mistral-small3.2:24b"
+Env MICASA_CHAT_LLM_MODEL "mistral-small3.2:24b"
 Env PS1 ""
 
 Hide

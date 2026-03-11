@@ -43,7 +43,7 @@ type backupCmd struct {
 }
 
 type configCmd struct {
-	Key  string `arg:"" optional:"" help:"Dot-delimited config key (e.g. llm.model, documents.max_file_size)."`
+	Key  string `arg:"" optional:"" help:"Dot-delimited config key (e.g. chat.llm.model, documents.max_file_size)."`
 	Dump bool   `                   help:"Print the fully resolved config as TOML and exit."`
 }
 
@@ -147,34 +147,35 @@ func (cmd *runCmd) Run() error {
 		FilePickerDir: cfg.Documents.ResolvedFilePickerDir(),
 	}
 
-	chatCfg := cfg.LLM.ChatConfig()
-	opts.SetLLM(
-		chatCfg.Provider,
-		chatCfg.BaseURL,
-		chatCfg.Model,
-		chatCfg.APIKey,
-		chatCfg.ExtraContext,
-		chatCfg.Timeout,
-		chatCfg.Thinking,
+	chatLLM := cfg.Chat.LLM
+	opts.SetChat(
+		cfg.Chat.IsEnabled(),
+		chatLLM.Provider,
+		chatLLM.BaseURL,
+		chatLLM.Model,
+		chatLLM.APIKey,
+		chatLLM.ExtraContext,
+		chatLLM.TimeoutDuration(),
+		chatLLM.Thinking,
 	)
 
-	exCfg := cfg.LLM.ExtractionConfig()
+	exLLM := cfg.Extraction.LLM
 	extractors := extract.DefaultExtractors(
 		cfg.Extraction.MaxPages,
 		0, // pdftotext uses its own internal default timeout (30s)
-		cfg.Extraction.IsOCREnabled(),
+		cfg.Extraction.OCR.IsEnabled(),
 	)
 	opts.SetExtraction(
-		exCfg.Provider,
-		exCfg.BaseURL,
-		exCfg.Model,
-		exCfg.APIKey,
-		exCfg.Timeout,
-		exCfg.Thinking,
+		exLLM.Provider,
+		exLLM.BaseURL,
+		exLLM.Model,
+		exLLM.APIKey,
+		exLLM.TimeoutDuration(),
+		exLLM.Thinking,
 		extractors,
-		cfg.Extraction.IsEnabled(),
-		cfg.Extraction.IsOCRTSV(),
-		cfg.Extraction.OCRConfThreshold(),
+		exLLM.IsEnabled(),
+		cfg.Extraction.OCR.TSV.IsEnabled(),
+		cfg.Extraction.OCR.TSV.Threshold(),
 	)
 
 	model, err := app.NewModel(store, opts)

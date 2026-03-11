@@ -181,9 +181,8 @@ type Model struct {
 	dbPath                string
 	configPath            string
 	llmClient             *llm.Client
-	llmConfig             *llmConfig // saved for extraction client creation
-	llmExtraContext       string     // user-provided context appended to prompts
-	filePickerDir         string     // starting directory for document file picker
+	chatCfg               chatConfig
+	filePickerDir         string // starting directory for document file picker
 	ex                    extractState
 	pull                  pullState
 	chat                  *chatState // non-nil when chat overlay is open
@@ -222,16 +221,15 @@ type Model struct {
 
 func NewModel(store *data.Store, options Options) (*Model, error) {
 	var client *llm.Client
-	var extraContext string
-	if options.LLMConfig != nil {
-		model := options.LLMConfig.Model
-		cfg := options.LLMConfig
+	chatCfg := options.ChatConfig
+	if chatCfg.Enabled {
+		model := chatCfg.Model
 		// Prefer the last-used model from the database if available.
 		if persisted, err := store.GetLastModel(); err == nil && persisted != "" {
 			model = persisted
-		} else if cfg.Provider == "ollama" {
+		} else if chatCfg.Provider == "ollama" {
 			// No persisted model -- try auto-detecting if the server has exactly one.
-			tempClient, err := llm.NewClient(cfg.Provider, cfg.BaseURL, model, cfg.APIKey, cfg.Timeout)
+			tempClient, err := llm.NewClient(chatCfg.Provider, chatCfg.BaseURL, model, chatCfg.APIKey, chatCfg.Timeout)
 			if err == nil {
 				if detected := autoDetectModel(tempClient); detected != "" {
 					model = detected
@@ -240,14 +238,19 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			}
 		}
 		var err error
-		client, err = llm.NewClient(cfg.Provider, cfg.BaseURL, model, cfg.APIKey, cfg.Timeout)
+		client, err = llm.NewClient(
+			chatCfg.Provider,
+			chatCfg.BaseURL,
+			model,
+			chatCfg.APIKey,
+			chatCfg.Timeout,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("create llm client: %w", err)
 		}
-		if cfg.Thinking != "" {
-			client.SetThinking(cfg.Thinking)
+		if chatCfg.Thinking != "" {
+			client.SetThinking(chatCfg.Thinking)
 		}
-		extraContext = cfg.ExtraContext
 	}
 
 	pprog := progress.New(
@@ -257,14 +260,13 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 	pprog.PercentageStyle = appStyles.TextDim()
 
 	model := &Model{
-		zones:           zone.New(),
-		store:           store,
-		dbPath:          options.DBPath,
-		configPath:      options.ConfigPath,
-		llmClient:       client,
-		llmConfig:       options.LLMConfig,
-		llmExtraContext: extraContext,
-		filePickerDir:   options.FilePickerDir,
+		zones:         zone.New(),
+		store:         store,
+		dbPath:        options.DBPath,
+		configPath:    options.ConfigPath,
+		llmClient:     client,
+		chatCfg:       chatCfg,
+		filePickerDir: options.FilePickerDir,
 		ex: extractState{
 			extractionProvider: options.ExtractionConfig.Provider,
 			extractionBaseURL:  options.ExtractionConfig.BaseURL,
@@ -2056,9 +2058,8 @@ func (m *Model) formatPullProgress(msg pullProgressMsg) string {
 }
 
 // extractionLLMClient returns the LLM client configured for extraction,
-// or nil if extraction is not available. The client is created once and cached.
-// When extraction has its own provider/connection settings, a fully independent
-// client is created; otherwise it clones the chat client with a model override.
+// or nil if extraction is not available. The client is created once and
+// cached. Each pipeline is fully independent -- no fallback to chat config.
 func (m *Model) extractionLLMClient() *llm.Client {
 	if m.ex.extractionClient != nil {
 		return m.ex.extractionClient
@@ -2070,33 +2071,6 @@ func (m *Model) extractionLLMClient() *llm.Client {
 	timeout := m.ex.extractionTimeout
 	model := m.ex.extractionModel
 
-	// Fill gaps from the chat client config when extraction doesn't have
-	// its own connection settings.
-	if provider == "" || baseURL == "" || apiKey == "" || timeout == 0 {
-		if m.llmConfig == nil {
-			return nil
-		}
-		if provider == "" {
-			provider = m.llmConfig.Provider
-		}
-		if baseURL == "" {
-			baseURL = m.llmConfig.BaseURL
-		}
-		if apiKey == "" {
-			apiKey = m.llmConfig.APIKey
-		}
-		if timeout == 0 {
-			timeout = m.llmConfig.Timeout
-		}
-	}
-
-	if model == "" {
-		if m.llmClient != nil {
-			model = m.llmClient.Model()
-		} else if m.llmConfig != nil {
-			model = m.llmConfig.Model
-		}
-	}
 	if model == "" {
 		return nil
 	}

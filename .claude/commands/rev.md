@@ -5,8 +5,9 @@ Rebase onto the latest main, address PR review feedback, and fix failing CI.
 
 ## 1. Rebase onto main
 
-1. `git pull --rebase origin main`
-2. If there are conflicts, resolve them, `git add` the resolved files, and
+1. `git fetch origin main`
+2. `git rebase origin/main`
+3. If there are conflicts, resolve them, `git add` the resolved files, and
    `git rebase --continue`. Repeat until the rebase completes.
 
 ## 2. Address PR review feedback and fix CI (parallel)

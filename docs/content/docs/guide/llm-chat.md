@@ -211,12 +211,12 @@ micasa connects over plain HTTP by default. Consider:
 - **Network exposure** -- anyone who can intercept traffic between you and a
   remote HTTP endpoint can read your home data
 
-The LLM feature is entirely optional. If you never configure an `[llm]`
+The LLM feature is entirely optional. If you never configure a `[chat.llm]`
 section, no data is ever sent anywhere.
 
 ## Configuration
 
-The chat requires an `[llm]` section in your config file. If no LLM is
+The chat requires a `[chat.llm]` section in your config file. If no LLM is
 configured, the chat overlay shows a helpful hint with the config path and
 a sample configuration.
 

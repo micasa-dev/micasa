@@ -27,9 +27,13 @@ func TestShowConfigDefaults(t *testing.T) {
 
 	out := showConfig(t, cfg)
 
-	assert.Contains(t, out, "[llm]")
-	assert.Contains(t, out, "[documents]")
+	assert.Contains(t, out, "[chat]")
+	assert.Contains(t, out, "[chat.llm]")
 	assert.Contains(t, out, "[extraction]")
+	assert.Contains(t, out, "[extraction.llm]")
+	assert.Contains(t, out, "[extraction.ocr]")
+	assert.Contains(t, out, "[extraction.ocr.tsv]")
+	assert.Contains(t, out, "[documents]")
 	assert.Contains(t, out, "[locale]")
 
 	assert.Contains(t, out, `model = "qwen3"`)
@@ -41,20 +45,18 @@ func TestShowConfigDefaults(t *testing.T) {
 	assert.Contains(t, out, "enable = true")
 
 	assert.NotContains(t, out, "cache_ttl_days")
-	assert.NotContains(t, out, "[llm.chat]")
-	assert.NotContains(t, out, "[llm.extraction]")
 }
 
 func TestShowConfigOutputIsValidTOML(t *testing.T) {
-	path := writeConfig(t, `[llm]
+	path := writeConfig(t, `[chat.llm]
 provider = "anthropic"
 model = "claude-sonnet-4-5-20250929"
 api_key = "sk-ant-test"
 timeout = "10s"
 thinking = "medium"
 
-[llm.chat]
-model = "gpt-4o"
+[extraction.llm]
+model = "qwen2.5:7b"
 
 [documents]
 max_file_size = "100 MiB"
@@ -62,7 +64,6 @@ cache_ttl = "7d"
 
 [extraction]
 max_pages = 10
-enable = false
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -75,7 +76,10 @@ enable = false
 }
 
 func TestShowConfigRoundTrip(t *testing.T) {
-	path := writeConfig(t, `[llm]
+	path := writeConfig(t, `[chat]
+enable = true
+
+[chat.llm]
 provider = "anthropic"
 model = "claude-sonnet-4-5-20250929"
 api_key = "sk-ant-test"
@@ -83,73 +87,74 @@ timeout = "10s"
 thinking = "medium"
 extra_context = "My house is old."
 
-[llm.chat]
-provider = "openai"
-model = "gpt-4o"
-api_key = "sk-openai"
+[extraction]
+max_pages = 10
+
+[extraction.llm]
+enable = false
+provider = "ollama"
+model = "qwen2.5:7b"
 
 [documents]
 max_file_size = "100 MiB"
 cache_ttl = "7d"
-
-[extraction]
-max_pages = 10
-enable = false
 `)
 	orig, err := LoadFromPath(path)
 	require.NoError(t, err)
 
 	out := showConfig(t, orig)
 
-	// Re-parse the dump output as a new Config.
 	tmpPath := writeConfig(t, out)
 	parsed, err := LoadFromPath(tmpPath)
 	require.NoError(t, err)
 
 	// Non-hidden fields must survive the roundtrip.
-	assert.Equal(t, orig.LLM.Provider, parsed.LLM.Provider)
-	assert.Equal(t, orig.LLM.Model, parsed.LLM.Model)
-	assert.Equal(t, orig.LLM.BaseURL, parsed.LLM.BaseURL)
-	assert.Equal(t, orig.LLM.Timeout, parsed.LLM.Timeout)
-	assert.Equal(t, orig.LLM.Thinking, parsed.LLM.Thinking)
-	assert.Equal(t, orig.LLM.ExtraContext, parsed.LLM.ExtraContext)
-	assert.Equal(t, orig.LLM.Chat.Provider, parsed.LLM.Chat.Provider)
-	assert.Equal(t, orig.LLM.Chat.Model, parsed.LLM.Chat.Model)
+	assert.Equal(t, orig.Chat.LLM.Provider, parsed.Chat.LLM.Provider)
+	assert.Equal(t, orig.Chat.LLM.Model, parsed.Chat.LLM.Model)
+	assert.Equal(t, orig.Chat.LLM.BaseURL, parsed.Chat.LLM.BaseURL)
+	assert.Equal(t, orig.Chat.LLM.Timeout, parsed.Chat.LLM.Timeout)
+	assert.Equal(t, orig.Chat.LLM.Thinking, parsed.Chat.LLM.Thinking)
+	assert.Equal(t, orig.Chat.LLM.ExtraContext, parsed.Chat.LLM.ExtraContext)
+	assert.Equal(t, orig.Extraction.LLM.Provider, parsed.Extraction.LLM.Provider)
+	assert.Equal(t, orig.Extraction.LLM.Model, parsed.Extraction.LLM.Model)
+	assert.Equal(t, orig.Extraction.LLM.IsEnabled(), parsed.Extraction.LLM.IsEnabled())
 	assert.Equal(t, orig.Documents.MaxFileSize, parsed.Documents.MaxFileSize)
 	assert.Equal(t,
 		orig.Documents.CacheTTLDuration(),
 		parsed.Documents.CacheTTLDuration())
 	assert.Equal(t, orig.Extraction.MaxPages, parsed.Extraction.MaxPages)
-	assert.Equal(t, orig.Extraction.IsEnabled(), parsed.Extraction.IsEnabled())
 
 	// API keys are hidden -- the parsed config must NOT have them.
-	assert.Empty(t, parsed.LLM.APIKey)
-	assert.Empty(t, parsed.LLM.Chat.APIKey)
+	assert.Empty(t, parsed.Chat.LLM.APIKey)
+	assert.Empty(t, parsed.Extraction.LLM.APIKey)
 }
 
 func TestShowConfigEnvOverride(t *testing.T) {
-	t.Setenv("MICASA_MAX_DOCUMENT_SIZE", "100 MiB")
-	t.Setenv("MICASA_LLM_MODEL", "llama3")
+	t.Setenv("MICASA_DOCUMENTS_MAX_FILE_SIZE", "100 MiB")
+	t.Setenv("MICASA_CHAT_LLM_MODEL", "llama3")
 
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 
 	out := showConfig(t, cfg)
 
-	assert.Regexp(t, `max_file_size = "100 MiB"\s+# src\(env\): MICASA_MAX_DOCUMENT_SIZE`, out)
-	assert.Regexp(t, `model = "llama3"\s+# src\(env\): MICASA_LLM_MODEL`, out)
+	assert.Regexp(
+		t,
+		`max_file_size = "100 MiB"\s+# src\(env\): MICASA_DOCUMENTS_MAX_FILE_SIZE`,
+		out,
+	)
+	assert.Regexp(t, `model = "llama3"\s+# src\(env\): MICASA_CHAT_LLM_MODEL`, out)
 }
 
-func TestShowConfigDeprecatedCacheTTLDaysEnv(t *testing.T) {
-	t.Setenv("MICASA_CACHE_TTL_DAYS", "14")
+func TestShowConfigCurrencyEnv(t *testing.T) {
+	t.Setenv("MICASA_LOCALE_CURRENCY", "EUR")
 
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 
 	out := showConfig(t, cfg)
 
-	assert.Regexp(t, `cache_ttl = "14d"\s+# src\(env\): MICASA_CACHE_TTL_DAYS`, out)
-	assert.Regexp(t, `cache_ttl_days = 14\s+# DEPRECATED: use documents\.cache_ttl = "14d"`, out)
+	assert.Regexp(t, `currency = "EUR"\s+# src\(env\): MICASA_LOCALE_CURRENCY`, out)
 }
 
 func TestShowConfigDeprecatedCacheTTLDaysFile(t *testing.T) {
@@ -161,94 +166,27 @@ cache_ttl_days = 7
 
 	out := showConfig(t, cfg)
 
-	assert.Regexp(t, `cache_ttl_days = 7\s+# DEPRECATED: use documents\.cache_ttl = "7d"`, out)
+	assert.Regexp(t, `cache_ttl_days = 7\s+#.*DEPRECATED: use documents\.cache_ttl`, out)
 	assert.Contains(t, out, `cache_ttl = "7d"`)
 }
 
-func TestShowConfigCurrencyEnv(t *testing.T) {
-	t.Setenv("MICASA_CURRENCY", "EUR")
+func TestShowConfigDeprecatedCacheTTLDaysEnv(t *testing.T) {
+	t.Setenv("MICASA_DOCUMENTS_CACHE_TTL_DAYS", "14")
 
 	cfg, err := LoadFromPath(noConfig(t))
-	require.NoError(t, err)
-
-	out := showConfig(t, cfg)
-
-	assert.Regexp(t, `currency = "EUR"\s+# src\(env\): MICASA_CURRENCY`, out)
-}
-
-func TestShowConfigPipelineOverrides(t *testing.T) {
-	path := writeConfig(t, `[llm]
-model = "qwen3"
-
-[llm.chat]
-provider = "anthropic"
-model = "claude-sonnet-4-5-20250929"
-api_key = "sk-ant-test"
-`)
-	cfg, err := LoadFromPath(path)
-	require.NoError(t, err)
-
-	out := showConfig(t, cfg)
-
-	assert.Contains(t, out, "[llm.chat]")
-	assert.Contains(t, out, `provider = "anthropic"`)
-	assert.Contains(t, out, `model = "claude-sonnet-4-5-20250929"`)
-}
-
-func TestShowConfigSkipsEmptyOverrideSections(t *testing.T) {
-	cfg, err := LoadFromPath(noConfig(t))
-	require.NoError(t, err)
-
-	out := showConfig(t, cfg)
-
-	assert.NotContains(t, out, "[llm.chat]")
-	assert.NotContains(t, out, "[llm.extraction]")
-}
-
-func TestShowConfigBothPipelineOverrides(t *testing.T) {
-	path := writeConfig(t, `[llm]
-model = "default"
-
-[llm.chat]
-provider = "openai"
-model = "gpt-4o"
-api_key = "sk-openai"
-
-[llm.extraction]
-provider = "anthropic"
-model = "claude-haiku-3-5-20241022"
-api_key = "sk-ant"
-`)
-	cfg, err := LoadFromPath(path)
-	require.NoError(t, err)
-
-	out := showConfig(t, cfg)
-
-	assert.Contains(t, out, "[llm.chat]")
-	assert.Contains(t, out, "[llm.extraction]")
-}
-
-func TestShowConfigDeprecatedExtractionFieldsWarned(t *testing.T) {
-	path := writeConfig(t, `[extraction]
-model = "old-model"
-thinking = "low"
-`)
-	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
 
 	out := showConfig(t, cfg)
 
 	assert.Regexp(
 		t,
-		`model = "old-model"\s+# DEPRECATED: use llm\.extraction\.model = "old-model"`,
+		`cache_ttl_days = 14\s+# src\(env\): MICASA_DOCUMENTS_CACHE_TTL_DAYS; DEPRECATED: use documents\.cache_ttl`,
 		out,
 	)
-	assert.Regexp(t, `thinking = "low"\s+# DEPRECATED: use llm\.extraction\.thinking = "low"`, out)
-	assert.Contains(t, out, "[llm.extraction]")
 }
 
 func TestShowConfigFromFile(t *testing.T) {
-	path := writeConfig(t, `[llm]
+	path := writeConfig(t, `[chat.llm]
 model = "phi3"
 extra_context = "My house is old."
 
@@ -278,7 +216,7 @@ func TestShowConfigOmitsEmptyThinking(t *testing.T) {
 }
 
 func TestShowConfigShowsNonEmptyThinking(t *testing.T) {
-	path := writeConfig(t, `[llm]
+	path := writeConfig(t, `[chat.llm]
 thinking = "high"
 `)
 	cfg, err := LoadFromPath(path)
@@ -289,12 +227,34 @@ thinking = "high"
 	assert.Contains(t, out, `thinking = "high"`)
 }
 
+func TestShowConfigShowsConfidenceThreshold(t *testing.T) {
+	path := writeConfig(t, `[extraction.ocr.tsv]
+confidence_threshold = 50
+`)
+	cfg, err := LoadFromPath(path)
+	require.NoError(t, err)
+
+	out := showConfig(t, cfg)
+
+	assert.Contains(t, out, "confidence_threshold = 50")
+}
+
+func TestShowConfigOmitsDefaultConfidenceThreshold(t *testing.T) {
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+
+	out := showConfig(t, cfg)
+
+	assert.NotContains(t, out, "confidence_threshold",
+		"omitempty confidence_threshold should be omitted when not set")
+}
+
 func TestShowConfigOmitsAPIKeys(t *testing.T) {
-	path := writeConfig(t, `[llm]
+	path := writeConfig(t, `[chat.llm]
 api_key = "sk-ant-secret-key"
 
-[llm.chat]
-api_key = "sk-openai-secret"
+[extraction.llm]
+api_key = "sk-ext-secret"
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -302,7 +262,7 @@ api_key = "sk-openai-secret"
 	out := showConfig(t, cfg)
 
 	assert.NotContains(t, out, "sk-ant-secret-key")
-	assert.NotContains(t, out, "sk-openai-secret")
+	assert.NotContains(t, out, "sk-ext-secret")
 	assert.NotContains(t, out, "api_key")
 }
 

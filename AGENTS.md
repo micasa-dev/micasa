@@ -210,8 +210,6 @@ details; do not duplicate that detail here.
 
 ### Git and CI
 
-- **Rebase with one command**: Use `git pull --rebase origin main` instead
-  of separate `git fetch origin main` + `git rebase origin/main`.
 - **Reply to PR review comments**: After addressing a PR review comment,
   reply to the comment on GitHub (via `gh api .../replies`) explaining
   how it was addressed (commit hash, what changed, tests added). Do this
@@ -269,6 +267,19 @@ details; do not duplicate that detail here.
   complete backup. Never store app state outside SQLite.
 - **LLM is opt-in, not a crutch**: Every feature must work fully without
   the LLM. The LLM enhances; it does not substitute.
+- **Resist configuration**: Push back when the user asks to make something
+  configurable. Most things should not be. Prefer sensible defaults,
+  auto-detection, and convention over configuration. Every config knob is
+  a maintenance burden, a documentation obligation, and a combinatorial
+  testing surface. Only add configuration when there is a concrete,
+  demonstrated need -- not a hypothetical one.
+- **Orthogonal configuration**: When configuration is warranted and agreed
+  upon, each config value must interact predictably -- or preferably not
+  at all -- with every other config value. No value in one section should
+  silently affect values in another section. No inheritance chains, no
+  cascading defaults across sections, no "this overrides that unless the
+  other thing is set." If two pipelines need the same setting, they each
+  get their own independent copy.
 - **Deterministic ordering requires tiebreakers**: Every `ORDER BY` that
   could tie MUST include a tiebreaker (typically `id DESC`).
 - **Audit new deps before adding**: Review source for security issues

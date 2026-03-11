@@ -39,10 +39,10 @@ over at Mozilla.
 
 Back to the tech.
 
-The provider details are configured in your [micasa config](/docs/reference/configuration/#llm-section):
+The provider details are configured in your [micasa config](/docs/reference/configuration/#chatllm-section):
 
 ```toml
-[llm]
+[chat.llm]
 provider = "anthropic"
 model = "claude-sonnet-4-5-latest"
 api_key = "sk-..."
@@ -63,19 +63,19 @@ They used to share a model. Now they don't
 ([#575](https://github.com/cpcloud/micasa/pull/575)):
 
 ```toml
-[llm]
+[chat.llm]
 provider = "ollama"
 model = "qwen3"
 
-[llm.extraction]
+[extraction.llm]
 provider = "anthropic"
 model = "claude-haiku-4-5-latest"
 api_key = "sk-..."
 ```
 
 Chat runs locally, extraction runs on Anthropic. Or both local. Or both cloud.
-`[llm]` is the default; `[llm.chat]` and `[llm.extraction]` override whatever
-you want per-pipeline.
+Each pipeline has its own independent `[chat.llm]` and `[extraction.llm]`
+sections -- no inheritance, no cross-contamination.
 
 ## Picking models at runtime
 
@@ -102,7 +102,7 @@ look before it writes.
 - **[Locale-aware currency](/docs/reference/configuration/#locale-section)** --
   EUR gets comma decimals and period grouping (`1.234,56`), GBP gets the pound
   sign, JPY drops decimal places. Auto-detected from your system locale or set
-  via `MICASA_CURRENCY`.
+  via `MICASA_LOCALE_CURRENCY`.
   ([#467](https://github.com/cpcloud/micasa/pull/467))
 - **[Imperial/metric toggle](/docs/guide/house-profile/)** -- <kbd>U</kbd> switches
   between square feet and square meters. Defaults to metric unless your locale
@@ -136,9 +136,9 @@ go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
 Or with a cloud provider:
 
 ```sh
-export MICASA_LLM_PROVIDER=anthropic
-export MICASA_LLM_MODEL=claude-haiku-4-5-latest
-export MICASA_LLM_API_KEY=sk-...
+export MICASA_CHAT_LLM_PROVIDER=anthropic
+export MICASA_CHAT_LLM_MODEL=claude-haiku-4-5-latest
+export MICASA_CHAT_LLM_API_KEY=sk-...
 go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
 ```
 

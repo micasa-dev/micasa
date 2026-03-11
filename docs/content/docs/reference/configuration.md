@@ -56,8 +56,8 @@ micasa config [<key>] [--dump]
 Print the resolved value of a configuration key (dot-delimited TOML path):
 
 ```sh
-micasa config llm.model             # current model name
-micasa config llm.base_url          # LLM API endpoint
+micasa config chat.llm.model           # current chat model name
+micasa config extraction.llm.model     # extraction model name
 micasa config documents.max_file_size  # max doc size in bytes
 ```
 
@@ -105,48 +105,30 @@ You can always infer the env var name from the config key.
 | Variable | Default | Config equivalent | Description |
 |----------|---------|-------------------|-------------|
 | `MICASA_DB_PATH` | [Platform default](#platform-data-directory) | -- | Database file path |
-| `MICASA_LLM_PROVIDER` | `ollama` | `llm.provider` | LLM provider name |
-| `OLLAMA_HOST` | `http://localhost:11434` | `llm.base_url` | LLM API base URL |
-| `MICASA_LLM_BASE_URL` | `http://localhost:11434` | `llm.base_url` | LLM API base URL (alias for `OLLAMA_HOST`) |
-| `MICASA_LLM_MODEL` | `qwen3` | `llm.model` | LLM model name |
-| `MICASA_LLM_API_KEY` | (empty) | `llm.api_key` | LLM API key for cloud providers |
-| `MICASA_LLM_EXTRA_CONTEXT` | (empty) | `llm.extra_context` | Custom context appended to LLM system prompts |
-| `MICASA_LLM_TIMEOUT` | `5m` | `llm.timeout` | Base inference timeout for LLM responses |
-| `MICASA_LLM_THINKING` | (unset) | `llm.thinking` | Enable model thinking for chat |
+| `MICASA_CHAT_ENABLE` | `true` | `chat.enable` | Enable/disable the chat feature |
+| `MICASA_CHAT_LLM_PROVIDER` | `ollama` | `chat.llm.provider` | Chat LLM provider name |
+| `MICASA_CHAT_LLM_BASE_URL` | `http://localhost:11434` | `chat.llm.base_url` | Chat LLM API base URL |
+| `MICASA_CHAT_LLM_MODEL` | `qwen3` | `chat.llm.model` | Chat LLM model name |
+| `MICASA_CHAT_LLM_API_KEY` | (empty) | `chat.llm.api_key` | Chat API key for cloud providers |
+| `MICASA_CHAT_LLM_EXTRA_CONTEXT` | (empty) | `chat.llm.extra_context` | Custom context appended to chat system prompts |
+| `MICASA_CHAT_LLM_TIMEOUT` | `5m` | `chat.llm.timeout` | Chat inference timeout |
+| `MICASA_CHAT_LLM_THINKING` | (unset) | `chat.llm.thinking` | Chat model thinking mode |
+| `MICASA_EXTRACTION_MAX_PAGES` | `0` | `extraction.max_pages` | Max pages to OCR per document (0 = no limit) |
+| `MICASA_EXTRACTION_LLM_ENABLE` | `true` | `extraction.llm.enable` | Enable/disable LLM extraction |
+| `MICASA_EXTRACTION_LLM_PROVIDER` | `ollama` | `extraction.llm.provider` | Extraction LLM provider name |
+| `MICASA_EXTRACTION_LLM_BASE_URL` | `http://localhost:11434` | `extraction.llm.base_url` | Extraction LLM API base URL |
+| `MICASA_EXTRACTION_LLM_MODEL` | `qwen3` | `extraction.llm.model` | Extraction LLM model name |
+| `MICASA_EXTRACTION_LLM_API_KEY` | (empty) | `extraction.llm.api_key` | Extraction API key for cloud providers |
+| `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | `extraction.llm.timeout` | Extraction inference timeout |
+| `MICASA_EXTRACTION_LLM_THINKING` | (unset) | `extraction.llm.thinking` | Extraction model thinking mode |
+| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | `extraction.ocr.enable` | Enable/disable OCR on documents |
+| `MICASA_EXTRACTION_OCR_TSV_ENABLE` | `true` | `extraction.ocr.tsv.enable` | Enable/disable spatial layout annotations |
+| `MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD` | `70` | `extraction.ocr.tsv.confidence_threshold` | OCR confidence threshold (0-100) |
 | `MICASA_DOCUMENTS_MAX_FILE_SIZE` | `50 MiB` | `documents.max_file_size` | Max document import size |
 | `MICASA_DOCUMENTS_CACHE_TTL` | `30d` | `documents.cache_ttl` | Document cache lifetime |
 | `MICASA_DOCUMENTS_CACHE_TTL_DAYS` | -- | `documents.cache_ttl_days` | Deprecated; use `MICASA_DOCUMENTS_CACHE_TTL` |
 | `MICASA_DOCUMENTS_FILE_PICKER_DIR` | (Downloads) | `documents.file_picker_dir` | Starting directory for the file picker |
-| `MICASA_EXTRACTION_MODEL` | (chat model) | `extraction.model` | LLM model for document extraction |
-| `MICASA_EXTRACTION_ENABLE` | `true` | `extraction.enable` | Enable/disable LLM extraction |
-| `MICASA_EXTRACTION_THINKING` | `false` | `extraction.thinking` | Enable model thinking for extraction |
-| `MICASA_EXTRACTION_MAX_PAGES` | `0` | `extraction.max_pages` | Max pages to OCR per document (0 = no limit) |
-| `MICASA_LLM_EXTRACTION_TIMEOUT` | `5m` | `llm.extraction.timeout` | Extraction inference timeout |
-| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | `extraction.ocr.enable` | Enable/disable OCR on documents |
-| `MICASA_EXTRACTION_OCR_CONFIDENCE_THRESHOLD` | `0` | `extraction.ocr.confidence_threshold` | Min tesseract confidence (0-100) |
 | `MICASA_LOCALE_CURRENCY` | (auto-detect) | `locale.currency` | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
-
-{{% details title="Deprecated env var names" closed="true" %}}
-
-The following old env var names are still accepted but emit a deprecation
-warning. They will be removed in a future release.
-
-| Old name | Replacement |
-|----------|-------------|
-| `MICASA_MAX_DOCUMENT_SIZE` | `MICASA_DOCUMENTS_MAX_FILE_SIZE` |
-| `MICASA_CACHE_TTL` | `MICASA_DOCUMENTS_CACHE_TTL` |
-| `MICASA_CACHE_TTL_DAYS` | `MICASA_DOCUMENTS_CACHE_TTL_DAYS` |
-| `MICASA_FILE_PICKER_DIR` | `MICASA_DOCUMENTS_FILE_PICKER_DIR` |
-| `MICASA_CURRENCY` | `MICASA_LOCALE_CURRENCY` |
-| `MICASA_EXTRACTION_MAX_EXTRACT_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
-| `MICASA_MAX_EXTRACT_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
-| `MICASA_MAX_OCR_PAGES` | `MICASA_EXTRACTION_MAX_PAGES` |
-| `MICASA_EXTRACTION_ENABLED` | `MICASA_EXTRACTION_ENABLE` |
-| `MICASA_EXTRACTION_MODEL` | `MICASA_LLM_EXTRACTION_MODEL` |
-| `MICASA_EXTRACTION_THINKING` | `MICASA_LLM_EXTRACTION_THINKING` |
-| `MICASA_EXTRACTION_LLM_TIMEOUT` | `MICASA_LLM_EXTRACTION_TIMEOUT` |
-
-{{% /details %}}
 
 ### `MICASA_DB_PATH`
 
@@ -158,33 +140,23 @@ export MICASA_DB_PATH=/path/to/my/house.db
 micasa   # uses /path/to/my/house.db
 ```
 
-### `OLLAMA_HOST`
+### `MICASA_CHAT_LLM_MODEL`
 
-Sets the LLM API base URL, overriding the config file value. If the URL
-doesn't end with `/v1`, it's appended automatically:
-
-```sh
-export OLLAMA_HOST=http://192.168.1.50:11434
-micasa   # connects to http://192.168.1.50:11434/v1
-```
-
-### `MICASA_LLM_MODEL`
-
-Sets the LLM model name, overriding the config file value:
+Sets the chat LLM model name, overriding the config file value:
 
 ```sh
-export MICASA_LLM_MODEL=llama3.3
-micasa   # uses llama3.3 instead of the default qwen3
+export MICASA_CHAT_LLM_MODEL=llama3.3
+micasa   # uses llama3.3 instead of the default qwen3 for chat
 ```
 
-### `MICASA_LLM_TIMEOUT`
+### `MICASA_CHAT_LLM_TIMEOUT`
 
-Sets the maximum time for a single LLM response (including streaming),
+Sets the maximum time for a single chat LLM response (including streaming),
 overriding the config file value. Uses Go duration syntax:
 
 ```sh
-export MICASA_LLM_TIMEOUT=10m
-micasa   # waits up to 10m for LLM responses
+export MICASA_CHAT_LLM_TIMEOUT=10m
+micasa   # waits up to 10m for chat LLM responses
 ```
 
 ### `MICASA_DOCUMENTS_MAX_FILE_SIZE`
@@ -257,118 +229,86 @@ values you want to change.
 
 ```toml
 # micasa configuration
+# Each section is self-contained. No section's values affect another section.
 
-[llm]
-# LLM provider. Supported: ollama, anthropic, openai, openrouter,
-# deepseek, gemini, groq, mistral, llamacpp, llamafile.
-# Auto-detected from base_url and api_key when not set.
+[chat]
+# Set to false to hide the chat feature from the UI.
+# enable = true
+
+[chat.llm]
+# LLM connection settings for the chat (NL-to-SQL) pipeline.
 # provider = "ollama"
-
-# Base URL for the provider's API. No /v1 suffix needed.
-# Ollama (default): http://localhost:11434
-# llama.cpp:        http://localhost:8080
-# LM Studio:        http://localhost:1234
 base_url = "http://localhost:11434"
-
-# Model name passed in chat requests.
 model = "qwen3"
-
-# API key for cloud providers. Not needed for local servers like Ollama.
 # api_key = ""
-
-# Optional: custom context appended to all system prompts.
-# Use this to inject domain-specific details about your house, region, etc.
+# timeout = "5m"
+# thinking = "medium"
 # extra_context = "My house is a 1920s craftsman in Portland, OR."
 
-# Base inference timeout for LLM responses (including streaming).
-# Per-pipeline overrides: llm.chat.timeout and llm.extraction.timeout.
-# Go duration syntax: "5m", "10m", etc. Default: "5m".
-# timeout = "5m"
-
-# Enable model thinking mode for chat (e.g. qwen3 <think> blocks).
-# Unset = don't send (server default), true = enable, false = disable.
-# thinking = false
-
-[documents]
-# Maximum file size for document imports. Accepts unitized strings or bare
-# integers (bytes). Default: 50 MiB.
-# max_file_size = "50 MiB"
-
-# How long to keep extracted document cache entries before evicting on startup.
-# Accepts "30d", "720h", or bare integers (seconds). Set to "0s" to disable.
-# Default: 30d.
-# cache_ttl = "30d"
-
 [extraction]
-# Model for document extraction. Defaults to llm.model. Extraction works well
-# with small, fast models optimized for structured JSON output.
-# model = "qwen2.5:7b"
-
-# Maximum pages to OCR for scanned documents. 0 = no limit. Default: 0.
 # max_pages = 0
 
-# Set to false to disable LLM-powered extraction.
-# When disabled, no structured data is extracted from documents.
-# enabled = true
+[extraction.llm]
+# LLM connection settings for document extraction.
+# enable = true
+# provider = "ollama"
+model = "qwen3"
+# timeout = "5m"
+# thinking = "low"
 
-# Enable model thinking for extraction. Default: false (faster, no <think>).
-# thinking = false
+[extraction.ocr]
+# enable = true
+
+[extraction.ocr.tsv]
+# enable = true
+# confidence_threshold = 70
+
+[documents]
+# max_file_size = "50 MiB"
+# cache_ttl = "30d"
 
 [locale]
-# ISO 4217 currency code for all money fields. Stored in the database on first
-# run; after that the database value is authoritative (portable DB files keep
-# their currency even when opened on a machine with different locale settings).
-# Auto-detected from LC_MONETARY/LANG if not set. Default: USD.
-# Override with MICASA_LOCALE_CURRENCY env var.
 # currency = "USD"
 ```
 
-### `[llm]` section
+### `[chat]` section
 
-LLM provider, model, and connection settings. These are the shared defaults
-for all LLM pipelines (chat and extraction). Per-pipeline overrides can be
-set in `[llm.chat]` and `[llm.extraction]`.
+Controls the chat (NL-to-SQL) feature and its LLM settings.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enable` | bool | `true` | Set to `false` to hide the chat feature from the UI. |
+
+### `[chat.llm]` section
+
+LLM connection settings for the chat pipeline. Each field has its own
+default; no values are inherited from other config sections.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `provider` | string | `ollama` | LLM provider. Supported: `ollama`, `anthropic`, `openai`, `openrouter`, `deepseek`, `gemini`, `groq`, `mistral`, `llamacpp`, `llamafile`. Auto-detected from `base_url` and `api_key` when not set. |
-| `base_url` | string | `http://localhost:11434` | Root URL of the provider's API. No `/v1` suffix needed -- each provider handles path construction. |
-| `model` | string | `qwen3` | Model identifier sent in chat requests. Must be available on the server. |
-| `api_key` | string | (empty) | Authentication credential. Required for cloud providers (Anthropic, OpenAI, etc.). Leave empty for local servers. |
-| `extra_context` | string | (empty) | Free-form text appended to all LLM system prompts. Useful for telling the model about your house or regional conventions. Currency is handled automatically via `[locale]`. |
-| `timeout` | string | `"5m"` | Base inference timeout for LLM responses (including streaming). Per-pipeline overrides: `llm.chat.timeout` and `llm.extraction.timeout`. Go duration syntax, e.g. `"10m"`. |
-| `thinking` | bool | (unset) | Enable model thinking mode (e.g. qwen3 `<think>` blocks). Unset = don't send the option (server default). |
+| `base_url` | string | `http://localhost:11434` | Root URL of the provider's API. No `/v1` suffix needed. |
+| `model` | string | `qwen3` | Model identifier sent in chat requests. |
+| `api_key` | string | (empty) | Authentication credential. Required for cloud providers. Leave empty for local servers. |
+| `timeout` | string | `"5m"` | Inference timeout for chat responses (including streaming). Go duration syntax, e.g. `"10m"`. |
+| `thinking` | string | (unset) | Model reasoning effort level. Supported: `none`, `low`, `medium`, `high`, `auto`. Empty = server default. |
+| `extra_context` | string | (empty) | Custom text appended to chat system prompts. Useful for domain-specific details about your house. Currency is handled automatically via `[locale]`. |
 
-### `[llm.chat]` section
+### `[extraction.llm]` section
 
-Per-pipeline LLM overrides for the chat (NL-to-SQL) pipeline. Empty fields
-inherit from `[llm]`. Use this to run chat on a different provider or model
-than the default.
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `provider` | string | (inherits) | Override LLM provider for chat. |
-| `base_url` | string | (inherits) | Override API base URL for chat. |
-| `model` | string | (inherits) | Override model for chat. |
-| `api_key` | string | (inherits) | Override API key for chat. |
-| `timeout` | string | (inherits) | Chat inference context deadline. Inherits from `llm.timeout` when not set. |
-| `thinking` | string | (inherits) | Override thinking mode for chat. |
-
-### `[llm.extraction]` section
-
-Per-pipeline LLM overrides for document extraction. Empty fields inherit
-from `[llm]`. Use this to run extraction on a smaller, faster model while
-keeping a more capable model for chat. The `timeout` field replaces the
-deprecated `extraction.llm_timeout`.
+LLM connection settings for the document extraction pipeline. Fully
+independent from `[chat.llm]` -- each pipeline has its own provider,
+model, and credentials.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `provider` | string | (inherits) | Override LLM provider for extraction. |
-| `base_url` | string | (inherits) | Override API base URL for extraction. |
-| `model` | string | (inherits) | Override model for extraction. |
-| `api_key` | string | (inherits) | Override API key for extraction. |
-| `timeout` | string | (inherits) | Extraction inference context deadline. Replaces `extraction.llm_timeout`. Inherits from `llm.timeout` when not set. |
-| `thinking` | string | (inherits) | Override thinking mode for extraction. |
+| `enable` | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run. |
+| `provider` | string | `ollama` | LLM provider for extraction. Same options as `[chat.llm]`. |
+| `base_url` | string | `http://localhost:11434` | API base URL for extraction. |
+| `model` | string | `qwen3` | Model for extraction. Extraction works well with small, fast models optimized for structured JSON output. |
+| `api_key` | string | (empty) | Authentication credential for extraction. |
+| `timeout` | string | `"5m"` | Extraction inference timeout. |
+| `thinking` | string | (unset) | Reasoning effort level for extraction. |
 
 ### `[documents]` section
 
@@ -382,19 +322,11 @@ Document attachment limits and caching.
 
 ### `[extraction]` section
 
-Document extraction pipeline settings. Requires an LLM -- OCR and pdftotext
-are internal pipeline steps that feed the LLM, not standalone features.
-When enabled, the pipeline extracts structured data (document type, costs,
-dates, vendor matching) from uploaded documents.
+Document extraction pipeline settings.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `model` | string | (chat model) | **Deprecated.** Use `[llm.extraction] model` instead. Falls back to `llm.model` if empty. |
 | `max_pages` | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
-| `enable` | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run (see `[extraction.ocr]`). |
-| `enabled` | bool | -- | **Deprecated.** Use `enable` instead. |
-| `llm_timeout` | string | `"5m"` | **Deprecated.** Use `[llm.extraction] timeout` instead. |
-| `thinking` | bool | `false` | **Deprecated.** Use `[llm.extraction] thinking` instead. |
 
 ### `[extraction.ocr]` section
 
@@ -403,7 +335,17 @@ OCR sub-pipeline settings. Requires `tesseract` and `pdftocairo`.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `enable` | bool | `true` | Set to `false` to disable OCR on documents. When disabled, scanned pages and images produce no text. |
-| `confidence_threshold` | int | `0` | Minimum tesseract word confidence (0-100) to keep. Words below this threshold are dropped. 0 means no filtering. |
+
+### `[extraction.ocr.tsv]` section
+
+Spatial layout annotations (line-level bounding boxes) from tesseract OCR.
+Improves extraction accuracy for invoices and forms with tabular data,
+at ~2x token overhead.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enable` | bool | `true` | Set to `false` to disable spatial annotations sent to the LLM. |
+| `confidence_threshold` | int | `70` | Confidence threshold (0-100). Lines with OCR confidence below this value include a confidence score; lines above omit it to save tokens. Set to 0 to never show confidence. |
 
 ### `[locale]` section
 
@@ -447,8 +389,8 @@ provider.
 #### Cloud providers
 
 micasa also supports cloud LLM providers. Set `provider`, `base_url`, and
-`api_key` in the `[llm]` section. Cloud providers use their own default
-base URLs when none is configured.
+`api_key` in `[chat.llm]` and/or `[extraction.llm]`. Cloud providers use
+their own default base URLs when none is configured.
 
 | Provider | Notes |
 |----------|-------|
@@ -471,11 +413,12 @@ Environment variables override config file values. The full precedence order
 
 ### `extra_context` examples
 
-The `extra_context` field is injected into every system prompt sent to the
-LLM, giving it persistent knowledge about your situation:
+The `extra_context` field in `[chat.llm]` is injected into every system
+prompt sent to the chat LLM, giving it persistent knowledge about your
+situation:
 
 ```toml
-[llm]
+[chat.llm]
 extra_context = """
 My house is a 1920s craftsman bungalow in Portland, OR.
 Property tax is assessed annually in November.

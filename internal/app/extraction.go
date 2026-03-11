@@ -744,7 +744,7 @@ func (m *Model) handleExtractionLLMChunk(msg extractionLLMChunkMsg) tea.Cmd {
 		errMsg := msg.Err.Error()
 		if errors.Is(msg.Err, context.DeadlineExceeded) {
 			errMsg = fmt.Sprintf(
-				"timed out after %s -- increase llm.extraction.timeout in config",
+				"timed out after %s -- increase extraction.llm.timeout in config",
 				step.Elapsed.Truncate(time.Second),
 			)
 		}

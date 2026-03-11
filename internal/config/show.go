@@ -18,20 +18,14 @@ import (
 
 // hiddenPaths lists TOML key paths excluded from ShowConfig output.
 var hiddenPaths = map[string]bool{
-	"llm.api_key":            true,
-	"llm.chat.api_key":       true,
-	"llm.extraction.api_key": true,
+	"chat.llm.api_key":       true,
+	"extraction.llm.api_key": true,
 }
 
-// deprecatedPaths maps deprecated TOML key paths to the modern replacement
-// key. When a user sets a deprecated field, the dump shows it with a
-// "DEPRECATED: use <replacement>" warning.
+// deprecatedPaths maps deprecated TOML key paths to a human-readable
+// replacement hint shown in ShowConfig output.
 var deprecatedPaths = map[string]string{
 	"documents.cache_ttl_days": "documents.cache_ttl",
-	"extraction.enabled":       "extraction.enable",
-	"extraction.llm_timeout":   "llm.extraction.timeout",
-	"extraction.model":         "llm.extraction.model",
-	"extraction.thinking":      "llm.extraction.thinking",
 }
 
 // ShowConfig writes the fully resolved configuration as valid TOML to w,
@@ -45,44 +39,33 @@ func (c Config) ShowConfig(w io.Writer) error {
 		envByKey[key] = ev
 	}
 
-	// Build fallback env vars from the rename table so that
-	// deprecated env var names still show as "src(env): OLD_NAME".
-	fallbacks := make(map[string][]string)
-	for _, r := range envRenames {
-		if key, ok := envMap[r.canonical]; ok {
-			fallbacks[key] = append(fallbacks[key], r.old)
-		}
-	}
-	// Cross-field: deprecated cache_ttl_days env vars feed cache_ttl display.
-	fallbacks["documents.cache_ttl"] = append(fallbacks["documents.cache_ttl"],
-		"MICASA_DOCUMENTS_CACHE_TTL_DAYS", "MICASA_CACHE_TTL_DAYS",
-	)
-
 	v := reflect.ValueOf(dc)
-	allValues := make(map[string]string)
-	collectValues(v, "", allValues)
-
-	blocks := walkSections(v, "", "", envByKey, fallbacks, allValues)
+	blocks := walkSections(v, "", "", envByKey)
 	return renderBlocks(w, blocks)
 }
 
-// forDisplay returns a copy with deprecated fields resolved into their
-// modern equivalents and nil optionals populated to effective values.
-// User-set deprecated fields are preserved so the dump can warn about them.
+// forDisplay returns a copy with nil optionals populated to effective values.
 func (c Config) forDisplay() Config {
 	d := c
 	if d.Documents.CacheTTL == nil {
 		dur := d.Documents.CacheTTLDuration()
 		d.Documents.CacheTTL = &Duration{dur}
 	}
-	// CacheTTLDays preserved when user-set so the dump warns about it.
-	if d.Extraction.Enable == nil {
+	if d.Chat.Enable == nil {
 		t := true
-		d.Extraction.Enable = &t
+		d.Chat.Enable = &t
+	}
+	if d.Extraction.LLM.Enable == nil {
+		t := true
+		d.Extraction.LLM.Enable = &t
 	}
 	if d.Extraction.OCR.Enable == nil {
 		t := true
 		d.Extraction.OCR.Enable = &t
+	}
+	if d.Extraction.OCR.TSV.Enable == nil {
+		t := true
+		d.Extraction.OCR.TSV.Enable = &t
 	}
 	if d.Locale.Currency == "" {
 		d.Locale.Currency = detectCurrencyCode()
@@ -103,7 +86,7 @@ func detectCurrencyCode() string {
 // sectionBlock groups the lines belonging to a single TOML table.
 type sectionBlock struct {
 	header   string
-	override bool   // path contains "." (e.g. llm.chat)
+	override bool   // path contains "." (e.g. chat.llm)
 	doc      string // section description from doc struct tag
 	lines    []annotatedLine
 }
@@ -114,54 +97,12 @@ type annotatedLine struct {
 	empty   bool   // value is zero-ish ("", 0, false)
 }
 
-// collectValues builds a flat map of every leaf's formatted TOML value,
-// keyed by fully-qualified dot path. Used by deprecated field warnings
-// to reference replacement key values.
-func collectValues(v reflect.Value, prefix string, vals map[string]string) {
-	t := v.Type()
-	for i := range t.NumField() {
-		f := t.Field(i)
-		fv := v.Field(i)
-
-		tomlName := tomlTagName(f)
-		if tomlName == "" {
-			continue
-		}
-
-		path := tomlName
-		if prefix != "" {
-			path = prefix + "." + tomlName
-		}
-
-		ft := f.Type
-		val := fv
-		if ft.Kind() == reflect.Pointer {
-			if val.IsNil() {
-				continue
-			}
-			ft = ft.Elem()
-			val = val.Elem()
-		}
-
-		if isConfigSection(ft) {
-			collectValues(val, path, vals)
-			continue
-		}
-
-		if formatted, ok := formatTOMLValue(val); ok {
-			vals[path] = formatted
-		}
-	}
-}
-
 // walkSections reflects over a config struct and builds section blocks
-// with annotated lines, handling hidden paths, deprecated fields,
-// omitempty, and env var comments.
+// with annotated lines, handling hidden paths, omitempty, and env var
+// comments.
 func walkSections(
 	v reflect.Value, prefix, doc string,
 	envByKey map[string]string,
-	fallbackEnvVars map[string][]string,
-	allValues map[string]string,
 ) []sectionBlock {
 	t := v.Type()
 
@@ -203,7 +144,7 @@ func walkSections(
 			}
 			fieldDoc := f.Tag.Get("doc")
 			nested = append(nested,
-				walkSections(val, path, fieldDoc, envByKey, fallbackEnvVars, allValues)...)
+				walkSections(val, path, fieldDoc, envByKey)...)
 			continue
 		}
 
@@ -229,22 +170,15 @@ func walkSections(
 
 		empty := isEmptyValue(fv)
 
-		if replacement, depOk := deprecatedPaths[path]; depOk {
-			if empty {
-				continue
+		comment := envComment(envByKey[path])
+		if replacement, ok := deprecatedPaths[path]; ok {
+			dep := fmt.Sprintf("DEPRECATED: use %s", replacement)
+			if comment != "" {
+				comment = comment + "; " + dep
+			} else {
+				comment = dep
 			}
-			hint := replacement
-			if rv, rvOk := allValues[replacement]; rvOk {
-				hint = replacement + " = " + rv
-			}
-			cur.lines = append(cur.lines, annotatedLine{
-				kv:      tomlName + " = " + formatted,
-				comment: "DEPRECATED: use " + hint,
-			})
-			continue
 		}
-
-		comment := envComment(envByKey[path], fallbackEnvVars[path])
 		cur.lines = append(cur.lines, annotatedLine{
 			kv:      tomlName + " = " + formatted,
 			comment: comment,
@@ -400,13 +334,11 @@ func isConfigSection(t reflect.Type) bool {
 }
 
 // isEmptyValue reports whether a reflected config field holds a
-// zero-ish value (empty string, 0, false, nil pointer to zero).
+// zero-ish value (empty string, 0, false, nil pointer). A non-nil
+// pointer to a zero value is NOT empty -- it was explicitly set.
 func isEmptyValue(v reflect.Value) bool {
 	if v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return true
-		}
-		return isEmptyValue(v.Elem())
+		return v.IsNil()
 	}
 
 	switch v.Kind() { //nolint:exhaustive // only config-relevant kinds
@@ -441,23 +373,14 @@ func hasOmitEmpty(f reflect.StructField) bool {
 }
 
 // envComment returns a TOML inline comment indicating the env var for a
-// config field. If the primary or a fallback env var is actively set, it
-// returns "src(env): VAR". Otherwise it returns "env: VAR" as a hint.
-// Returns empty string when no env var is associated.
-func envComment(primary string, fallbacks []string) string {
-	if primary != "" && os.Getenv(primary) != "" {
-		return "src(env): " + primary
+// config field. If the env var is actively set, it returns "src(env): VAR".
+// Otherwise it returns "env: VAR" as a hint.
+func envComment(envVar string) string {
+	if envVar == "" {
+		return ""
 	}
-	for _, alt := range fallbacks {
-		if os.Getenv(alt) != "" {
-			return "src(env): " + alt
-		}
+	if os.Getenv(envVar) != "" {
+		return "src(env): " + envVar
 	}
-	if primary != "" {
-		return "env: " + primary
-	}
-	if len(fallbacks) > 0 {
-		return "env: " + fallbacks[0]
-	}
-	return ""
+	return "env: " + envVar
 }

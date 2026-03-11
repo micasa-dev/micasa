@@ -201,7 +201,7 @@ func (m *Model) openChat() tea.Cmd {
 		m.chat.Messages = append(m.chat.Messages, chatMessage{
 			Role: roleNotice,
 			Content: fmt.Sprintf(
-				"No LLM configured. Create %s with:\n\n[llm]\nbase_url = \"http://localhost:11434/v1\"\nmodel = \"qwen3\"",
+				"No LLM configured. Create %s with:\n\n[chat.llm]\nbase_url = \"http://localhost:11434\"\nmodel = \"qwen3\"",
 				shortenHome(m.configPath),
 			),
 		})
@@ -321,8 +321,8 @@ func (m *Model) submitChat() tea.Cmd {
 
 // chatInferenceTimeout returns the configured chat inference timeout.
 func (m *Model) chatInferenceTimeout() time.Duration {
-	if m.llmConfig != nil && m.llmConfig.Timeout > 0 {
-		return m.llmConfig.Timeout
+	if m.chatCfg.Timeout > 0 {
+		return m.chatCfg.Timeout
 	}
 	return config.DefaultLLMTimeout
 }
@@ -331,7 +331,7 @@ func (m *Model) chatInferenceTimeout() time.Duration {
 func (m *Model) startSQLStream(query string) tea.Cmd {
 	client := m.llmClient
 	store := m.store
-	extraContext := m.llmExtraContext
+	extraContext := m.chatCfg.ExtraContext
 	chatTimeout := m.chatInferenceTimeout()
 	// Capture conversation history on the main goroutine before the closure
 	// runs in a background goroutine -- m.chat.Messages is mutated by the
@@ -765,7 +765,7 @@ func (m *Model) handleSQLResult(msg sqlResultMsg) tea.Cmd {
 		msg.SQL,
 		resultsTable,
 		time.Now(),
-		m.llmExtraContext,
+		m.chatCfg.ExtraContext,
 	)
 
 	messages := []llm.Message{
@@ -1059,7 +1059,7 @@ func (m *Model) buildFallbackMessages(question string) []llm.Message {
 		tables,
 		dataDump,
 		time.Now(),
-		m.llmExtraContext,
+		m.chatCfg.ExtraContext,
 	)
 
 	messages := []llm.Message{

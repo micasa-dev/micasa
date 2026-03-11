@@ -262,15 +262,16 @@ type detailContext struct {
 type Options struct {
 	DBPath           string
 	ConfigPath       string
-	FilePickerDir    string     // starting directory for document file picker
-	LLMConfig        *llmConfig // nil if LLM is not configured
+	FilePickerDir    string // starting directory for document file picker
+	ChatConfig       chatConfig
 	ExtractionConfig extractionConfig
 }
 
-// llmConfig holds resolved LLM settings passed from main after loading the
-// TOML config. Kept as a separate type so the app package doesn't import
-// config directly.
-type llmConfig struct {
+// chatConfig holds resolved chat pipeline settings passed from main after
+// loading the TOML config. Kept as a separate type so the app package
+// doesn't import config directly.
+type chatConfig struct {
+	Enabled      bool
 	Provider     string
 	BaseURL      string
 	Model        string
@@ -282,9 +283,6 @@ type llmConfig struct {
 
 // extractionConfig holds resolved extraction pipeline settings.
 type extractionConfig struct {
-	// LLM connection settings for extraction. When Provider is non-empty,
-	// the extraction pipeline creates its own LLM client independent of
-	// the chat client. When empty, falls back to the chat client.
 	Provider string
 	BaseURL  string
 	Model    string
@@ -322,18 +320,16 @@ func (o *Options) SetExtraction(
 	}
 }
 
-// SetLLM configures the LLM backend on the Options. Pass empty strings to
-// disable the LLM feature.
-func (o *Options) SetLLM(
+// SetChat configures the chat LLM backend on the Options. Chat is enabled
+// only when enabled is true and model is non-empty.
+func (o *Options) SetChat(
+	enabled bool,
 	provider, baseURL, model, apiKey, extraContext string,
 	timeout time.Duration,
 	thinking string,
 ) {
-	if model == "" {
-		o.LLMConfig = nil
-		return
-	}
-	o.LLMConfig = &llmConfig{
+	o.ChatConfig = chatConfig{
+		Enabled:      enabled && model != "",
 		Provider:     provider,
 		BaseURL:      baseURL,
 		Model:        model,

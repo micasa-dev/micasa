@@ -1012,5 +1012,5 @@ func TestCurrencyFlow_EnvCurrency_FirstRun(t *testing.T) {
 	require.NoError(t, m.reloadActiveTab())
 	view := m.View()
 	assert.Contains(t, view, cur.Symbol(),
-		"GBP from MICASA_CURRENCY should render pound symbol")
+		"GBP from MICASA_LOCALE_CURRENCY should render pound symbol")
 }

@@ -17,7 +17,7 @@ Env TERM "xterm-256color"
 Env COLORTERM "truecolor"
 Env COLORFGBG "15;0"
 Env PS1 ""
-Env MICASA_EXTRACTION_MODEL "qwen3:0.6b"
+Env MICASA_EXTRACTION_LLM_MODEL "qwen3:0.6b"
 
 Hide
 # Stage a test PDF in a temp dir so the file picker only shows one file.

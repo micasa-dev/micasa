@@ -19,7 +19,7 @@ reason = "archive/zip DoS via crafted ZIP filenames; micasa never opens or proce
 
 [[IgnoredVulns]]
 id = "GO-2026-4601"
-reason = "url.Parse IPv6 host parsing flaw; only caller is isLoopbackURL which parses the user's own llm.base_url config value, not attacker-supplied input"
+reason = "url.Parse IPv6 host parsing flaw; only caller is isLoopbackURL which parses the user's own base_url config value, not attacker-supplied input"
 
 [[IgnoredVulns]]
 id = "GO-2026-4602"

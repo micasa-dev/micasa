@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	settingLLMModel          = "llm.model"
+	settingLLMModel          = "chat.llm.model"
 	settingShowDashboard     = "ui.show_dashboard"
 	settingUnitSystem        = "ui.unit_system"
 	settingTesseractHintSeen = "hint.tesseract_shown"

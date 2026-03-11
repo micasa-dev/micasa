@@ -121,16 +121,19 @@ Col* (e.g., ColID = "id", ColName = "name", ColDeletedAt = "deleted_at")
 ## Config Types (internal/config/)
 
 ### Config (config.go)
-- LLM (provider, model, baseURL, apiKey, timeout, thinking, extraContext)
-  - Chat/Extraction overrides (LLMChatOverride, LLMExtractionOverride)
+- Chat (Enable *bool, LLM ChatLLM)
+  - ChatLLM (Provider, BaseURL, Model, APIKey, Timeout, Thinking, ExtraContext)
+- Extraction (MaxPages int, LLM ExtractionLLM, OCR)
+  - ExtractionLLM (Enable *bool, Provider, BaseURL, Model, APIKey, Timeout, Thinking)
+  - OCR (Enable *bool, TSV OCRTSV)
+    - OCRTSV (Enable *bool, ConfidenceThreshold *int)
 - Documents (MaxFileSize ByteSize, CacheTTL Duration)
-- Extraction (MaxPages int, Enable *bool, LLMTimeout)
-  - OCR (Enable *bool, ConfidenceThreshold int)
 - Locale (Currency string)
+Each pipeline section is self-contained; no cross-section inheritance.
 
 ### Defaults
 - Provider: "ollama", Model: "qwen3", BaseURL: "http://localhost:11434"
-- MaxPages: 20, CacheTTL: 30 days, LLMTimeout: 5m
+- MaxPages: 0, CacheTTL: 30 days, LLMTimeout: 5m, OCR TSV threshold: 70
 
 ## LLM Types (internal/llm/)
 

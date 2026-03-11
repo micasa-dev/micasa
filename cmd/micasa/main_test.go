@@ -152,10 +152,10 @@ func TestConfigCmd(t *testing.T) {
 			t.Context(),
 			bin,
 			"config",
-			"llm.model",
+			"chat.llm.model",
 		)
 		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config llm.model failed: %s", out)
+		require.NoError(t, err, "config chat.llm.model failed: %s", out)
 		got := strings.TrimSpace(string(out))
 		assert.NotEmpty(t, got)
 	})
