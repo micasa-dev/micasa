@@ -35,7 +35,8 @@ jq '.plugins |= map(select(
 mv "$tmp" .releaserc.json
 
 git add .releaserc.json
-git commit -m "test: semantic-release dry run" --no-verify --no-gpg-sign
+git -c user.email=ci@localhost -c user.name=CI \
+  commit -m "test: semantic-release dry run" --no-verify --no-gpg-sign
 
 # Unset so semantic-release exercises the full pipeline instead of
 # short-circuiting on PR detection
