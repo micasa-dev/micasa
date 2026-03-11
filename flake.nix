@@ -382,6 +382,7 @@
               fi
             '';
             CGO_ENABLED = "0";
+            GOFLAGS = "-trimpath";
             packages = [
               pkgs.go
               pkgs.osv-scanner
