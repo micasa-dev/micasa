@@ -12,4 +12,4 @@ coverage:
 
 comment:
   layout: "files"
-  require_changes: true
+  require_changes: "uncovered_patch"
