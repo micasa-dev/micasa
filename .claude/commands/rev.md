@@ -59,13 +59,13 @@ These two steps are independent -- start both in parallel.
 
 Use `/fix-ci` to diagnose and fix each failing job.
 
-## 4. Push and verify
+## 3. Push and verify
 
 1. `git push --force-with-lease` (safe force push since we rebased)
 2. Wait for CI to start: `gh pr checks --watch --fail-fast`
-3. If new failures appear, loop back to step 3.
+3. If new failures appear, loop back to step 2b.
 
-## 5. Update PR description
+## 4. Update PR description
 
 After all changes are pushed, re-read the PR title and body
 (`gh pr view`) and update them if they no longer match the actual changes.
