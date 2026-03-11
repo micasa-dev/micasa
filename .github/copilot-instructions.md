@@ -98,9 +98,9 @@ when only non-Go files changed.
   package needs access.
 - **Error handling**: No broad catches or silent defaults. Propagate errors
   explicitly. Use `testify/assert` and `testify/require` in tests (`require`
-  for preconditions, `assert` for assertions). Prefer `require`/`assert` for
-  assertions; avoid bare `t.Fatal`/`t.Error` except for truly unreachable
-  branches or specialized test harness helpers.
+  for preconditions, `assert` for assertions). Prefer `require`/`assert` over
+  bare `t.Fatal`/`t.Error` except for truly unreachable branches or
+  specialized test harness helpers.
 - **Type safety**: Never cast `int64` to `int` directly. Use
   `safeconv.Int()` from `internal/safeconv` which returns an error on overflow.
 - **Enum switches**: Define typed `iota` constants. The `exhaustive` linter
