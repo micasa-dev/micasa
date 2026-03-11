@@ -1,0 +1,44 @@
+# Copyright 2026 Phillip Cloud
+# Licensed under the Apache License, Version 2.0
+
+name: Scheduled Release
+
+on:
+  schedule:
+    - cron: "0 14 * * 0" # Sundays at 2pm UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: scheduled-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: lts/*
+
+      - name: Run semantic-release
+        run: bash ci/release/run.bash
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

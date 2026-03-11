@@ -221,47 +221,25 @@ jobs:
         run: nix run '.#docs'
 
   # ---------------------------------------------------------------------------
-  # Semantic Release (dry-run on PRs, publish on main push)
+  # Semantic Release (dry-run on PRs to exercise the full release pipeline)
   # ---------------------------------------------------------------------------
 
-  semantic-release:
-    name: Semantic Release
-    needs: [changes, test, nix-build, docs]
-    if: >-
-      always()
-      && !contains(needs.*.result, 'failure')
-      && !contains(needs.*.result, 'cancelled')
-      && (needs.changes.outputs.go != 'true' || (needs.test.result == 'success' && needs.nix-build.result == 'success'))
+  semantic-release-dry-run:
+    name: Semantic Release (dry-run)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    concurrency:
-      group: semantic-release-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    permissions:
-      contents: write
     steps:
-      - name: Generate app token
-        id: app-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: lts/*
 
-      - name: Install semantic-release
-        run: npm install -g semantic-release@25.0.3 @semantic-release/exec@7.1.0 @semantic-release/git@10.0.1
-
-      - name: Run semantic-release
-        run: npx semantic-release ${{ github.event_name == 'pull_request' && '--dry-run' || '' }}
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      - name: Simulate release (dry-run)
+        run: bash ci/release/dry-run.bash
 
   # ---------------------------------------------------------------------------
   # Gate: single required check that rolls up all jobs above.
@@ -271,7 +249,7 @@ jobs:
   result:
     name: CI Result
     if: always()
-    needs: [changes, test, benchmarks, nix-build, docs, semantic-release]
+    needs: [changes, test, benchmarks, nix-build, docs, semantic-release-dry-run]
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
