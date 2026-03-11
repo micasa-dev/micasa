@@ -210,6 +210,8 @@ details; do not duplicate that detail here.
 
 ### Git and CI
 
+- **Rebase with one command**: Use `git pull --rebase origin main` instead
+  of separate `git fetch origin main` + `git rebase origin/main`.
 - **Reply to PR review comments**: After addressing a PR review comment,
   reply to the comment on GitHub (via `gh api .../replies`) explaining
   how it was addressed (commit hash, what changed, tests added). Do this
