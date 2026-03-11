@@ -43,12 +43,9 @@ jobs:
 
           # Fetch required check names from the branch ruleset
           required=$(gh api "repos/${{ github.repository }}/rules/branches/main" \
-            --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context]')
-
-          if [ "$(echo "$required" | jq 'length')" -eq 0 ]; then
-            echo "::error::No required status checks found for main. Aborting release."
-            exit 1
-          fi
+            --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] |
+              if length == 0 then "::error::No required status checks found for main. Aborting release." | halt_error(1)
+              else . end')
 
           # Fetch all check runs for HEAD once, then verify each required check
           gh api "repos/${{ github.repository }}/commits/$sha/check-runs" \
