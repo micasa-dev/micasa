@@ -98,8 +98,9 @@ when only non-Go files changed.
   package needs access.
 - **Error handling**: No broad catches or silent defaults. Propagate errors
   explicitly. Use `testify/assert` and `testify/require` in tests (`require`
-  for preconditions, `assert` for assertions). Never use bare `t.Fatal` or
-  `t.Error`.
+  for preconditions, `assert` for assertions). Prefer `require`/`assert` for
+  assertions; avoid bare `t.Fatal`/`t.Error` except for truly unreachable
+  branches or specialized test harness helpers.
 - **Type safety**: Never cast `int64` to `int` directly. Use
   `safeconv.Int()` from `internal/safeconv` which returns an error on overflow.
 - **Enum switches**: Define typed `iota` constants. The `exhaustive` linter
@@ -196,8 +197,8 @@ New status or season-like enum values require updates in four places:
   committing.
 - **Treat all linter/compiler warnings as bugs**: Fix all warnings before
   committing.
-- **Pin GitHub Actions to version tags**: Use `@v3.93.1`, never `@main` or
-  `@latest`.
+- **Pin GitHub Actions to commit SHAs**: Use `actions/checkout@<sha> # v6`,
+  never `@main` or `@latest`.
 - **No `=` in CI go commands**: PowerShell misparses `=`. Use `-bench .` not
   `-bench=.`.
 - **Respect native shells**: Don't switch Windows CI steps to `bash`.
