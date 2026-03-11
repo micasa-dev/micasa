@@ -189,6 +189,10 @@ details; do not duplicate that detail here.
 - **Never `cd` out of the worktree**: Your cwd is the worktree root. Run
   all commands there. Never `cd` into the parent checkout or any other
   directory.
+- **Use `git -C` instead of `cd`**: When running git commands in another
+  directory, use `git -C $DIR <command>` instead of `cd $DIR` followed by
+  `git <command>`. This avoids changing the working directory and keeps
+  all operations rooted in the worktree.
 
 ### Nix
 
