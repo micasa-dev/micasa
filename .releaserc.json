@@ -1,8 +1,25 @@
 {
   "branches": ["main"],
   "plugins": [
-    "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
+    ["@semantic-release/commit-analyzer", {
+      "preset": "conventionalcommits"
+    }],
+    ["@semantic-release/release-notes-generator", {
+      "preset": "conventionalcommits",
+      "presetConfig": {
+        "types": [
+          {"type": "feat", "section": "Features"},
+          {"type": "fix", "section": "Bug Fixes"},
+          {"type": "perf", "section": "Performance"},
+          {"type": "refactor", "section": "Refactors"},
+          {"type": "docs", "section": "Documentation"},
+          {"type": "chore", "hidden": true},
+          {"type": "ci", "hidden": true},
+          {"type": "style", "hidden": true},
+          {"type": "test", "hidden": true}
+        ]
+      }
+    }],
     ["@semantic-release/exec", {
       "prepareCmd": "echo ${nextRelease.version} > VERSION"
     }],

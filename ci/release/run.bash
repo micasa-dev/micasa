@@ -8,8 +8,7 @@ set -euo pipefail
 
 npx --yes \
   -p "semantic-release@25.0.3" \
-  -p "@semantic-release/commit-analyzer" \
-  -p "@semantic-release/release-notes-generator" \
   -p "@semantic-release/exec@7.1.0" \
   -p "@semantic-release/git@10.0.1" \
+  -p "conventional-changelog-conventionalcommits" \
   semantic-release --ci

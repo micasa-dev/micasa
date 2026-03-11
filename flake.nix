@@ -400,6 +400,7 @@
               pkgs.goreleaser
               pkgs.nodejs
               pkgs.jq
+              pkgs.moreutils
             ]
             ++ enabledPackages;
           };

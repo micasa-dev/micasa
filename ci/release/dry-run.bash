@@ -28,13 +28,10 @@ jq '.plugins |= map(select(
   if type == "array" then .[0] != "@semantic-release/github"
   else . != "@semantic-release/github"
   end
-))' .releaserc.json > .releaserc.json.tmp
-mv .releaserc.json.tmp .releaserc.json
+))' .releaserc.json | sponge .releaserc.json
 
-git config user.email "ci@localhost"
-git config user.name "CI"
 git add .releaserc.json
-PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -m "test: semantic-release dry run" --no-gpg-sign
+git commit -m "test: semantic-release dry run" --no-verify --no-gpg-sign
 
 # Unset so semantic-release exercises the full pipeline instead of
 # short-circuiting on PR detection
@@ -42,10 +39,9 @@ unset GITHUB_ACTIONS
 
 npx --yes \
   -p "semantic-release@25.0.3" \
-  -p "@semantic-release/commit-analyzer" \
-  -p "@semantic-release/release-notes-generator" \
   -p "@semantic-release/exec@7.1.0" \
   -p "@semantic-release/git@10.0.1" \
+  -p "conventional-changelog-conventionalcommits" \
   semantic-release \
   --ci \
   --dry-run \
