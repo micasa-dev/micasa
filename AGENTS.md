@@ -306,6 +306,12 @@ details; do not duplicate that detail here.
   (`case`, `key.String() ==`), `key.WithKeys`, `SetKeys`, `helpItem`,
   `renderKeys`, and display hints must use constants defined in
   `internal/app/model.go`. Never introduce bare key string literals.
+- **Column definitions live in `coldefs.go`**: `internal/app/coldefs.go` is
+  the single source of truth for column ordering, metadata, and iota constant
+  names. To add or reorder columns, edit the `xxxColumnDefs` slice in
+  `coldefs.go`, then run `go generate ./internal/app/` to regenerate the
+  typed iota blocks in `columns_generated.go`. Never hand-edit
+  `columns_generated.go`.
 
 ### UI/UX conventions
 

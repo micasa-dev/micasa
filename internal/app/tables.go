@@ -109,156 +109,6 @@ func NewTabs() []Tab {
 	}
 }
 
-type projectCol int
-
-const (
-	projectColID projectCol = iota
-	projectColType
-	projectColTitle
-	projectColStatus
-	projectColBudget
-	projectColActual
-	projectColStart
-	projectColEnd
-	projectColQuotes
-	projectColDocs
-)
-
-func projectColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{Title: "Type", Min: 8, Max: 14, Flex: true},
-		{Title: "Title", Min: 14, Max: 32, Flex: true},
-		{Title: "Status", Min: 6, Max: 8, Kind: cellStatus},
-		{Title: "Budget", Min: 10, Max: 14, Align: alignRight, Kind: cellMoney},
-		{Title: "Actual", Min: 10, Max: 14, Align: alignRight, Kind: cellMoney},
-		{Title: "Start", Min: 10, Max: 12, Kind: cellDate},
-		{Title: "End", Min: 10, Max: 12, Kind: cellDate},
-		{Title: tabQuotes.String(), Min: 6, Max: 8, Align: alignRight, Kind: cellDrilldown},
-		{Title: tabDocuments.String(), Min: 5, Max: 6, Align: alignRight, Kind: cellDrilldown},
-	}
-}
-
-type quoteCol int
-
-const (
-	quoteColID quoteCol = iota
-	quoteColProject
-	quoteColVendor
-	quoteColTotal
-	quoteColLabor
-	quoteColMat
-	quoteColOther
-	quoteColRecv
-	quoteColDocs
-)
-
-func quoteColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{
-			Title: "Project",
-			Min:   12,
-			Max:   24,
-			Flex:  true,
-			Link:  &columnLink{TargetTab: tabProjects},
-		},
-		{
-			Title: "Vendor",
-			Min:   12,
-			Max:   20,
-			Flex:  true,
-			Link:  &columnLink{TargetTab: tabVendors},
-		},
-		{Title: "Total", Min: 10, Max: 14, Align: alignRight, Kind: cellMoney},
-		{Title: "Labor", Min: 10, Max: 14, Align: alignRight, Kind: cellMoney},
-		{Title: "Mat", Min: 8, Max: 12, Align: alignRight, Kind: cellMoney},
-		{Title: "Other", Min: 8, Max: 12, Align: alignRight, Kind: cellMoney},
-		{Title: "Recv", Min: 10, Max: 12, Kind: cellDate},
-		{Title: tabDocuments.String(), Min: 5, Max: 6, Align: alignRight, Kind: cellDrilldown},
-	}
-}
-
-type maintenanceCol int
-
-const (
-	maintenanceColID maintenanceCol = iota
-	maintenanceColItem
-	maintenanceColCategory
-	maintenanceColSeason
-	maintenanceColAppliance
-	maintenanceColLast
-	maintenanceColNext
-	maintenanceColEvery
-	maintenanceColLog
-	maintenanceColDocs
-)
-
-func maintenanceColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{Title: "Item", Min: 12, Max: 26, Flex: true},
-		{Title: "Category", Min: 10, Max: 14},
-		{Title: "Season", Min: 6, Max: 8, Kind: cellStatus},
-		{
-			Title: "Appliance",
-			Min:   10,
-			Max:   18,
-			Flex:  true,
-			Link:  &columnLink{TargetTab: tabAppliances},
-		},
-		{Title: "Last", Min: 10, Max: 12, Kind: cellDate},
-		{Title: "Next", Min: 10, Max: 12, Kind: cellUrgency},
-		{Title: "Every", Min: 6, Max: 10},
-		{Title: "Log", Min: 4, Max: 6, Align: alignRight, Kind: cellDrilldown},
-		{Title: tabDocuments.String(), Min: 5, Max: 6, Align: alignRight, Kind: cellDrilldown},
-	}
-}
-
-type incidentCol int
-
-const (
-	incidentColID incidentCol = iota
-	incidentColTitle
-	incidentColStatus
-	incidentColSeverity
-	incidentColLocation
-	incidentColAppliance
-	incidentColVendor
-	incidentColNoticed
-	incidentColResolved
-	incidentColCost
-	incidentColDocs
-)
-
-func incidentColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{Title: "Title", Min: 14, Max: 32, Flex: true},
-		{Title: "Status", Min: 6, Max: 12, Kind: cellStatus},
-		{Title: "Severity", Min: 6, Max: 10, Kind: cellStatus},
-		{Title: "Location", Min: 8, Max: 16, Flex: true},
-		{
-			Title: "Appliance",
-			Min:   10,
-			Max:   18,
-			Flex:  true,
-			Link:  &columnLink{TargetTab: tabAppliances},
-		},
-		{
-			Title: "Vendor",
-			Min:   10,
-			Max:   18,
-			Flex:  true,
-			Link:  &columnLink{TargetTab: tabVendors},
-		},
-		{Title: "Noticed", Min: 10, Max: 12, Kind: cellDate},
-		{Title: "Resolved", Min: 10, Max: 12, Kind: cellDate},
-		{Title: "Cost", Min: 8, Max: 12, Align: alignRight, Kind: cellMoney},
-		{Title: tabDocuments.String(), Min: 5, Max: 6, Align: alignRight, Kind: cellDrilldown},
-	}
-}
-
 func incidentRows(
 	items []data.Incident,
 	docCounts map[uint]int,
@@ -295,40 +145,6 @@ func incidentRows(
 			},
 		}
 	})
-}
-
-type applianceCol int
-
-const (
-	applianceColID applianceCol = iota
-	applianceColName
-	applianceColBrand
-	applianceColModel
-	applianceColSerial
-	applianceColLocation
-	applianceColPurchased
-	applianceColAge
-	applianceColWarranty
-	applianceColCost
-	applianceColMaint
-	applianceColDocs
-)
-
-func applianceColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{Title: "Name", Min: 12, Max: 24, Flex: true},
-		{Title: "Brand", Min: 8, Max: 16, Flex: true},
-		{Title: "Model", Min: 8, Max: 16},
-		{Title: "Serial", Min: 8, Max: 14},
-		{Title: "Location", Min: 8, Max: 14},
-		{Title: "Purchased", Min: 10, Max: 12, Kind: cellDate},
-		{Title: "Age", Min: 5, Max: 8, Kind: cellReadonly},
-		{Title: "Warranty", Min: 10, Max: 12, Kind: cellWarranty},
-		{Title: "Cost", Min: 8, Max: 12, Align: alignRight, Kind: cellMoney},
-		{Title: "Maint", Min: 5, Max: 6, Align: alignRight, Kind: cellDrilldown},
-		{Title: tabDocuments.String(), Min: 5, Max: 6, Align: alignRight, Kind: cellDrilldown},
-	}
 }
 
 // withoutColumn returns a copy of specs with the named column removed.
@@ -370,34 +186,6 @@ func applianceMaintenanceRows(
 			},
 		}
 	})
-}
-
-type serviceLogCol int
-
-const (
-	serviceLogColID serviceLogCol = iota
-	serviceLogColDate
-	serviceLogColPerformedBy
-	serviceLogColCost
-	serviceLogColNotes
-	serviceLogColDocs
-)
-
-func serviceLogColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{Title: "Date", Min: 10, Max: 12, Kind: cellDate},
-		{
-			Title: "Performed By",
-			Min:   12,
-			Max:   22,
-			Flex:  true,
-			Link:  &columnLink{TargetTab: tabVendors},
-		},
-		{Title: "Cost", Min: 8, Max: 12, Align: alignRight, Kind: cellMoney},
-		{Title: "Notes", Min: 12, Max: 40, Flex: true, Kind: cellNotes},
-		{Title: tabDocuments.String(), Min: 5, Max: 8, Align: alignRight, Kind: cellDrilldown},
-	}
 }
 
 func serviceLogRows(
@@ -514,34 +302,6 @@ func applianceAge(purchased *time.Time, now time.Time) string {
 		return fmt.Sprintf("%dy", years)
 	}
 	return fmt.Sprintf("%dy %dm", years, months)
-}
-
-type vendorCol int
-
-const (
-	vendorColID vendorCol = iota
-	vendorColName
-	vendorColContact
-	vendorColEmail
-	vendorColPhone
-	vendorColWebsite
-	vendorColQuotes
-	vendorColJobs
-	vendorColDocs
-)
-
-func vendorColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{Title: "Name", Min: 14, Max: 24, Flex: true},
-		{Title: "Contact", Min: 10, Max: 20, Flex: true},
-		{Title: "Email", Min: 12, Max: 24, Flex: true},
-		{Title: "Phone", Min: 12, Max: 16},
-		{Title: "Website", Min: 12, Max: 28, Flex: true},
-		{Title: tabQuotes.String(), Min: 6, Max: 8, Align: alignRight, Kind: cellDrilldown},
-		{Title: "Jobs", Min: 5, Max: 8, Align: alignRight, Kind: cellDrilldown},
-		{Title: tabDocuments.String(), Min: 5, Max: 6, Align: alignRight, Kind: cellDrilldown},
-	}
 }
 
 func vendorRows(
@@ -785,34 +545,6 @@ func vendorQuoteRows(
 	})
 }
 
-type vendorJobsCol int
-
-const (
-	vendorJobsColID vendorJobsCol = iota
-	vendorJobsColItem
-	vendorJobsColDate
-	vendorJobsColCost
-	vendorJobsColNotes
-)
-
-// vendorJobsColumnSpecs defines the columns for service log entries scoped to
-// a vendor. Omits the Vendor column since the parent context provides that.
-func vendorJobsColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{
-			Title: "Item",
-			Min:   12,
-			Max:   24,
-			Flex:  true,
-			Link:  &columnLink{TargetTab: tabMaintenance},
-		},
-		{Title: "Date", Min: 10, Max: 12, Kind: cellDate},
-		{Title: "Cost", Min: 8, Max: 12, Align: alignRight, Kind: cellMoney},
-		{Title: "Notes", Min: 12, Max: 40, Flex: true, Kind: cellNotes},
-	}
-}
-
 func vendorJobsRows(
 	entries []data.ServiceLogEntry,
 	cur locale.Currency,
@@ -863,31 +595,6 @@ func dateCell(value *time.Time, kind cellKind) cell {
 		return cell{Kind: kind, Null: true}
 	}
 	return cell{Value: value.Format(data.DateLayout), Kind: kind}
-}
-
-type documentCol int
-
-const (
-	documentColID documentCol = iota
-	documentColTitle
-	documentColEntity
-	documentColType
-	documentColSize
-	documentColNotes
-	documentColUpdated
-)
-
-// documentColumnSpecs defines columns for the top-level Documents tab.
-func documentColumnSpecs() []columnSpec {
-	return []columnSpec{
-		idColumnSpec(),
-		{Title: "Title", Min: 14, Max: 32, Flex: true},
-		{Title: "Entity", Min: 10, Max: 24, Flex: true, Kind: cellEntity},
-		{Title: "Type", Min: 8, Max: 16},
-		{Title: "Size", Min: 6, Max: 10, Align: alignRight, Kind: cellReadonly},
-		{Title: "Notes", Min: 12, Max: 40, Flex: true, Kind: cellNotes},
-		{Title: "Updated", Min: 10, Max: 12, Kind: cellReadonly},
-	}
 }
 
 func entityDocumentColumnSpecs() []columnSpec {

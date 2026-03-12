@@ -17,7 +17,9 @@ internal/
     handlers.go             TabHandler interface + per-entity implementations
     view.go                 Render pipeline: buildView -> baseView + overlays
     table.go                Table rendering, viewport, header/row rendering
-    tables.go               Tab definitions, column specs per entity
+    coldefs.go              Column definitions: single source of truth (columnDef slices + columnSpecs funcs)
+    columns_generated.go    Generated typed iota column constants (from coldefs.go via gencolumns)
+    tables.go               Tab definitions, row builders, table helpers
     forms.go                Form definitions per entity, submitForm flow
     form_select.go          Select/dropdown form fields
     form_filepicker.go      File picker for document uploads
@@ -64,6 +66,7 @@ internal/
       ddlmod.go             DDL parsing & manipulation
       migrator.go           GORM Migrator override (table recreation for ALTER)
     cmd/genmeta/main.go     Code generator for meta_generated.go
+  app/cmd/gencolumns/main.go  Code generator for columns_generated.go (from coldefs.go)
   config/                   TOML config with env var overrides
     config.go               Config struct, Load(), provider auto-detect
     bytesize.go             ByteSize custom type ("50 MiB")
