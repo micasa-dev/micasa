@@ -494,9 +494,10 @@ func (m *Model) editModeStatusHelp(modeBadge string) string {
 		},
 	)
 	if m.effectiveTab().isDocumentTab() {
-		hints = append(hints, statusHint{
-			id: "open", full: m.helpItem(keyO, "open"), priority: 2,
-		})
+		hints = append(hints,
+			statusHint{id: "open", full: m.helpItem(keyO, "open"), priority: 2},
+			statusHint{id: "extract", full: m.helpItem(keyR, "extract"), priority: 3},
+		)
 	}
 	hints = append(hints, statusHint{
 		id:       "exit",

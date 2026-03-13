@@ -912,6 +912,10 @@ func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 		if cmd := m.openSelectedDocument(); cmd != nil {
 			return cmd, true
 		}
+	case keyR:
+		if cmd := m.extractSelectedDocument(); cmd != nil {
+			return cmd, true
+		}
 	case keyX:
 		m.toggleShowDeleted()
 		return nil, true

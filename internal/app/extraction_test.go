@@ -847,7 +847,80 @@ func TestNeedsOCR_UsedInsteadOfHardcodedToolName(t *testing.T) {
 	assert.Nil(t, m.ex.extractors, "default test model has no extractors")
 }
 
-// --- Skip OCR with existing text (#711) ---
+// --- Extract keybinding and OCR skip (#711) ---
+
+func TestExtractKeybinding_OpensOverlayOnDocumentTab(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.ex.extractionClient = testExtractionOllamaClient(t, "test-model")
+
+	// Create a document with existing extracted text.
+	require.NoError(t, m.store.CreateDocument(&data.Document{
+		Title:         "Receipt",
+		FileName:      "receipt.png",
+		MIMEType:      "image/png",
+		Data:          []byte("fake-image"),
+		ExtractedText: "Previously extracted invoice text",
+	}))
+
+	// Navigate to Documents tab, reload, enter edit mode.
+	m.active = tabIndex(tabDocuments)
+	m.reloadAfterMutation()
+	sendKey(m, "i")
+	require.Equal(t, modeEdit, m.mode)
+
+	// Press r to extract the selected document.
+	sendKey(m, "r")
+
+	require.NotNil(t, m.ex.extraction, "extraction overlay should be open")
+	ex := m.ex.extraction
+	assert.True(t, ex.hasText, "should show text step with cached text")
+	assert.False(t, ex.hasExtract, "should skip OCR -- text already exists")
+	assert.True(t, ex.hasLLM, "should proceed to LLM")
+	assert.Equal(t, "receipt.png", ex.Filename)
+}
+
+func TestExtractKeybinding_NoOpOnNonDocumentTab(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.ex.extractionClient = testExtractionOllamaClient(t, "test-model")
+
+	// Stay on the default tab (not documents).
+	sendKey(m, "i")
+	sendKey(m, "r")
+
+	assert.Nil(t, m.ex.extraction, "r should not open extraction on non-document tab")
+}
+
+func TestExtractKeybinding_RunsOCRWhenNoExistingText(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.ex.extractors = extract.DefaultExtractors(0, 0, true)
+	m.ex.extractionClient = testExtractionOllamaClient(t, "test-model")
+
+	if !extract.NeedsOCR(m.ex.extractors, "image/png") {
+		t.Skip("OCR tools not available")
+	}
+
+	// Create a document without extracted text.
+	require.NoError(t, m.store.CreateDocument(&data.Document{
+		Title:    "New Receipt",
+		FileName: "new.png",
+		MIMEType: "image/png",
+		Data:     []byte("fake-image"),
+	}))
+
+	m.active = tabIndex(tabDocuments)
+	m.reloadAfterMutation()
+	sendKey(m, "i")
+	sendKey(m, "r")
+
+	require.NotNil(t, m.ex.extraction)
+	ex := m.ex.extraction
+	assert.True(t, ex.hasExtract, "should run OCR when no existing text")
+}
+
+// --- startExtractionOverlay unit tests (#711) ---
 
 func TestStartExtraction_ImageWithExistingText_SkipsOCR(t *testing.T) {
 	t.Parallel()

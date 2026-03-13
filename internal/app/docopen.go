@@ -47,6 +47,34 @@ func (m *Model) openSelectedDocument() tea.Cmd {
 	return openFileCmd(cachePath)
 }
 
+// extractSelectedDocument loads the selected document and opens the extraction
+// overlay. Only operates on document tabs; returns nil on other tabs.
+func (m *Model) extractSelectedDocument() tea.Cmd {
+	if !m.effectiveTab().isDocumentTab() {
+		return nil
+	}
+
+	meta, ok := m.selectedRowMeta()
+	if !ok || meta.Deleted {
+		return nil
+	}
+
+	doc, err := m.store.GetDocument(meta.ID)
+	if err != nil {
+		m.setStatusError(fmt.Sprintf("load document: %s", err))
+		return nil
+	}
+
+	cmd := m.startExtractionOverlay(
+		doc.ID, doc.FileName, doc.Data, doc.MIMEType, doc.ExtractedText, doc.ExtractData,
+	)
+	if cmd == nil {
+		m.setStatusError("no extraction tools or LLM configured")
+		return nil
+	}
+	return cmd
+}
+
 // openFileCmd returns a tea.Cmd that opens the given path with the OS viewer.
 // The command runs to completion so exit-status errors (e.g. no handler for
 // the MIME type) are captured and returned as an openFileResultMsg.
