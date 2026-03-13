@@ -258,9 +258,17 @@ func (m *Model) startExtractionOverlay(
 	fileData []byte,
 	mime string,
 	extractedText string,
+	extractData []byte,
 ) tea.Cmd {
 	needsExtract := extract.NeedsOCR(m.ex.extractors, mime)
 	needsLLM := m.extractionLLMClient() != nil
+
+	// Skip OCR when the document already has extracted text from a
+	// previous run -- feed existing text directly to the LLM.
+	hasExistingText := strings.TrimSpace(extractedText) != ""
+	if hasExistingText {
+		needsExtract = false
+	}
 
 	if !needsExtract && !needsLLM {
 		return nil
@@ -274,12 +282,14 @@ func (m *Model) startExtractionOverlay(
 		context.Background(),
 	)
 
-	// Text extraction only applies to PDFs and text files; skip for images.
-	hasText := !extract.IsImageMIME(mime)
+	// Text extraction only applies to PDFs and text files -- unless
+	// we already have text from a previous extraction (e.g. prior OCR
+	// on an image), in which case we show the cached text.
+	hasText := !extract.IsImageMIME(mime) || hasExistingText
 
 	// Build initial text source from already-extracted text.
 	var sources []extract.TextSource
-	if hasText && strings.TrimSpace(extractedText) != "" {
+	if hasText && hasExistingText {
 		var tool, desc string
 		switch {
 		case mime == extract.MIMEApplicationPDF:
@@ -288,6 +298,9 @@ func (m *Model) startExtractionOverlay(
 		case strings.HasPrefix(mime, "text/"):
 			tool = "plaintext"
 			desc = "Plain text content."
+		case extract.IsImageMIME(mime):
+			tool = "tesseract"
+			desc = "Text from previous OCR extraction."
 		default:
 			tool = mime
 		}
@@ -295,6 +308,7 @@ func (m *Model) startExtractionOverlay(
 			Tool: tool,
 			Desc: desc,
 			Text: extractedText,
+			Data: extractData,
 		})
 	}
 
@@ -325,6 +339,8 @@ func (m *Model) startExtractionOverlay(
 			textTool = "pdf"
 		case strings.HasPrefix(mime, "text/"):
 			textTool = "plaintext"
+		case extract.IsImageMIME(mime):
+			textTool = "ocr"
 		default:
 			textTool = mime
 		}
