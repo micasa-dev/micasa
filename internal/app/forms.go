@@ -2622,7 +2622,7 @@ func (m *Model) inlineEditDocument(id uint, col documentCol) error {
 			Options(entityOpts...).
 			Value(&values.EntityRef)
 		m.openInlineEdit(id, field, values)
-	case documentColID, documentColType, documentColSize, documentColUpdated:
+	case documentColID, documentColType, documentColSize, documentColModel, documentColUpdated:
 		return m.startEditDocumentForm(id)
 	}
 	return nil

@@ -1106,8 +1106,8 @@ func (s *Store) CountIncidentsByVendor(vendorIDs []uint) (map[uint]int, error) {
 // avoid loading the potentially large Data BLOB.
 var listDocumentColumns = []string{
 	ColID, ColTitle, ColFileName, ColEntityKind, ColEntityID,
-	ColMIMEType, ColSizeBytes, ColChecksumSHA256, ColNotes,
-	ColCreatedAt, ColUpdatedAt, ColDeletedAt,
+	ColMIMEType, ColSizeBytes, ColChecksumSHA256, ColExtractionModel,
+	ColNotes, ColCreatedAt, ColUpdatedAt, ColDeletedAt,
 }
 
 func (s *Store) ListDocuments(includeDeleted bool) ([]Document, error) {
@@ -1216,12 +1216,28 @@ func (s *Store) UpdateDocument(doc Document) error {
 // UpdateDocumentExtraction persists async extraction results on a document
 // without touching other fields. Called from the extraction overlay after
 // async extraction completes.
-func (s *Store) UpdateDocumentExtraction(id uint, text string, data []byte) error {
-	updates := map[string]any{
-		ColExtractData: data,
-	}
+func (s *Store) UpdateDocumentExtraction(
+	id uint,
+	text string,
+	data []byte,
+	model string,
+	ops []byte,
+) error {
+	updates := make(map[string]any)
 	if text != "" {
 		updates[ColExtractedText] = text
+	}
+	if len(data) > 0 {
+		updates[ColExtractData] = data
+	}
+	if model != "" {
+		updates[ColExtractionModel] = model
+	}
+	if len(ops) > 0 {
+		updates[ColExtractionOps] = ops
+	}
+	if len(updates) == 0 {
+		return nil
 	}
 	return s.db.Model(&Document{}).Where(ColID+" = ?", id).Updates(updates).Error
 }

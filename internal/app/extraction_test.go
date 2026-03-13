@@ -3134,6 +3134,63 @@ func TestExtractionTSVToggle_StatusMessage(t *testing.T) {
 	assert.Contains(t, m.status.Text, "layout off")
 }
 
+// ---------------------------------------------------------------------------
+// extractionModelUsed tests
+// ---------------------------------------------------------------------------
+
+func TestExtractionModelUsed_ReturnsModelWhenLLMSucceeded(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	m.ex.extractionModel = "test-extraction-model"
+
+	result := m.extractionModelUsed(m.ex.extraction)
+	assert.Equal(t, "test-extraction-model", result)
+}
+
+func TestExtractionModelUsed_FallsBackToChatModel(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepDone,
+	})
+	m.ex.extractionModel = ""
+	m.llmClient = testExtractionOllamaClient(t, "chat-model")
+
+	result := m.extractionModelUsed(m.ex.extraction)
+	assert.Equal(t, "chat-model", result)
+}
+
+func TestExtractionModelUsed_EmptyWhenLLMSkipped(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+	})
+	ex := m.ex.extraction
+	ex.hasLLM = false
+
+	result := m.extractionModelUsed(ex)
+	assert.Empty(t, result)
+}
+
+func TestExtractionModelUsed_EmptyWhenLLMFailed(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepDone,
+		stepLLM:     stepFailed,
+	})
+	m.ex.extractionModel = "test-model"
+
+	result := m.extractionModelUsed(m.ex.extraction)
+	assert.Empty(t, result)
+}
+
 func TestExtractionTSVToggle_HintShownInFooter(t *testing.T) {
 	t.Parallel()
 	m := newExtractionModel(t, map[extractionStep]stepStatus{
@@ -3148,4 +3205,28 @@ func TestExtractionTSVToggle_HintShownInFooter(t *testing.T) {
 
 	view := m.View()
 	assert.Contains(t, view, "layout", "footer should show layout hint when done with LLM")
+}
+
+func TestMarshalOps_NilSlice(t *testing.T) {
+	t.Parallel()
+	b, err := marshalOps(nil)
+	require.NoError(t, err)
+	assert.Nil(t, b, "nil input should produce nil output (no-update sentinel)")
+}
+
+func TestMarshalOps_EmptySlice(t *testing.T) {
+	t.Parallel()
+	b, err := marshalOps([]extract.Operation{})
+	require.NoError(t, err)
+	assert.Equal(t, []byte("[]"), b, "empty non-nil slice should serialize to []")
+}
+
+func TestMarshalOps_WithOps(t *testing.T) {
+	t.Parallel()
+	ops := []extract.Operation{
+		{Action: "upsert", Table: "projects", Data: map[string]any{"title": "Test"}},
+	}
+	b, err := marshalOps(ops)
+	require.NoError(t, err)
+	assert.Contains(t, string(b), `"action":"upsert"`)
 }

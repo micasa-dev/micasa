@@ -125,6 +125,7 @@ const (
 	documentColEntity
 	documentColType
 	documentColSize
+	documentColModel
 	documentColNotes
 	documentColUpdated
 )

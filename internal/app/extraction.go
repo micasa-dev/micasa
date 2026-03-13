@@ -885,6 +885,12 @@ func (m *Model) acceptDeferredExtraction() error {
 	if len(ex.pendingData) > 0 {
 		doc.ExtractData = ex.pendingData
 	}
+	doc.ExtractionModel = m.extractionModelUsed(ex)
+	ops, err := marshalOps(ex.operations)
+	if err != nil {
+		return fmt.Errorf("marshal extraction ops: %w", err)
+	}
+	doc.ExtractionOps = ops
 
 	if err := m.store.CreateDocument(doc); err != nil {
 		return fmt.Errorf("create document: %w", err)
@@ -909,11 +915,16 @@ func (m *Model) acceptDeferredExtraction() error {
 func (m *Model) acceptExistingExtraction() error {
 	ex := m.ex.extraction
 
-	// Persist async extraction results.
-	if ex.pendingText != "" || len(ex.pendingData) > 0 {
+	// Persist async extraction results and the model that produced them.
+	if ex.pendingText != "" || len(ex.pendingData) > 0 || ex.hasLLM {
 		if m.store != nil {
+			model := m.extractionModelUsed(ex)
+			ops, err := marshalOps(ex.operations)
+			if err != nil {
+				return fmt.Errorf("marshal extraction ops: %w", err)
+			}
 			if err := m.store.UpdateDocumentExtraction(
-				ex.DocID, ex.pendingText, ex.pendingData,
+				ex.DocID, ex.pendingText, ex.pendingData, model, ops,
 			); err != nil {
 				return fmt.Errorf("save extraction: %w", err)
 			}
@@ -1965,6 +1976,30 @@ func stepName(si extractionStep) string {
 	return "?"
 }
 
+// marshalOps serialises extraction operations to JSON for persistence.
+// A nil slice (LLM didn't run / failed) returns nil so callers skip
+// the update. A non-nil but empty slice (LLM ran, zero ops) returns
+// "[]" so stale data is cleared.
+func marshalOps(ops []extract.Operation) ([]byte, error) {
+	if ops == nil {
+		return nil, nil
+	}
+	b, err := json.Marshal(ops)
+	if err != nil {
+		return nil, fmt.Errorf("marshal ops: %w", err)
+	}
+	return b, nil
+}
+
+// extractionModelUsed returns the model name if the LLM step completed
+// successfully, or empty string if LLM was skipped or failed.
+func (m *Model) extractionModelUsed(ex *extractionLogState) string {
+	if ex.hasLLM && ex.Steps[stepLLM].Status == stepDone {
+		return m.extractionModelLabel()
+	}
+	return ""
+}
+
 // extractionModelLabel returns the model name used for extraction.
 func (m *Model) extractionModelLabel() string {
 	if m.ex.extractionModel != "" {
@@ -2015,9 +2050,9 @@ func previewColumns(tableName string, cur locale.Currency) []previewColDef {
 	case tableDocuments:
 		s := documentColumnSpecs()
 		return []previewColDef{
-			{data.ColTitle, s[1], fmtAnyText},
-			{data.ColMIMEType, s[3], fmtAnyText},
-			{data.ColNotes, s[5], fmtAnyText},
+			{data.ColTitle, s[documentColTitle], fmtAnyText},
+			{data.ColMIMEType, s[documentColType], fmtAnyText},
+			{data.ColNotes, s[documentColNotes], fmtAnyText},
 		}
 	case data.TableQuotes:
 		s := quoteColumnSpecs()

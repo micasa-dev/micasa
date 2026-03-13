@@ -55,6 +55,8 @@ const (
 	ColExteriorType      = "exterior_type"
 	ColExtractData       = "ocr_data"
 	ColExtractedText     = "extracted_text"
+	ColExtractionModel   = "extraction_model"
+	ColExtractionOps     = "extraction_ops"
 	ColFileName          = "file_name"
 	ColFoundationType    = "foundation_type"
 	ColHOAFeeCents       = "hoa_fee_cents"

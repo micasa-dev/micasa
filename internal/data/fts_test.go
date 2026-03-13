@@ -158,7 +158,7 @@ func TestSearchDocumentsUpdateReflected(t *testing.T) {
 	id := docs[0].ID
 
 	// Update extraction text.
-	require.NoError(t, store.UpdateDocumentExtraction(id, "new text about plumbing", nil))
+	require.NoError(t, store.UpdateDocumentExtraction(id, "new text about plumbing", nil, "", nil))
 
 	results, err := store.SearchDocuments("plumbing")
 	require.NoError(t, err)

@@ -271,21 +271,23 @@ type ServiceLogEntry struct {
 }
 
 type Document struct {
-	ID             uint `gorm:"primaryKey"`
-	Title          string
-	FileName       string `gorm:"column:file_name"`
-	EntityKind     string `gorm:"index:idx_doc_entity"`
-	EntityID       uint   `gorm:"index:idx_doc_entity"`
-	MIMEType       string `                            extract:"-"`
-	SizeBytes      int64  `                            extract:"-"`
-	ChecksumSHA256 string `gorm:"column:sha256"        extract:"-"`
-	Data           []byte
-	ExtractedText  string `                            extract:"-"`
-	ExtractData    []byte `gorm:"column:ocr_data"`
-	Notes          string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      gorm.DeletedAt `gorm:"index"`
+	ID              uint `gorm:"primaryKey"`
+	Title           string
+	FileName        string `gorm:"column:file_name"`
+	EntityKind      string `gorm:"index:idx_doc_entity"`
+	EntityID        uint   `gorm:"index:idx_doc_entity"`
+	MIMEType        string `                             extract:"-"`
+	SizeBytes       int64  `                             extract:"-"`
+	ChecksumSHA256  string `gorm:"column:sha256"         extract:"-"`
+	Data            []byte
+	ExtractedText   string `                             extract:"-"`
+	ExtractData     []byte `gorm:"column:ocr_data"`
+	ExtractionModel string `                             extract:"-"`
+	ExtractionOps   []byte `gorm:"column:extraction_ops" extract:"-"`
+	Notes           string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       gorm.DeletedAt `gorm:"index"`
 }
 
 type DeletionRecord struct {
