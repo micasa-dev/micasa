@@ -6,6 +6,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 
@@ -88,23 +89,48 @@ func openFileCmd(path string) tea.Cmd {
 }
 
 // wrapOpenerError adds an actionable hint when the OS file-opener command
-// is missing or cannot be found.
+// is missing or fails (e.g. headless/remote server with no display).
 func wrapOpenerError(err error, openerName string) error {
-	if !errors.Is(err, exec.ErrNotFound) {
-		return err
+	if errors.Is(err, exec.ErrNotFound) {
+		switch openerName {
+		case "xdg-open":
+			return fmt.Errorf(
+				"%s not found -- install xdg-utils (e.g. apt install xdg-utils)",
+				openerName,
+			)
+		case "open":
+			return fmt.Errorf(
+				"%s not found -- expected on macOS; is this a headless environment?",
+				openerName,
+			)
+		default:
+			return fmt.Errorf("%s not found -- no file opener available", openerName)
+		}
 	}
-	switch openerName {
-	case "xdg-open":
+
+	// The opener command exists but exited non-zero. On headless/remote
+	// machines (no display server) this is the typical failure mode.
+	// Detect it and surface an actionable message.
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		if openerName == "xdg-open" && !hasDisplay() {
+			return fmt.Errorf(
+				"%s failed -- no display server (DISPLAY/WAYLAND_DISPLAY not set); "+
+					"running on a remote or headless machine?",
+				openerName,
+			)
+		}
 		return fmt.Errorf(
-			"%s not found -- install xdg-utils (e.g. apt install xdg-utils)",
-			openerName,
+			"%s failed (exit code %d) -- is a graphical environment available?",
+			openerName, exitErr.ExitCode(),
 		)
-	case "open":
-		return fmt.Errorf(
-			"%s not found -- expected on macOS; is this a headless environment?",
-			openerName,
-		)
-	default:
-		return fmt.Errorf("%s not found -- no file opener available", openerName)
 	}
+
+	return err
+}
+
+// hasDisplay reports whether a graphical display appears to be available
+// by checking the standard X11 and Wayland environment variables.
+func hasDisplay() bool {
+	return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
 }
