@@ -399,6 +399,62 @@ func TestServiceLogHandlerRoundTrip(t *testing.T) {
 	assert.Len(t, rows, 1)
 }
 
+func TestServiceLogFormSyncsLastServiced(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	cats, err := m.store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+		Name:       "Filter Change",
+		CategoryID: cats[0].ID,
+	}))
+	items, err := m.store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	maintID := items[0].ID
+
+	// Navigate to the Maintenance tab and load it.
+	maintIdx := tabIndex(tabMaintenance)
+	m.active = maintIdx
+	require.NoError(t, m.reloadActiveTab())
+	maintTab := m.activeTab()
+	require.NotNil(t, maintTab)
+	require.Len(t, maintTab.CellRows, 1)
+
+	// Last column should be empty before any service log entries.
+	lastCol := int(maintenanceColLast)
+	assert.True(t, maintTab.CellRows[0][lastCol].Null,
+		"Last should be empty before any service log entries")
+
+	// Open service log detail for the maintenance item.
+	require.NoError(t, m.openServiceLogDetail(maintID, "Filter Change"))
+	require.True(t, m.inDetail())
+
+	// Submit a service log entry via the form path (ctrl+s equivalent).
+	m.fs.formData = &serviceLogFormData{
+		MaintenanceItemID: maintID,
+		ServicedAt:        "2026-02-15",
+		Notes:             "changed filter",
+	}
+	m.saveFormInPlace()
+	require.NotEqual(t, statusError, m.status.Kind,
+		"service log save: unexpected error: %s", m.status.Text)
+
+	// Close the detail view (Esc back to Maintenance tab).
+	m.closeDetail()
+	assert.False(t, m.inDetail())
+	assert.Equal(t, maintIdx, m.active)
+
+	// The maintenance tab should now show the updated Last date.
+	maintTab = m.activeTab()
+	require.Len(t, maintTab.CellRows, 1)
+	assert.False(t, maintTab.CellRows[0][lastCol].Null,
+		"Last should be populated after service log creation")
+	assert.Equal(t, "2026-02-15", maintTab.CellRows[0][lastCol].Value)
+}
+
 // ---------------------------------------------------------------------------
 // Handler SyncFixedValues
 // ---------------------------------------------------------------------------

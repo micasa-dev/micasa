@@ -266,6 +266,75 @@ func TestServiceLogCRUD(t *testing.T) {
 	assert.Equal(t, 2, counts[maintID])
 }
 
+func TestServiceLogSyncsLastServiced(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	categories, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+		Name: "Sync Test", CategoryID: categories[0].ID,
+	}))
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	maintID := items[0].ID
+
+	jan15 := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+	feb1 := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	mar1 := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+
+	getMaint := func() MaintenanceItem {
+		t.Helper()
+		item, err := store.GetMaintenance(maintID)
+		require.NoError(t, err)
+		return item
+	}
+
+	// Create first entry → LastServicedAt = jan15.
+	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
+		MaintenanceItemID: maintID, ServicedAt: jan15,
+	}, Vendor{}))
+	require.NotNil(t, getMaint().LastServicedAt)
+	assert.True(t, getMaint().LastServicedAt.Equal(jan15))
+
+	// Create a more recent entry → LastServicedAt advances to mar1.
+	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
+		MaintenanceItemID: maintID, ServicedAt: mar1,
+	}, Vendor{}))
+	assert.True(t, getMaint().LastServicedAt.Equal(mar1))
+
+	// Update the more recent entry to feb1 → LastServicedAt adjusts to feb1.
+	entries, err := store.ListServiceLog(maintID, false)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+	latest := entries[0]
+	latest.ServicedAt = feb1
+	require.NoError(t, store.UpdateServiceLog(latest, Vendor{}))
+	assert.True(t, getMaint().LastServicedAt.Equal(feb1))
+
+	// Delete the feb1 entry → LastServicedAt falls back to jan15.
+	require.NoError(t, store.DeleteServiceLog(latest.ID))
+	assert.True(t, getMaint().LastServicedAt.Equal(jan15))
+
+	// Restore the feb1 entry → LastServicedAt returns to feb1.
+	require.NoError(t, store.RestoreServiceLog(latest.ID))
+	assert.True(t, getMaint().LastServicedAt.Equal(feb1))
+
+	// Delete all entries → LastServicedAt preserved (not nulled).
+	// Deleting feb1 first syncs to jan15; deleting jan15 finds no entries
+	// and preserves the last synced value.
+	entries, err = store.ListServiceLog(maintID, false)
+	require.NoError(t, err)
+	for _, e := range entries {
+		require.NoError(t, store.DeleteServiceLog(e.ID))
+	}
+	require.NotNil(t, getMaint().LastServicedAt,
+		"LastServicedAt should be preserved when all entries are deleted")
+	assert.True(t, getMaint().LastServicedAt.Equal(jan15),
+		"should keep the last synced value")
+}
+
 func TestSoftDeletePersistsAcrossRuns(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "persist.db")
