@@ -2796,6 +2796,81 @@ func TestHardDeleteIncidentDetachesSoftDeletedDocuments(t *testing.T) {
 	require.NoError(t, store.RestoreDocument(docID))
 }
 
+func TestEnsureDocumentAlive_AliveIsNoOp(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	doc := &Document{
+		FileName: "receipt.pdf",
+		MIMEType: "application/pdf",
+		Data:     []byte("pdf"),
+	}
+	require.NoError(t, store.CreateDocument(doc))
+
+	require.NoError(t, store.EnsureDocumentAlive(doc.ID))
+
+	got, err := store.GetDocument(doc.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "receipt.pdf", got.FileName)
+}
+
+func TestEnsureDocumentAlive_RestoresSoftDeleted(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	doc := &Document{
+		FileName: "invoice.pdf",
+		MIMEType: "application/pdf",
+		Data:     []byte("pdf"),
+	}
+	require.NoError(t, store.CreateDocument(doc))
+	require.NoError(t, store.DeleteDocument(doc.ID))
+
+	// Document is soft-deleted; normal Get fails.
+	_, err := store.GetDocument(doc.ID)
+	require.Error(t, err)
+
+	// EnsureDocumentAlive should restore it.
+	require.NoError(t, store.EnsureDocumentAlive(doc.ID))
+
+	got, err := store.GetDocument(doc.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "invoice.pdf", got.FileName)
+}
+
+func TestEnsureDocumentAlive_NonExistentFails(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	err := store.EnsureDocumentAlive(999)
+	assert.Error(t, err)
+}
+
+func TestUpdateDocumentExtraction_WorksOnSoftDeletedDoc(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	doc := &Document{
+		FileName: "scan.pdf",
+		MIMEType: "application/pdf",
+		Data:     []byte("pdf"),
+	}
+	require.NoError(t, store.CreateDocument(doc))
+	require.NoError(t, store.DeleteDocument(doc.ID))
+
+	// UpdateDocumentExtraction should work even on soft-deleted documents
+	// (uses Unscoped internally).
+	require.NoError(t, store.UpdateDocumentExtraction(
+		doc.ID, "extracted text", nil, "test-model", nil,
+	))
+
+	// Verify via unscoped read.
+	var saved Document
+	require.NoError(t, store.db.Unscoped().First(&saved, doc.ID).Error)
+	assert.Equal(t, "extracted text", saved.ExtractedText)
+	assert.Equal(t, "test-model", saved.ExtractionModel)
+}
+
 func TestHardDeleteIncidentNotFound(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)

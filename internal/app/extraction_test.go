@@ -3207,6 +3207,88 @@ func TestExtractionTSVToggle_HintShownInFooter(t *testing.T) {
 	assert.Contains(t, view, "layout", "footer should show layout hint when done with LLM")
 }
 
+// --- Accept on soft-deleted documents (#769) ---
+
+func TestAccept_SoftDeletedDoc_RestoresAndSavesExtraction(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+	ex.hasLLM = true
+	ex.pendingText = "extracted text from invoice"
+
+	// Create a document, then soft-delete it.
+	doc := &data.Document{
+		FileName: "invoice.pdf",
+		MIMEType: "application/pdf",
+		Data:     []byte("pdf-bytes"),
+	}
+	require.NoError(t, m.store.CreateDocument(doc))
+	ex.DocID = doc.ID
+	require.NoError(t, m.store.DeleteDocument(doc.ID))
+
+	// Accept should restore the document and persist extraction data.
+	sendExtractionKey(m, "a")
+
+	assert.Nil(t, m.ex.extraction, "accept should clear extraction state")
+
+	saved, err := m.store.GetDocument(doc.ID)
+	require.NoError(t, err, "document should be alive after accept")
+	assert.Equal(t, "extracted text from invoice", saved.ExtractedText)
+}
+
+func TestAccept_SoftDeletedDoc_WithShadowOps_RestoresAndCommits(t *testing.T) {
+	t.Parallel()
+	ops := []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{
+			"name": "Acme Plumbing",
+		}},
+	}
+	m := newPreviewModel(t, ops)
+	ex := m.ex.extraction
+	ex.hasLLM = true
+	ex.pendingText = "acme invoice text"
+
+	// Create a document, then soft-delete it.
+	doc := &data.Document{
+		FileName: "acme-invoice.pdf",
+		MIMEType: "application/pdf",
+		Data:     []byte("pdf-data"),
+	}
+	require.NoError(t, m.store.CreateDocument(doc))
+	ex.DocID = doc.ID
+	require.NoError(t, m.store.DeleteDocument(doc.ID))
+
+	// Stage operations through shadow DB.
+	sdb, err := extract.NewShadowDB(m.store)
+	require.NoError(t, err)
+	require.NoError(t, sdb.Stage(ops))
+	ex.shadowDB = sdb
+
+	// Accept should restore document, save extraction data, and commit ops.
+	sendExtractionKey(m, "a")
+
+	assert.Nil(t, m.ex.extraction, "accept should clear extraction state")
+
+	saved, err := m.store.GetDocument(doc.ID)
+	require.NoError(t, err, "document should be alive after accept")
+	assert.Equal(t, "acme invoice text", saved.ExtractedText)
+
+	vendors, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	var found bool
+	for _, v := range vendors {
+		if v.Name == "Acme Plumbing" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "vendor 'Acme Plumbing' should be created")
+}
+
 func TestMarshalOps_NilSlice(t *testing.T) {
 	t.Parallel()
 	b, err := marshalOps(nil)

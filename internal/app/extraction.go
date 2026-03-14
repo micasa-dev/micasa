@@ -911,9 +911,18 @@ func (m *Model) acceptDeferredExtraction() error {
 }
 
 // acceptExistingExtraction persists extraction text and dispatches operations
-// for an already-saved document.
+// for an already-saved document. If the document was soft-deleted between
+// extraction start and accept, it is restored first so the update and
+// shadow operations succeed.
 func (m *Model) acceptExistingExtraction() error {
 	ex := m.ex.extraction
+
+	// Restore the document if it was soft-deleted since extraction started.
+	if m.store != nil && ex.DocID > 0 {
+		if err := m.store.EnsureDocumentAlive(ex.DocID); err != nil {
+			return fmt.Errorf("document was deleted and could not be restored: %w", err)
+		}
+	}
 
 	// Persist async extraction results and the model that produced them.
 	if ex.pendingText != "" || len(ex.pendingData) > 0 || ex.hasLLM {
