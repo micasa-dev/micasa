@@ -621,3 +621,44 @@ func TestDeleteAutoShowsDeletedAndRestoreWorks(t *testing.T) {
 	assert.Len(t, tab.Rows, 1, "restored row should remain visible")
 	assert.False(t, tab.Rows[0].Deleted, "row should no longer be marked deleted")
 }
+
+func TestDeleteRespectsExplicitHideDeleted(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	// Create a vendor.
+	h := vendorHandler{}
+	m.fs.formData = &vendorFormData{Name: "Test Vendor", Phone: "555-0000"}
+	require.NoError(t, h.SubmitForm(m))
+
+	// Switch to vendors tab and reload.
+	m.active = tabIndex(tabVendors)
+	require.NoError(t, m.reloadActiveTab())
+
+	tab := m.activeTab()
+	tab.Table.SetCursor(0)
+	require.Len(t, tab.Rows, 1)
+	assert.False(t, tab.ShowDeleted, "ShowDeleted should start off")
+
+	// Enter edit mode and explicitly toggle hide-deleted: x shown, x hidden.
+	sendKey(m, "i")
+	require.Equal(t, modeEdit, m.mode)
+
+	sendKey(m, "x")
+	tab = m.activeTab()
+	assert.True(t, tab.ShowDeleted, "first x should show deleted")
+	sendKey(m, "x")
+	tab = m.activeTab()
+	assert.False(t, tab.ShowDeleted, "second x should hide deleted")
+
+	// Delete the row while hide-deleted is active.
+	sendKey(m, "d")
+
+	tab = m.activeTab()
+	assert.False(t, tab.ShowDeleted,
+		"ShowDeleted must stay off when user explicitly hid deleted rows")
+	assert.Len(t, tab.Rows, 0,
+		"deleted row should be hidden because user explicitly chose to hide deleted")
+	assert.Contains(t, m.status.Text, "Deleted",
+		"status should confirm deletion")
+}

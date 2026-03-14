@@ -1698,7 +1698,9 @@ func (m *Model) toggleDeleteSelected() {
 		return
 	}
 	tab.LastDeleted = &meta.ID
-	tab.ShowDeleted = true
+	if !tab.showDeletedExplicit {
+		tab.ShowDeleted = true
+	}
 	if tab.Kind == tabIncidents {
 		m.setStatusInfo("Resolved. Press d to reopen.")
 	} else {
@@ -1746,6 +1748,7 @@ func (m *Model) toggleShowDeleted() {
 		return
 	}
 	tab.ShowDeleted = !tab.ShowDeleted
+	tab.showDeletedExplicit = true
 	if tab.ShowDeleted {
 		m.setStatusInfo("Deleted shown.")
 	} else {
