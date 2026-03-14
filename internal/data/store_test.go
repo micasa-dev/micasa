@@ -341,17 +341,12 @@ func TestServiceLogMoveBetweenParentsSyncsBoth(t *testing.T) {
 	categories, err := store.MaintenanceCategories()
 	require.NoError(t, err)
 
-	// Create two maintenance items.
-	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
-		Name: "Item A", CategoryID: categories[0].ID,
-	}))
-	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
-		Name: "Item B", CategoryID: categories[0].ID,
-	}))
-	items, err := store.ListMaintenance(false)
-	require.NoError(t, err)
-	require.Len(t, items, 2)
-	idA, idB := items[0].ID, items[1].ID
+	// Create two maintenance items, capturing IDs directly from Create.
+	itemA := &MaintenanceItem{Name: "Item A", CategoryID: categories[0].ID}
+	require.NoError(t, store.CreateMaintenance(itemA))
+	itemB := &MaintenanceItem{Name: "Item B", CategoryID: categories[0].ID}
+	require.NoError(t, store.CreateMaintenance(itemB))
+	idA, idB := itemA.ID, itemB.ID
 
 	jan15 := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
 
@@ -382,9 +377,11 @@ func TestServiceLogMoveBetweenParentsSyncsBoth(t *testing.T) {
 	assert.True(t, getMaint(idB).LastServicedAt.Equal(jan15),
 		"new parent should have LastServicedAt synced")
 
-	// Item A should have LastServicedAt preserved (no remaining entries).
+	// Item A should have LastServicedAt preserved at jan15 (no remaining entries).
 	require.NotNil(t, getMaint(idA).LastServicedAt,
 		"old parent LastServicedAt should be preserved when no entries remain")
+	assert.True(t, getMaint(idA).LastServicedAt.Equal(jan15),
+		"old parent should retain the last synced value")
 }
 
 func TestSoftDeletePersistsAcrossRuns(t *testing.T) {
