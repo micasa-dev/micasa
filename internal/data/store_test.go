@@ -335,6 +335,58 @@ func TestServiceLogSyncsLastServiced(t *testing.T) {
 		"should keep the last synced value")
 }
 
+func TestServiceLogMoveBetweenParentsSyncsBoth(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	categories, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	// Create two maintenance items.
+	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+		Name: "Item A", CategoryID: categories[0].ID,
+	}))
+	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+		Name: "Item B", CategoryID: categories[0].ID,
+	}))
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	idA, idB := items[0].ID, items[1].ID
+
+	jan15 := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	getMaint := func(id uint) MaintenanceItem {
+		t.Helper()
+		item, err := store.GetMaintenance(id)
+		require.NoError(t, err)
+		return item
+	}
+
+	// Create entry under Item A.
+	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
+		MaintenanceItemID: idA, ServicedAt: jan15,
+	}, Vendor{}))
+	require.NotNil(t, getMaint(idA).LastServicedAt)
+	assert.True(t, getMaint(idA).LastServicedAt.Equal(jan15))
+
+	// Move the entry to Item B.
+	entries, err := store.ListServiceLog(idA, false)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	entry := entries[0]
+	entry.MaintenanceItemID = idB
+	require.NoError(t, store.UpdateServiceLog(entry, Vendor{}))
+
+	// Item B should now have LastServicedAt = jan15.
+	require.NotNil(t, getMaint(idB).LastServicedAt)
+	assert.True(t, getMaint(idB).LastServicedAt.Equal(jan15),
+		"new parent should have LastServicedAt synced")
+
+	// Item A should have LastServicedAt preserved (no remaining entries).
+	require.NotNil(t, getMaint(idA).LastServicedAt,
+		"old parent LastServicedAt should be preserved when no entries remain")
+}
+
 func TestSoftDeletePersistsAcrossRuns(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "persist.db")
