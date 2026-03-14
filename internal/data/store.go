@@ -1300,6 +1300,8 @@ func (s *Store) EnsureDocumentAlive(id uint) error {
 	var doc Document
 	if err := s.db.First(&doc, id).Error; err == nil {
 		return nil // already alive
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("check document %d: %w", id, err)
 	}
 	return s.RestoreDocument(id)
 }
