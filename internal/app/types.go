@@ -217,7 +217,7 @@ type Tab struct {
 	ViewOffset          int // first visible column in horizontal scroll viewport
 	LastDeleted         *uint
 	ShowDeleted         bool
-	showDeletedExplicit bool // user explicitly toggled via 'x'; suppresses auto-enable on delete
+	showDeletedExplicit bool // sticky: once true (user pressed 'x'), never cleared; suppresses auto-enable on delete
 	Sorts               []sortEntry
 	Stale               bool // true when data may be outdated; cleared on reload
 
