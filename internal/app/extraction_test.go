@@ -2960,6 +2960,30 @@ func TestExtractionFailedLLMStep_JSONNotPrettyPrinted(t *testing.T) {
 		"compact JSON should remain on one line, not pretty-printed")
 }
 
+func TestExtractionFailedExtractStep_ErrorRenderedAsPlainText(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepRunning,
+	})
+	ex := m.ex.extraction
+	ex.hasExtract = true
+	ex.Steps[stepExtract].Started = time.Now()
+
+	// Drive extract failure through the message path.
+	m.Update(extractionProgressMsg{
+		ID:       ex.ID,
+		Progress: extract.ExtractProgress{Err: errors.New("tesseract not found")},
+	})
+	require.Equal(t, stepFailed, ex.Steps[stepExtract].Status)
+
+	ex.expanded[stepExtract] = true
+
+	view := m.buildExtractionOverlay()
+	assert.Contains(t, view, "tesseract not found",
+		"non-LLM failed step error should be visible as plain text")
+}
+
 func TestExtractionExtractFails_PingSkipPreventsLLM(t *testing.T) {
 	t.Parallel()
 	m := newExtractionModel(t, map[extractionStep]stepStatus{
