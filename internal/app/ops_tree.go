@@ -254,7 +254,7 @@ func collapsedPreview(node *jsonTreeNode, maxW int) string {
 		} else {
 			entry = child.key + ": " + childPreviewValue(child)
 		}
-		if b.Len()+len(entry)+len(cls) > maxW {
+		if ansi.StringWidth(b.String())+ansi.StringWidth(entry)+ansi.StringWidth(cls) > maxW {
 			b.WriteString(symEllipsis)
 			break
 		}
@@ -341,7 +341,7 @@ func (m *Model) handleOpsTreeKey(key tea.KeyMsg) tea.Cmd {
 	case keyK, keyUp:
 		tree.cursor--
 		tree.clampCursor()
-	case keyEnter, keyL:
+	case keyEnter, keyL, keyRight:
 		nodes := tree.visibleNodes()
 		if tree.cursor >= 0 && tree.cursor < len(nodes) {
 			node := nodes[tree.cursor]
@@ -350,7 +350,7 @@ func (m *Model) handleOpsTreeKey(key tea.KeyMsg) tea.Cmd {
 				tree.clampCursor()
 			}
 		}
-	case keyH:
+	case keyH, keyLeft:
 		nodes := tree.visibleNodes()
 		if tree.cursor >= 0 && tree.cursor < len(nodes) {
 			node := nodes[tree.cursor]
