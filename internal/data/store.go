@@ -943,6 +943,11 @@ func (s *Store) CreateServiceLog(entry *ServiceLogEntry, vendor Vendor) error {
 
 func (s *Store) UpdateServiceLog(entry ServiceLogEntry, vendor Vendor) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Fetch old entry to detect parent change.
+		var old ServiceLogEntry
+		if err := tx.First(&old, entry.ID).Error; err != nil {
+			return err
+		}
 		if strings.TrimSpace(vendor.Name) != "" {
 			found, err := findOrCreateVendor(tx, vendor)
 			if err != nil {
@@ -954,6 +959,12 @@ func (s *Store) UpdateServiceLog(entry ServiceLogEntry, vendor Vendor) error {
 		}
 		if err := updateByIDWith(tx, &ServiceLogEntry{}, entry.ID, entry); err != nil {
 			return err
+		}
+		// If the entry moved to a different parent, sync both.
+		if old.MaintenanceItemID != entry.MaintenanceItemID {
+			if err := syncLastServiced(tx, old.MaintenanceItemID); err != nil {
+				return err
+			}
 		}
 		return syncLastServiced(tx, entry.MaintenanceItemID)
 	})

@@ -1400,7 +1400,7 @@ func (m *Model) closeDetail() {
 	// to the "Last" column so the user sees the synced date.
 	if top.Mutated {
 		if _, ok := top.Tab.Handler.(serviceLogHandler); ok {
-			if tab := m.effectiveTab(); tab != nil {
+			if tab := m.effectiveTab(); tab != nil && tab.Kind == tabMaintenance {
 				tab.ColCursor = int(maintenanceColLast)
 				m.updateTabViewport(tab)
 				m.setStatusInfo("Last serviced date synced from service log.")
