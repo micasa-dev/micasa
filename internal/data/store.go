@@ -1289,7 +1289,19 @@ func (s *Store) UpdateDocumentExtraction(
 	if len(updates) == 0 {
 		return nil
 	}
-	return s.db.Model(&Document{}).Where(ColID+" = ?", id).Updates(updates).Error
+	return s.db.Unscoped().Model(&Document{}).Where(ColID+" = ?", id).Updates(updates).Error
+}
+
+// EnsureDocumentAlive restores a soft-deleted document if necessary.
+// Returns nil if the document is already alive or was successfully restored.
+// Returns an error if the document does not exist or restoration fails
+// (e.g. parent entity is also deleted).
+func (s *Store) EnsureDocumentAlive(id uint) error {
+	var doc Document
+	if err := s.db.First(&doc, id).Error; err == nil {
+		return nil // already alive
+	}
+	return s.RestoreDocument(id)
 }
 
 func (s *Store) DeleteDocument(id uint) error {
