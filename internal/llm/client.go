@@ -29,6 +29,15 @@ import (
 // (ping, model listing, auto-detect). Not user-configurable.
 const QuickOpTimeout = 30 * time.Second
 
+// ErrPingNotSupported is returned by Ping for providers that don't implement
+// model listing (e.g. Anthropic). Callers can check this with errors.Is to
+// distinguish "verified OK" from "could not verify".
+var ErrPingNotSupported = errors.New("provider does not support ping")
+
+// ErrModelListingNotSupported is returned by ListModels for providers that
+// don't implement the ModelLister interface.
+var ErrModelListingNotSupported = errors.New("provider does not support listing models")
+
 // Client wraps an any-llm-go provider behind a stable API for the rest
 // of the application.
 type Client struct {
@@ -242,8 +251,8 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	lister, ok := c.provider.(anyllm.ModelLister)
 	if !ok {
 		return nil, fmt.Errorf(
-			"%s provider does not support listing models",
-			c.providerName,
+			"%s: %w",
+			c.providerName, ErrModelListingNotSupported,
 		)
 	}
 
@@ -260,11 +269,13 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 }
 
 // Ping checks whether the API is reachable and the configured model is
-// available. For providers without model listing, it's a no-op.
+// available. For providers without model listing it returns
+// ErrPingNotSupported so callers can distinguish "verified OK" from
+// "could not verify".
 func (c *Client) Ping(ctx context.Context) error {
 	lister, ok := c.provider.(anyllm.ModelLister)
 	if !ok {
-		return nil
+		return ErrPingNotSupported
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, QuickOpTimeout)
@@ -280,15 +291,26 @@ func (c *Client) Ping(ctx context.Context) error {
 			return nil
 		}
 	}
+
+	// Zero models usually means the URL doesn't point to an LLM server
+	// (e.g. a non-LLM HTTP endpoint that returns 404/HTML). Point the
+	// user at the URL rather than the model name.
+	if len(resp.Data) == 0 {
+		return fmt.Errorf(
+			"no models found at %s -- verify the base_url points to a running LLM server",
+			c.baseURL,
+		)
+	}
+
 	if c.providerName == providerOllama {
 		return fmt.Errorf(
-			"model %q not found -- pull it with `ollama pull %s`",
-			c.model, c.model,
+			"model %q not found at %s -- pull it with `ollama pull %s` or check base_url",
+			c.model, c.baseURL, c.model,
 		)
 	}
 	return fmt.Errorf(
-		"model %q not available -- check the model name in your config",
-		c.model,
+		"model %q not available at %s -- check model name and base_url in your config",
+		c.model, c.baseURL,
 	)
 }
 
@@ -306,7 +328,11 @@ func (c *Client) ChatComplete(
 		return "", c.wrapError(err)
 	}
 	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("no choices in response")
+		return "", fmt.Errorf(
+			"%s returned no response for model %q -- the server may be overloaded or the model may not support this request",
+			c.providerName,
+			c.model,
+		)
 	}
 	return resp.Choices[0].Message.ContentString(), nil
 }
@@ -409,13 +435,13 @@ func (c *Client) wrapError(err error) error {
 	if errors.As(err, &modelErr) {
 		if c.providerName == providerOllama {
 			return fmt.Errorf(
-				"model %q not found -- pull it with `ollama pull %s`",
-				c.model, c.model,
+				"model %q not found at %s -- pull it with `ollama pull %s` or check base_url",
+				c.model, c.baseURL, c.model,
 			)
 		}
 		return fmt.Errorf(
-			"model %q not available -- check the model name in your config",
-			c.model,
+			"model %q not available at %s -- check model name and base_url in your config",
+			c.model, c.baseURL,
 		)
 	}
 

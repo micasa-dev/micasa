@@ -73,7 +73,7 @@ type ChatLLM struct {
 	BaseURL string `toml:"base_url" default:"http://localhost:11434"`
 
 	// Model is the model identifier passed in chat requests.
-	Model string `toml:"model" default:"qwen3"`
+	Model string `toml:"model" default:"qwen3:0.6b"`
 
 	// APIKey is the authentication credential. Required for cloud
 	// providers; leave empty for local servers like Ollama.
@@ -128,7 +128,7 @@ type ExtractionLLM struct {
 
 	// Model is the model identifier for extraction. Extraction wants a
 	// small, fast model optimized for structured JSON output.
-	Model string `toml:"model" default:"qwen3"`
+	Model string `toml:"model" default:"qwen3:0.6b"`
 
 	// APIKey is the authentication credential.
 	APIKey string `toml:"api_key"` //nolint:gosec // config field, not a hardcoded credential
@@ -273,7 +273,7 @@ func (d Documents) CacheTTLDuration() time.Duration {
 
 const (
 	DefaultBaseURL    = "http://localhost:11434"
-	DefaultModel      = "qwen3"
+	DefaultModel      = "qwen3:0.6b"
 	DefaultProvider   = "ollama"
 	DefaultLLMTimeout = 5 * time.Minute
 	DefaultCacheTTL   = 30 * 24 * time.Hour // 30 days

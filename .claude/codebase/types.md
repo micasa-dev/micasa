@@ -132,7 +132,7 @@ Col* (e.g., ColID = "id", ColName = "name", ColDeletedAt = "deleted_at")
 Each pipeline section is self-contained; no cross-section inheritance.
 
 ### Defaults
-- Provider: "ollama", Model: "qwen3", BaseURL: "http://localhost:11434"
+- Provider: "ollama", Model: "qwen3:0.6b", BaseURL: "http://localhost:11434"
 - MaxPages: 0, CacheTTL: 30 days, LLMTimeout: 5m, OCR TSV threshold: 70
 
 ## LLM Types (internal/llm/)

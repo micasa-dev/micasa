@@ -35,7 +35,7 @@ enable = true
 [chat.llm]
 provider = "ollama"
 base_url = "http://localhost:11434"
-model = "qwen3"
+model = "qwen3:0.6b"
 api_key = ""
 timeout = "5m"
 thinking = ""
@@ -48,7 +48,7 @@ max_pages = 0
 enable = true
 provider = "ollama"
 base_url = "http://localhost:11434"
-model = "qwen3"
+model = "qwen3:0.6b"
 api_key = ""
 timeout = "5m"
 thinking = ""

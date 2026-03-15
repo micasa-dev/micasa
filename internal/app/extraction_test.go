@@ -2607,6 +2607,26 @@ func TestExtractionClient_NilWhenNoConfig(t *testing.T) {
 	assert.Nil(t, m.extractionLLMClient())
 }
 
+func TestExtractionClient_CachesCreationError(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepLLM: stepPending,
+	})
+
+	// Use a bogus provider name to trigger NewClient error.
+	m.ex.extractionProvider = "nonexistent-provider"
+	m.ex.extractionModel = "some-model"
+	m.ex.extractionClient = nil
+
+	// First call: returns nil and caches the error.
+	assert.Nil(t, m.extractionLLMClient())
+	require.Error(t, m.ex.extractionClientErr)
+	assert.Contains(t, m.ex.extractionClientErr.Error(), "nonexistent-provider")
+
+	// Second call: returns nil without retrying (cached).
+	assert.Nil(t, m.extractionLLMClient())
+}
+
 // --- Auto-follow vs manual cursor mode ---
 
 func TestExtractionCursor_AutoFollowDisengagesOnJK(t *testing.T) {
@@ -2725,6 +2745,25 @@ func TestExtractionLLMPing_SuccessAllowsLLM(t *testing.T) {
 	require.NoError(t, ex.llmPingErr)
 	// LLM still pending -- extraction hasn't finished.
 	assert.Equal(t, stepPending, ex.Steps[stepLLM].Status)
+}
+
+func TestExtractionLLMPing_NotSupportedProceedsOptimistically(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText:    stepDone,
+		stepExtract: stepRunning,
+		stepLLM:     stepPending,
+	})
+	ex := m.ex.extraction
+	id := ex.ID
+
+	// ErrPingNotSupported (e.g. Anthropic) should proceed optimistically,
+	// NOT mark LLM as skipped.
+	m.Update(extractionLLMPingMsg{ID: id, Err: llm.ErrPingNotSupported})
+	assert.True(t, ex.llmPingDone)
+	require.NoError(t, ex.llmPingErr, "ping-not-supported should clear error")
+	assert.Equal(t, stepPending, ex.Steps[stepLLM].Status,
+		"LLM step should remain pending, not be skipped")
 }
 
 func TestExtractionSkippedStep_Navigable(t *testing.T) {

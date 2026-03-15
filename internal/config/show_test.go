@@ -36,7 +36,7 @@ func TestShowConfigDefaults(t *testing.T) {
 	assert.Contains(t, out, "[documents]")
 	assert.Contains(t, out, "[locale]")
 
-	assert.Contains(t, out, `model = "qwen3"`)
+	assert.Contains(t, out, `model = "qwen3:0.6b"`)
 	assert.Contains(t, out, `base_url = "http://localhost:11434"`)
 	assert.Contains(t, out, `timeout = "5m"`)
 	assert.Contains(t, out, `max_file_size = "50 MiB"`)

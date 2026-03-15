@@ -29,7 +29,7 @@ don't know about each other
 ```toml
 [chat.llm]
 provider = "ollama"
-model = "qwen3"
+model = "qwen3:0.6b"
 
 [extraction.llm]
 provider = "anthropic"

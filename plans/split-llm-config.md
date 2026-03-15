@@ -22,7 +22,7 @@ on a fast cloud model (e.g. Anthropic Haiku) cannot do so.
 # Base settings -- defaults for both pipelines.
 provider = "ollama"
 base_url = "http://localhost:11434"
-model = "qwen3"
+model = "qwen3:0.6b"
 api_key = ""
 extra_context = "My house is a 1920s craftsman in Portland, OR."
 timeout = "5s"

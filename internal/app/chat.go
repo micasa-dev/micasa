@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -101,6 +102,7 @@ var wellKnownModels = []string{
 	"llama3.3",
 	"mistral-small:24b",
 	"phi-4:14b",
+	"qwen3:0.6b",
 	"qwen3:8b",
 	"qwen3:32b",
 	"qwen3:72b",
@@ -201,7 +203,7 @@ func (m *Model) openChat() tea.Cmd {
 		m.chat.Messages = append(m.chat.Messages, chatMessage{
 			Role: roleNotice,
 			Content: fmt.Sprintf(
-				"No LLM configured. Create %s with:\n\n[chat.llm]\nbase_url = \"http://localhost:11434\"\nmodel = \"qwen3\"",
+				"No LLM configured. Create %s with:\n\n[chat.llm]\nbase_url = \"http://localhost:11434\"\nmodel = \"qwen3:0.6b\"",
 				shortenHome(m.configPath),
 			),
 		})
@@ -293,6 +295,14 @@ func (m *Model) submitChat() tea.Cmd {
 
 	// Regular LLM query -- two-stage pipeline.
 	if m.llmClient == nil {
+		m.chat.Messages = append(m.chat.Messages, chatMessage{
+			Role: roleUser, Content: query,
+		})
+		m.chat.Messages = append(m.chat.Messages, chatMessage{
+			Role:    roleError,
+			Content: "no LLM configured -- add [chat.llm] to your config",
+		})
+		m.refreshChatViewport()
 		return nil
 	}
 
@@ -453,8 +463,16 @@ func (m *Model) handleModelsListMsg(msg modelsListMsg) {
 		if msg.Err == nil {
 			mc.All = mergeModelLists(msg.Models)
 		} else {
-			// Server unreachable -- show well-known models only.
 			mc.All = mergeModelLists(nil)
+			// Surface genuine connectivity errors so the user knows
+			// why only well-known models are shown. Suppress the
+			// expected "does not support listing" case.
+			if !errors.Is(msg.Err, llm.ErrModelListingNotSupported) {
+				m.chat.Messages = append(m.chat.Messages, chatMessage{
+					Role:    roleNotice,
+					Content: "model listing failed: " + msg.Err.Error(),
+				})
+			}
 		}
 		m.refilterCompleter()
 		return
@@ -640,8 +658,15 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		// Best-effort: if listing fails, fall through to pull attempt.
-		models, _ := client.ListModels(ctx)
+		models, listErr := client.ListModels(ctx)
+		if listErr != nil {
+			// Server unreachable, auth failure, or similar -- surface the
+			// actual error instead of masking it as "model not found".
+			return pullProgressMsg{
+				Err:  fmt.Errorf("cannot switch model: %w", listErr),
+				Done: true,
+			}
+		}
 		for _, model := range models {
 			if model == name || strings.HasPrefix(model, name+":") {
 				return pullProgressMsg{

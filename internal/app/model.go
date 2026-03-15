@@ -2099,6 +2099,10 @@ func (m *Model) extractionLLMClient() *llm.Client {
 	if m.ex.extractionClient != nil {
 		return m.ex.extractionClient
 	}
+	// Don't retry after a cached creation error.
+	if m.ex.extractionClientErr != nil {
+		return nil
+	}
 
 	provider := m.ex.extractionProvider
 	baseURL := m.ex.extractionBaseURL
@@ -2112,6 +2116,7 @@ func (m *Model) extractionLLMClient() *llm.Client {
 
 	c, err := llm.NewClient(provider, baseURL, model, apiKey, timeout)
 	if err != nil {
+		m.ex.extractionClientErr = err
 		return nil
 	}
 	if m.ex.extractionThinking != "" {

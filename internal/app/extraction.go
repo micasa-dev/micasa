@@ -263,6 +263,12 @@ func (m *Model) startExtractionOverlay(
 	needsExtract := extract.NeedsOCR(m.ex.extractors, mime)
 	needsLLM := m.extractionLLMClient() != nil
 
+	// Surface cached client creation errors so misconfigured providers
+	// don't silently skip LLM extraction.
+	if !needsLLM && m.ex.extractionClientErr != nil {
+		m.setStatusError("extraction LLM: " + m.ex.extractionClientErr.Error())
+	}
+
 	// Skip OCR when the document already has extracted text from a
 	// previous run -- feed existing text directly to the LLM.
 	hasExistingText := strings.TrimSpace(extractedText) != ""
@@ -713,9 +719,19 @@ func (m *Model) handleExtractionLLMPing(msg extractionLLMPingMsg) tea.Cmd {
 		return nil
 	}
 	ex.llmPingDone = true
-	ex.llmPingErr = msg.Err
 
 	if msg.Err != nil {
+		// Providers that don't support model listing (e.g. Anthropic)
+		// return ErrPingNotSupported. Treat this as "proceed
+		// optimistically" -- the real error will surface when
+		// ChatStream is attempted.
+		if errors.Is(msg.Err, llm.ErrPingNotSupported) {
+			ex.llmPingErr = nil
+			return nil
+		}
+
+		ex.llmPingErr = msg.Err
+
 		// Mark LLM as skipped immediately so the strikethrough renders
 		// in real time, even while earlier steps are still running.
 		ex.Steps[stepLLM].Status = stepSkipped
@@ -1227,6 +1243,7 @@ func (m *Model) handleExtractionModelPickerKey(msg tea.KeyMsg) tea.Cmd {
 func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 	m.ex.extractionModel = name
 	m.ex.extractionClient = nil
+	m.ex.extractionClientErr = nil
 
 	if isLocal {
 		m.ex.extractionReady = true
@@ -1258,7 +1275,13 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		models, _ := client.ListModels(ctx)
+		models, listErr := client.ListModels(ctx)
+		if listErr != nil {
+			return pullProgressMsg{
+				Err:  fmt.Errorf("cannot switch extraction model: %w", listErr),
+				Done: true,
+			}
+		}
 		for _, model := range models {
 			if model == name || strings.HasPrefix(model, name+":") {
 				return pullProgressMsg{

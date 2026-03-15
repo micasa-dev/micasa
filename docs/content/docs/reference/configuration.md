@@ -238,7 +238,7 @@ values you want to change.
 # LLM connection settings for the chat (NL-to-SQL) pipeline.
 # provider = "ollama"
 base_url = "http://localhost:11434"
-model = "qwen3"
+model = "qwen3:0.6b"
 # api_key = ""
 # timeout = "5m"
 # thinking = "medium"
@@ -251,7 +251,7 @@ model = "qwen3"
 # LLM connection settings for document extraction.
 # enable = true
 # provider = "ollama"
-model = "qwen3"
+model = "qwen3:0.6b"
 # timeout = "5m"
 # thinking = "low"
 

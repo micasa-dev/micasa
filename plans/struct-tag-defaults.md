@@ -59,7 +59,7 @@ fallback).
 | Struct    | Field       | Tag                                  |
 |-----------|-------------|--------------------------------------|
 | LLM       | BaseURL     | `default:"http://localhost:11434"`   |
-| LLM       | Model       | `default:"qwen3"`                    |
+| LLM       | Model       | `default:"qwen3:0.6b"`               |
 | LLM       | Timeout     | `default:"5m"`                       |
 | Documents | MaxFileSize | `default:"52428800"` (50 MiB)        |
 

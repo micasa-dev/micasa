@@ -995,6 +995,20 @@ func TestSubmitChatNoLLMClient(t *testing.T) {
 	cmd := m.submitChat()
 	assert.Nil(t, cmd, "should return nil when no LLM client")
 	assert.Empty(t, m.chat.Input.Value(), "input should be cleared")
+	// User message should appear, followed by an error explaining no LLM.
+	require.True(t, len(m.chat.Messages) >= 2, "expected user + error messages")
+	var foundUser, foundError bool
+	for _, msg := range m.chat.Messages {
+		if msg.Role == roleUser && msg.Content == "hello" {
+			foundUser = true
+		}
+		if msg.Role == roleError {
+			foundError = true
+			assert.Contains(t, msg.Content, "no LLM configured")
+		}
+	}
+	assert.True(t, foundUser, "user message should be recorded")
+	assert.True(t, foundError, "error message should explain no LLM")
 }
 
 func TestSubmitChatRecordsHistory(t *testing.T) {
@@ -1164,10 +1178,36 @@ func TestHandleModelsListMsgCompleterError(t *testing.T) {
 	m.chat.Input.SetValue("/model ")
 	m.chat.Completer = &modelCompleter{Loading: true}
 
-	m.handleModelsListMsg(modelsListMsg{Err: fmt.Errorf("oops")})
+	m.handleModelsListMsg(modelsListMsg{Err: fmt.Errorf("connection refused")})
 	assert.False(t, m.chat.Completer.Loading)
 	// Should fall back to well-known models only.
 	require.NotEmpty(t, m.chat.Completer.All)
+	// Genuine connectivity errors should surface as a notice.
+	var found bool
+	for _, msg := range m.chat.Messages {
+		if msg.Role == roleNotice && strings.Contains(msg.Content, "model listing failed") {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected notice about model listing failure")
+}
+
+func TestHandleModelsListMsgCompleterListingNotSupported(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.openChat()
+	m.chat.Input.SetValue("/model ")
+	m.chat.Completer = &modelCompleter{Loading: true}
+	initialMsgCount := len(m.chat.Messages)
+
+	// ErrModelListingNotSupported should NOT produce a notice.
+	m.handleModelsListMsg(modelsListMsg{
+		Err: fmt.Errorf("anthropic: %w", llm.ErrModelListingNotSupported),
+	})
+	assert.False(t, m.chat.Completer.Loading)
+	require.NotEmpty(t, m.chat.Completer.All)
+	assert.Equal(t, initialMsgCount, len(m.chat.Messages),
+		"no notice should appear for listing-not-supported")
 }
 
 // --- removeLastNotice ---
@@ -1542,6 +1582,31 @@ func TestCmdSwitchModelPullAlreadyInProgress(t *testing.T) {
 	last := m.chat.Messages[len(m.chat.Messages)-1]
 	assert.Equal(t, roleError, last.Role)
 	assert.Contains(t, last.Content, "already in progress")
+}
+
+func TestCmdSwitchModelServerUnreachable(t *testing.T) {
+	t.Parallel()
+	// Create a client pointing at a closed port so ListModels fails.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := listener.Addr().String()
+	listener.Close() // immediately close so the port refuses connections
+
+	m := newTestModel(t)
+	c, err := llm.NewClient("llamacpp", "http://"+addr+"/v1", "test-model", "", 5*time.Second)
+	require.NoError(t, err)
+	m.llmClient = c
+	m.openChat()
+
+	cmd := m.cmdSwitchModel("some-model")
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	result, ok := msg.(pullProgressMsg)
+	require.True(t, ok, "expected pullProgressMsg, got %T", msg)
+	require.Error(t, result.Err)
+	assert.Contains(t, result.Err.Error(), "cannot switch model")
+	assert.True(t, result.Done)
 }
 
 // ===================================================================

@@ -65,7 +65,7 @@ They used to share a model. Now they don't
 ```toml
 [chat.llm]
 provider = "ollama"
-model = "qwen3"
+model = "qwen3:0.6b"
 
 [extraction.llm]
 provider = "anthropic"

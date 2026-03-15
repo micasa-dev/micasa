@@ -81,15 +81,84 @@ func TestPingServerDown(t *testing.T) {
 	assert.Contains(t, err.Error(), "cannot reach")
 }
 
-// TestPingAnthropicNoOp verifies that Ping is a no-op for providers that
-// don't implement ModelLister (like Anthropic).
-func TestPingAnthropicNoOp(t *testing.T) {
+// TestPingNonLLMServer verifies that pointing at a reachable server that
+// isn't an LLM endpoint surfaces a clear connectivity error, not "model not found".
+func TestPingNonLLMServer(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprint(w, "<html><body>Not an LLM</body></html>")
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv.URL+"/v1", "qwen3:0.6b")
+	err := client.Ping(context.Background())
+	require.Error(t, err)
+	// Should NOT say "model not found" — the server isn't even an LLM.
+	t.Logf("actual error: %s", err)
+	assert.NotContains(t, err.Error(), "not found")
+	assert.NotContains(t, err.Error(), "not available")
+}
+
+// TestListModelsNonLLMServer verifies that ListModels against a non-LLM
+// server surfaces a clear error, not "model not found".
+func TestListModelsNonLLMServer(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprint(w, "<html><body>Not an LLM</body></html>")
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv.URL+"/v1", "qwen3:0.6b")
+	_, err := client.ListModels(context.Background())
+	require.Error(t, err)
+	t.Logf("actual error: %s", err)
+}
+
+// TestPingNonLLMServer404 verifies that when the server returns a 404
+// (e.g. pointing at google.com), the error includes the base_url so the
+// user can verify the endpoint.
+func TestPingNonLLMServer404(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.NotFound(w, nil)
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv.URL+"/v1", "qwen3:0.6b")
+	err := client.Ping(context.Background())
+	require.Error(t, err)
+	// Error should mention the URL so the user can verify it.
+	assert.Contains(t, err.Error(), srv.URL, "error should include the base URL")
+}
+
+// TestPingNonLLMServerEmptyJSON verifies that an empty JSON response
+// (no models) points the user at the URL.
+func TestPingNonLLMServerEmptyJSON(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		jsonResponse(w, `{}`)
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv.URL+"/v1", "qwen3:0.6b")
+	err := client.Ping(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no models found")
+	assert.Contains(t, err.Error(), "base_url")
+}
+
+// TestPingAnthropicNotSupported verifies that Ping returns ErrPingNotSupported
+// for providers that don't implement ModelLister (like Anthropic).
+func TestPingAnthropicNotSupported(t *testing.T) {
 	t.Parallel()
 	client, err := NewClient(
 		"anthropic", "http://localhost:8080", "claude-sonnet-4-5-latest", "test-key", testTimeout,
 	)
 	require.NoError(t, err)
-	assert.NoError(t, client.Ping(context.Background()))
+	err = client.Ping(context.Background())
+	require.ErrorIs(t, err, ErrPingNotSupported)
 }
 
 func TestChatCompleteSuccess(t *testing.T) {
@@ -195,7 +264,8 @@ func TestChatCompleteEmptyChoices(t *testing.T) {
 		{Role: "user", Content: "hi"},
 	})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no choices")
+	assert.Contains(t, err.Error(), "returned no response")
+	assert.Contains(t, err.Error(), "test-model")
 }
 
 func TestModelAndBaseURL(t *testing.T) {
@@ -254,6 +324,16 @@ func TestListModelsEmpty(t *testing.T) {
 	models, err := client.ListModels(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, models)
+}
+
+func TestListModelsNotSupported(t *testing.T) {
+	t.Parallel()
+	client, err := NewClient(
+		"anthropic", "http://localhost:8080", "claude-sonnet-4-5-latest", "test-key", testTimeout,
+	)
+	require.NoError(t, err)
+	_, err = client.ListModels(context.Background())
+	require.ErrorIs(t, err, ErrModelListingNotSupported)
 }
 
 func TestIsLocalServer(t *testing.T) {
@@ -422,12 +502,13 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 	client := &Client{
 		provider:     p,
 		providerName: "openai",
+		baseURL:      srv.URL + "/v1",
 		model:        "gpt-4o",
 	}
 	err = client.Ping(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not available")
-	assert.Contains(t, err.Error(), "check the model name")
+	assert.Contains(t, err.Error(), "base_url")
 }
 
 func TestPingServerDownCloud(t *testing.T) {
@@ -581,22 +662,28 @@ func TestWrapErrorProviderErrorPreservesNonConnectionErrors(t *testing.T) {
 func TestWrapErrorModelNotFound(t *testing.T) {
 	t.Parallel()
 	t.Run("ollama suggests pull", func(t *testing.T) {
-		c := &Client{providerName: "ollama", model: "qwen3"}
+		c := &Client{providerName: "ollama", model: "qwen3", baseURL: "http://localhost:11434"}
 		err := c.wrapError(
 			anyllmerrors.NewModelNotFoundError("ollama", fmt.Errorf("not found")),
 		)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "ollama pull qwen3")
+		assert.Contains(t, err.Error(), "base_url")
 	})
 	t.Run("cloud suggests config check", func(t *testing.T) {
-		c := &Client{providerName: "anthropic", model: "claude-opus-4-6"}
+		c := &Client{
+			providerName: "anthropic",
+			model:        "claude-opus-4-6",
+			baseURL:      "https://api.anthropic.com",
+		}
 		err := c.wrapError(
 			anyllmerrors.NewModelNotFoundError(
 				"anthropic", fmt.Errorf("not found"),
 			),
 		)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "check the model name")
+		assert.Contains(t, err.Error(), "not available")
+		assert.Contains(t, err.Error(), "base_url")
 		assert.NotContains(t, err.Error(), "pull")
 	})
 }
