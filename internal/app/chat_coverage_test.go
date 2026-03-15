@@ -1590,7 +1590,7 @@ func TestCmdSwitchModelServerUnreachable(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	addr := listener.Addr().String()
-	listener.Close() // immediately close so the port refuses connections
+	require.NoError(t, listener.Close()) // immediately close so the port refuses connections
 
 	m := newTestModel(t)
 	c, err := llm.NewClient("llamacpp", "http://"+addr+"/v1", "test-model", "", 5*time.Second)

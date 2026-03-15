@@ -948,7 +948,7 @@ func TestPingTimesOutAtQuickOpTimeout(t *testing.T) {
 
 		elapsed := time.Since(start)
 		require.Error(t, err)
-		assert.ErrorIs(t, err, context.DeadlineExceeded)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
 		assert.InDelta(t,
 			QuickOpTimeout.Seconds(), elapsed.Seconds(), 1,
 			"should time out at QuickOpTimeout, not sooner or later",
