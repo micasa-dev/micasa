@@ -112,8 +112,8 @@ look before it writes.
   sets a proper `resolved` status. <kbd>D</kbd> permanently deletes resolved incidents
   with confirmation.
   ([#588](https://github.com/cpcloud/micasa/pull/588))
-- **`config --dump`** -- prints fully resolved config as annotated TOML with
-  env var hints. API keys are omitted to prevent us from doing dumb things like
+- **`config get`** -- prints fully resolved config as JSON, queryable with jq
+  filters. API keys are stripped to prevent us from doing dumb things like
   pasting secrets into an AI.
   ([#597](https://github.com/cpcloud/micasa/pull/597))
 - **Extraction timeout** -- configurable LLM timeout (default 2 minutes) so

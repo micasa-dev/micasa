@@ -10,16 +10,17 @@ micasa has minimal configuration -- it's designed to work out of the box.
 ## CLI
 
 micasa has three subcommands. `run` is the default and launches the TUI;
-`config` prints resolved configuration values; `backup` creates a database
-snapshot.
+`config` manages configuration (query values or open the config file in an
+editor); `backup` creates a database snapshot.
 
 ```
 Usage: micasa <command> [flags]
 
 Commands:
-  run [<db-path>]    Launch the TUI (default).
-  config <key>       Print the value of a config key.
-  backup [<dest>]    Back up the database to a file.
+  run [<db-path>]         Launch the TUI (default).
+  config get [<filter>]   Query config values with a jq filter.
+  config edit             Open the config file in an editor.
+  backup [<dest>]         Back up the database to a file.
 
 Flags:
   -h, --help       Show context-sensitive help.
@@ -47,29 +48,35 @@ micasa --demo /tmp/my-demo.db   # creates and populates
 micasa /tmp/my-demo.db          # reopens with the demo data
 ```
 
-### `config`
+### `config get`
 
 ```
-micasa config [<key>] [--dump]
+micasa config get [<filter>]
 ```
 
-Print the resolved value of a configuration key (dot-delimited TOML path):
+Query resolved configuration values using a
+[jq](https://jqlang.github.io/jq/) filter expression. With no filter (or
+the identity `.`), the entire resolved configuration is printed as JSON.
 
 ```sh
-micasa config chat.llm.model           # current chat model name
-micasa config extraction.llm.model     # extraction model name
-micasa config documents.max_file_size  # max doc size in bytes
+micasa config get                      # full config (identity)
+micasa config get .chat.llm.model      # current chat model name
+micasa config get .extraction.llm      # extraction section
+micasa config get '.chat.llm | keys'   # list keys in a section
 ```
 
-Use `--dump` to print the entire resolved configuration as valid TOML.
-Each field is annotated with its environment variable: `# env: VAR` as a
-hint, or `# src(env): VAR` when that variable is actively overriding the
-value. API keys are omitted to avoid accidentally leaking secrets (e.g.
-pasting output into a chat or issue).
+API keys are stripped from the output to avoid accidentally leaking
+secrets (e.g. pasting output into a chat or issue).
 
-```sh
-micasa config --dump
+### `config edit`
+
 ```
+micasa config edit
+```
+
+Opens the config file in your preferred editor (`$VISUAL`, then `$EDITOR`,
+then a platform default). Creates the file with sensible defaults if it
+doesn't exist yet.
 
 ### `backup`
 
