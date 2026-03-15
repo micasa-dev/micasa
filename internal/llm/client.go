@@ -397,7 +397,7 @@ func (c *Client) wrapError(err error) error {
 
 	var modelErr *anyllmerrors.ModelNotFoundError
 	if errors.As(err, &modelErr) {
-		return fmt.Errorf("model %q not found at %s", c.model, c.baseURL)
+		return fmt.Errorf("model %q not found at %s: %w", c.model, c.baseURL, err)
 	}
 
 	return err
