@@ -121,7 +121,7 @@ func calendarGrid(cal calendarState) string {
 // calendarHints renders the key legend as a two-column vertical list.
 func calendarHints() string {
 	dim := appStyles.CalDayLabel()
-	key := appStyles.CalHintKey()
+	key := appStyles.KeycapLight()
 
 	type hint struct{ k, v string }
 	items := []hint{

@@ -414,13 +414,13 @@ func (m *Model) buildOpsTreeOverlay() string {
 	}
 
 	b.WriteString("\n")
-	hints := []string{
-		m.styles.CalHintKey().Render("j") + "/" + m.styles.CalHintKey().Render("k") + " nav",
-		m.styles.CalHintKey().Render(symReturn) + " toggle",
-		m.styles.CalHintKey().Render("h") + " collapse",
-		m.styles.CalHintKey().Render("esc") + " close",
-	}
-	b.WriteString(m.styles.HeaderHint().Render(strings.Join(hints, "  ")))
+	hints := joinWithSeparator(m.helpSeparator(),
+		m.helpItem(keyJ+"/"+keyK, "nav"),
+		m.helpItem(symReturn, "toggle"),
+		m.helpItem(keyH, "collapse"),
+		m.helpItem(keyEsc, "close"),
+	)
+	b.WriteString(hints)
 
 	return m.styles.OverlayBox().
 		Width(contentW).

@@ -301,7 +301,6 @@ func (s *Styles) ModelRemote() lipgloss.Style    { return s.fgTextDimItalic }
 func (s *Styles) ModelActive() lipgloss.Style  { return s.fgAccentBold }
 func (s *Styles) ModelLocalHL() lipgloss.Style { return s.fgAccentBold }
 func (s *Styles) CalHeader() lipgloss.Style    { return s.fgAccentBold }
-func (s *Styles) CalHintKey() lipgloss.Style   { return s.fgAccentBold }
 func (s *Styles) AccentBold() lipgloss.Style   { return s.fgAccentBold }
 
 // --- Foreground(accent) + italic ---
@@ -346,6 +345,7 @@ func (s *Styles) HeaderBox() lipgloss.Style        { return s.headerBox }
 func (s *Styles) HeaderBadge() lipgloss.Style      { return s.headerBadge }
 func (s *Styles) HeaderSection() lipgloss.Style    { return s.headerSection }
 func (s *Styles) Keycap() lipgloss.Style           { return s.keycap }
+func (s *Styles) KeycapLight() lipgloss.Style      { return s.fgAccentBold }
 func (s *Styles) TabInactive() lipgloss.Style      { return s.tabInactive }
 func (s *Styles) TabLocked() lipgloss.Style        { return s.tabLocked }
 func (s *Styles) TableSelected() lipgloss.Style    { return s.tableSelected }

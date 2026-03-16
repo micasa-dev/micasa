@@ -851,7 +851,7 @@ func (m *Model) helpContent() string {
 		b.WriteString(m.styles.HeaderSection().Render(" " + section.title + " "))
 		b.WriteString("\n")
 		for _, bind := range section.bindings {
-			keys := m.renderKeys(bind.key)
+			keys := m.renderKeysLight(bind.key)
 			desc := m.styles.HeaderHint().Render(bind.desc)
 			fmt.Fprintf(&b, "  %s  %s\n", keys, desc)
 		}
@@ -1112,9 +1112,17 @@ func (m *Model) helpSeparator() string {
 }
 
 func (m *Model) renderKeys(keys string) string {
+	return m.renderKeysWith(keys, m.styles.Keycap())
+}
+
+func (m *Model) renderKeysLight(keys string) string {
+	return m.renderKeysWith(keys, m.styles.KeycapLight())
+}
+
+func (m *Model) renderKeysWith(keys string, style lipgloss.Style) string {
 	// A bare "/" is a single key, not a separator between two keys.
 	if strings.TrimSpace(keys) == "/" {
-		return m.keycap("/")
+		return renderKeycap("/", style)
 	}
 	parts := strings.Split(keys, "/")
 	rendered := make([]string, 0, len(parts))
@@ -1123,18 +1131,23 @@ func (m *Model) renderKeys(keys string) string {
 		if part == "" {
 			continue
 		}
-		rendered = append(rendered, m.keycap(part))
+		rendered = append(rendered, renderKeycap(part, style))
 	}
 	return joinWithSeparator(m.styles.HeaderHint().Render(" · "), rendered...)
 }
 
 func (m *Model) keycap(value string) string {
-	// Single letters: preserve case to distinguish A from a.
+	return renderKeycap(value, m.styles.Keycap())
+}
+
+// renderKeycap formats a key string using the given style.
+// Single letters preserve case; everything else is uppercased.
+func renderKeycap(value string, style lipgloss.Style) string {
 	if len(value) == 1 &&
 		((value[0] >= 'A' && value[0] <= 'Z') || (value[0] >= 'a' && value[0] <= 'z')) {
-		return m.styles.Keycap().Render(value)
+		return style.Render(value)
 	}
-	return m.styles.Keycap().Render(strings.ToUpper(value))
+	return style.Render(strings.ToUpper(value))
 }
 
 // --- General view utilities ---
