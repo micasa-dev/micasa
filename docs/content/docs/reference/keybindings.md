@@ -94,6 +94,7 @@ Same as Nav mode, except <kbd>d</kbd> is rebound:
 | <kbd>A</kbd>   | Add document with extraction (<a href="/docs/guide/documents/" class="tab-pill">Docs</a> tab only) |
 | <kbd>e</kbd>   | Edit current cell inline (date columns open calendar picker), or full form if cell is read-only |
 | <kbd>E</kbd>   | Open full edit form for the selected row (regardless of column) |
+| <kbd>R</kbd>   | Re-extract selected document (<a href="/docs/guide/documents/" class="tab-pill">Docs</a> tab only) |
 | <kbd>d</kbd>   | Toggle delete/restore on selected row |
 | <kbd>x</kbd>   | Toggle visibility of soft-deleted rows |
 | <kbd>p</kbd>   | Edit house profile |
@@ -220,6 +221,21 @@ overlay has two modes. See the
 | <kbd>a</kbd>       | Accept results |
 | <kbd>x</kbd>       | Return to pipeline mode |
 | <kbd>esc</kbd>     | Return to pipeline mode |
+
+## Ops tree overlay
+
+Press <kbd>enter</kbd> on the `Ops` column (Docs tab) to open an interactive
+JSON tree of the stored extraction operations. See the
+[ops tree overlay]({{< ref "/docs/guide/documents#ops-tree-overlay" >}}) guide
+for details.
+
+| Key       | Action |
+|-----------|--------|
+| <kbd>j</kbd> / <kbd>k</kbd> | Move cursor down/up |
+| <kbd>enter</kbd> / <kbd>l</kbd> | Expand node |
+| <kbd>h</kbd> | Collapse node (or jump to parent) |
+| <kbd>g</kbd> / <kbd>G</kbd> | Jump to first/last visible node |
+| <kbd>esc</kbd> | Close overlay |
 
 ## Document search overlay
 

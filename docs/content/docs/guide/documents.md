@@ -38,6 +38,8 @@ automatically linked to that record.
 | `Entity` | text | Linked record | E.g., "project #3". Only shown on top-level Docs tab |
 | `Type` | text | MIME type | E.g., "application/pdf", "image/jpeg" |
 | `Size` | text | File size | Human-readable (e.g., "2.5 MB"). Read-only |
+| `Model` | text | Extraction model | LLM model that produced the extraction. Read-only |
+| `Ops` | number | Operation count | Number of LLM-proposed operations. Press <kbd>enter</kbd> to [explore](#ops-tree-overlay) |
 | `Notes` | notes | Free-text annotations | Press <kbd>enter</kbd> to preview |
 | `Updated` | date | Last modified | Read-only |
 
@@ -84,6 +86,17 @@ quoted phrases, and `*` wildcards are supported.
 The `Docs` column appears on the <a href="/docs/guide/projects/" class="tab-pill">Projects</a> and <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tabs, showing
 how many documents are linked to each record. In Nav mode, press <kbd>enter</kbd> to
 drill into a scoped document list for that record.
+
+## Re-extraction
+
+In Edit mode, press <kbd>R</kbd> on a document row to re-run the extraction
+pipeline. When the document already has extracted text from a previous run, OCR
+is skipped and the pipeline jumps straight to the LLM step -- this is much
+faster for re-extraction with a different model or after updating extraction
+settings.
+
+If the document was soft-deleted, accepting extraction results automatically
+restores it.
 
 ## Extraction pipeline <span class="badge-experimental"><span class="badge-pot"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle class="bubble-1" cx="5" cy="4" r="1" fill="currentColor"/><circle class="bubble-2" cx="8" cy="3" r="0.8" fill="currentColor"/><circle class="bubble-3" cx="11" cy="4.5" r="0.9" fill="currentColor"/><path d="M3 8h10v4a3 3 0 01-3 3H6a3 3 0 01-3-3V8z" fill="currentColor" opacity="0.25"/><path d="M3 8h10v4a3 3 0 01-3 3H6a3 3 0 01-3-3V8z" stroke="currentColor" stroke-width="1.2" fill="none"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="badge-label">brewing</span></span> {#extraction-pipeline}
 
@@ -208,6 +221,23 @@ For the LLM step, install [Ollama](https://ollama.com) and pull a model
 (a small model like `qwen2.5:7b` works well). See
 [Configuration]({{< ref "/docs/reference/configuration" >}}) for the
 `[extraction]` section.
+
+## Ops tree overlay {#ops-tree-overlay}
+
+Press <kbd>enter</kbd> on the `Ops` column to open an interactive JSON tree
+showing the raw LLM-proposed operations stored with the document. The tree uses
+box-drawing characters and per-type syntax coloring (strings, numbers, booleans,
+null).
+
+| Key | Action |
+|-----|--------|
+| <kbd>j</kbd> / <kbd>k</kbd> | Move cursor down/up |
+| <kbd>enter</kbd> / <kbd>l</kbd> | Expand node |
+| <kbd>h</kbd> | Collapse node (or jump to parent) |
+| <kbd>g</kbd> / <kbd>G</kbd> | Jump to first/last visible node |
+| <kbd>esc</kbd> | Close overlay |
+
+Clicking a tree node toggles its expand/collapse state.
 
 ## Inline editing
 
