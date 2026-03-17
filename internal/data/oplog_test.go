@@ -284,6 +284,21 @@ func TestOplogDocumentExcludesBLOB(t *testing.T) {
 	assert.Equal(t, "application/pdf", payload.MIMEType)
 }
 
+// --- Missing device ID cell returns error ---
+
+func TestOplogFailsWithoutDeviceIDCell(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	// Create a raw GORM session without the device ID cell in context.
+	// This simulates code that bypasses Store and uses gorm.DB directly.
+	rawDB := store.db.WithContext(context.Background())
+	v := &Vendor{Name: "No Cell Vendor"}
+	err := rawDB.Create(v).Error
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "device ID cell not in context")
+}
+
 // --- Context flag suppresses oplog writes ---
 
 func TestOplogSyncApplyingSuppressesWrites(t *testing.T) {

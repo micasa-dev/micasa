@@ -49,16 +49,20 @@ func syncableTable(table string) bool {
 	}
 }
 
+// errNoDeviceIDCell is returned when a GORM session lacks the per-Store
+// device ID cell in its context. This indicates a programming error:
+// the operation was performed on a raw *gorm.DB instead of one obtained
+// through a Store.
+var errNoDeviceIDCell = fmt.Errorf("device ID cell not in context")
+
 // resolveDeviceID extracts the device ID from the GORM transaction's
-// context (set per-Store at Open time). Returns empty string if the
-// cell is missing (should not happen in normal operation).
-func resolveDeviceID(tx *gorm.DB) string {
+// context (set per-Store at Open time).
+func resolveDeviceID(tx *gorm.DB) (string, error) {
 	cell := deviceIDCellFromContext(tx.Statement.Context)
 	if cell == nil {
-		slog.Error("oplog: device ID cell not in context")
-		return ""
+		return "", errNoDeviceIDCell
 	}
-	return cell.resolve(tx)
+	return cell.resolve(tx), nil
 }
 
 // writeOplogEntry appends an operation to the sync oplog within the given
@@ -67,6 +71,11 @@ func resolveDeviceID(tx *gorm.DB) string {
 func writeOplogEntry(tx *gorm.DB, tableName, rowID, opType string, payload any) error {
 	if !syncableTable(tableName) {
 		return nil
+	}
+
+	deviceID, err := resolveDeviceID(tx)
+	if err != nil {
+		return fmt.Errorf("oplog %s/%s: %w", tableName, rowID, err)
 	}
 
 	jsonBytes, err := json.Marshal(payload)
@@ -81,7 +90,7 @@ func writeOplogEntry(tx *gorm.DB, tableName, rowID, opType string, payload any) 
 		RowID:     rowID,
 		OpType:    opType,
 		Payload:   string(jsonBytes),
-		DeviceID:  resolveDeviceID(tx),
+		DeviceID:  deviceID,
 		CreatedAt: now,
 		AppliedAt: &now,
 	}
@@ -94,6 +103,11 @@ func writeOplogEntryRaw(tx *gorm.DB, tableName, rowID, opType, payload string) e
 		return nil
 	}
 
+	deviceID, err := resolveDeviceID(tx)
+	if err != nil {
+		return fmt.Errorf("oplog %s/%s: %w", tableName, rowID, err)
+	}
+
 	now := time.Now()
 	entry := SyncOplogEntry{
 		ID:        uid.New(),
@@ -101,7 +115,7 @@ func writeOplogEntryRaw(tx *gorm.DB, tableName, rowID, opType, payload string) e
 		RowID:     rowID,
 		OpType:    opType,
 		Payload:   payload,
-		DeviceID:  resolveDeviceID(tx),
+		DeviceID:  deviceID,
 		CreatedAt: now,
 		AppliedAt: &now,
 	}

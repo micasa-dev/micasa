@@ -254,6 +254,10 @@ func runProInit(dbPath, relayURL string) error {
 		}
 	}
 
+	// Update cached device ID before DB write so any hooks during
+	// UpdateSyncDevice see the new ID.
+	store.SetDeviceID(resp.DeviceID)
+
 	// Update SyncDevice record.
 	if err := store.UpdateSyncDevice(map[string]any{
 		"id":           resp.DeviceID,
@@ -262,7 +266,6 @@ func runProInit(dbPath, relayURL string) error {
 	}); err != nil {
 		return fmt.Errorf("update sync device: %w", err)
 	}
-	store.SetDeviceID(resp.DeviceID)
 
 	fmt.Fprintf(os.Stderr, "household: %s\n", resp.HouseholdID)
 	fmt.Fprintf(os.Stderr, "device:    %s\n", resp.DeviceID)
@@ -805,6 +808,10 @@ exchangeDone:
 		}
 	}
 
+	// Update cached device ID before DB write so any hooks during
+	// UpdateSyncDevice see the new ID.
+	store.SetDeviceID(result.DeviceID)
+
 	// Update SyncDevice record.
 	if err := store.UpdateSyncDevice(map[string]any{
 		"id":           result.DeviceID,
@@ -813,7 +820,6 @@ exchangeDone:
 	}); err != nil {
 		return fmt.Errorf("update sync device: %w", err)
 	}
-	store.SetDeviceID(result.DeviceID)
 
 	// Initial pull.
 	syncClient := sync.NewClient(relayURL, result.DeviceToken, key)
