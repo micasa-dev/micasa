@@ -534,7 +534,7 @@ func (s *PgStore) GetKeyExchangeResult(
 		}
 
 		if time.Since(ex.CreatedAt) > keyExchangeExpiry {
-			return fmt.Errorf("key exchange %s expired", exchangeID)
+			return fmt.Errorf("key exchange %s not found", exchangeID)
 		}
 
 		if !ex.Completed {

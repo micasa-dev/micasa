@@ -67,13 +67,21 @@ func GenerateDeviceKeyPair() (DeviceKeyPair, error) {
 }
 
 // readBoundedFile reads at most maxKeyFileSize bytes from path.
+// Returns an error if the file exceeds maxKeyFileSize.
 func readBoundedFile(path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	return io.ReadAll(io.LimitReader(f, maxKeyFileSize))
+	data, err := io.ReadAll(io.LimitReader(f, maxKeyFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxKeyFileSize {
+		return nil, fmt.Errorf("key file exceeds %d bytes: %s", maxKeyFileSize, path)
+	}
+	return data, nil
 }
 
 // SecretsDir returns the platform-appropriate directory for key and

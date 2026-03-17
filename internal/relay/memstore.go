@@ -415,7 +415,7 @@ func (m *MemStore) GetKeyExchangeResult(
 	}
 
 	if time.Since(ex.createdAt) > keyExchangeExpiry {
-		return sync.KeyExchangeResult{}, fmt.Errorf("key exchange %s expired", exchangeID)
+		return sync.KeyExchangeResult{}, fmt.Errorf("key exchange %s not found", exchangeID)
 	}
 
 	if !ex.completed {
