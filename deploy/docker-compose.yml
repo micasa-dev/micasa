@@ -1,0 +1,40 @@
+# Copyright 2026 Phillip Cloud
+# Licensed under the Apache License, Version 2.0
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: micasa
+      POSTGRES_DB: micasa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U micasa -d micasa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  relay:
+    build:
+      context: ../
+      dockerfile: deploy/relay/Dockerfile
+    environment:
+      DATABASE_URL: postgres://micasa:${POSTGRES_PASSWORD}@postgres:5432/micasa?sslmode=disable
+      SELF_HOSTED: "true"
+      PORT: "8080"
+      BLOB_QUOTA_BYTES: ${BLOB_QUOTA_BYTES:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata:
