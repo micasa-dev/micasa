@@ -104,6 +104,21 @@ type Store interface {
 	// OpsCount returns the total number of ops stored for a household.
 	OpsCount(ctx context.Context, householdID string) (int64, error)
 
+	// PutBlob stores an encrypted blob for a household, keyed by SHA-256
+	// hash. Returns errBlobExists if the hash already exists (dedup),
+	// errQuotaExceeded if the household's blob storage quota is exceeded.
+	PutBlob(ctx context.Context, householdID, hash string, data []byte) error
+
+	// GetBlob retrieves an encrypted blob by household and hash.
+	// Returns errBlobNotFound if the blob does not exist.
+	GetBlob(ctx context.Context, householdID, hash string) ([]byte, error)
+
+	// HasBlob returns true if a blob exists for the given household and hash.
+	HasBlob(ctx context.Context, householdID, hash string) (bool, error)
+
+	// BlobUsage returns the total bytes used by blobs for a household.
+	BlobUsage(ctx context.Context, householdID string) (int64, error)
+
 	// Close releases any resources held by the store.
 	Close() error
 }

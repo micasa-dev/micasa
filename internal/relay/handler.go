@@ -5,6 +5,7 @@ package relay
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -49,6 +50,18 @@ func NewHandler(store Store, log *slog.Logger, opts ...HandlerOption) *Handler {
 	mux.HandleFunc(
 		"DELETE /households/{id}/devices/{device_id}",
 		h.requireAuth(h.handleRevokeDevice),
+	)
+	mux.HandleFunc(
+		"PUT /blobs/{household_id}/{hash}",
+		h.requireAuth(h.requireSubscription(h.handlePutBlob)),
+	)
+	mux.HandleFunc(
+		"GET /blobs/{household_id}/{hash}",
+		h.requireAuth(h.requireSubscription(h.handleGetBlob)),
+	)
+	mux.HandleFunc(
+		"HEAD /blobs/{household_id}/{hash}",
+		h.requireAuth(h.requireSubscription(h.handleHeadBlob)),
 	)
 	mux.HandleFunc("GET /status", h.requireAuth(h.handleStatus))
 	mux.HandleFunc("POST /webhooks/stripe", h.handleStripeWebhook)
@@ -361,6 +374,108 @@ func (h *Handler) handleRevokeDevice(
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func (h *Handler) handlePutBlob(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	hhID := r.PathValue("household_id")
+	hash := r.PathValue("hash")
+
+	if dev.HouseholdID != hhID {
+		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+	if !validSHA256Hash(hash) {
+		writeError(w, http.StatusBadRequest, "invalid hash: must be 64 lowercase hex characters")
+		return
+	}
+
+	data, err := io.ReadAll(io.LimitReader(r.Body, maxBlobSize+1))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "read body failed")
+		return
+	}
+	if int64(len(data)) > maxBlobSize {
+		writeError(w, http.StatusRequestEntityTooLarge, "blob exceeds maximum size (50 MB)")
+		return
+	}
+
+	if err := h.store.PutBlob(r.Context(), hhID, hash, data); err != nil {
+		switch {
+		case errors.Is(err, errBlobExists):
+			writeJSON(w, http.StatusConflict, map[string]string{"status": "exists"})
+		case errors.Is(err, errQuotaExceeded):
+			usage, _ := h.store.BlobUsage(r.Context(), hhID)
+			writeJSON(w, http.StatusRequestEntityTooLarge, map[string]any{
+				"error":       "blob storage quota exceeded",
+				"used_bytes":  usage,
+				"quota_bytes": defaultBlobQuota,
+			})
+		default:
+			h.log.Error("put blob", "error", err)
+			writeError(w, http.StatusInternalServerError, "store blob failed")
+		}
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleGetBlob(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	hhID := r.PathValue("household_id")
+	hash := r.PathValue("hash")
+
+	if dev.HouseholdID != hhID {
+		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+
+	data, err := h.store.GetBlob(r.Context(), hhID, hash)
+	if err != nil {
+		if errors.Is(err, errBlobNotFound) {
+			writeError(w, http.StatusNotFound, "blob not found")
+			return
+		}
+		h.log.Error("get blob", "error", err)
+		writeError(w, http.StatusInternalServerError, "get blob failed")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
+func (h *Handler) handleHeadBlob(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	hhID := r.PathValue("household_id")
+	hash := r.PathValue("hash")
+
+	if dev.HouseholdID != hhID {
+		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+
+	exists, err := h.store.HasBlob(r.Context(), hhID, hash)
+	if err != nil {
+		h.log.Error("head blob", "error", err)
+		writeError(w, http.StatusInternalServerError, "check blob failed")
+		return
+	}
+	if !exists {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *Handler) handleStatus(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -384,11 +499,21 @@ func (h *Handler) handleStatus(
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	blobUsed, err := h.store.BlobUsage(r.Context(), dev.HouseholdID)
+	if err != nil {
+		h.log.Error("status: blob usage", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
 	writeJSON(w, http.StatusOK, sync.StatusResponse{
 		HouseholdID:  dev.HouseholdID,
 		Devices:      devices,
 		OpsCount:     opsCount,
 		StripeStatus: hh.StripeStatus,
+		BlobStorage: &sync.BlobStorage{
+			UsedBytes:  blobUsed,
+			QuotaBytes: defaultBlobQuota,
+		},
 	})
 }
 

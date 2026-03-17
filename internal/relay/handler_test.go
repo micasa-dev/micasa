@@ -1232,3 +1232,215 @@ func TestStatusRequiresAuth(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
+
+// --- Blob endpoints ---
+
+const testHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+func blobURL(householdID, hash string) string {
+	return "/blobs/" + householdID + "/" + hash
+}
+
+func TestBlobUploadAndDownload(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	payload := []byte("encrypted-blob-content")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	// Download the blob.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", blobURL(hh.HouseholdID, testHash), nil)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/octet-stream", rec.Header().Get("Content-Type"))
+	assert.Equal(t, payload, rec.Body.Bytes())
+}
+
+func TestBlobDedup409(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	payload := []byte("encrypted-blob-content")
+
+	// First upload succeeds.
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	// Second upload returns 409 (dedup).
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+}
+
+func TestBlobDownloadNotFound(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", blobURL(hh.HouseholdID, testHash), nil)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestBlobHEADExists(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// HEAD before upload -- 404.
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	// Upload.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader([]byte("data")),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	// HEAD after upload -- 200.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestBlobRequiresAuth(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// No auth token.
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader([]byte("data")),
+	)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestBlobWrongHousehold(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Try to upload to a different household.
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL("wrong-household", testHash),
+		bytes.NewReader([]byte("data")),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestBlobInvalidHash(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, "not-a-hash"),
+		bytes.NewReader([]byte("data")),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestBlobQuotaExceeded(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Override quota to something tiny (100 bytes).
+	store.SetBlobQuota(100)
+
+	// Upload a blob larger than quota.
+	bigPayload := make([]byte, 200)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader(bigPayload),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	assert.Contains(t, rec.Body.String(), "quota")
+}
+
+func TestBlobSubscriptionGating(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Cancel subscription.
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_blob", sync.SubscriptionCanceled,
+	))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader([]byte("data")),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
+}
+
+func TestStatusIncludesBlobStorage(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Upload a blob.
+	payload := []byte("encrypted-blob-content-for-status")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	// Get status -- should include blob_storage.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var status sync.StatusResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
+	require.NotNil(t, status.BlobStorage)
+	assert.Equal(t, int64(len(payload)), status.BlobStorage.UsedBytes)
+	assert.True(t, status.BlobStorage.QuotaBytes > 0)
+}

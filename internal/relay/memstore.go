@@ -27,6 +27,8 @@ type MemStore struct {
 	seqs       map[string]int64  // household_id -> last_seq
 	invites    map[string]*inviteRecord
 	exchanges  map[string]*keyExchangeRecord
+	blobs      map[string]map[string][]byte // household_id -> hash -> data
+	blobQuota  int64                        // per-household quota; 0 = default
 }
 
 type deviceRecord struct {
@@ -66,7 +68,22 @@ func NewMemStore() *MemStore {
 		seqs:       make(map[string]int64),
 		invites:    make(map[string]*inviteRecord),
 		exchanges:  make(map[string]*keyExchangeRecord),
+		blobs:      make(map[string]map[string][]byte),
 	}
+}
+
+// SetBlobQuota overrides the default per-household blob quota (for testing).
+func (m *MemStore) SetBlobQuota(n int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.blobQuota = n
+}
+
+func (m *MemStore) blobQuotaBytes() int64 {
+	if m.blobQuota > 0 {
+		return m.blobQuota
+	}
+	return defaultBlobQuota
 }
 
 func (m *MemStore) Push(_ context.Context, ops []sync.Envelope) ([]sync.PushConfirmation, error) {
@@ -502,6 +519,74 @@ func (m *MemStore) OpsCount(
 		}
 	}
 	return count, nil
+}
+
+func (m *MemStore) PutBlob(_ context.Context, householdID, hash string, data []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	hhBlobs, ok := m.blobs[householdID]
+	if !ok {
+		hhBlobs = make(map[string][]byte)
+		m.blobs[householdID] = hhBlobs
+	}
+
+	if _, exists := hhBlobs[hash]; exists {
+		return errBlobExists
+	}
+
+	// Check quota.
+	var used int64
+	for _, b := range hhBlobs {
+		used += int64(len(b))
+	}
+	if used+int64(len(data)) > m.blobQuotaBytes() {
+		return errQuotaExceeded
+	}
+
+	// Store a copy of the data.
+	stored := make([]byte, len(data))
+	copy(stored, data)
+	hhBlobs[hash] = stored
+	return nil
+}
+
+func (m *MemStore) GetBlob(_ context.Context, householdID, hash string) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	hhBlobs, ok := m.blobs[householdID]
+	if !ok {
+		return nil, errBlobNotFound
+	}
+	data, ok := hhBlobs[hash]
+	if !ok {
+		return nil, errBlobNotFound
+	}
+	return data, nil
+}
+
+func (m *MemStore) HasBlob(_ context.Context, householdID, hash string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	hhBlobs, ok := m.blobs[householdID]
+	if !ok {
+		return false, nil
+	}
+	_, exists := hhBlobs[hash]
+	return exists, nil
+}
+
+func (m *MemStore) BlobUsage(_ context.Context, householdID string) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var total int64
+	for _, b := range m.blobs[householdID] {
+		total += int64(len(b))
+	}
+	return total, nil
 }
 
 func (m *MemStore) Close() error { return nil }

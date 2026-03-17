@@ -39,3 +39,32 @@ func TestLWWTiebreakSameDevice(t *testing.T) {
 	// Same timestamp, same device -- local wins (>=).
 	assert.True(t, lwwLocalWins(ts, "dev-a", ts, "dev-a"))
 }
+
+func TestStripNonColumnKeysRemovesBlobRef(t *testing.T) {
+	t.Parallel()
+
+	row := map[string]any{
+		"id":        "doc-1",
+		"title":     "Invoice",
+		"file_name": "invoice.pdf",
+		"sha256":    "abc123",
+		"blob_ref":  "abc123",
+	}
+	stripNonColumnKeys("documents", row)
+	assert.NotContains(t, row, "blob_ref", "blob_ref should be stripped from documents")
+	assert.Contains(t, row, "sha256", "sha256 should be preserved")
+	assert.Contains(t, row, "title", "other fields should be preserved")
+}
+
+func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {
+	t.Parallel()
+
+	// For non-document tables, blob_ref should NOT be stripped
+	// (it wouldn't exist, but verify the function is a no-op).
+	row := map[string]any{
+		"id":   "v-1",
+		"name": "Acme",
+	}
+	stripNonColumnKeys("vendors", row)
+	assert.Contains(t, row, "name")
+}

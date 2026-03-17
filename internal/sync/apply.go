@@ -153,6 +153,7 @@ func applyInsert(tx *gorm.DB, op OpPayload) error {
 	if err := json.Unmarshal([]byte(op.Payload), &row); err != nil {
 		return fmt.Errorf("unmarshal insert payload: %w", err)
 	}
+	stripNonColumnKeys(op.TableName, row)
 	return tx.Table(op.TableName).Create(row).Error
 }
 
@@ -164,7 +165,18 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 	// Remove ID from updates to prevent primary key modification.
 	delete(updates, "id")
 	delete(updates, "ID")
+	stripNonColumnKeys(op.TableName, updates)
 	return tx.Table(op.TableName).Where("id = ?", op.RowID).Updates(updates).Error
+}
+
+// stripNonColumnKeys removes payload keys that exist in the oplog JSON
+// but have no corresponding database column. Currently this only affects
+// documents, where the oplog includes a "blob_ref" field for content-
+// addressed blob sync that is not stored as a column.
+func stripNonColumnKeys(tableName string, row map[string]any) {
+	if tableName == data.TableDocuments {
+		delete(row, "blob_ref")
+	}
 }
 
 func applyDelete(tx *gorm.DB, op OpPayload) error {

@@ -1311,6 +1311,24 @@ func (s *Store) GetDocumentMetadata(id string) (Document, error) {
 	})
 }
 
+// PendingBlobDocuments returns documents that have a SHA-256 checksum
+// (meaning they had file data at some point) but currently have no Data
+// (blob not yet fetched from the relay). These are candidates for blob
+// download during sync pull.
+func (s *Store) PendingBlobDocuments() ([]Document, error) {
+	var docs []Document
+	err := s.db.Select(listDocumentColumns).
+		Where("sha256 != '' AND data IS NULL").
+		Order("updated_at DESC, id DESC").
+		Find(&docs).Error
+	return docs, err
+}
+
+// UpdateDocumentData sets the Data blob on an existing document by ID.
+func (s *Store) UpdateDocumentData(id string, data []byte) error {
+	return s.db.Model(&Document{}).Where("id = ?", id).Update("data", data).Error
+}
+
 // metadataDocumentColumns includes everything listDocumentColumns has
 // plus ExtractedText, which callers like afterDocumentSave need for
 // extraction decisions.

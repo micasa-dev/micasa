@@ -54,12 +54,19 @@ type Household struct {
 	StripeStatus         string    `json:"stripe_status,omitempty"`
 }
 
+// BlobStorage reports blob storage usage for a household.
+type BlobStorage struct {
+	UsedBytes  int64 `json:"used_bytes"`
+	QuotaBytes int64 `json:"quota_bytes"`
+}
+
 // StatusResponse is the response of GET /status.
 type StatusResponse struct {
-	HouseholdID  string   `json:"household_id"`
-	Devices      []Device `json:"devices"`
-	OpsCount     int64    `json:"ops_count"`
-	StripeStatus string   `json:"stripe_status"`
+	HouseholdID  string       `json:"household_id"`
+	Devices      []Device     `json:"devices"`
+	OpsCount     int64        `json:"ops_count"`
+	StripeStatus string       `json:"stripe_status"`
+	BlobStorage  *BlobStorage `json:"blob_storage,omitempty"`
 }
 
 // Device represents a registered device on the relay.

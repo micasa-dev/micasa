@@ -15,6 +15,7 @@ import (
 	"github.com/cpcloud/micasa/internal/crypto"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/sync"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 
@@ -301,6 +302,12 @@ func runProStatus(dbPath string) error {
 	fmt.Printf("devices:   %d\n", len(status.Devices))
 	fmt.Printf("ops:       %d\n", status.OpsCount)
 	fmt.Printf("last seq:  %d\n", deps.device.LastSeq)
+	if status.BlobStorage != nil {
+		fmt.Printf("storage:   %s / %s\n",
+			humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
+			humanize.IBytes(uint64(status.BlobStorage.QuotaBytes)),
+		)
+	}
 	if status.StripeStatus != "" {
 		fmt.Printf("plan:      %s\n", status.StripeStatus)
 	}
@@ -345,12 +352,24 @@ func runProSync(dbPath string) error {
 		return err
 	}
 
-	pushed, err := pushAll(deps.store, client)
+	pushed, pushedOps, err := pushAll(deps.store, client)
 	if err != nil {
 		return err
 	}
 
+	// Upload blobs for pushed document ops.
+	uploaded := uploadPendingBlobs(deps.store, client, deps.device.HouseholdID, pushedOps)
+
+	// Fetch blobs for documents that arrived without data.
+	fetched := fetchPendingBlobs(deps.store, client, deps.device.HouseholdID)
+
 	fmt.Fprintf(os.Stderr, "pulled %d ops, pushed %d ops\n", pulled, pushed)
+	if uploaded > 0 {
+		fmt.Fprintf(os.Stderr, "uploaded %d blobs\n", uploaded)
+	}
+	if fetched > 0 {
+		fmt.Fprintf(os.Stderr, "fetched %d blobs\n", fetched)
+	}
 	return nil
 }
 
@@ -397,13 +416,13 @@ func pullAll(
 	return total, nil
 }
 
-func pushAll(store *data.Store, client *sync.Client) (int, error) {
+func pushAll(store *data.Store, client *sync.Client) (int, []sync.OpPayload, error) {
 	unsynced, err := store.UnsyncedOps()
 	if err != nil {
-		return 0, fmt.Errorf("load unsynced ops: %w", err)
+		return 0, nil, fmt.Errorf("load unsynced ops: %w", err)
 	}
 	if len(unsynced) == 0 {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	ops := make([]sync.OpPayload, 0, len(unsynced))
@@ -421,7 +440,7 @@ func pushAll(store *data.Store, client *sync.Client) (int, error) {
 
 	pushResp, err := client.Push(ops)
 	if err != nil {
-		return 0, fmt.Errorf("push: %w", err)
+		return 0, nil, fmt.Errorf("push: %w", err)
 	}
 
 	ids := make([]string, 0, len(pushResp.Confirmed))
@@ -429,10 +448,92 @@ func pushAll(store *data.Store, client *sync.Client) (int, error) {
 		ids = append(ids, c.ID)
 	}
 	if err := store.MarkSynced(ids); err != nil {
-		return 0, fmt.Errorf("mark synced: %w", err)
+		return 0, nil, fmt.Errorf("mark synced: %w", err)
 	}
 
-	return len(pushResp.Confirmed), nil
+	return len(pushResp.Confirmed), ops, nil
+}
+
+// --- blob sync helpers ---
+
+// uploadPendingBlobs uploads blobs for document ops that were just pushed.
+func uploadPendingBlobs(
+	store *data.Store,
+	client *sync.Client,
+	householdID string,
+	ops []sync.OpPayload,
+) int {
+	uploaded := 0
+	for _, op := range ops {
+		if op.TableName != data.TableDocuments {
+			continue
+		}
+		// Extract blob_ref from the payload JSON.
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(op.Payload), &payload); err != nil {
+			continue
+		}
+		blobRef, _ := payload["blob_ref"].(string)
+		if blobRef == "" {
+			continue
+		}
+
+		// Skip if already on relay.
+		exists, err := client.HasBlob(householdID, blobRef)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: check blob %s: %v\n", blobRef, err)
+			continue
+		}
+		if exists {
+			continue
+		}
+
+		// Load full document to get Data.
+		doc, err := store.GetDocument(op.RowID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: load document %s: %v\n", op.RowID, err)
+			continue
+		}
+		if doc.Data == nil {
+			continue // metadata-only or pending
+		}
+
+		if err := client.UploadBlob(householdID, blobRef, doc.Data); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: upload blob %s: %v\n", blobRef, err)
+			continue
+		}
+		uploaded++
+	}
+	return uploaded
+}
+
+// fetchPendingBlobs downloads blobs for documents that have a checksum
+// but no local data (arrived via sync without the blob).
+func fetchPendingBlobs(
+	store *data.Store,
+	client *sync.Client,
+	householdID string,
+) int {
+	pending, err := store.PendingBlobDocuments()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: query pending blobs: %v\n", err)
+		return 0
+	}
+
+	fetched := 0
+	for _, doc := range pending {
+		plaintext, err := client.DownloadBlob(householdID, doc.ChecksumSHA256)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: download blob %s: %v\n", doc.ChecksumSHA256, err)
+			continue
+		}
+		if err := store.UpdateDocumentData(doc.ID, plaintext); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: save blob %s: %v\n", doc.ID, err)
+			continue
+		}
+		fetched++
+	}
+	return fetched
 }
 
 // --- pro invite ---
