@@ -153,6 +153,12 @@ func applyInsert(tx *gorm.DB, op OpPayload) error {
 	if err := json.Unmarshal([]byte(op.Payload), &row); err != nil {
 		return fmt.Errorf("unmarshal insert payload: %w", err)
 	}
+	if payloadID, _ := row["id"].(string); payloadID != op.RowID {
+		return fmt.Errorf(
+			"payload id %q does not match op row_id %q",
+			payloadID, op.RowID,
+		)
+	}
 	stripNonColumnKeys(op.TableName, row)
 	return tx.Table(op.TableName).Create(row).Error
 }

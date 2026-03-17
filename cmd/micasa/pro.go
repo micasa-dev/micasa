@@ -478,6 +478,8 @@ func uploadPendingBlobs(
 		// Extract blob_ref from the payload JSON.
 		var payload map[string]any
 		if err := json.Unmarshal([]byte(op.Payload), &payload); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: unmarshal payload for %s: %v\n", op.RowID, err)
+			errCount++
 			continue
 		}
 		blobRef, _ := payload["blob_ref"].(string)

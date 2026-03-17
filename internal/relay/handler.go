@@ -374,6 +374,11 @@ func (h *Handler) handleRevokeDevice(
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// handlePutBlob stores an encrypted blob keyed by its plaintext SHA-256 hash.
+// The relay cannot verify that the ciphertext corresponds to the claimed hash
+// because it never sees the plaintext (zero-knowledge design). Integrity is
+// enforced client-side: DownloadBlob verifies sha256(plaintext) after
+// decryption.
 func (h *Handler) handlePutBlob(
 	w http.ResponseWriter,
 	r *http.Request,

@@ -6,6 +6,7 @@ package crypto
 import (
 	"crypto/rand"
 	"fmt"
+	"runtime"
 
 	"golang.org/x/crypto/nacl/secretbox"
 )
@@ -50,6 +51,11 @@ func Decrypt(key HouseholdKey, sealed []byte) ([]byte, error) {
 }
 
 // zeroize overwrites a byte slice with zeros.
+// runtime.KeepAlive prevents the compiler from eliding clear() since the
+// slice appears unused after this call. Note: Go's GC does not guarantee
+// that copies on the stack (e.g. the caller's key parameter) are zeroed;
+// this is a best-effort defense for the local copy.
 func zeroize(b []byte) {
 	clear(b)
+	runtime.KeepAlive(b)
 }
