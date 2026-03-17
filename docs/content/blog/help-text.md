@@ -1,27 +1,26 @@
 +++
 title = "Your --help was the ugliest screen in the app"
 date = 2026-03-19
-description = "micasa swapped Kong for Cobra, deleted 170 lines of shell completion scripts, and made --help match the TUI."
+description = "micasa swapped Kong for Cobra. Now there's tab completion, colored help, and CLI tests that run in 100ms."
 +++
 
-Kong parsed my arguments for four months. In return, I wrote 170 lines of
-shell completion scripts by hand across bash, zsh, and fish. Three files, each
-maintaining its own copy of the command tree. Every time I added a flag, I
-updated three scripts. I forgot to update the fish one at least twice.
-
-The completions worked. The argument parsing worked. The `--help` output was
-plain monochrome text sitting next to a TUI that uses a carefully chosen color
+Kong parsed my arguments for four months without complaint. It never crashed,
+never misrouted a flag, never did anything wrong. It also never generated shell
+completions, so micasa didn't have any. And the `--help` output was plain
+monochrome text sitting next to a TUI that uses a carefully chosen color
 palette. The help screen was the one part of micasa that looked like a
 different application.
 
-## Three things I stopped maintaining
+## Three things for free
 
 [#785](https://github.com/cpcloud/micasa/pull/785) replaces Kong with Cobra.
 
-**Completions are generated.** Cobra builds them from the command definitions
-at runtime. `micasa completion bash`, `micasa completion zsh`,
-`micasa completion fish`. The 170 lines of hand-maintained scripts are gone. If
-I add a subcommand next week, the completions already know about it.
+**Tab completion exists now.** Kong doesn't generate shell completions, so
+micasa shipped without them. Cobra builds completions from the command
+definitions at runtime. `micasa completion bash`, `micasa completion zsh`,
+`micasa completion fish` -- each writes a completion script to stdout. Flags,
+subcommands, file arguments. If I add a subcommand next week, the completions
+already know about it.
 
 **Help has colors.** Cobra lets you override the help function. micasa's
 `--help` now uses the Wong palette -- subcommands in one color, flags in
