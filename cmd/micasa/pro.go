@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/cpcloud/micasa/internal/sync"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"gorm.io/gorm"
 )
 
 const (
@@ -85,10 +87,10 @@ func resolveProDeps(dbPath string) (*proDeps, error) {
 
 	dev, err := store.GetSyncDevice()
 	if err != nil {
-		return nil, fmt.Errorf(
-			"no sync device found -- run `micasa pro init` first: %w",
-			err,
-		)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("no sync device found -- run `micasa pro init` first")
+		}
+		return nil, fmt.Errorf("read sync device: %w", err)
 	}
 	if dev.HouseholdID == "" {
 		return nil, fmt.Errorf("device not initialized -- run `micasa pro init` first")
@@ -366,6 +368,9 @@ func runProStorage(dbPath string) error {
 // formatBytes formats a byte count as a human-readable string using
 // binary units (KiB, MiB, GiB).
 func formatBytes(b int64) string {
+	if b < 0 {
+		return "0 B"
+	}
 	return humanize.IBytes(uint64(b))
 }
 
@@ -972,7 +977,7 @@ func runProDevicesRevoke(deviceID, dbPath string) error {
 func newProConflictsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:           "conflicts [database-path]",
-		Short:         "List unresolved sync conflict losers",
+		Short:         "List sync ops that lost LWW conflict resolution",
 		Args:          cobra.MaximumNArgs(1),
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -998,16 +1003,20 @@ func runProConflicts(w io.Writer, dbPath string) error {
 	}
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "ID\tTABLE\tROW ID\tOP\tDEVICE\tCREATED\n")
+	if _, err := fmt.Fprintf(tw, "ID\tTABLE\tROW ID\tOP\tDEVICE\tCREATED\n"); err != nil {
+		return fmt.Errorf("write header: %w", err)
+	}
 	for _, op := range losers {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			op.ID,
 			op.TableName,
 			op.RowID,
 			op.OpType,
 			op.DeviceID,
 			op.CreatedAt.Format(time.RFC3339),
-		)
+		); err != nil {
+			return fmt.Errorf("write conflict: %w", err)
+		}
 	}
 	return tw.Flush()
 }

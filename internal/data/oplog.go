@@ -295,7 +295,7 @@ func (s *Store) AllOplogEntries() ([]SyncOplogEntry, error) {
 func (s *Store) GetSyncDevice() (SyncDevice, error) {
 	var dev SyncDevice
 	if err := s.db.First(&dev).Error; err != nil {
-		return SyncDevice{}, fmt.Errorf("get sync device: %w", err)
+		return SyncDevice{}, err
 	}
 	return dev, nil
 }
