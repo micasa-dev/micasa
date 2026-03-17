@@ -422,12 +422,17 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 	// Step 2: Joiner initiates join (no auth needed).
 	joinerPubKey := []byte("joiner-public-key-32-byte-pad!!!")
 	joinReq := sync.JoinRequest{
+		InviteCode: invite.Code,
 		DeviceName: "joiner-phone",
 		PublicKey:  joinerPubKey,
 	}
 	joinBody, _ := json.Marshal(joinReq)
 	rec = httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -491,11 +496,20 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 func TestJoinInvalidInviteCode(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
 
-	joinReq := sync.JoinRequest{DeviceName: "phone", PublicKey: []byte("key")}
+	joinReq := sync.JoinRequest{
+		InviteCode: "INVALID1",
+		DeviceName: "phone",
+		PublicKey:  []byte("key"),
+	}
 	joinBody, _ := json.Marshal(joinReq)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/invite/INVALID1/join", bytes.NewReader(joinBody))
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
@@ -516,9 +530,16 @@ func TestJoinMissingFields(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
 	// Missing device_name.
-	joinBody, _ := json.Marshal(sync.JoinRequest{PublicKey: []byte("key")})
+	joinBody, _ := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
+		PublicKey:  []byte("key"),
+	})
 	rec = httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
@@ -539,11 +560,16 @@ func TestKeyExchangeResultBeforeCompletion(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
 	joinBody, _ := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
 	rec = httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	var joinResp sync.JoinResponse
@@ -578,11 +604,16 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 
 	// Join and complete exchange.
 	joinBody, _ := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
 	rec = httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	var joinResp sync.JoinResponse
@@ -603,11 +634,16 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 
 	// Try to use invite code again -- should fail.
 	joinBody, _ = json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
 		DeviceName: "tablet",
 		PublicKey:  []byte("another-key-32-bytes-padding!!!!"),
 	})
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	req = httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
@@ -726,11 +762,16 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
 	joinBody, _ := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
 	rec = httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	var joinResp sync.JoinResponse

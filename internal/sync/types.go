@@ -86,8 +86,9 @@ type InviteCode struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-// JoinRequest is the body of POST /invite/{code}/join.
+// JoinRequest is the body of POST /households/{id}/join.
 type JoinRequest struct {
+	InviteCode string `json:"invite_code"`
 	DeviceName string `json:"device_name"`
 	PublicKey  []byte `json:"public_key"`
 }

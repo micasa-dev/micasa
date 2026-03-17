@@ -29,7 +29,7 @@ func NewHandler(store Store, log *slog.Logger) *Handler {
 	mux.HandleFunc("POST /sync/push", h.requireAuth(h.handlePush))
 	mux.HandleFunc("GET /sync/pull", h.requireAuth(h.handlePull))
 	mux.HandleFunc("POST /households/{id}/invite", h.requireAuth(h.handleCreateInvite))
-	mux.HandleFunc("POST /invite/{code}/join", h.handleJoin)
+	mux.HandleFunc("POST /households/{id}/join", h.handleJoin)
 	mux.HandleFunc(
 		"GET /households/{id}/pending-exchanges",
 		h.requireAuth(h.handleGetPendingExchanges),
@@ -174,11 +174,13 @@ func (h *Handler) handleCreateInvite(
 }
 
 func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
-	code := r.PathValue("code")
-
 	var req sync.JoinRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.InviteCode == "" {
+		writeError(w, http.StatusBadRequest, "invite_code is required")
 		return
 	}
 	if req.DeviceName == "" {
@@ -190,7 +192,7 @@ func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.store.StartJoin(r.Context(), code, req)
+	resp, err := h.store.StartJoin(r.Context(), req.InviteCode, req)
 	if err != nil {
 		h.log.Error("start join", "error", err)
 		writeError(w, http.StatusBadRequest, err.Error())
