@@ -581,7 +581,10 @@ func (m *MemStore) GetBlob(_ context.Context, householdID, hash string) ([]byte,
 	if !ok {
 		return nil, errBlobNotFound
 	}
-	return data, nil
+	// Return a copy to prevent callers from mutating internal state.
+	out := make([]byte, len(data))
+	copy(out, data)
+	return out, nil
 }
 
 func (m *MemStore) HasBlob(_ context.Context, householdID, hash string) (bool, error) {

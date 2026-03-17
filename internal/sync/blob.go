@@ -55,7 +55,7 @@ func (c *Client) UploadBlob(householdID, hash string, plaintext []byte) error {
 	case http.StatusCreated, http.StatusConflict:
 		return nil // 201 = new, 409 = dedup -- both are success
 	default:
-		body, _ := io.ReadAll(resp.Body)
+		body := readErrorBody(resp.Body)
 		return fmt.Errorf("upload blob failed (status %d): %s", resp.StatusCode, body)
 	}
 }
@@ -81,7 +81,7 @@ func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("download blob failed (status %d): %s", resp.StatusCode, body)
 	}
 

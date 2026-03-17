@@ -16,6 +16,16 @@ import (
 	"github.com/cpcloud/micasa/internal/crypto"
 )
 
+// maxErrorBody caps how much of an error response body we read to
+// prevent a malicious relay from exhausting client memory.
+const maxErrorBody = 4096
+
+// readErrorBody reads up to maxErrorBody bytes from r.
+func readErrorBody(r io.Reader) []byte {
+	b, _ := io.ReadAll(io.LimitReader(r, maxErrorBody))
+	return b
+}
+
 // Client talks to the sync relay server.
 type Client struct {
 	baseURL string
@@ -87,7 +97,7 @@ func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("push failed (status %d): %s", resp.StatusCode, respBody)
 	}
 
@@ -122,7 +132,7 @@ func (c *Client) Pull(afterSeq int64, limit int) (*PullResult, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("pull failed (status %d): %s", resp.StatusCode, respBody)
 	}
 

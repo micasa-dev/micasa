@@ -50,15 +50,17 @@ func ApplyOps(db *gorm.DB, ops []DecryptedOp) ApplyResult {
 	// Ensure oplog hooks are suppressed for remote op application.
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
 
-	// Sort by relay seq so ops apply in causal order regardless of
-	// how the relay/store returns them (defense against unordered
-	// queries in future store implementations).
-	sort.Slice(ops, func(i, j int) bool {
-		return ops[i].Envelope.Seq < ops[j].Envelope.Seq
+	// Copy the slice to avoid mutating the caller's data, then sort by
+	// relay seq so ops apply in causal order regardless of how the
+	// relay/store returns them.
+	sorted := make([]DecryptedOp, len(ops))
+	copy(sorted, ops)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Envelope.Seq < sorted[j].Envelope.Seq
 	})
 
 	var result ApplyResult
-	for _, dop := range ops {
+	for _, dop := range sorted {
 		if err := applyOne(db, dop); err != nil {
 			if isConflictLoss(err) {
 				result.Conflicts++
@@ -111,9 +113,12 @@ func applyOne(db *gorm.DB, dop DecryptedOp) error {
 				// Local wins -- record remote op with applied_at = NULL.
 				return recordUnappliedOp(tx, op)
 			}
-			// Remote won the conflict -- clear local op's applied_at.
+			// Remote won the conflict -- clear applied_at on ALL local
+			// unsynced ops for this row, not just the latest. Multiple
+			// local ops can exist (e.g. insert then update) and all must
+			// be marked unapplied so the row state is consistent.
 			if err := tx.Table("sync_oplog_entries").
-				Where("id = ?", localOp.ID).
+				Where("table_name = ? AND row_id = ? AND synced_at IS NULL", op.TableName, op.RowID).
 				Update("applied_at", nil).Error; err != nil {
 				return fmt.Errorf("clear local applied_at: %w", err)
 			}
@@ -225,13 +230,14 @@ func stripNonColumnKeys(tableName string, row map[string]any) {
 	delete(row, "deleted_at")
 }
 
-// applyDelete soft-deletes a row. Returns an error if the row doesn't exist.
-// ApplyOps sorts by relay seq before calling applyOne, so the corresponding
-// insert op will always have been applied before a delete for the same row.
+// applyDelete soft-deletes a row. Uses op.CreatedAt rather than time.Now()
+// so that applying the same delete on multiple devices produces identical
+// deleted_at values (deterministic convergence). Returns an error if the
+// row doesn't exist. ApplyOps sorts by relay seq before calling applyOne,
+// so the corresponding insert op will always have been applied first.
 func applyDelete(tx *gorm.DB, op OpPayload) error {
-	now := time.Now()
 	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
-		Update("deleted_at", now)
+		Update("deleted_at", op.CreatedAt)
 	if result.Error != nil {
 		return result.Error
 	}

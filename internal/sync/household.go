@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 )
@@ -37,7 +36,7 @@ func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdRe
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("create household failed (status %d): %s", resp.StatusCode, respBody)
 	}
 
@@ -67,7 +66,7 @@ func (c *Client) Invite(householdID string) (*InviteCode, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("invite failed (status %d): %s", resp.StatusCode, respBody)
 	}
 
@@ -102,7 +101,7 @@ func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("join failed (status %d): %s", resp.StatusCode, respBody)
 	}
 
@@ -132,7 +131,7 @@ func (c *Client) Status() (*StatusResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("status failed (status %d): %s", resp.StatusCode, respBody)
 	}
 
@@ -162,7 +161,7 @@ func (c *Client) ListDevices(householdID string) ([]Device, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf("list devices failed (status %d): %s", resp.StatusCode, respBody)
 	}
 
@@ -194,7 +193,7 @@ func (c *Client) RevokeDevice(householdID, deviceID string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return fmt.Errorf("revoke device failed (status %d): %s", resp.StatusCode, respBody)
 	}
 	return nil
@@ -219,7 +218,7 @@ func (c *Client) GetPendingExchanges(householdID string) ([]PendingKeyExchange, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf(
 			"pending exchanges failed (status %d): %s",
 			resp.StatusCode,
@@ -263,7 +262,7 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return fmt.Errorf("complete key exchange failed (status %d): %s", resp.StatusCode, respBody)
 	}
 	return nil
@@ -290,7 +289,7 @@ func (c *Client) GetKeyExchangeResult(exchangeID string) (*KeyExchangeResult, er
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody := readErrorBody(resp.Body)
 		return nil, fmt.Errorf(
 			"key exchange result failed (status %d): %s",
 			resp.StatusCode,

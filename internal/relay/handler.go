@@ -462,6 +462,10 @@ func (h *Handler) handleGetBlob(
 		writeError(w, http.StatusForbidden, "device does not belong to this household")
 		return
 	}
+	if !validSHA256Hash(hash) {
+		writeError(w, http.StatusBadRequest, "invalid hash: must be 64 lowercase hex characters")
+		return
+	}
 
 	data, err := h.store.GetBlob(r.Context(), hhID, hash)
 	if err != nil {
@@ -489,6 +493,10 @@ func (h *Handler) handleHeadBlob(
 
 	if dev.HouseholdID != hhID {
 		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+	if !validSHA256Hash(hash) {
+		writeError(w, http.StatusBadRequest, "invalid hash: must be 64 lowercase hex characters")
 		return
 	}
 
@@ -559,13 +567,19 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.webhookSecret != "" {
-		sigHeader := r.Header.Get("Stripe-Signature")
-		if err := VerifyWebhookSignature(body, sigHeader, h.webhookSecret, 0); err != nil {
-			h.log.Error("webhook signature verification failed", "error", err)
-			writeError(w, http.StatusBadRequest, "invalid signature")
-			return
-		}
+	if h.webhookSecret == "" {
+		writeError(
+			w,
+			http.StatusServiceUnavailable,
+			"webhook signature verification not configured",
+		)
+		return
+	}
+	sigHeader := r.Header.Get("Stripe-Signature")
+	if err := VerifyWebhookSignature(body, sigHeader, h.webhookSecret, 0); err != nil {
+		h.log.Error("webhook signature verification failed", "error", err)
+		writeError(w, http.StatusBadRequest, "invalid signature")
+		return
 	}
 
 	var event StripeEvent

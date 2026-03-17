@@ -1179,14 +1179,9 @@ func TestStripeWebhookIgnoresNonSubscriptionEvents(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "ignored")
 }
 
-func TestStripeWebhookNoSecretSkipsVerification(t *testing.T) {
+func TestStripeWebhookNoSecretReturns503(t *testing.T) {
 	t.Parallel()
-	h, store := newTestHandler() // No webhook secret.
-
-	hh := createTestHousehold(t, h)
-	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_nosec", sync.SubscriptionActive,
-	))
+	h, _ := newTestHandler() // No webhook secret.
 
 	event := StripeEvent{
 		ID:   "evt_nosec",
@@ -1195,15 +1190,12 @@ func TestStripeWebhookNoSecretSkipsVerification(t *testing.T) {
 	}
 	body, _ := json.Marshal(event)
 
-	// No Stripe-Signature header -- should still work when secret is empty.
+	// Without a webhook secret, the handler must refuse to process
+	// webhooks to prevent accepting arbitrary payloads in production.
 	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusOK, rec.Code)
-
-	household, err := store.GetHousehold(nil, hh.HouseholdID)
-	require.NoError(t, err)
-	assert.Equal(t, sync.SubscriptionPastDue, household.StripeStatus)
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
 }
 
 func TestStripeWebhookRejectsOversizedBody(t *testing.T) {

@@ -321,36 +321,45 @@ func (s *PgStore) CreateInvite(
 	ctx context.Context,
 	householdID, deviceID string,
 ) (sync.InviteCode, error) {
-	// Check active invite count.
-	var active int64
-	err := s.db.WithContext(ctx).Model(&pgInvite{}).
-		Where("household_id = ? AND consumed = false AND expires_at > ?",
-			householdID, time.Now()).
-		Count(&active).Error
-	if err != nil {
-		return sync.InviteCode{}, fmt.Errorf("count invites: %w", err)
-	}
-	if active >= maxActiveInvites {
-		return sync.InviteCode{}, fmt.Errorf("max active invites reached (%d)", maxActiveInvites)
-	}
-
 	code, err := generateInviteCode()
 	if err != nil {
 		return sync.InviteCode{}, err
 	}
 
 	expiresAt := time.Now().Add(24 * time.Hour)
-	inv := pgInvite{
-		Code:        code,
-		HouseholdID: householdID,
-		CreatedBy:   deviceID,
-		ExpiresAt:   expiresAt,
-	}
-	if err := s.db.WithContext(ctx).Create(&inv).Error; err != nil {
-		return sync.InviteCode{}, fmt.Errorf("create invite: %w", err)
-	}
+	var result sync.InviteCode
 
-	return sync.InviteCode{Code: code, ExpiresAt: expiresAt}, nil
+	// Wrap count + create in a transaction to prevent a TOCTOU race
+	// where two concurrent requests both see active < max and both succeed.
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var active int64
+		if err := tx.Model(&pgInvite{}).
+			Where("household_id = ? AND consumed = false AND expires_at > ?",
+				householdID, time.Now()).
+			Count(&active).Error; err != nil {
+			return fmt.Errorf("count invites: %w", err)
+		}
+		if active >= maxActiveInvites {
+			return fmt.Errorf("max active invites reached (%d)", maxActiveInvites)
+		}
+
+		inv := pgInvite{
+			Code:        code,
+			HouseholdID: householdID,
+			CreatedBy:   deviceID,
+			ExpiresAt:   expiresAt,
+		}
+		if err := tx.Create(&inv).Error; err != nil {
+			return fmt.Errorf("create invite: %w", err)
+		}
+
+		result = sync.InviteCode{Code: code, ExpiresAt: expiresAt}
+		return nil
+	})
+	if err != nil {
+		return sync.InviteCode{}, err
+	}
+	return result, nil
 }
 
 func (s *PgStore) StartJoin(
