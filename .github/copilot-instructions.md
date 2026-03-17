@@ -228,7 +228,7 @@ New status or season-like enum values require updates in four places:
 | `mozilla-ai/any-llm-go` | Multi-provider LLM client |
 | `lrstanley/bubblezone` | Mouse zone tracking |
 | `stretchr/testify` | Test assertions |
-| `alecthomas/kong` | CLI parsing |
+| `spf13/cobra` | CLI parsing |
 
 ## Nix Development Environment
 

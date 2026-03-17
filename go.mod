@@ -8,7 +8,6 @@ go 1.25.5
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/adrg/xdg v0.5.3
-	github.com/alecthomas/kong v1.14.0
 	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
@@ -24,6 +23,8 @@ require (
 	github.com/lrstanley/bubblezone v1.0.0
 	github.com/mozilla-ai/any-llm-go v0.9.0
 	github.com/rmhubbert/bubbletea-overlay v0.6.5
+	github.com/spf13/cobra v1.7.0
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.11.1
 	github.com/tj/go-naturaldate v1.3.0
 	golang.org/x/sys v0.42.0
@@ -70,6 +71,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.18.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.7 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect

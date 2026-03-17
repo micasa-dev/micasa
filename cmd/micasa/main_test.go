@@ -4,11 +4,14 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/cpcloud/micasa/internal/data"
@@ -16,10 +19,57 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// executeCLI runs the CLI in-process with the given args and returns
+// captured stdout and any error.
+func executeCLI(args ...string) (string, error) {
+	root := newRootCmd()
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetArgs(args)
+	err := root.Execute()
+	return buf.String(), err
+}
+
+// testBin is a lazily-built binary for the few tests that need subprocess
+// isolation (env vars, VCS info). Built once via sync.Once.
+var (
+	testBin     string
+	testBinOnce sync.Once
+	testBinErr  error
+)
+
+func getTestBin(t *testing.T) string {
+	t.Helper()
+	testBinOnce.Do(func() {
+		ext := ""
+		if runtime.GOOS == "windows" {
+			ext = ".exe"
+		}
+		dir, err := os.MkdirTemp("", "micasa-test-*")
+		if err != nil {
+			testBinErr = fmt.Errorf("create temp dir: %w", err)
+			return
+		}
+		// Register cleanup at process exit is not possible with sync.Once,
+		// but the OS temp dir is cleaned up eventually. The binary is small.
+		bin := filepath.Join(dir, "micasa"+ext)
+		cmd := exec.Command("go", "build", "-o", bin, ".")
+		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			testBinErr = fmt.Errorf("build: %w\n%s", err, out)
+			return
+		}
+		testBin = bin
+	})
+	require.NoError(t, testBinErr, "building test binary")
+	return testBin
+}
+
 func TestResolveDBPath_ExplicitPath(t *testing.T) {
 	t.Parallel()
-	cmd := runCmd{DBPath: "/custom/path.db"}
-	got, err := cmd.resolveDBPath()
+	opts := runOpts{dbPath: "/custom/path.db"}
+	got, err := opts.resolveDBPath()
 	require.NoError(t, err)
 	assert.Equal(t, "/custom/path.db", got)
 }
@@ -27,16 +77,16 @@ func TestResolveDBPath_ExplicitPath(t *testing.T) {
 func TestResolveDBPath_ExplicitPathWithDemo(t *testing.T) {
 	t.Parallel()
 	// Explicit path takes precedence even when --demo is set.
-	cmd := runCmd{DBPath: "/tmp/demo.db", Demo: true}
-	got, err := cmd.resolveDBPath()
+	opts := runOpts{dbPath: "/tmp/demo.db", demo: true}
+	got, err := opts.resolveDBPath()
 	require.NoError(t, err)
 	assert.Equal(t, "/tmp/demo.db", got)
 }
 
 func TestResolveDBPath_DemoNoPath(t *testing.T) {
 	t.Parallel()
-	cmd := runCmd{Demo: true}
-	got, err := cmd.resolveDBPath()
+	opts := runOpts{demo: true}
+	got, err := opts.resolveDBPath()
 	require.NoError(t, err)
 	assert.Equal(t, ":memory:", got)
 }
@@ -45,8 +95,8 @@ func TestResolveDBPath_Default(t *testing.T) {
 	// With no flags, resolveDBPath falls through to DefaultDBPath.
 	// Clear the env override so the platform default is used.
 	t.Setenv("MICASA_DB_PATH", "")
-	cmd := runCmd{}
-	got, err := cmd.resolveDBPath()
+	opts := runOpts{}
+	got, err := opts.resolveDBPath()
 	require.NoError(t, err)
 	assert.NotEmpty(t, got)
 	assert.True(
@@ -60,8 +110,8 @@ func TestResolveDBPath_Default(t *testing.T) {
 func TestResolveDBPath_EnvOverride(t *testing.T) {
 	// MICASA_DB_PATH env var is honored when no positional arg is given.
 	t.Setenv("MICASA_DB_PATH", "/env/override.db")
-	cmd := runCmd{}
-	got, err := cmd.resolveDBPath()
+	opts := runOpts{}
+	got, err := opts.resolveDBPath()
 	require.NoError(t, err)
 	assert.Equal(t, "/env/override.db", got)
 }
@@ -69,34 +119,10 @@ func TestResolveDBPath_EnvOverride(t *testing.T) {
 func TestResolveDBPath_ExplicitPathBeatsEnv(t *testing.T) {
 	// Positional arg takes precedence over env var.
 	t.Setenv("MICASA_DB_PATH", "/env/override.db")
-	cmd := runCmd{DBPath: "/explicit/wins.db"}
-	got, err := cmd.resolveDBPath()
+	opts := runOpts{dbPath: "/explicit/wins.db"}
+	got, err := opts.resolveDBPath()
 	require.NoError(t, err)
 	assert.Equal(t, "/explicit/wins.db", got)
-}
-
-// Version tests use exec.Command("go", "build") because debug.ReadBuildInfo()
-// only embeds VCS revision info in binaries built with go build, not go test,
-// and -ldflags -X injection likewise requires a real build step.
-
-func buildTestBinary(t *testing.T) string {
-	t.Helper()
-	ext := ""
-	if runtime.GOOS == "windows" {
-		ext = ".exe"
-	}
-	bin := filepath.Join(t.TempDir(), "micasa"+ext)
-	cmd := exec.CommandContext(t.Context(),
-		"go",
-		"build",
-		"-o",
-		bin,
-		".",
-	)
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "build failed:\n%s", out)
-	return bin
 }
 
 func TestVersion_DevShowsCommitHash(t *testing.T) {
@@ -106,7 +132,7 @@ func TestVersion_DevShowsCommitHash(t *testing.T) {
 	if _, err := os.Stat(".git"); err != nil {
 		t.Skip("no .git directory; VCS info unavailable (e.g. Nix sandbox)")
 	}
-	bin := buildTestBinary(t)
+	bin := getTestBin(t)
 	verCmd := exec.CommandContext(
 		t.Context(),
 		bin,
@@ -122,110 +148,105 @@ func TestVersion_DevShowsCommitHash(t *testing.T) {
 
 func TestVersion_Injected(t *testing.T) {
 	t.Parallel()
-	ext := ""
-	if runtime.GOOS == "windows" {
-		ext = ".exe"
-	}
-	bin := filepath.Join(t.TempDir(), "micasa"+ext)
-	cmd := exec.CommandContext(t.Context(), "go", "build",
-		"-ldflags", "-X main.version=1.2.3",
-		"-o", bin, ".")
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "build failed:\n%s", out)
-	verCmd := exec.CommandContext(
-		t.Context(),
-		bin,
-		"--version",
-	)
-	verOut, err := verCmd.Output()
-	require.NoError(t, err, "--version failed")
-	assert.Equal(t, "1.2.3", strings.TrimSpace(string(verOut)))
+	// Test the versionString logic directly: when version is set (as
+	// -ldflags would do at build time), it is returned as-is.
+	old := version
+	t.Cleanup(func() { version = old })
+	version = "1.2.3"
+	assert.Equal(t, "1.2.3", versionString())
 }
 
 func TestConfigCmd(t *testing.T) {
 	t.Parallel()
-	bin := buildTestBinary(t)
 
 	t.Run("GetScalar", func(t *testing.T) {
-		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".chat.llm.model")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config get .chat.llm.model failed: %s", out)
-		got := strings.TrimSpace(string(out))
+		t.Parallel()
+		out, err := executeCLI("config", "get", ".chat.llm.model")
+		require.NoError(t, err)
+		got := strings.TrimSpace(out)
 		assert.NotEmpty(t, got)
 		assert.NotContains(t, got, `"`, "scalar should not be JSON-quoted")
 	})
 
 	t.Run("GetSection", func(t *testing.T) {
-		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".chat.llm")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config get .chat.llm failed: %s", out)
-		s := string(out)
-		assert.Contains(t, s, "model =")
-		assert.Contains(t, s, "provider =")
-		assert.NotContains(t, s, "api_key")
+		t.Parallel()
+		out, err := executeCLI("config", "get", ".chat.llm")
+		require.NoError(t, err)
+		assert.Contains(t, out, "model =")
+		assert.Contains(t, out, "provider =")
+		assert.NotContains(t, out, "api_key")
 	})
 
 	t.Run("GetNull", func(t *testing.T) {
-		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".bogus")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config get .bogus failed: %s", out)
-		assert.Equal(t, "null\n", string(out))
+		t.Parallel()
+		out, err := executeCLI("config", "get", ".bogus")
+		require.NoError(t, err)
+		assert.Equal(t, "null\n", out)
 	})
 
 	t.Run("GetKeys", func(t *testing.T) {
-		cmd := exec.CommandContext(t.Context(), bin, "config", "get", ".chat.llm | keys")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config get '.chat.llm | keys' failed: %s", out)
-		assert.Contains(t, string(out), `"model"`)
+		t.Parallel()
+		out, err := executeCLI("config", "get", ".chat.llm | keys")
+		require.NoError(t, err)
+		assert.Contains(t, out, `"model"`)
 	})
 
 	t.Run("GetDefaultShowConfig", func(t *testing.T) {
-		cmd := exec.CommandContext(t.Context(), bin, "config", "get")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config get (no filter) failed: %s", out)
-		assert.Contains(t, string(out), "[chat.llm]")
-		assert.Contains(t, string(out), "model =")
+		t.Parallel()
+		out, err := executeCLI("config", "get")
+		require.NoError(t, err)
+		assert.Contains(t, out, "[chat.llm]")
+		assert.Contains(t, out, "model =")
 	})
 
 	t.Run("GetDefaultViaConfig", func(t *testing.T) {
-		cmd := exec.CommandContext(t.Context(), bin, "config")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config (no args) failed: %s", out)
-		assert.Contains(t, string(out), "[chat.llm]")
-		assert.Contains(t, string(out), "model =")
+		t.Parallel()
+		out, err := executeCLI("config")
+		require.NoError(t, err)
+		assert.Contains(t, out, "[chat.llm]")
+		assert.Contains(t, out, "model =")
 	})
+}
 
-	t.Run("EditCreatesConfig", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		cmd := exec.CommandContext(t.Context(), bin, "config", "edit")
-		cmd.Env = envWithEditor(tmpDir, noopEditor())
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config edit failed: %s", out)
+func TestConfigEditCreatesConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.toml")
+	t.Setenv("EDITOR", noopEditor())
+	t.Setenv("VISUAL", noopEditor())
+	require.NoError(t, runConfigEdit(configPath))
 
-		configPath := filepath.Join(tmpDir, "micasa", "config.toml")
-		info, statErr := os.Stat(configPath)
-		require.NoError(t, statErr, "config file should have been created")
-		assert.Positive(t, info.Size(), "config file should not be empty")
-	})
+	info, statErr := os.Stat(configPath)
+	require.NoError(t, statErr, "config file should have been created")
+	assert.Positive(t, info.Size(), "config file should not be empty")
+}
 
-	t.Run("EditExistingConfig", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		dir := filepath.Join(tmpDir, "micasa")
-		require.NoError(t, os.MkdirAll(dir, 0o750))
-		configPath := filepath.Join(dir, "config.toml")
-		original := "[locale]\ncurrency = \"EUR\"\n"
-		require.NoError(t, os.WriteFile(configPath, []byte(original), 0o600))
+func TestConfigEditExistingConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.toml")
+	original := "[locale]\ncurrency = \"EUR\"\n"
+	require.NoError(t, os.WriteFile(configPath, []byte(original), 0o600))
 
-		cmd := exec.CommandContext(t.Context(), bin, "config", "edit")
-		cmd.Env = envWithEditor(tmpDir, noopEditor())
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "config edit failed: %s", out)
+	t.Setenv("EDITOR", noopEditor())
+	t.Setenv("VISUAL", noopEditor())
+	require.NoError(t, runConfigEdit(configPath))
 
-		content, readErr := os.ReadFile(configPath) //nolint:gosec // test reads its own temp file
-		require.NoError(t, readErr)
-		assert.Equal(t, original, string(content), "existing config should be untouched")
-	})
+	content, readErr := os.ReadFile(configPath) //nolint:gosec // test reads its own temp file
+	require.NoError(t, readErr)
+	assert.Equal(t, original, string(content), "existing config should be untouched")
+}
+
+func TestCompletionCmd(t *testing.T) {
+	t.Parallel()
+
+	for _, shell := range []string{"bash", "zsh", "fish"} {
+		t.Run(shell, func(t *testing.T) {
+			t.Parallel()
+			out, err := executeCLI("completion", shell)
+			require.NoError(t, err)
+			assert.NotEmpty(t, out)
+			assert.Contains(t, out, "micasa", "completion script should reference the app name")
+		})
+	}
 }
 
 // createTestDB creates a migrated, seeded SQLite database file and returns
@@ -243,23 +264,15 @@ func createTestDB(t *testing.T) string {
 
 func TestBackupCmd(t *testing.T) {
 	t.Parallel()
-	bin := buildTestBinary(t)
 
 	t.Run("ExplicitDest", func(t *testing.T) {
+		t.Parallel()
 		src := createTestDB(t)
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		cmd := exec.CommandContext(
-			t.Context(),
-			bin,
-			"backup",
-			"--source",
-			src,
-			dest,
-		)
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "backup failed: %s", out)
+		out, err := executeCLI("backup", "--source", src, dest)
+		require.NoError(t, err)
 
-		got := strings.TrimSpace(string(out))
+		got := strings.TrimSpace(out)
 		assert.True(t, filepath.IsAbs(got), "expected absolute path, got %q", got)
 
 		_, statErr := os.Stat(dest)
@@ -267,50 +280,37 @@ func TestBackupCmd(t *testing.T) {
 	})
 
 	t.Run("DefaultDest", func(t *testing.T) {
+		t.Parallel()
 		src := createTestDB(t)
-		cmd := exec.CommandContext(
-			t.Context(),
-			bin,
-			"backup",
-			"--source",
-			src,
-		)
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "backup failed: %s", out)
+		out, err := executeCLI("backup", "--source", src)
+		require.NoError(t, err)
 
 		wantPath, absErr := filepath.Abs(src + ".backup")
 		require.NoError(t, absErr)
-		assert.Equal(t, wantPath, strings.TrimSpace(string(out)))
+		assert.Equal(t, wantPath, strings.TrimSpace(out))
 
 		_, statErr := os.Stat(src + ".backup")
 		assert.NoError(t, statErr, "default destination should exist")
 	})
 
 	t.Run("SourceFromEnv", func(t *testing.T) {
+		t.Parallel()
 		src := createTestDB(t)
 		dest := filepath.Join(t.TempDir(), "env-backup.db")
-		cmd := exec.CommandContext(t.Context(), bin, "backup", dest)
-		cmd.Env = append(os.Environ(), "MICASA_DB_PATH="+src)
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "backup via MICASA_DB_PATH failed: %s", out)
+		var buf bytes.Buffer
+		err := runBackup(&buf, &backupOpts{dest: dest, envDBPath: src})
+		require.NoError(t, err)
 
 		_, statErr := os.Stat(dest)
 		assert.NoError(t, statErr, "destination file should exist")
 	})
 
 	t.Run("ProducesValidDB", func(t *testing.T) {
+		t.Parallel()
 		src := createTestDB(t)
 		dest := filepath.Join(t.TempDir(), "valid-backup.db")
-		cmd := exec.CommandContext(
-			t.Context(),
-			bin,
-			"backup",
-			"--source",
-			src,
-			dest,
-		)
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "backup failed: %s", out)
+		_, err := executeCLI("backup", "--source", src, dest)
+		require.NoError(t, err)
 
 		backup, openErr := data.Open(dest)
 		require.NoError(t, openErr, "backup should be a valid SQLite database")
@@ -318,66 +318,42 @@ func TestBackupCmd(t *testing.T) {
 	})
 
 	t.Run("MemorySourceRejected", func(t *testing.T) {
+		t.Parallel()
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		cmd := exec.CommandContext(t.Context(),
-			bin,
-			"backup",
-			"--source",
-			":memory:",
-			dest,
-		)
-		out, err := cmd.CombinedOutput()
+		_, err := executeCLI("backup", "--source", ":memory:", dest)
 		require.Error(t, err)
-		assert.Contains(t, string(out), "in-memory")
+		assert.ErrorContains(t, err, "in-memory")
 	})
 
 	t.Run("DestAlreadyExists", func(t *testing.T) {
+		t.Parallel()
 		src := createTestDB(t)
 		dest := filepath.Join(t.TempDir(), "existing.db")
 		require.NoError(t, os.WriteFile(dest, []byte("x"), 0o600))
 
-		cmd := exec.CommandContext(
-			t.Context(),
-			bin,
-			"backup",
-			"--source",
-			src,
-			dest,
-		)
-		out, err := cmd.CombinedOutput()
+		_, err := executeCLI("backup", "--source", src, dest)
 		require.Error(t, err)
-		assert.Contains(t, string(out), "already exists")
+		assert.ErrorContains(t, err, "already exists")
 	})
 
 	t.Run("SourceNotFound", func(t *testing.T) {
+		t.Parallel()
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		cmd := exec.CommandContext(t.Context(),
-			bin,
-			"backup",
-			"--source",
-			"/nonexistent/path.db",
-			dest,
-		)
-		out, err := cmd.CombinedOutput()
+		_, err := executeCLI("backup", "--source", "/nonexistent/path.db", dest)
 		require.Error(t, err)
-		assert.Contains(t, string(out), "not found")
+		assert.ErrorContains(t, err, "not found")
 	})
 
 	t.Run("InvalidDestPath", func(t *testing.T) {
+		t.Parallel()
 		src := createTestDB(t)
-		cmd := exec.CommandContext(t.Context(),
-			bin,
-			"backup",
-			"--source",
-			src,
-			"file:///tmp/backup.db?mode=rwc",
-		)
-		out, err := cmd.CombinedOutput()
+		_, err := executeCLI("backup", "--source", src, "file:///tmp/backup.db?mode=rwc")
 		require.Error(t, err)
-		assert.Contains(t, string(out), "invalid destination")
+		assert.ErrorContains(t, err, "invalid destination")
 	})
 
 	t.Run("SourceNotMicasaDB", func(t *testing.T) {
+		t.Parallel()
 		// Create a valid SQLite database that isn't a micasa database.
 		src := filepath.Join(t.TempDir(), "other.db")
 		otherStore, err := data.Open(src)
@@ -385,17 +361,9 @@ func TestBackupCmd(t *testing.T) {
 		require.NoError(t, otherStore.Close())
 
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		cmd := exec.CommandContext(
-			t.Context(),
-			bin,
-			"backup",
-			"--source",
-			src,
-			dest,
-		)
-		out, err := cmd.CombinedOutput()
+		_, err = executeCLI("backup", "--source", src, dest)
 		require.Error(t, err)
-		assert.Contains(t, string(out), "not a micasa database")
+		assert.ErrorContains(t, err, "not a micasa database")
 	})
 }
 

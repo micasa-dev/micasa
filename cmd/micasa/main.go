@@ -7,62 +7,81 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 
-	"github.com/alecthomas/kong"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/cpcloud/micasa/internal/app"
 	"github.com/cpcloud/micasa/internal/config"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
+	"github.com/spf13/cobra"
 )
 
 // version is set at build time via -ldflags "-X main.version=...".
 var version = "dev"
 
-type cli struct {
-	Run     runCmd           `cmd:"" default:"withargs" help:"Launch the TUI (default)."`
-	Backup  backupCmd        `cmd:""                    help:"Back up the database to a file."`
-	Config  configCmd        `cmd:""                    help:"Manage application configuration."`
-	Version kong.VersionFlag `                          help:"Show version and exit."            name:"version"`
+// runOpts holds flags for the root (TUI launcher) command.
+type runOpts struct {
+	dbPath    string
+	demo      bool
+	years     int
+	printPath bool
 }
 
-type runCmd struct {
-	DBPath    string `arg:"" optional:"" help:"SQLite database path. Pass with --demo to persist demo data."        env:"MICASA_DB_PATH"`
-	Demo      bool   `                   help:"Launch with sample data in an in-memory database."`
-	Years     int    `                   help:"Generate N years of simulated home ownership data. Requires --demo."`
-	PrintPath bool   `                   help:"Print the resolved database path and exit."`
+// backupOpts holds flags for the backup subcommand.
+type backupOpts struct {
+	dest      string
+	source    string
+	envDBPath string // populated from MICASA_DB_PATH in RunE
 }
 
-type backupCmd struct {
-	Dest   string `arg:"" optional:"" help:"Destination file path. Defaults to <source>.backup."`
-	Source string `                   help:"Source database path. Defaults to the standard location." default:"" env:"MICASA_DB_PATH"`
-}
+func newRootCmd() *cobra.Command {
+	opts := &runOpts{}
 
-type configCmd struct {
-	Get  configGetCmd  `cmd:"" default:"withargs" help:"Query config values with a jq filter (default: identity)."`
-	Edit configEditCmd `cmd:""                    help:"Open the config file in an editor."`
-}
+	root := &cobra.Command{
+		Use:   data.AppName + " [database-path]",
+		Short: "A terminal UI for tracking everything about your home",
+		Long:  "A terminal UI for tracking everything about your home.",
+		// Accept 0 or 1 positional args (optional database path).
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Version:       versionString(),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				opts.dbPath = args[0]
+			}
+			return runTUI(cmd.OutOrStdout(), opts)
+		},
+	}
+	root.SetVersionTemplate("{{.Version}}\n")
+	root.SetHelpFunc(styledHelp)
+	root.CompletionOptions.HiddenDefaultCmd = true
 
-type configGetCmd struct {
-	Filter string `arg:"" optional:"" help:"jq filter expression, e.g. .chat.llm.model or .extraction (default: identity)."`
-}
+	root.Flags().
+		BoolVar(&opts.demo, "demo", false, "Launch with sample data in an in-memory database")
+	root.Flags().
+		IntVar(&opts.years, "years", 0, "Generate N years of simulated home ownership data (requires --demo)")
+	root.Flags().
+		BoolVar(&opts.printPath, "print-path", false, "Print the resolved database path and exit")
 
-type configEditCmd struct{}
+	root.AddCommand(
+		newBackupCmd(),
+		newConfigCmd(),
+		newCompletionCmd(root),
+	)
+
+	return root
+}
 
 func main() {
-	var c cli
-	kctx := kong.Parse(&c,
-		kong.Name(data.AppName),
-		kong.Description("A terminal UI for tracking everything about your home."),
-		kong.UsageOnError(),
-		kong.Vars{"version": versionString()},
-	)
-	if err := kctx.Run(); err != nil {
+	root := newRootCmd()
+	if err := root.Execute(); err != nil {
 		if errors.Is(err, tea.ErrInterrupted) {
 			os.Exit(130)
 		}
@@ -71,19 +90,19 @@ func main() {
 	}
 }
 
-func (cmd *runCmd) Run() error {
-	dbPath, err := cmd.resolveDBPath()
+func runTUI(w io.Writer, opts *runOpts) error {
+	dbPath, err := opts.resolveDBPath()
 	if err != nil {
 		return fmt.Errorf("resolve db path: %w", err)
 	}
-	if cmd.PrintPath {
-		fmt.Println(dbPath)
+	if opts.printPath {
+		fmt.Fprintln(w, dbPath)
 		return nil
 	}
-	if cmd.Years > 0 && !cmd.Demo {
+	if opts.years > 0 && !opts.demo {
 		return fmt.Errorf("--years requires --demo")
 	}
-	if cmd.Years < 0 {
+	if opts.years < 0 {
 		return fmt.Errorf("--years must be non-negative")
 	}
 	store, err := data.Open(dbPath)
@@ -96,16 +115,16 @@ func (cmd *runCmd) Run() error {
 	if err := store.SeedDefaults(); err != nil {
 		return fmt.Errorf("seed defaults: %w", err)
 	}
-	if cmd.Demo {
-		if cmd.Years > 0 {
-			summary, err := store.SeedScaledData(cmd.Years)
+	if opts.demo {
+		if opts.years > 0 {
+			summary, err := store.SeedScaledData(opts.years)
 			if err != nil {
 				return fmt.Errorf("seed scaled data: %w", err)
 			}
 			fmt.Fprintf(
 				os.Stderr,
 				"seeded %d years: %d vendors, %d projects, %d appliances, %d maintenance, %d service logs, %d quotes, %d documents\n",
-				cmd.Years,
+				opts.years,
 				summary.Vendors,
 				summary.Projects,
 				summary.Appliances,
@@ -148,14 +167,14 @@ func (cmd *runCmd) Run() error {
 		return fmt.Errorf("resolve currency: %w", err)
 	}
 
-	opts := app.Options{
+	appOpts := app.Options{
 		DBPath:        dbPath,
 		ConfigPath:    config.Path(),
 		FilePickerDir: cfg.Documents.ResolvedFilePickerDir(),
 	}
 
 	chatLLM := cfg.Chat.LLM
-	opts.SetChat(
+	appOpts.SetChat(
 		cfg.Chat.IsEnabled(),
 		chatLLM.Provider,
 		chatLLM.BaseURL,
@@ -172,7 +191,7 @@ func (cmd *runCmd) Run() error {
 		0, // pdftotext uses its own internal default timeout (30s)
 		cfg.Extraction.OCR.IsEnabled(),
 	)
-	opts.SetExtraction(
+	appOpts.SetExtraction(
 		exLLM.Provider,
 		exLLM.BaseURL,
 		exLLM.Model,
@@ -185,7 +204,7 @@ func (cmd *runCmd) Run() error {
 		cfg.Extraction.OCR.TSV.Threshold(),
 	)
 
-	model, err := app.NewModel(store, opts)
+	model, err := app.NewModel(store, appOpts)
 	if err != nil {
 		return fmt.Errorf("initialize app: %w", err)
 	}
@@ -200,54 +219,51 @@ func (cmd *runCmd) Run() error {
 	return nil
 }
 
-func (cmd *runCmd) resolveDBPath() (string, error) {
-	if cmd.DBPath != "" {
-		return data.ExpandHome(cmd.DBPath), nil
+func (opts *runOpts) resolveDBPath() (string, error) {
+	if opts.dbPath != "" {
+		return data.ExpandHome(opts.dbPath), nil
 	}
-	if cmd.Demo {
+	if opts.demo {
 		return ":memory:", nil
 	}
 	return data.DefaultDBPath()
 }
 
-func (cmd *configGetCmd) Run() error {
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+func newBackupCmd() *cobra.Command {
+	opts := &backupOpts{}
+
+	cmd := &cobra.Command{
+		Use:           "backup [destination]",
+		Short:         "Back up the database to a file",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				opts.dest = args[0]
+			}
+			opts.envDBPath = os.Getenv("MICASA_DB_PATH")
+			return runBackup(cmd.OutOrStdout(), opts)
+		},
 	}
-	return cfg.Query(os.Stdout, cmd.Filter)
+
+	cmd.Flags().
+		StringVar(&opts.source, "source", "", "Source database path (default: standard location, honors MICASA_DB_PATH)")
+
+	return cmd
 }
 
-func (cmd *configEditCmd) Run() error {
-	path := config.Path()
-	if err := config.EnsureConfigFile(path); err != nil {
-		return err
-	}
-	name, args, err := config.EditorCommand(path)
-	if err != nil {
-		return err
-	}
-	c := exec.CommandContext( //nolint:gosec // user-controlled editor from $VISUAL/$EDITOR
-		context.Background(),
-		name,
-		args...,
-	)
-	c.Stdin = os.Stdin
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	if err := c.Run(); err != nil {
-		return fmt.Errorf("run editor: %w", err)
-	}
-	return nil
-}
-
-func (cmd *backupCmd) Run() error {
-	sourcePath := cmd.Source
+func runBackup(w io.Writer, opts *backupOpts) error {
+	sourcePath := opts.source
 	if sourcePath == "" {
-		var err error
-		sourcePath, err = data.DefaultDBPath()
-		if err != nil {
-			return fmt.Errorf("resolve source path: %w", err)
+		if opts.envDBPath != "" {
+			sourcePath = opts.envDBPath
+		} else {
+			var err error
+			sourcePath, err = data.DefaultDBPath()
+			if err != nil {
+				return fmt.Errorf("resolve source path: %w", err)
+			}
 		}
 	} else {
 		sourcePath = data.ExpandHome(sourcePath)
@@ -262,7 +278,7 @@ func (cmd *backupCmd) Run() error {
 		)
 	}
 
-	destPath := cmd.Dest
+	destPath := opts.dest
 	if destPath == "" {
 		destPath = sourcePath + ".backup"
 	} else {
@@ -304,7 +320,89 @@ func (cmd *backupCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("resolve absolute path: %w", err)
 	}
-	fmt.Println(absPath)
+	fmt.Fprintln(w, absPath)
+	return nil
+}
+
+func newConfigCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "config [filter]",
+		Short:         "Manage application configuration",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var filter string
+			if len(args) > 0 {
+				filter = args[0]
+			}
+			return runConfigGet(cmd.OutOrStdout(), filter)
+		},
+	}
+
+	cmd.AddCommand(newConfigGetCmd())
+	cmd.AddCommand(newConfigEditCmd())
+
+	return cmd
+}
+
+func newConfigGetCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "get [filter]",
+		Short:         "Query config values with a jq filter (default: identity)",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var filter string
+			if len(args) > 0 {
+				filter = args[0]
+			}
+			return runConfigGet(cmd.OutOrStdout(), filter)
+		},
+	}
+}
+
+func runConfigGet(w io.Writer, filter string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+	return cfg.Query(w, filter)
+}
+
+func newConfigEditCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "edit",
+		Short:         "Open the config file in an editor",
+		Args:          cobra.NoArgs,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runConfigEdit(config.Path())
+		},
+	}
+}
+
+func runConfigEdit(path string) error {
+	if err := config.EnsureConfigFile(path); err != nil {
+		return err
+	}
+	name, args, err := config.EditorCommand(path)
+	if err != nil {
+		return err
+	}
+	c := exec.CommandContext( //nolint:gosec // user-controlled editor from $VISUAL/$EDITOR
+		context.Background(),
+		name,
+		args...,
+	)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("run editor: %w", err)
+	}
 	return nil
 }
 

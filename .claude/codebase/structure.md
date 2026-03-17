@@ -9,7 +9,7 @@
 ## Directory Layout
 
 ```
-cmd/micasa/main.go          CLI entry (kong). runCmd, backupCmd, configCmd
+cmd/micasa/main.go          CLI entry (cobra). runOpts, backupOpts, newRootCmd
 internal/
   app/                      TUI package (~30K lines, largest package)
     model.go                Model struct, Init/Update/View, key dispatch
@@ -119,5 +119,5 @@ internal/
 - `lrstanley/bubblezone` - Mouse zone tracking
 - `rmhubbert/bubbletea-overlay` - Overlay compositing
 - `brianvoe/gofakeit` - Random data generation
-- `alecthomas/kong` - CLI parsing
+- `spf13/cobra` - CLI parsing
 - `stretchr/testify` - Test assertions
