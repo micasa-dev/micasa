@@ -61,6 +61,14 @@ func styledHelp(cmd *cobra.Command, _ []string) {
 		fmt.Fprintln(&b)
 	}
 
+	if cmd.HasExample() {
+		fmt.Fprintln(&b, helpHeading.Render("Examples"))
+		for _, line := range strings.Split(cmd.Example, "\n") {
+			fmt.Fprintln(&b, helpDimStyle.Render(line))
+		}
+		fmt.Fprintln(&b)
+	}
+
 	if cmd.Runnable() {
 		fmt.Fprintln(&b, helpHeading.Render("Usage"))
 		fmt.Fprintf(&b, "  %s\n\n", helpDimStyle.Render(cmd.UseLine()))

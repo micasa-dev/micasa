@@ -245,8 +245,9 @@ func (s *Store) GetSyncDevice() (SyncDevice, error) {
 	return dev, nil
 }
 
-// UpdateSyncDevice updates the sync device record. Only non-zero fields
-// in the updates map are written.
+// UpdateSyncDevice updates the single local sync device record.
+// The table is a singleton: cachedDeviceID auto-creates the row on
+// first access and no other code path inserts additional rows.
 func (s *Store) UpdateSyncDevice(updates map[string]any) error {
 	return s.db.Model(&SyncDevice{}).Where("1 = 1").Updates(updates).Error
 }
@@ -255,6 +256,9 @@ func (s *Store) UpdateSyncDevice(updates map[string]any) error {
 // to use newID. Called during pro init when the relay assigns a new
 // device ID that replaces the auto-generated local one.
 func (s *Store) UpdateOplogDeviceIDs(oldID, newID string) error {
+	if oldID == "" || newID == "" {
+		return fmt.Errorf("update oplog device IDs: both old and new IDs must be non-empty")
+	}
 	return s.db.Model(&SyncOplogEntry{}).
 		Where("device_id = ?", oldID).
 		Update("device_id", newID).Error

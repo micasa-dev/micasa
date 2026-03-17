@@ -253,6 +253,9 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 }
 
 // GetKeyExchangeResult polls the key exchange status for a joiner.
+// This endpoint is intentionally unauthenticated: the joiner does not
+// yet have a device token. The exchange ID (a high-entropy ULID) serves
+// as a bearer credential -- it is only known to the inviter and joiner.
 func (c *Client) GetKeyExchangeResult(exchangeID string) (*KeyExchangeResult, error) {
 	httpReq, err := http.NewRequest("GET", c.baseURL+"/key-exchange/"+exchangeID, nil)
 	if err != nil {

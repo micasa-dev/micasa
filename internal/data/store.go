@@ -135,7 +135,8 @@ func Open(path string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-// GormDB returns the underlying *gorm.DB for use by the sync layer.
+// GormDB returns the underlying *gorm.DB for use by sync.ApplyOps,
+// which needs direct GORM access to apply remote operations generically.
 func (s *Store) GormDB() *gorm.DB {
 	return s.db
 }

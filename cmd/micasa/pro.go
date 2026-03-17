@@ -1,0 +1,741 @@
+// Copyright 2026 Phillip Cloud
+// Licensed under the Apache License, Version 2.0
+
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/cpcloud/micasa/internal/crypto"
+	"github.com/cpcloud/micasa/internal/data"
+	"github.com/cpcloud/micasa/internal/sync"
+	"github.com/spf13/cobra"
+)
+
+const (
+	defaultRelayURL = "https://relay.micasa.dev"
+	pollInterval    = 2 * time.Second
+	pollTimeout     = 5 * time.Minute
+)
+
+func newProCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "pro",
+		Short: "Manage micasa Pro sync",
+		Long: `Encrypted multi-device sync for your household data.
+
+Typical workflow:
+  1. First device:  micasa pro init
+  2. First device:  micasa pro invite    (prints a one-time code)
+  3. Second device: micasa pro join <code>
+  4. Either device: micasa pro sync      (push and pull changes)`,
+		Example: `  micasa pro init
+  micasa pro invite
+  micasa pro join 01JQ7X2K.abc123
+  micasa pro sync
+  micasa pro status`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+	}
+	cmd.AddCommand(
+		newProInitCmd(),
+		newProStatusCmd(),
+		newProSyncCmd(),
+		newProInviteCmd(),
+		newProJoinCmd(),
+		newProDevicesCmd(),
+	)
+	return cmd
+}
+
+// proDeps holds resolved dependencies shared by most pro subcommands.
+type proDeps struct {
+	store     *data.Store
+	device    data.SyncDevice
+	secretDir string
+	token     string
+	key       crypto.HouseholdKey
+	kp        crypto.DeviceKeyPair
+}
+
+func resolveProDeps(dbPath string) (*proDeps, error) {
+	store, err := openAndMigrate(dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	dev, err := store.GetSyncDevice()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"no sync device found -- run `micasa pro init` first: %w",
+			err,
+		)
+	}
+	if dev.HouseholdID == "" {
+		return nil, fmt.Errorf("device not initialized -- run `micasa pro init` first")
+	}
+
+	secretDir, err := crypto.SecretsDir()
+	if err != nil {
+		return nil, fmt.Errorf("resolve secrets directory: %w", err)
+	}
+
+	token, err := crypto.LoadDeviceToken(secretDir)
+	if err != nil {
+		return nil, fmt.Errorf("load device token: %w", err)
+	}
+
+	key, err := crypto.LoadHouseholdKey(secretDir)
+	if err != nil {
+		return nil, fmt.Errorf("load household key: %w", err)
+	}
+
+	kp, err := crypto.LoadDeviceKeyPair(secretDir)
+	if err != nil {
+		return nil, fmt.Errorf("load device keypair: %w", err)
+	}
+
+	return &proDeps{
+		store:     store,
+		device:    dev,
+		secretDir: secretDir,
+		token:     token,
+		key:       key,
+		kp:        kp,
+	}, nil
+}
+
+func openAndMigrate(dbPath string) (*data.Store, error) {
+	resolved, err := resolveDBPathArg(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	store, err := data.Open(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
+	if err := store.AutoMigrate(); err != nil {
+		return nil, fmt.Errorf("migrate database: %w", err)
+	}
+	return store, nil
+}
+
+func resolveDBPathArg(dbPath string) (string, error) {
+	if dbPath != "" {
+		return data.ExpandHome(dbPath), nil
+	}
+	return data.DefaultDBPath()
+}
+
+// dbPathFromEnvOrArg returns the database path from a positional arg
+// (if provided) or the MICASA_DB_PATH env var.
+func dbPathFromEnvOrArg(args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+	return os.Getenv("MICASA_DB_PATH")
+}
+
+// --- pro init ---
+
+func newProInitCmd() *cobra.Command {
+	var relayURL string
+
+	cmd := &cobra.Command{
+		Use:           "init [database-path]",
+		Short:         "Bootstrap: create household, generate keys, register device",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runProInit(dbPathFromEnvOrArg(args), relayURL)
+		},
+	}
+	cmd.Flags().StringVar(
+		&relayURL, "relay-url", defaultRelayURL,
+		"Relay server URL (honors MICASA_RELAY_URL)",
+	)
+	if envURL := os.Getenv("MICASA_RELAY_URL"); envURL != "" {
+		relayURL = envURL
+	}
+	return cmd
+}
+
+func runProInit(dbPath, relayURL string) error {
+	store, err := openAndMigrate(dbPath)
+	if err != nil {
+		return err
+	}
+
+	// Guard: error if already initialized.
+	dev, err := store.GetSyncDevice()
+	if err == nil && dev.HouseholdID != "" {
+		return fmt.Errorf(
+			"already initialized (household %s) -- to reinitialize, "+
+				"delete the secrets directory and reset the sync device",
+			dev.HouseholdID,
+		)
+	}
+
+	secretDir, err := crypto.SecretsDir()
+	if err != nil {
+		return fmt.Errorf("resolve secrets directory: %w", err)
+	}
+
+	// Generate device keypair + household key.
+	kp, err := crypto.GenerateDeviceKeyPair()
+	if err != nil {
+		return fmt.Errorf("generate device keypair: %w", err)
+	}
+	key, err := crypto.GenerateHouseholdKey()
+	if err != nil {
+		return fmt.Errorf("generate household key: %w", err)
+	}
+
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		hostname = "unknown"
+	}
+
+	// Register with relay.
+	client := sync.NewManagementClient(relayURL, "")
+	resp, err := client.CreateHousehold(sync.CreateHouseholdRequest{
+		DeviceName: hostname,
+		PublicKey:  kp.PublicKey[:],
+	})
+	if err != nil {
+		return fmt.Errorf("register with relay: %w", err)
+	}
+
+	// Save secrets.
+	if err := crypto.SaveDeviceKeyPair(secretDir, kp); err != nil {
+		return fmt.Errorf("save device keypair: %w", err)
+	}
+	if err := crypto.SaveHouseholdKey(secretDir, key); err != nil {
+		return fmt.Errorf("save household key: %w", err)
+	}
+	if err := crypto.SaveDeviceToken(secretDir, resp.DeviceToken); err != nil {
+		return fmt.Errorf("save device token: %w", err)
+	}
+
+	// Update oplog entries with old device ID before switching.
+	oldDeviceID := store.DeviceID()
+	if oldDeviceID != "" && oldDeviceID != resp.DeviceID {
+		if err := store.UpdateOplogDeviceIDs(oldDeviceID, resp.DeviceID); err != nil {
+			return fmt.Errorf("update oplog device IDs: %w", err)
+		}
+	}
+	data.ResetCachedDeviceID()
+
+	// Update SyncDevice record.
+	if err := store.UpdateSyncDevice(map[string]any{
+		"id":           resp.DeviceID,
+		"household_id": resp.HouseholdID,
+		"relay_url":    relayURL,
+	}); err != nil {
+		return fmt.Errorf("update sync device: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "household: %s\n", resp.HouseholdID)
+	fmt.Fprintf(os.Stderr, "device:    %s\n", resp.DeviceID)
+	fmt.Fprintf(os.Stderr, "secrets:   %s\n", secretDir)
+	return nil
+}
+
+// --- pro status ---
+
+func newProStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "status [database-path]",
+		Short:         "Show sync status",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runProStatus(dbPathFromEnvOrArg(args))
+		},
+	}
+}
+
+func runProStatus(dbPath string) error {
+	deps, err := resolveProDeps(dbPath)
+	if err != nil {
+		return err
+	}
+
+	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
+	status, err := client.Status()
+	if err != nil {
+		return fmt.Errorf("fetch status: %w", err)
+	}
+
+	fmt.Printf("household: %s\n", status.HouseholdID)
+	fmt.Printf("devices:   %d\n", len(status.Devices))
+	fmt.Printf("ops:       %d\n", status.OpsCount)
+	fmt.Printf("last seq:  %d\n", deps.device.LastSeq)
+	if status.StripeStatus != "" {
+		fmt.Printf("plan:      %s\n", status.StripeStatus)
+	}
+
+	// Show unsynced local ops count.
+	unsynced, err := deps.store.UnsyncedOps()
+	if err != nil {
+		return fmt.Errorf("count unsynced ops: %w", err)
+	}
+	if len(unsynced) > 0 {
+		fmt.Printf("unsynced:  %d local ops pending push\n", len(unsynced))
+	}
+	return nil
+}
+
+// --- pro sync ---
+
+func newProSyncCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "sync [database-path]",
+		Short:         "Force immediate push+pull cycle",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runProSync(dbPathFromEnvOrArg(args))
+		},
+	}
+}
+
+func runProSync(dbPath string) error {
+	deps, err := resolveProDeps(dbPath)
+	if err != nil {
+		return err
+	}
+
+	client := sync.NewClient(deps.device.RelayURL, deps.token, deps.key)
+
+	pulled, err := pullAll(deps.store, client, deps.device.LastSeq)
+	if err != nil {
+		return err
+	}
+
+	pushed, err := pushAll(deps.store, client)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "pulled %d ops, pushed %d ops\n", pulled, pushed)
+	return nil
+}
+
+func pullAll(
+	store *data.Store,
+	client *sync.Client,
+	lastSeq int64,
+) (int, error) {
+	total := 0
+	seq := lastSeq
+	for {
+		result, err := client.Pull(seq, 100)
+		if err != nil {
+			return total, fmt.Errorf("pull: %w", err)
+		}
+		if len(result.Ops) == 0 {
+			break
+		}
+
+		ar := sync.ApplyOps(store.GormDB(), result.Ops)
+		if len(ar.Errors) > 0 {
+			return total, fmt.Errorf("apply ops: %w", ar.Errors[0])
+		}
+		total += ar.Applied + ar.Conflicts
+
+		// Update last seq from the highest envelope seq.
+		for _, dop := range result.Ops {
+			if dop.Envelope.Seq > seq {
+				seq = dop.Envelope.Seq
+			}
+		}
+		if err := store.UpdateSyncDevice(map[string]any{
+			"last_seq": seq,
+		}); err != nil {
+			return total, fmt.Errorf("update last seq: %w", err)
+		}
+
+		if !result.HasMore {
+			break
+		}
+	}
+	return total, nil
+}
+
+func pushAll(store *data.Store, client *sync.Client) (int, error) {
+	unsynced, err := store.UnsyncedOps()
+	if err != nil {
+		return 0, fmt.Errorf("load unsynced ops: %w", err)
+	}
+	if len(unsynced) == 0 {
+		return 0, nil
+	}
+
+	ops := make([]sync.OpPayload, 0, len(unsynced))
+	for _, entry := range unsynced {
+		ops = append(ops, sync.OpPayload{
+			ID:        entry.ID,
+			TableName: entry.TableName,
+			RowID:     entry.RowID,
+			OpType:    entry.OpType,
+			Payload:   entry.Payload,
+			DeviceID:  entry.DeviceID,
+			CreatedAt: entry.CreatedAt,
+		})
+	}
+
+	pushResp, err := client.Push(ops)
+	if err != nil {
+		return 0, fmt.Errorf("push: %w", err)
+	}
+
+	ids := make([]string, 0, len(pushResp.Confirmed))
+	for _, c := range pushResp.Confirmed {
+		ids = append(ids, c.ID)
+	}
+	if err := store.MarkSynced(ids); err != nil {
+		return 0, fmt.Errorf("mark synced: %w", err)
+	}
+
+	return len(pushResp.Confirmed), nil
+}
+
+// --- pro invite ---
+
+func newProInviteCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "invite [database-path]",
+		Short:         "Generate invite code, wait for joiner handshake",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runProInvite(dbPathFromEnvOrArg(args))
+		},
+	}
+}
+
+func runProInvite(dbPath string) error {
+	deps, err := resolveProDeps(dbPath)
+	if err != nil {
+		return err
+	}
+
+	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
+
+	invite, err := client.Invite(deps.device.HouseholdID)
+	if err != nil {
+		return fmt.Errorf("create invite: %w", err)
+	}
+
+	// Compound code: HOUSEHOLD_ID.CODE
+	compoundCode := deps.device.HouseholdID + "." + invite.Code
+	fmt.Printf("%s\n", compoundCode)
+	fmt.Fprintf(
+		os.Stderr,
+		"expires: %s\n",
+		invite.ExpiresAt.Format(time.RFC3339),
+	)
+	fmt.Fprintf(os.Stderr, "waiting for joiner...\n")
+
+	// Poll for pending key exchanges.
+	deadline := time.Now().Add(pollTimeout)
+	var exchange sync.PendingKeyExchange
+	for {
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out waiting for joiner (5 minutes)")
+		}
+
+		exchanges, err := client.GetPendingExchanges(deps.device.HouseholdID)
+		if err != nil {
+			return fmt.Errorf("poll pending exchanges: %w", err)
+		}
+		if len(exchanges) > 0 {
+			exchange = exchanges[0]
+			break
+		}
+		time.Sleep(pollInterval)
+	}
+
+	// Encrypt household key for the joiner.
+	var joinerPubKey [crypto.KeySize]byte
+	copy(joinerPubKey[:], exchange.JoinerPublicKey)
+
+	sealed, err := crypto.BoxSeal(
+		deps.kp.PrivateKey,
+		joinerPubKey,
+		deps.key[:],
+	)
+	if err != nil {
+		return fmt.Errorf("encrypt household key for joiner: %w", err)
+	}
+
+	if err := client.CompleteKeyExchange(exchange.ID, sealed); err != nil {
+		return fmt.Errorf("complete key exchange: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "device joined: %s\n", exchange.JoinerName)
+	return nil
+}
+
+// --- pro join ---
+
+func newProJoinCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "join <code> [database-path]",
+		Short:         "Join household with invite code",
+		Args:          cobra.RangeArgs(1, 2),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			var dbPath string
+			if len(args) > 1 {
+				dbPath = args[1]
+			} else {
+				dbPath = os.Getenv("MICASA_DB_PATH")
+			}
+			return runProJoin(args[0], dbPath)
+		},
+	}
+}
+
+func runProJoin(code, dbPath string) error {
+	store, err := openAndMigrate(dbPath)
+	if err != nil {
+		return err
+	}
+
+	// Guard: not already joined.
+	dev, err := store.GetSyncDevice()
+	if err == nil && dev.HouseholdID != "" {
+		return fmt.Errorf(
+			"already in household %s -- cannot join another",
+			dev.HouseholdID,
+		)
+	}
+
+	// Parse compound code: HOUSEHOLD_ID.CODE (split on first dot).
+	dotIdx := strings.IndexByte(code, '.')
+	if dotIdx < 0 {
+		return fmt.Errorf(
+			"invalid invite code format -- expected HOUSEHOLD_ID.CODE (got %q)",
+			code,
+		)
+	}
+	householdID := code[:dotIdx]
+	inviteCode := code[dotIdx+1:]
+	if householdID == "" || inviteCode == "" {
+		return fmt.Errorf(
+			"invalid invite code format -- " +
+				"both household ID and code must be non-empty",
+		)
+	}
+
+	// Resolve relay URL from env or default.
+	relayURL := os.Getenv("MICASA_RELAY_URL")
+	if relayURL == "" {
+		relayURL = defaultRelayURL
+	}
+
+	secretDir, err := crypto.SecretsDir()
+	if err != nil {
+		return fmt.Errorf("resolve secrets directory: %w", err)
+	}
+
+	// Generate device keypair.
+	kp, err := crypto.GenerateDeviceKeyPair()
+	if err != nil {
+		return fmt.Errorf("generate device keypair: %w", err)
+	}
+
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		hostname = "unknown"
+	}
+
+	// Join household.
+	client := sync.NewManagementClient(relayURL, "")
+	joinResp, err := client.Join(householdID, sync.JoinRequest{
+		InviteCode: inviteCode,
+		DeviceName: hostname,
+		PublicKey:  kp.PublicKey[:],
+	})
+	if err != nil {
+		return fmt.Errorf("join household: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "waiting for inviter to approve...\n")
+
+	// Poll for key exchange result.
+	deadline := time.Now().Add(pollTimeout)
+	var result *sync.KeyExchangeResult
+	for {
+		if time.Now().After(deadline) {
+			return fmt.Errorf(
+				"timed out waiting for inviter approval (5 minutes)",
+			)
+		}
+
+		r, err := client.GetKeyExchangeResult(joinResp.ExchangeID)
+		if err != nil {
+			return fmt.Errorf("poll key exchange: %w", err)
+		}
+		if r.Ready {
+			result = r
+			break
+		}
+		time.Sleep(pollInterval)
+	}
+
+	// Decrypt household key.
+	var inviterPubKey [crypto.KeySize]byte
+	copy(inviterPubKey[:], joinResp.InviterPublicKey)
+
+	keyBytes, err := crypto.BoxOpen(
+		kp.PrivateKey,
+		inviterPubKey,
+		result.EncryptedHouseholdKey,
+	)
+	if err != nil {
+		return fmt.Errorf("decrypt household key: %w", err)
+	}
+
+	var key crypto.HouseholdKey
+	if len(keyBytes) != crypto.KeySize {
+		return fmt.Errorf(
+			"decrypted key has wrong size: expected %d, got %d",
+			crypto.KeySize,
+			len(keyBytes),
+		)
+	}
+	copy(key[:], keyBytes)
+
+	// Save secrets.
+	if err := crypto.SaveDeviceKeyPair(secretDir, kp); err != nil {
+		return fmt.Errorf("save device keypair: %w", err)
+	}
+	if err := crypto.SaveHouseholdKey(secretDir, key); err != nil {
+		return fmt.Errorf("save household key: %w", err)
+	}
+	if err := crypto.SaveDeviceToken(secretDir, result.DeviceToken); err != nil {
+		return fmt.Errorf("save device token: %w", err)
+	}
+
+	// Update oplog entries with old device ID.
+	oldDeviceID := store.DeviceID()
+	if oldDeviceID != "" && oldDeviceID != result.DeviceID {
+		if err := store.UpdateOplogDeviceIDs(
+			oldDeviceID,
+			result.DeviceID,
+		); err != nil {
+			return fmt.Errorf("update oplog device IDs: %w", err)
+		}
+	}
+	data.ResetCachedDeviceID()
+
+	// Update SyncDevice record.
+	if err := store.UpdateSyncDevice(map[string]any{
+		"id":           result.DeviceID,
+		"household_id": householdID,
+		"relay_url":    relayURL,
+	}); err != nil {
+		return fmt.Errorf("update sync device: %w", err)
+	}
+
+	// Initial pull.
+	syncClient := sync.NewClient(relayURL, result.DeviceToken, key)
+	pulled, err := pullAll(store, syncClient, 0)
+	if err != nil {
+		return fmt.Errorf("initial pull: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "joined household %s\n", householdID)
+	fmt.Fprintf(os.Stderr, "device: %s\n", result.DeviceID)
+	if pulled > 0 {
+		fmt.Fprintf(os.Stderr, "pulled %d ops\n", pulled)
+	}
+	return nil
+}
+
+// --- pro devices ---
+
+func newProDevicesCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "devices [database-path]",
+		Short:         "List devices",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runProDevicesList(dbPathFromEnvOrArg(args))
+		},
+	}
+	cmd.AddCommand(newProDevicesRevokeCmd())
+	return cmd
+}
+
+func runProDevicesList(dbPath string) error {
+	deps, err := resolveProDeps(dbPath)
+	if err != nil {
+		return err
+	}
+
+	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
+	devices, err := client.ListDevices(deps.device.HouseholdID)
+	if err != nil {
+		return fmt.Errorf("list devices: %w", err)
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(devices)
+}
+
+func newProDevicesRevokeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "revoke <device-id> [database-path]",
+		Short:         "Revoke a device",
+		Args:          cobra.RangeArgs(1, 2),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			var dbPath string
+			if len(args) > 1 {
+				dbPath = args[1]
+			} else {
+				dbPath = os.Getenv("MICASA_DB_PATH")
+			}
+			return runProDevicesRevoke(args[0], dbPath)
+		},
+	}
+}
+
+func runProDevicesRevoke(deviceID, dbPath string) error {
+	deps, err := resolveProDeps(dbPath)
+	if err != nil {
+		return err
+	}
+
+	if deviceID == deps.device.ID {
+		return fmt.Errorf("cannot revoke your own device")
+	}
+
+	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
+	if err := client.RevokeDevice(
+		deps.device.HouseholdID,
+		deviceID,
+	); err != nil {
+		return fmt.Errorf("revoke device: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "revoked device %s\n", deviceID)
+	return nil
+}

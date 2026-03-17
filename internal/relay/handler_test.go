@@ -514,6 +514,50 @@ func TestJoinInvalidInviteCode(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
+func TestJoinWrongHouseholdDoesNotConsumeAttempt(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create invite.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	// Try to join with a different household ID -- should fail.
+	joinReq := sync.JoinRequest{
+		InviteCode: invite.Code,
+		DeviceName: "phone",
+		PublicKey:  []byte("key"),
+	}
+	joinBody, _ := json.Marshal(joinReq)
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"POST",
+		"/households/WRONG-HOUSEHOLD-ID/join",
+		bytes.NewReader(joinBody),
+	)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	// Join with the correct household ID should still succeed,
+	// proving no attempt was consumed by the wrong-ID request.
+	joinBody, _ = json.Marshal(joinReq)
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestJoinMissingFields(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
