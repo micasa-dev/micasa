@@ -127,7 +127,6 @@ tables are:
 | `chat_inputs` | Per-device chat history |
 | `sync_oplog` | The sync mechanism itself |
 | `sync_device` | Local-only device identity and sync cursor |
-| `sync_id_aliases` | Local-only ID remapping for unique constraint merges |
 
 ### Key properties
 
@@ -311,24 +310,6 @@ CREATE TABLE sync_device (
 Only one row exists locally. The table (not a flat file) because it
 participates in the same SQLite backup as everything else.
 
-### New table: `sync_id_aliases`
-
-Maps merged-away IDs to their canonical replacements. Used when a unique
-constraint conflict causes two rows to be merged into one (see Section
-10 "Unique constraint conflicts").
-
-```sql
-CREATE TABLE sync_id_aliases (
-    alias_id TEXT PRIMARY KEY,     -- the ID that was merged away
-    canonical_id TEXT NOT NULL,    -- the ID that survived
-    table_name TEXT NOT NULL       -- which table this alias applies to
-);
-```
-
-When applying an incoming op whose `row_id` matches an alias, redirect
-to the canonical ID. Small table — only populated by the rare unique
-constraint conflict path.
-
 ### Why an oplog instead of diff-based sync?
 
 - **Works with E2E encryption.** The server stores encrypted ops it can't
@@ -374,7 +355,6 @@ as usual.
 - `chat_inputs` (per-device chat history)
 - `sync_oplog` itself
 - `sync_device` (local-only device identity)
-- `sync_id_aliases` (local-only ID remapping)
 
 **Special handling for documents:**
 - The `payload` for document inserts/updates includes metadata but NOT the
@@ -460,8 +440,11 @@ $XDG_DATA_HOME/micasa/keys/
   household.key      # 256-bit household symmetric key
   device.pub         # Curve25519 public key
   device.key         # Curve25519 private key (0600 permissions)
-  device.token       # bearer token for relay API auth (0600 permissions)
 ```
+
+The device bearer token is stored in the `sync_device` SQLite table
+alongside the device ID and household ID. This keeps all sync state in
+the single SQLite backup file.
 
 On Linux this defaults to `~/.local/share/micasa/keys/`. On macOS,
 `~/Library/Application Support/micasa/keys/`. This matches the existing
@@ -777,8 +760,9 @@ constraint:
 1. Find the existing local row with the conflicting unique value
 2. Compare timestamps — the older row is the "canonical" one
 3. The newer row's data is merged into the older row (LWW per field)
-4. The newer row's ID is recorded in a `sync_id_aliases` table so
-   future ops referencing that ID are redirected
+4. The duplicate row is soft-deleted. Future ops referencing the
+   duplicate's ID are applied to the canonical row by checking the
+   oplog for the merge record.
 5. Notify the user: "Vendor 'Bob's Plumbing' was created on both
    Desktop and Laptop — merged into one record"
 
@@ -813,21 +797,12 @@ unique name. Same merge logic applies.
 - **Network interception:** all client-relay communication is over TLS.
   Even without TLS, data is E2E encrypted.
 
-### Key rotation
+### Key rotation (post-v1)
 
-If a device is compromised:
-
-```bash
-micasa pro keys rotate
-```
-
-1. Generates a new household key
-2. Re-encrypts all relay-stored data with the new key (client-side:
-   pull all, decrypt with old key, re-encrypt with new key, push)
-3. Distributes new key to all non-revoked devices via key exchange
-4. Revokes the compromised device
-
-This is expensive (re-encrypts everything) and should be rare.
+Not built for v1. Document the manual process: revoke the compromised
+device, create a new household, re-invite members. Automated key
+rotation (re-encrypt all relay data client-side) is a post-launch
+feature.
 
 ### What the server knows
 
@@ -956,15 +931,15 @@ Returns sync status, blob storage usage, and device list.
 {
   "household_id": "hh_...",
   "devices": [
-    { "id": "dev_...", "name": "Desktop", "last_seen": "2026-03-16T..." },
-    { "id": "dev_...", "name": "Laptop", "last_seen": "2026-03-15T..." }
+    { "id": "dev_...", "name": "Desktop", "created_at": "2026-03-16T..." },
+    { "id": "dev_...", "name": "Laptop", "created_at": "2026-03-15T..." }
   ],
   "blob_storage": {
     "used_bytes": 52428800,
     "quota_bytes": 1073741824
   },
   "ops_count": 4827,
-  "last_sync": "2026-03-16T10:30:00.000Z"
+  "stripe_status": "active"
 }
 ```
 
@@ -999,12 +974,12 @@ micasa pro devices revoke <device-id>
 # View and recover conflict losers
 micasa pro conflicts
 
-# Rotate household key (after device compromise)
-micasa pro keys rotate
-
 # Show blob storage usage
 micasa pro storage
 ```
+
+**Post-v1 commands:**
+- `micasa pro keys rotate` — rotate household key after device compromise
 
 ### TUI integration
 
@@ -1339,116 +1314,53 @@ a great problem to have later.
 
 ## 15. Build Plan
 
-Phases are ordered by dependency, not calendar time.
+### Done
 
-### Phase 0: Business Setup
+All core library/API code is implemented and tested:
 
-Parallelizable with Phase 1. No code dependency.
+- **ULID migration** — `internal/uid`, GORM hooks, schema migration
+- **Change tracking** — `sync_oplog` table, GORM hooks, CASCADE handling
+- **Encryption** — NaCl secretbox (symmetric), NaCl box (key exchange)
+- **Relay server API** — push/pull, auth, household CRUD, invite/join,
+  key exchange, device management, subscription gating, Stripe webhook
+- **Client sync engine** — push/pull, LWW conflict resolution
+- **Payment gating** — 402 on push/pull when subscription inactive,
+  webhook signature verification (manual HMAC-SHA256)
 
-- NC LLC formation ($125, online, 20 minutes)
-- Stripe account setup
-- Landing page with value prop, pricing, waitlist
-- Confirm Nvidia IP/moonlighting policy
+### Remaining (v1)
 
-### Phase 1: ULID Migration
+- **Firestore store** — production Store implementation replacing MemStore.
+  Firestore collections for households, devices, ops, invites, key exchanges.
+  Atomic seq increment via Firestore transactions.
+- **`cmd/relay/main.go`** — entry point wiring Firestore store, HTTP handler,
+  Stripe webhook secret from env/Secret Manager.
+- **CLI commands** — `micasa pro init`, `sync`, `status`, `invite`,
+  `join <code>`, `devices`, `devices revoke <id>`, `conflicts`, `storage`.
+  Wire the sync engine and crypto to actual relay HTTP calls.
+- **TUI sync integration** — background sync goroutine (startup pull+push,
+  periodic 60s, debounced push on mutation), status bar indicator
+  (`◈` synced, `◉` syncing, `○` offline).
+- **Document BLOB sync** — content-addressed Cloud Storage, lazy pull,
+  blob upload/download relay endpoints, 1 GB household quota.
+- **Infrastructure** — Pulumi (`infra/`): Firestore database, Cloud Storage
+  bucket, Cloud Run service, IAM, Secret Manager. Deploy to `us-east1`.
+- **Stripe account setup** — create products/prices, configure webhook
+  endpoint URL.
 
-Prerequisite for everything else. Ships in the free product. No server.
+### Post-v1
 
-- Add `github.com/oklog/ulid/v2` dependency
-- Implement `BeforeCreate` GORM hook for ULID generation
-- Schema migration: `uint` PKs → `TEXT` ULIDs for all entity tables
-- FK reference migration (Project.ProjectTypeID, Quote.ProjectID, etc.)
-- Update Store methods, handlers, forms, test helpers (`uint` → `string`)
-- Update TUI (row selection, drilldown, undo snapshots)
-- Update `DeletionRecord.TargetID` from `uint` to `string`
-- Test: migration correctness, FK integrity, round-trips
-
-### Phase 2: Change Tracking
-
-Depends on Phase 1 (oplog references ULID row IDs). Ships in free product.
-
-- Add `sync_oplog` table and GORM hooks
-- Every mutation writes to oplog in the same transaction as the data write
-- Explicit CASCADE child enumeration for MaintenanceItem deletes
-- Explicit restoration oplog writes (not relying on GORM hooks)
-- Add `device_id` generation and storage
-- Test: every entity type produces correct oplog entries
-- Test: CASCADE handling, restoration ops
-
-### Phase 3: Encryption Layer
-
-Depends on Phase 2 (encrypts oplog entries).
-
-- Household key generation (256-bit random)
-- Device keypair generation (Curve25519)
-- Encrypt/decrypt oplog entries with household key (NaCl secretbox)
-- Key storage in `$XDG_DATA_HOME/micasa/keys/` (0600 permissions)
-- Test: round-trip encrypt/decrypt, key serialization
-
-### Phase 4: Relay Server MVP
-
-Depends on Phase 3 (receives encrypted ops).
-
-- Pulumi infrastructure setup (`infra/` directory): Firestore database,
-  Cloud Storage bucket, Cloud Run service, IAM bindings, Secret Manager
-  for Stripe webhook secret
-- Go service with push/pull endpoints (`cmd/relay`)
-- Firestore for relay metadata (households, devices, per-household
-  monotonic sequences) and encrypted op storage
-- Cloud Storage bucket for encrypted document BLOBs
-- Device registration and auth (bearer tokens, bcrypt hashes in Firestore)
-- Household creation
-- Rate limiting on all endpoints (per-device, per-household)
-- Basic blob upload/download (Cloud Storage)
-- Deploy to Cloud Run (`us-east1`) via `pulumi up`
-- Custom domain: `sync.micasa.dev`
-- Integration test: two clients syncing through the relay
-
-### Phase 5: Client Sync
-
-Depends on Phase 4 (needs relay to talk to). Can co-develop with Phase 4.
-
-- Push logic: batch unsynced ops, encrypt, POST to relay
-- Pull logic: GET from relay, decrypt, apply to local DB
-- LWW conflict resolution with unique constraint handling
-- Transaction safety: apply-side writes in same SQLite transaction
-- Startup sync + periodic background sync (60s, configurable)
-- Sync-aware write serialization (WAL mode, Store transaction method)
-- TUI status bar indicator
-- `micasa pro init`, `micasa pro sync`, `micasa pro status` commands
-- Lazy blob pull with on-demand fetch
-- FTS index rebuild after sync
-- Local `DeletionRecord` rebuilding from applied ops
-
-### Phase 6: Household Sharing
-
-Depends on Phase 5 (sync must work before sharing works).
-
-- Invite code generation (8-char base32, 24h expiry, rate-limited)
-- Key exchange flow (NaCl box for asymmetric HK transfer)
-- Join flow with initial full pull
-- Join-with-existing-data merge + backup (household HouseProfile wins)
-- `micasa pro invite`, `micasa pro join` commands
-- Device listing and revocation
-
-### Phase 7: Payment & Launch
-
-Depends on Phase 6 (full feature set before gating behind payment).
-
-- Stripe subscription integration
-- Gate sync endpoints behind active subscription
-- Email waitlist with founding member offer ($69/year)
-- Documentation for Pro setup
+- Key rotation (`micasa pro keys rotate`)
+- Join-with-existing-data merge (household HouseProfile wins, local backup)
+- Rate limiting on relay endpoints
+- Landing page and email waitlist
 
 ---
 
-## 16. What to NOT Build (Until 100+ Paying Customers)
+## 16. What to NOT Build
 
 - Web or mobile client (sync is between micasa TUI instances only)
 - Real-time collaboration (sync is eventually consistent, not live)
 - Granular permissions (all household members see everything)
-- Rich conflict resolution UI (CLI `micasa pro conflicts` is sufficient for v1)
-- Key rotation automation (document the manual process)
 - Multi-household support (one household per subscription)
 - Proactive alerts/notifications (future feature, separate service)
 
@@ -1474,70 +1386,26 @@ Depends on Phase 6 (full feature set before gating behind payment).
 > When you invite a household member, the household key is transferred
 > via an asymmetric key exchange (Curve25519). The relay facilitates the
 > exchange but never sees the key. If a device is compromised, you can
-> rotate the household key — all relay data is re-encrypted client-side
-> and the compromised device is revoked.
+> revoke it to prevent further sync access.
 
 ---
 
 ## 18. Open Questions
 
-### Resolved
-
-- **Sequence number ordering:** Server-assigned monotonic seq per
-  household. Simpler pull protocol, and the relay must be available for
-  sync anyway.
-
-- **Primary key collisions:** Migrate to ULID text PKs (see Section 4).
-  This is a prerequisite for sync, not an afterthought.
-
-- **Relay server location and infrastructure:** GCP — Cloud Run (compute)
-  + Firestore (metadata and encrypted ops) + Cloud Storage (encrypted
-  BLOBs). Single region, `us-east1` (South Carolina). See Section 14 for
-  full details. GCP chosen for operator familiarity and predictability.
-
-### Open
-
 - **Schema drift:** If two devices run different micasa versions with
   different schemas, ops may reference columns that don't exist on the
-  other device. **Recommendation:** Ops carry full row snapshots. The
+  other device. Current approach: ops carry full row snapshots. The
   receiving client applies only the columns it knows. Unknown columns
-  are preserved in oplog but not applied. When the client upgrades,
-  a re-apply pass picks up the new columns.
+  are preserved in oplog but not applied.
 
-- **Blob garbage collection:** When a document is deleted, its blob stays
-  in storage (the delete is a soft delete). When should we actually GC
-  blobs? **Recommendation:** 90 days after all referencing documents are
-  soft-deleted across all devices.
+- **Max household size:** 4 devices max for v1. Real households rarely
+  exceed 2-3 people, each with 1-2 devices.
 
-- **Max household size:** Start with 4 devices max? Probably fine for v1.
-  Real households rarely exceed 2-3 people, each with 1-2 devices.
-
-- **Initial sync performance:** A full pull for a new device with years
-  of oplog could be slow. **Recommendation:** Support a "snapshot"
-  mechanism — a single encrypted blob representing the full DB state at
-  a point in time, so new devices don't have to replay the entire oplog.
-  Build this if/when it matters, not for v1.
-
-- **Subscription expiry:** What happens when payment lapses? Sync stops
-  but local data is unaffected. Relay holds encrypted data for 90 days
-  (grace period), then deletes. Re-subscribing within 90 days resumes
-  sync. After 90 days, user must re-init.
-
-- **ULID migration ordering:** The ULID migration (Phase 1) must be
-  released and proven stable before any sync code ships. Should it be
-  a separate minor release (e.g., v2.3.0) with a soak period, or can it
-  ship alongside Phase 2? **Recommendation:** Separate release with at
-  least 2 weeks of soak time. The migration touches every table and
-  every FK — it needs real-world validation before adding sync complexity.
+- **Subscription expiry:** When payment lapses, sync stops but local
+  data is unaffected. Relay holds encrypted data for 90 days (grace
+  period), then deletes. Re-subscribing within 90 days resumes sync.
 
 - **Async key exchange UX:** The join flow requires the inviter's client
-  to be online to complete the key exchange. If the inviter is offline
-  after generating the invite code, the joiner waits indefinitely.
-  **Recommendation:** Set a clear expectation in the UX ("Have both
-  devices online when joining"). Consider a timeout with a clear error
-  message.
-
-- **Monitoring and observability:** Use GCP built-in tooling for v1
-  (Cloud Run metrics, Cloud Logging, Cloud Monitoring alerts). See
-  Section 14. Skip Prometheus/Grafana until built-in dashboards are
-  insufficient.
+  to be online to complete the key exchange. Set a clear expectation in
+  the UX ("Have both devices online when joining"). Add a timeout with
+  a clear error message.
