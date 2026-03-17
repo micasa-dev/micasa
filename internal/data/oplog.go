@@ -6,6 +6,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	gosync "sync"
@@ -163,9 +164,13 @@ func cachedDeviceID(tx *gorm.DB) string {
 	}
 
 	var dev SyncDevice
-	if err := tx.First(&dev).Error; err == nil {
+	err := tx.First(&dev).Error
+	if err == nil {
 		deviceIDValue = dev.ID
 		return deviceIDValue
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return ""
 	}
 
 	hostname, _ := os.Hostname()
@@ -177,7 +182,7 @@ func cachedDeviceID(tx *gorm.DB) string {
 		Name: hostname,
 	}
 	if err := tx.Create(&dev).Error; err != nil {
-		return dev.ID
+		return ""
 	}
 	deviceIDValue = dev.ID
 	return deviceIDValue

@@ -1093,8 +1093,8 @@ func (s *Store) DeleteIncident(id string) error {
 			}).Error; err != nil {
 			return err
 		}
-		current.Status = IncidentStatusResolved
 		current.PreviousStatus = current.Status
+		current.Status = IncidentStatusResolved
 		result := tx.Delete(&current)
 		if result.Error != nil {
 			return result.Error
@@ -1383,9 +1383,10 @@ func (s *Store) UpdateDocumentExtraction(
 	// Extraction updates are logged so they sync to other devices.
 	if !isSyncApplying(s.db) {
 		var doc Document
-		if err := s.db.Unscoped().First(&doc, "id = ?", id).Error; err == nil {
-			return writeOplogEntry(s.db, TableDocuments, id, OpUpdate, newDocumentOplogPayload(doc))
+		if err := s.db.Unscoped().First(&doc, "id = ?", id).Error; err != nil {
+			return fmt.Errorf("re-read document for oplog: %w", err)
 		}
+		return writeOplogEntry(s.db, TableDocuments, id, OpUpdate, newDocumentOplogPayload(doc))
 	}
 	return nil
 }

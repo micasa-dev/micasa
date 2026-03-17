@@ -310,7 +310,8 @@ type Setting struct {
 }
 
 // ChatInput stores a single chat prompt for cross-session history.
-// Ordered by creation time, newest last.
+// Ordered by creation time, newest last. Intentionally uses uint PK
+// (not ULID) because chat history is local-only and not synced.
 type ChatInput struct {
 	ID        uint   `gorm:"primaryKey"`
 	Input     string `gorm:"not null"`

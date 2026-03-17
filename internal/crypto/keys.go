@@ -71,7 +71,7 @@ func SecretsDir() (string, error) {
 // SaveHouseholdKey writes the household key to dir/household.key with
 // restrictive permissions (0600).
 func SaveHouseholdKey(dir string, key HouseholdKey) error {
-	return os.WriteFile(filepath.Join(dir, HouseholdKeyFile), key[:], 0o600)
+	return atomicWriteFile(filepath.Join(dir, HouseholdKeyFile), key[:], 0o600)
 }
 
 // LoadHouseholdKey reads a household key from dir/household.key.

@@ -94,16 +94,19 @@ func applyOne(db *gorm.DB, dop DecryptedOp) error {
 			// Local wins -- record remote op with applied_at = NULL.
 			return recordUnappliedOp(db, op)
 		}
-		// Remote wins -- clear local op's applied_at.
-		if err := db.Table("sync_oplog_entries").
-			Where("id = ?", localOp.ID).
-			Update("applied_at", nil).Error; err != nil {
-			return fmt.Errorf("clear local applied_at: %w", err)
-		}
 	}
 
-	// Apply the remote op.
+	// Apply the remote op (atomically with conflict resolution).
 	return db.Transaction(func(tx *gorm.DB) error {
+		// If remote won the conflict, clear local op's applied_at
+		// inside the same transaction for atomicity.
+		if localOp.ID != "" {
+			if err := tx.Table("sync_oplog_entries").
+				Where("id = ?", localOp.ID).
+				Update("applied_at", nil).Error; err != nil {
+				return fmt.Errorf("clear local applied_at: %w", err)
+			}
+		}
 		if err := applyOpToTable(tx, op); err != nil {
 			return err
 		}

@@ -113,6 +113,7 @@ type JoinRequest struct {
 // JoinResponse is returned when a joiner initiates a key exchange.
 type JoinResponse struct {
 	ExchangeID       string `json:"exchange_id"`
+	HouseholdID      string `json:"household_id"`
 	InviterPublicKey []byte `json:"inviter_public_key"`
 }
 

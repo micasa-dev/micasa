@@ -235,9 +235,15 @@ func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hhID := r.PathValue("id")
+
 	resp, err := h.store.StartJoin(r.Context(), req.InviteCode, req)
 	if err != nil {
 		h.log.Error("start join", "error", err)
+		writeError(w, http.StatusBadRequest, "invalid or expired invite code")
+		return
+	}
+	if resp.HouseholdID != hhID {
 		writeError(w, http.StatusBadRequest, "invalid or expired invite code")
 		return
 	}
@@ -408,7 +414,8 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 	var event StripeEvent
 	if err := json.Unmarshal(body, &event); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid event JSON")
+		h.log.Warn("webhook: unparseable event JSON", "error", err)
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
 		return
 	}
 
