@@ -6,10 +6,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -45,8 +47,26 @@ func main() {
 		log.Info("using in-memory store (no DATABASE_URL set)")
 	}
 
-	var handlerOpts []relay.HandlerOption
 	webhookSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+	selfHosted, err := resolveRelayMode(os.Getenv("SELF_HOSTED"), webhookSecret)
+	if err != nil {
+		log.Error("startup configuration error", "error", err)
+		os.Exit(1)
+	}
+
+	blobQuota, err := parseBlobQuota(os.Getenv("BLOB_QUOTA_BYTES"), selfHosted)
+	if err != nil {
+		log.Error("startup configuration error", "error", err)
+		os.Exit(1)
+	}
+
+	var handlerOpts []relay.HandlerOption
+	if selfHosted {
+		handlerOpts = append(handlerOpts, relay.WithSelfHosted())
+		log.Info("running in self-hosted mode")
+	}
+	handlerOpts = append(handlerOpts, relay.WithBlobQuota(blobQuota))
+
 	if webhookSecret != "" {
 		handlerOpts = append(handlerOpts, relay.WithWebhookSecret(webhookSecret))
 		log.Info("Stripe webhook verification enabled")
@@ -85,4 +105,37 @@ func main() {
 	if err := store.Close(); err != nil {
 		log.Error("store close error", "error", err)
 	}
+}
+
+// resolveRelayMode determines whether the relay runs in self-hosted mode.
+// Returns an error if SELF_HOSTED and STRIPE_WEBHOOK_SECRET are both set.
+func resolveRelayMode(selfHostedEnv, webhookSecret string) (bool, error) {
+	selfHosted := selfHostedEnv == "true"
+	if selfHosted && webhookSecret != "" {
+		return false, fmt.Errorf(
+			"SELF_HOSTED=true and STRIPE_WEBHOOK_SECRET are mutually exclusive -- " +
+				"set one or the other, not both",
+		)
+	}
+	return selfHosted, nil
+}
+
+// parseBlobQuota parses the BLOB_QUOTA_BYTES env var. Returns the mode
+// default when envVal is empty. Returns an error for negative or
+// non-integer values.
+func parseBlobQuota(envVal string, selfHosted bool) (int64, error) {
+	if envVal == "" {
+		if selfHosted {
+			return 0, nil
+		}
+		return relay.DefaultBlobQuota, nil
+	}
+	n, err := strconv.ParseInt(envVal, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid BLOB_QUOTA_BYTES %q: %w", envVal, err)
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("BLOB_QUOTA_BYTES must be non-negative, got %d", n)
+	}
+	return n, nil
 }
