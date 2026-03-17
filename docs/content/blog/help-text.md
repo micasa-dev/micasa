@@ -49,7 +49,7 @@ inline previews like `{email: "...", name: "..."}` so you can scan without
 expanding everything. <kbd>g</kbd>/<kbd>G</kbd> jump to first and last.
 Mouse clicks work too.
 
-![ops tree overlay](/images/ops-tree.webp)
+<video src="/videos/ops-tree.webm" class="demo-video" autoplay loop muted playsinline></video>
 
 If the LLM proposed something wrong, you can now point at the exact field
 before you accept.

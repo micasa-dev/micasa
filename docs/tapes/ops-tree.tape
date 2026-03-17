@@ -1,6 +1,6 @@
 Require micasa
 
-Output docs/static/images/ops-tree.webm
+Output docs/static/videos/ops-tree.webm
 
 Set Shell bash
 Set FontFamily "Hack Nerd Font"
@@ -51,28 +51,91 @@ Type "l"
 Sleep 0.2s
 Type "l"
 Sleep 1s
-# Open ops tree overlay.
-Enter
-Sleep 1s
 Show
 
+Sleep 0.5s
+
+# Open ops tree overlay on the Invoice row.
+Enter
+Sleep 1.5s
+
+# Navigate down through the tree, expanding as we go.
+# Expand first operation.
+Type "l"
+Sleep 0.8s
+# Move into action, table, then data.
+Type "j"
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
+# Expand data node.
+Type "l"
+Sleep 0.8s
+# Browse the vendor fields.
+Type "j"
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
+
 Sleep 1s
 
-# Expand some nodes for a richer view.
-Type "l"
-Sleep 0.5s
+# Move to second operation.
 Type "j"
-Sleep 0.3s
+Sleep 0.4s
+# Expand it.
 Type "l"
-Sleep 0.5s
+Sleep 0.8s
 Type "j"
-Sleep 0.3s
+Sleep 0.4s
 Type "j"
-Sleep 0.3s
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
+# Expand data.
 Type "l"
-Sleep 0.5s
+Sleep 0.8s
+Type "j"
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
 
-Sleep 2s
+Sleep 1s
+
+# Move to third operation and expand.
+Type "j"
+Sleep 0.4s
+Type "l"
+Sleep 0.8s
+Type "j"
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
+Type "j"
+Sleep 0.4s
+Type "l"
+Sleep 0.8s
+
+Sleep 1.5s
+
+# Collapse everything back up -- jump to top and collapse root.
+Type "g"
+Sleep 0.5s
+Type "h"
+Sleep 1s
+
+# Re-expand to show the toggle.
+Type "l"
+Sleep 1s
+
+Sleep 1.5s
+
+# Close overlay.
+Escape
+Sleep 1s
 
 Hide
 Ctrl+Q
