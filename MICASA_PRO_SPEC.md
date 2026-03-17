@@ -440,20 +440,19 @@ $XDG_DATA_HOME/micasa/keys/
   household.key      # 256-bit household symmetric key
   device.pub         # Curve25519 public key
   device.key         # Curve25519 private key (0600 permissions)
+  device.token       # bearer token for relay API auth (0600 permissions)
 ```
-
-The device bearer token is stored in the `sync_device` SQLite table
-alongside the device ID and household ID. This keeps all sync state in
-the single SQLite backup file.
 
 On Linux this defaults to `~/.local/share/micasa/keys/`. On macOS,
 `~/Library/Application Support/micasa/keys/`. This matches the existing
 DB path convention (`xdg.DataFile`).
 
-Keys are NOT stored in the SQLite database. Rationale: the DB is the data
-being synced. Keys are the mechanism for syncing. Keeping them separate
-means `micasa backup backup.db` doesn't export keys (a security property:
-backups are data-only).
+Keys and credentials are NOT stored in the SQLite database. Rationale:
+the DB is the data being synced. Keys and tokens are the mechanism for
+syncing. Keeping them separate means `micasa backup backup.db` doesn't
+export credentials (a security property: backups are data-only). An
+attacker with a backup file gets plaintext data (which they'd have
+anyway from the local DB) but cannot impersonate the device to the relay.
 
 ### Why symmetric (secretbox) for sync data?
 
@@ -797,12 +796,24 @@ unique name. Same merge logic applies.
 - **Network interception:** all client-relay communication is over TLS.
   Even without TLS, data is E2E encrypted.
 
-### Key rotation (post-v1)
+### Key rotation
 
-Not built for v1. Document the manual process: revoke the compromised
-device, create a new household, re-invite members. Automated key
-rotation (re-encrypt all relay data client-side) is a post-launch
-feature.
+If a device is compromised:
+
+```bash
+micasa pro keys rotate
+```
+
+1. Generates a new household key
+2. Re-encrypts all relay-stored data with the new key (client-side:
+   pull all, decrypt with old key, re-encrypt with new key, push)
+3. Distributes new key to all non-revoked devices via key exchange
+4. Revokes the compromised device
+
+This is expensive (re-encrypts everything) and should be rare. But
+without it, a compromised device retains the ability to decrypt any
+future ops it intercepts — revoking only prevents relay access, not
+cryptographic access. Key rotation closes that gap.
 
 ### What the server knows
 
@@ -976,10 +987,10 @@ micasa pro conflicts
 
 # Show blob storage usage
 micasa pro storage
-```
 
-**Post-v1 commands:**
-- `micasa pro keys rotate` — rotate household key after device compromise
+# Rotate household key (after device compromise)
+micasa pro keys rotate
+```
 
 ### TUI integration
 
@@ -1344,12 +1355,14 @@ All core library/API code is implemented and tested:
   blob upload/download relay endpoints, 1 GB household quota.
 - **Infrastructure** — Pulumi (`infra/`): Firestore database, Cloud Storage
   bucket, Cloud Run service, IAM, Secret Manager. Deploy to `us-east1`.
+- **Key rotation** — `micasa pro keys rotate`: generate new household key,
+  re-encrypt all relay data client-side, distribute to non-revoked devices
+  via key exchange, revoke compromised device.
 - **Stripe account setup** — create products/prices, configure webhook
   endpoint URL.
 
 ### Post-v1
 
-- Key rotation (`micasa pro keys rotate`)
 - Join-with-existing-data merge (household HouseProfile wins, local backup)
 - Rate limiting on relay endpoints
 - Landing page and email waitlist
@@ -1386,7 +1399,8 @@ All core library/API code is implemented and tested:
 > When you invite a household member, the household key is transferred
 > via an asymmetric key exchange (Curve25519). The relay facilitates the
 > exchange but never sees the key. If a device is compromised, you can
-> revoke it to prevent further sync access.
+> rotate the household key — all relay data is re-encrypted client-side
+> and the compromised device is revoked.
 
 ---
 
