@@ -7,12 +7,18 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/adrg/xdg"
 	"golang.org/x/crypto/curve25519"
 )
+
+// maxKeyFileSize bounds how much data we read from a key file. Prevents
+// a multi-gigabyte file at the key path from being loaded into memory.
+// Generous enough for any valid key (32 bytes) plus a safety margin.
+const maxKeyFileSize = 256
 
 const (
 	KeySize              = 32
@@ -60,6 +66,16 @@ func GenerateDeviceKeyPair() (DeviceKeyPair, error) {
 	return kp, nil
 }
 
+// readBoundedFile reads at most maxKeyFileSize bytes from path.
+func readBoundedFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, maxKeyFileSize))
+}
+
 // SecretsDir returns the platform-appropriate directory for key and
 // credential storage. All files in this directory are sensitive and
 // must never be committed, backed up to the cloud, or included in
@@ -77,7 +93,7 @@ func SaveHouseholdKey(dir string, key HouseholdKey) error {
 // LoadHouseholdKey reads a household key from dir/household.key.
 func LoadHouseholdKey(dir string) (HouseholdKey, error) {
 	var key HouseholdKey
-	data, err := os.ReadFile(filepath.Join(dir, HouseholdKeyFile))
+	data, err := readBoundedFile(filepath.Join(dir, HouseholdKeyFile))
 	if err != nil {
 		return key, fmt.Errorf("load household key: %w", err)
 	}
@@ -137,7 +153,7 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 	var kp DeviceKeyPair
 
-	priv, err := os.ReadFile(filepath.Join(dir, DevicePrivateKeyFile))
+	priv, err := readBoundedFile(filepath.Join(dir, DevicePrivateKeyFile))
 	if err != nil {
 		return DeviceKeyPair{}, fmt.Errorf("load device private key: %w", err)
 	}
@@ -151,7 +167,7 @@ func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 	}
 	copy(kp.PrivateKey[:], priv)
 
-	pub, err := os.ReadFile(filepath.Join(dir, DevicePublicKeyFile))
+	pub, err := readBoundedFile(filepath.Join(dir, DevicePublicKeyFile))
 	if err != nil {
 		return DeviceKeyPair{}, fmt.Errorf("load device public key: %w", err)
 	}
