@@ -11,6 +11,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+	"github.com/cpcloud/micasa/internal/crypto"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
 )
@@ -267,6 +268,17 @@ type Options struct {
 	FilePickerDir    string // starting directory for document file picker
 	ChatConfig       chatConfig
 	ExtractionConfig extractionConfig
+	syncCfg          *syncConfig
+}
+
+// SetSync configures the background sync pipeline on the Options.
+func (o *Options) SetSync(relayURL, token, householdID string, key crypto.HouseholdKey) {
+	o.syncCfg = &syncConfig{
+		relayURL:    relayURL,
+		token:       token,
+		householdID: householdID,
+		key:         key,
+	}
 }
 
 // chatConfig holds resolved chat pipeline settings passed from main after

@@ -215,6 +215,8 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 		cfg.Extraction.OCR.TSV.Threshold(),
 	)
 
+	tryLoadSyncConfig(store, &appOpts)
+
 	model, err := app.NewModel(store, appOpts)
 	if err != nil {
 		return fmt.Errorf("initialize app: %w", err)

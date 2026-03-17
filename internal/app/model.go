@@ -25,6 +25,7 @@ import (
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/cpcloud/micasa/internal/sync"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"gorm.io/gorm"
 )
@@ -220,6 +221,15 @@ type Model struct {
 	projectTypes          []data.ProjectType
 	maintenanceCategories []data.MaintenanceCategory
 	vendors               []data.Vendor
+
+	// Sync state (Pro background sync).
+	syncStatus        syncStatus
+	syncCfg           *syncConfig
+	syncEngine        *sync.Engine
+	syncCtx           context.Context
+	syncCancel        context.CancelFunc
+	syncDebounceGen   int
+	syncPendingReload bool // true when pulled data awaits form close
 }
 
 func NewModel(store *data.Store, options Options) (*Model, error) {
@@ -289,6 +299,14 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		showHouse: false,
 		mode:      modeNormal,
 		cur:       store.Currency(),
+		syncCfg:   options.syncCfg,
+	}
+
+	if cfg := options.syncCfg; cfg != nil {
+		syncClient := sync.NewClient(cfg.relayURL, cfg.token, cfg.key)
+		model.syncEngine = sync.NewEngine(store, syncClient, cfg.householdID)
+		model.syncCtx, model.syncCancel = context.WithCancel(context.Background())
+		model.syncStatus = syncSyncing
 	}
 	// Best-effort: fall back to locale detection if setting unreadable.
 	model.unitSystem, _ = store.GetUnitSystem()
@@ -316,10 +334,23 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.formInitCmd(), tea.RequestBackgroundColor)
+	cmds := []tea.Cmd{m.formInitCmd(), tea.RequestBackgroundColor}
+	if m.syncEngine != nil {
+		cmds = append(cmds, doSync(m.syncEngine, m.syncCtx), syncTick())
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	prevGen := m.syncDebounceGen
+	model, cmd := m.update(msg)
+	if m.syncEngine != nil && m.syncDebounceGen != prevGen {
+		cmd = tea.Batch(cmd, syncDebounce(m.syncDebounceGen))
+	}
+	return model, cmd
+}
+
+func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch typed := msg.(type) {
 	case tea.BackgroundColorMsg:
 		m.isDark = typed.IsDark()
@@ -341,6 +372,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cancelChatOperations()
 			m.cancelAllExtractions()
 			m.cancelPull()
+			if m.syncCancel != nil {
+				m.syncCancel()
+			}
 			return m, tea.Quit
 		}
 		if typed.String() == keyCtrlC {
@@ -434,6 +468,36 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setStatusError(fmt.Sprintf("open: %s", typed.Err))
 		}
 		return m, nil
+	case syncStartedMsg:
+		m.syncStatus = syncSyncing
+		return m, nil
+	case syncDoneMsg:
+		if typed.Conflicts > 0 {
+			m.syncStatus = syncConflict
+		} else {
+			m.syncStatus = syncSynced
+		}
+		if typed.Pulled > 0 {
+			if m.mode == modeForm {
+				m.syncPendingReload = true
+			} else {
+				m.surfaceError(m.reloadAllTabs())
+			}
+		}
+		return m, nil
+	case syncErrorMsg:
+		m.syncStatus = syncOffline
+		return m, nil
+	case syncTickMsg:
+		if m.syncEngine == nil || m.syncStatus == syncSyncing {
+			return m, syncTick()
+		}
+		return m, tea.Batch(doSync(m.syncEngine, m.syncCtx), syncTick())
+	case syncDebounceMsg:
+		if typed.gen != m.syncDebounceGen || m.syncEngine == nil || m.syncStatus == syncSyncing {
+			return m, nil
+		}
+		return m, doSync(m.syncEngine, m.syncCtx)
 	case editorFinishedMsg:
 		return m, m.handleEditorFinished(typed)
 	}
@@ -1506,6 +1570,9 @@ func (m *Model) reloadAfterMutation() {
 	if m.showDashboard {
 		m.surfaceError(m.loadDashboard())
 	}
+	if m.syncEngine != nil {
+		m.syncDebounceGen++
+	}
 }
 
 // markNonEffectiveStale marks all tabs except the effective (active or
@@ -2481,6 +2548,10 @@ func (m *Model) exitForm() {
 		if tab := m.effectiveTab(); tab != nil {
 			selectRowByID(tab, *savedID)
 		}
+	}
+	if m.syncPendingReload {
+		m.syncPendingReload = false
+		m.surfaceError(m.reloadAllTabs())
 	}
 }
 

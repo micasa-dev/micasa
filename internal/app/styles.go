@@ -251,6 +251,7 @@ func (s *Styles) CellDim() lipgloss.Style     { return s.fgTextDim }
 func (s *Styles) CalDayLabel() lipgloss.Style { return s.fgTextDim }
 func (s *Styles) TextDim() lipgloss.Style     { return s.fgTextDim }
 func (s *Styles) DimPath() lipgloss.Style     { return s.fgTextDim }
+func (s *Styles) SyncOffline() lipgloss.Style { return s.fgTextDim }
 
 // --- Foreground(textMid) ---
 
@@ -283,6 +284,7 @@ func (s *Styles) SortArrow() lipgloss.Style     { return s.fgSecondary }
 func (s *Styles) SecondaryText() lipgloss.Style { return s.fgSecondary }
 func (s *Styles) UrgencySoon() lipgloss.Style   { return s.fgSecondary }
 func (s *Styles) HouseDoor() lipgloss.Style     { return s.fgSecondary }
+func (s *Styles) SyncConflict() lipgloss.Style  { return s.fgSecondary }
 
 // --- Foreground(success) ---
 
@@ -292,6 +294,7 @@ func (s *Styles) ExtOk() lipgloss.Style          { return s.fgSuccess }
 func (s *Styles) UrgencyFar() lipgloss.Style     { return s.fgSuccess }
 func (s *Styles) WarrantyActive() lipgloss.Style { return s.fgSuccess }
 func (s *Styles) TreeString() lipgloss.Style     { return s.fgSuccess }
+func (s *Styles) SyncSynced() lipgloss.Style     { return s.fgSuccess }
 
 // --- Foreground(warning) ---
 
@@ -313,6 +316,7 @@ func (s *Styles) LinkIndicator() lipgloss.Style { return s.fgMuted }
 func (s *Styles) FilterMark() lipgloss.Style    { return s.fgMuted }
 func (s *Styles) ExtSkipLog() lipgloss.Style    { return s.fgMuted }
 func (s *Styles) TreeKey() lipgloss.Style       { return s.fgMuted }
+func (s *Styles) SyncSyncing() lipgloss.Style   { return s.fgMuted }
 
 // --- Foreground(border) ---
 

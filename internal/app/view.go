@@ -349,7 +349,9 @@ func (m *Model) statusView() string {
 		help = m.editModeStatusHelp(modeBadge)
 	}
 
-	return m.withBgExtractionIndicator(m.withPullProgress(m.withStatusMessage(help)))
+	return m.withSyncIndicator(
+		m.withBgExtractionIndicator(m.withPullProgress(m.withStatusMessage(help))),
+	)
 }
 
 // withBgExtractionIndicator prepends a background extraction indicator when
