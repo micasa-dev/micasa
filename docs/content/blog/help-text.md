@@ -42,12 +42,14 @@ of what it proposed. You got a table preview and an accept/reject choice.
 
 The Documents tab now has an **Ops** column
 ([#776](https://github.com/cpcloud/micasa/pull/776)). Selecting it opens
-an interactive JSON tree showing every proposed INSERT, UPDATE, and DELETE
+an interactive JSON tree showing every proposed `INSERT`, `UPDATE`, and `DELETE`
 with all field values inline. Navigate with <kbd>j</kbd>/<kbd>k</kbd>,
 expand with <kbd>l</kbd>, collapse with <kbd>h</kbd>. Collapsed nodes show
 inline previews like `{email: "...", name: "..."}` so you can scan without
 expanding everything. <kbd>g</kbd>/<kbd>G</kbd> jump to first and last.
 Mouse clicks work too.
+
+![ops tree overlay](/images/ops-tree.webp)
 
 If the LLM proposed something wrong, you can now point at the exact field
 before you accept.
