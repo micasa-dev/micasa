@@ -471,7 +471,7 @@
               # Build once to generate the pagefind index, then copy it
               # into docs/static/ so hugo server serves it as a static asset.
               _tmpsite=$(mktemp -d)
-              hugo --source docs --destination "$_tmpsite" --minify --quiet
+              hugo --source docs --destination "$_tmpsite" --buildDrafts --buildFuture --minify --quiet
               pagefind --site "$_tmpsite" --quiet
               rm -rf docs/static/pagefind
               cp -r "$_tmpsite/pagefind" docs/static/pagefind
@@ -479,7 +479,7 @@
 
               _port=$((RANDOM % 10000 + 30000))
               printf 'http://localhost:%s\n' "$_port"
-              exec hugo server --source docs --buildDrafts --disableFastRender --noHTTPCache --port "$_port" --bind 0.0.0.0 &>/dev/null
+              exec hugo server --source docs --buildDrafts --buildFuture --disableFastRender --noHTTPCache --port "$_port" --bind 0.0.0.0 &>/dev/null
             '';
           };
           # Records any VHS tape to WebM
