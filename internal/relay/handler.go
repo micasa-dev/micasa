@@ -40,8 +40,10 @@ func NewHandler(store Store, log *slog.Logger, opts ...HandlerOption) *Handler {
 	for _, opt := range opts {
 		opt(h)
 	}
-	// Default blob quota when not explicitly set:
+	// Default blob quota when not explicitly set via WithBlobQuota:
 	// unlimited (0) in self-hosted mode, 1 GB in cloud mode.
+	// The relay binary always passes WithBlobQuota (via parseBlobQuota),
+	// so this branch primarily provides sensible defaults for tests.
 	if !h.blobQuotaSet && !h.selfHosted {
 		h.blobQuota = DefaultBlobQuota
 	}
