@@ -8,12 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
-	glamouransi "github.com/charmbracelet/glamour/ansi"
-	glamourstyles "github.com/charmbracelet/glamour/styles"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/glamour/v2"
+	glamouransi "charm.land/glamour/v2/ansi"
+	glamourstyles "charm.land/glamour/v2/styles"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	overlay "github.com/rmhubbert/bubbletea-overlay"
 	"golang.org/x/term"
 )
 
@@ -65,7 +64,7 @@ func (m *Model) buildView() string {
 	for _, o := range overlays {
 		if o.active {
 			fg := m.zones.Mark(zoneOverlay, cancelFaint(o.render()))
-			base = overlay.Composite(fg, dimBackground(base), overlay.Center, overlay.Center, 0, 0)
+			base = compositeOverlay(fg, dimBackground(base))
 		}
 	}
 
@@ -870,12 +869,12 @@ func (m *Model) helpView() string {
 	}
 
 	content := vp.View()
-	contentW := vp.Width
-	rule := m.scrollRule(contentW, vp.TotalLineCount(), vp.Height,
+	contentW := vp.Width()
+	rule := m.scrollRule(contentW, vp.TotalLineCount(), vp.Height(),
 		vp.AtTop(), vp.AtBottom(), vp.ScrollPercent(), "─")
 
 	hints := []string{m.helpItem(keyEsc, "close")}
-	if vp.TotalLineCount() > vp.Height {
+	if vp.TotalLineCount() > vp.Height() {
 		hints = append([]string{m.helpItem(keyJ+"/"+keyK, "scroll")}, hints...)
 	}
 	closeHintStr := joinWithSeparator(m.helpSeparator(), hints...)
@@ -1027,6 +1026,68 @@ func (m *Model) viewportPinContext(tab *Tab, vp tableViewport) pinRenderContext 
 		Inverted:       tab.FilterInverted,
 		CurrencySymbol: m.cur.Symbol(),
 	}
+}
+
+// compositeOverlay centers fg over bg, splicing foreground lines into the
+// background. Inlined from bubbletea-overlay (Apache-2.0) to drop the v1
+// dependency.
+func compositeOverlay(fg, bg string) string {
+	if fg == "" {
+		return bg
+	}
+	if bg == "" {
+		return fg
+	}
+
+	fgW, fgH := lipgloss.Size(fg)
+	bgW, bgH := lipgloss.Size(bg)
+
+	if fgW >= bgW && fgH >= bgH {
+		return fg
+	}
+
+	x := max((bgW-fgW)/2, 0)
+	y := max((bgH-fgH)/2, 0)
+	x = min(x, bgW-fgW)
+	y = min(y, bgH-fgH)
+
+	fgLines := strings.Split(strings.ReplaceAll(fg, "\r\n", "\n"), "\n")
+	bgLines := strings.Split(strings.ReplaceAll(bg, "\r\n", "\n"), "\n")
+
+	var sb strings.Builder
+	for i, bgLine := range bgLines {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		if i < y || i >= y+fgH {
+			sb.WriteString(bgLine)
+			continue
+		}
+
+		pos := 0
+		if x > 0 {
+			left := ansi.Truncate(bgLine, x, "")
+			pos = ansi.StringWidth(left)
+			sb.WriteString(left)
+			if pos < x {
+				sb.WriteString(strings.Repeat(" ", x-pos))
+				pos = x
+			}
+		}
+
+		fgLine := fgLines[i-y]
+		sb.WriteString(fgLine)
+		pos += ansi.StringWidth(fgLine)
+
+		right := ansi.TruncateLeft(bgLine, pos, "")
+		bgLW := ansi.StringWidth(bgLine)
+		rightW := ansi.StringWidth(right)
+		if rightW <= bgLW-pos {
+			sb.WriteString(strings.Repeat(" ", bgLW-rightW-pos))
+		}
+		sb.WriteString(right)
+	}
+	return sb.String()
 }
 
 // dimBackground applies ANSI faint (dim) to an already-styled string. It
@@ -1265,7 +1326,7 @@ var glamourStyle = func() glamouransi.StyleConfig {
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
 		return glamourstyles.NoTTYStyleConfig
 	}
-	if lipgloss.HasDarkBackground() {
+	if lipgloss.HasDarkBackground(os.Stdin, os.Stdout) {
 		return glamourstyles.DarkStyleConfig
 	}
 	return glamourstyles.LightStyleConfig

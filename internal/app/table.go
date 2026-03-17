@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/cpcloud/micasa/internal/data"
-	zone "github.com/lrstanley/bubblezone"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 // defaultStyle is reused for cells that need no special styling, avoiding
@@ -558,12 +558,12 @@ func renderCell(
 	}
 
 	if deleted {
-		style = style.Foreground(textDim).Strikethrough(true).Italic(true)
+		style = style.Foreground(textDimPair.resolve(appIsDark)).Strikethrough(true).Italic(true)
 	}
 
 	// Dimmed rows in pin preview mode.
 	if dimmed && !deleted {
-		style = style.Foreground(textDim)
+		style = style.Foreground(textDimPair.resolve(appIsDark))
 	}
 
 	// Right-aligned grayed-out line count for multi-line notes.
@@ -585,7 +585,7 @@ func renderCell(
 			cursorStyle = cursorStyle.Underline(true).Bold(true)
 		}
 		if hl == highlightRow {
-			cursorStyle = cursorStyle.Background(surface).Bold(true)
+			cursorStyle = cursorStyle.Background(surfacePair.resolve(appIsDark)).Bold(true)
 		}
 		if noteSuffixW > 0 {
 			return renderWithNoteSuffix(value, cursorStyle, width, noteSuffix, noteSuffixW)
@@ -603,7 +603,7 @@ func renderCell(
 	}
 
 	if hl == highlightRow {
-		style = style.Background(surface).Bold(true)
+		style = style.Background(surfacePair.resolve(appIsDark)).Bold(true)
 	}
 
 	if noteSuffixW > 0 {
@@ -648,7 +648,7 @@ func renderPillCell(
 	if pad := width - pillW; pad > 0 {
 		padStyle := appStyles.Base()
 		if hl == highlightRow {
-			padStyle = padStyle.Background(surface)
+			padStyle = padStyle.Background(surfacePair.resolve(appIsDark))
 		}
 		return padStyle.Render(strings.Repeat(" ", pad)) + pill
 	}

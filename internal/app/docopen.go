@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // openFileResultMsg carries the outcome of an OS-viewer launch back to the

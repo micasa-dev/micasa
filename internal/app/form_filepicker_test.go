@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,14 +18,14 @@ import (
 
 // sendBackKey sends one of the filepicker Back bindings (h, backspace, left).
 func sendBackKey(m *Model, key string) {
-	var msg tea.KeyMsg
+	var msg tea.KeyPressMsg
 	switch key {
 	case "h":
-		msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}}
+		msg = tea.KeyPressMsg{Code: 'h', Text: "h"}
 	case "backspace":
-		msg = tea.KeyMsg{Type: tea.KeyBackspace}
+		msg = tea.KeyPressMsg{Code: tea.KeyBackspace}
 	case keyLeft:
-		msg = tea.KeyMsg{Type: tea.KeyLeft}
+		msg = tea.KeyPressMsg{Code: tea.KeyLeft}
 	}
 	m.Update(msg)
 }

@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/cpcloud/micasa/internal/data"
 )
 
@@ -29,7 +29,7 @@ func (m *Model) openDocSearch() tea.Cmd {
 	ti := textinput.New()
 	ti.Placeholder = "search documents..."
 	ti.CharLimit = 200
-	ti.Width = m.searchInputWidth()
+	ti.SetWidth(m.searchInputWidth())
 	blinkCmd := ti.Focus()
 
 	m.docSearch = &docSearchState{
@@ -62,7 +62,7 @@ func (m *Model) searchOverlayWidth() int {
 }
 
 // handleDocSearchKey processes keys while the search overlay is open.
-func (m *Model) handleDocSearchKey(key tea.KeyMsg) tea.Cmd {
+func (m *Model) handleDocSearchKey(key tea.KeyPressMsg) tea.Cmd {
 	ds := m.docSearch
 	if ds == nil {
 		return nil

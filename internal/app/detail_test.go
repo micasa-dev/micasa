@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/table"
+	"charm.land/bubbles/v2/table"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
@@ -291,14 +292,14 @@ func TestSortIndicatorAppearsImmediately(t *testing.T) {
 	tab.ColCursor = 1 // Date column
 
 	// Render before sort -- no sort indicator.
-	before := m.View()
+	before := ansi.Strip(m.View().Content)
 	require.NotContains(t, before, symTriUp,
 		"sort indicator should not appear before sorting")
 
 	// Press sort -- the rendered output must show the indicator
 	// immediately, without requiring a navigation keypress.
 	sendKey(m, "s")
-	after := m.View()
+	after := ansi.Strip(m.View().Content)
 	assert.Contains(t, after, symTriUp,
 		"sort indicator must appear in rendered view immediately after pressing 's'")
 }
@@ -311,7 +312,8 @@ func TestSortImmediatelyReordersRenderedRows(t *testing.T) {
 	tab.ColCursor = 1 // Date column
 
 	// Render before sort -- first date should appear before second.
-	before := m.View()
+	// Strip ANSI: lipgloss v2 may split styled text across escape sequences.
+	before := ansi.Strip(m.View().Content)
 	idx1 := strings.Index(before, "2026-01-15")
 	idx2 := strings.Index(before, "2026-02-01")
 	require.Greater(t, idx1, -1, "first date should be in initial render")
@@ -324,7 +326,7 @@ func TestSortImmediatelyReordersRenderedRows(t *testing.T) {
 
 	// The rendered view must show rows in descending date order
 	// immediately, without any navigation keypress.
-	after := m.View()
+	after := ansi.Strip(m.View().Content)
 	idx1 = strings.Index(after, "2026-01-15")
 	idx2 = strings.Index(after, "2026-02-01")
 	require.Greater(t, idx1, -1, "first date should be in render after sort")

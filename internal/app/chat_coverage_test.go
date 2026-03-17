@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	glamourstyles "github.com/charmbracelet/glamour/styles"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	glamourstyles "charm.land/glamour/v2/styles"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/stretchr/testify/assert"
@@ -162,17 +162,17 @@ func TestHandleChatKeyUpDownHistory(t *testing.T) {
 	m.chat.HistoryCur = -1
 
 	// Up arrow navigates to most recent history.
-	m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, "third", m.chat.Input.Value())
 
-	m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, "second", m.chat.Input.Value())
 
-	m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, "first", m.chat.Input.Value())
 
 	// Down navigates forward.
-	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, "second", m.chat.Input.Value())
 }
 
@@ -204,17 +204,17 @@ func TestHandleChatKeyCompleterUpDown(t *testing.T) {
 		Cursor: 0,
 	}
 
-	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, m.chat.Completer.Cursor)
 
-	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 2, m.chat.Completer.Cursor)
 
 	// Should clamp at the end.
-	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 2, m.chat.Completer.Cursor)
 
-	m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 1, m.chat.Completer.Cursor)
 }
 
@@ -1752,7 +1752,7 @@ func TestDispatchOverlayConsumesKeyMessages(t *testing.T) {
 	require.NotNil(t, m.helpViewport)
 
 	// Key messages should be consumed by the overlay.
-	cmd, handled := m.dispatchOverlay(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	cmd, handled := m.dispatchOverlay(keyPress("j"))
 	assert.True(t, handled, "key messages should be consumed by overlay")
 	_ = cmd
 }

@@ -26,11 +26,12 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+        go = pkgs.go_1_26;
         version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ./VERSION);
 
         micasa = pkgs.buildGoModule {
           pname = "micasa";
-          inherit version;
+          inherit version go;
           src = ./.;
           subPackages = [ "cmd/micasa" ];
           vendorHash = "sha256-QNM5befb9GmsF6XYORg259Q/x7f/DP9ukgKhwujb+uc=";
@@ -232,7 +233,7 @@
           name = "run-deadcode";
           runtimeInputs = [
             deadcode
-            pkgs.go
+            go
           ];
           runtimeEnv.CGO_ENABLED = "0";
           text = ''
@@ -248,7 +249,7 @@
           name = "run-govulncheck";
           runtimeInputs = [
             pkgs.govulncheck
-            pkgs.go
+            go
             pkgs.jq
             pkgs.ripgrep
           ];
@@ -296,7 +297,7 @@
           name = "run-golangci-lint";
           runtimeInputs = [
             pkgs.golangci-lint
-            pkgs.go
+            go
           ];
           runtimeEnv.CGO_ENABLED = "0";
           text = ''
@@ -311,7 +312,7 @@
         goModTidyCheck = pkgs.writeShellApplication {
           name = "go-mod-tidy-check";
           runtimeInputs = [
-            pkgs.go
+            go
             pkgs.git
           ];
           text = ''
@@ -326,7 +327,7 @@
         goGenerateCheck = pkgs.writeShellApplication {
           name = "go-generate-check";
           runtimeInputs = [
-            pkgs.go
+            go
             pkgs.git
           ];
           runtimeEnv.CGO_ENABLED = "0";
@@ -403,7 +404,7 @@
             CGO_ENABLED = "0";
             GOFLAGS = "-trimpath";
             packages = [
-              pkgs.go
+              go
               pkgs.osv-scanner
               pkgs.git
               pkgs.hugo
@@ -645,7 +646,7 @@
           run-pre-commit = pkgs.writeShellApplication {
             name = "run-pre-commit";
             runtimeInputs = [
-              pkgs.go
+              go
               pkgs.git
             ]
             ++ preCommit.enabledPackages;

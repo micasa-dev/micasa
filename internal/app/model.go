@@ -13,19 +13,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/cpcloud/micasa/internal/config"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
 	"github.com/cpcloud/micasa/internal/locale"
-	zone "github.com/lrstanley/bubblezone"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"gorm.io/gorm"
 )
 
@@ -214,6 +214,7 @@ type Model struct {
 	hardDeleteID          uint        // entity ID pending permanent deletion
 	lastRowClick          rowClickState
 	lastDashClick         rowClickState
+	isDark                bool // terminal background is dark
 	cur                   locale.Currency
 	status                statusMsg
 	projectTypes          []data.ProjectType
@@ -256,7 +257,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 	}
 
 	pprog := progress.New(
-		progress.WithGradient(textDim.Dark, accent.Dark),
+		progress.WithColors(textDimPair.resolve(true), accentPair.resolve(true)),
 		progress.WithFillCharacters('━', '┄'),
 	)
 	pprog.PercentageStyle = appStyles.TextDim()
@@ -315,17 +316,23 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return m.formInitCmd()
+	return tea.Batch(m.formInitCmd(), tea.RequestBackgroundColor)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch typed := msg.(type) {
+	case tea.BackgroundColorMsg:
+		m.isDark = typed.IsDark()
+		appIsDark = m.isDark
+		appStyles = DefaultStyles(m.isDark)
+		m.styles = appStyles
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = typed.Width
 		m.height = typed.Height
 		m.resizeTables()
 		m.updateAllViewports()
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if typed.String() == keyCtrlQ {
 			if m.mode == modeForm && m.fs.formDirty {
 				m.confirm = confirmFormQuitDiscard
@@ -418,8 +425,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, tea.Batch(cmds...)
-	case tea.MouseMsg:
-		return m.handleMouse(typed)
+	case tea.MouseClickMsg:
+		return m.handleMouseClick(typed)
+	case tea.MouseWheelMsg:
+		return m.handleMouseWheel(typed)
 	case openFileResultMsg:
 		if typed.Err != nil {
 			m.setStatusError(fmt.Sprintf("open: %s", typed.Err))
@@ -438,7 +447,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch typed := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.confirm == confirmHardDelete {
 			m.handleConfirmHardDelete(typed)
 			return m, nil
@@ -483,15 +492,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle confirm-discard dialog: only y/n/esc are active.
 	if m.confirm.isFormConfirm() {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			return m.handleConfirmDiscard(keyMsg)
 		}
 		return m, nil
 	}
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == keyCtrlS {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyCtrlS {
 		return m, m.saveFormInPlace()
 	}
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == keyCtrlE && m.fs.notesEditMode {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyCtrlE &&
+		m.fs.notesEditMode {
 		return m, m.launchExternalEditor()
 	}
 	// Block huh's deferred WindowSizeMsg from reaching the form. Without
@@ -503,14 +513,14 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	// Toggle hidden files in the filepicker with ".".
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == keyShiftH {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyShiftH {
 		if field := m.fs.form.GetFocusedField(); field != nil {
 			if fp, ok := field.(*huh.FilePicker); ok {
 				current := filePickerShowHidden(fp)
 				newVal := !current
 				fp.ShowHidden(newVal)
 				// Reset cursor to top so it doesn't point past the new list.
-				goToTop := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+				goToTop := tea.KeyPressMsg{Code: 'g', Text: "g"}
 				updated, _ := m.fs.form.Update(goToTop)
 				if form, ok := updated.(*huh.Form); ok {
 					m.fs.form = form
@@ -527,14 +537,14 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	// Intercept 1-9 on Select fields to jump to the Nth option.
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 		if n, isOrdinal := selectOrdinal(keyMsg); isOrdinal && isSelectField(m.fs.form) {
 			m.jumpSelectToOrdinal(n)
 			return m, nil
 		}
 	}
 	// Intercept ESC on dirty forms to confirm before discarding.
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == keyEsc {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyEsc {
 		mandatoryHouse := m.fs.formKind() == formHouse && !m.hasHouse
 		if m.fs.formDirty && !mandatoryHouse {
 			m.confirm = confirmFormDiscard
@@ -566,7 +576,7 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleConfirmDiscard processes keys while the "discard unsaved changes?"
 // prompt is active. Only y (discard) and n/esc (keep editing) are recognized.
-func (m *Model) handleConfirmDiscard(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleConfirmDiscard(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case keyY:
 		if m.confirm == confirmFormQuitDiscard {
@@ -586,7 +596,7 @@ func (m *Model) handleConfirmDiscard(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 // handleDashboardKeys intercepts keys that belong to the dashboard (j/k
 // navigation, enter to jump) and blocks keys that affect backgrounded
 // widgets. Keys like D, b/f, ?, q fall through to the normal handlers.
-func (m *Model) handleDashboardKeys(key tea.KeyMsg) (tea.Cmd, bool) {
+func (m *Model) handleDashboardKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 	if key.String() != keyEnter {
 		m.dash.flash = ""
 	}
@@ -632,7 +642,7 @@ func (m *Model) handleDashboardKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 }
 
 // handleCommonKeys processes keys available in both Normal and Edit modes.
-func (m *Model) handleCommonKeys(key tea.KeyMsg) (tea.Cmd, bool) {
+func (m *Model) handleCommonKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 	switch key.String() {
 	case keyQuestion:
 		m.openHelp()
@@ -702,7 +712,7 @@ func (m *Model) handleCommonKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 }
 
 // handleNormalKeys processes keys unique to Normal mode.
-func (m *Model) handleNormalKeys(key tea.KeyMsg) (tea.Cmd, bool) {
+func (m *Model) handleNormalKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 	switch key.String() {
 	case keyShiftD:
 		m.toggleDashboard()
@@ -886,7 +896,7 @@ func (m *Model) handleNormalEnter() error {
 }
 
 // handleEditKeys processes keys unique to Edit mode.
-func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
+func (m *Model) handleEditKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 	switch key.String() {
 	case keyA:
 		m.startAddForm()
@@ -938,7 +948,7 @@ func (m *Model) handleEditKeys(key tea.KeyMsg) (tea.Cmd, bool) {
 	return nil, false
 }
 
-func (m *Model) handleCalendarKey(key tea.KeyMsg) tea.Cmd {
+func (m *Model) handleCalendarKey(key tea.KeyPressMsg) tea.Cmd {
 	switch key.String() {
 	case keyH, keyLeft:
 		calendarMove(m.calendar, -1)
@@ -1002,8 +1012,11 @@ func (m *Model) openCalendar(fieldPtr *string, onConfirm func()) {
 	}
 }
 
-func (m *Model) View() string {
-	return m.zones.Scan(m.buildView())
+func (m *Model) View() tea.View {
+	v := tea.NewView(m.zones.Scan(m.buildView()))
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+	return v
 }
 
 func (m *Model) enterNormalMode() {
@@ -1734,7 +1747,7 @@ func (m *Model) promptHardDelete() {
 	m.hardDeleteID = meta.ID
 }
 
-func (m *Model) handleConfirmHardDelete(key tea.KeyMsg) {
+func (m *Model) handleConfirmHardDelete(key tea.KeyPressMsg) {
 	switch key.String() {
 	case keyY:
 		m.confirm = confirmNone
@@ -2088,7 +2101,7 @@ func (m *Model) formatPullProgress(msg pullProgressMsg) string {
 	if barW < 15 {
 		barW = 15
 	}
-	m.pull.progress.Width = barW
+	m.pull.progress.SetWidth(barW)
 	return label + " " + m.pull.progress.ViewAs(pct)
 }
 
@@ -2388,7 +2401,7 @@ func (m *Model) openHelp() {
 		}
 	}
 
-	vp := viewport.New(maxW, viewH)
+	vp := viewport.New(viewport.WithWidth(maxW), viewport.WithHeight(viewH))
 	vp.SetContent(content)
 	// Disable horizontal scroll to avoid conflicts with table navigation.
 	vp.KeyMap.Left.SetEnabled(false)
@@ -2396,7 +2409,7 @@ func (m *Model) openHelp() {
 	m.helpViewport = &vp
 }
 
-func (m *Model) handleInlineInputKey(key tea.KeyMsg) tea.Cmd {
+func (m *Model) handleInlineInputKey(key tea.KeyPressMsg) tea.Cmd {
 	switch key.String() {
 	case keyEsc:
 		m.closeInlineInput()
@@ -2587,7 +2600,7 @@ func (m *Model) hasActiveOverlay() bool {
 }
 
 func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
-	var handler func(tea.KeyMsg) tea.Cmd
+	var handler func(tea.KeyPressMsg) tea.Cmd
 	switch {
 	case m.helpViewport != nil:
 		handler = m.helpOverlayKey
@@ -2596,7 +2609,7 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 	case m.chat != nil && m.chat.Visible:
 		handler = m.handleChatKey
 	case m.notePreview != nil:
-		handler = func(tea.KeyMsg) tea.Cmd { m.notePreview = nil; return nil }
+		handler = func(tea.KeyPressMsg) tea.Cmd { m.notePreview = nil; return nil }
 	case m.opsTree != nil:
 		handler = m.handleOpsTreeKey
 	case m.calendar != nil:
@@ -2610,7 +2623,7 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 	default:
 		return nil, false
 	}
-	keyMsg, ok := msg.(tea.KeyMsg)
+	keyMsg, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		// Non-key messages (cursor blink, spinner ticks, etc.) should not
 		// be swallowed by the overlay dispatcher. Return false so the
@@ -2620,7 +2633,7 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 	return handler(keyMsg), true
 }
 
-func (m *Model) helpOverlayKey(keyMsg tea.KeyMsg) tea.Cmd {
+func (m *Model) helpOverlayKey(keyMsg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case keyMsg.String() == keyEsc || keyMsg.String() == keyQuestion:
 		m.helpViewport = nil

@@ -6,7 +6,7 @@ package app
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
+	"charm.land/bubbles/v2/table"
 )
 
 // hasPins reports whether the tab has any active pins.

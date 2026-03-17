@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,7 +72,7 @@ func TestInlineInputTypingUpdatesValue(t *testing.T) {
 
 	// Type some characters.
 	for _, ch := range "hello" {
-		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		m.Update(tea.KeyPressMsg{Code: ch, Text: string(ch)})
 	}
 
 	assert.Equal(t, "hello", m.inlineInput.Input.Value())

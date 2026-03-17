@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/fake"
 	"github.com/stretchr/testify/require"
@@ -179,7 +179,7 @@ func BenchmarkSelectClickedColumn(b *testing.B) {
 	_ = m.View()
 	require.NotNil(b, tab.cachedVP)
 	cached := tab.cachedVP
-	msg := tea.MouseMsg{X: 20, Y: 5}
+	msg := tea.MouseClickMsg{X: 20, Y: 5, Button: tea.MouseLeft}
 	origCursor := tab.ColCursor
 	origOffset := tab.ViewOffset
 	b.ResetTimer()

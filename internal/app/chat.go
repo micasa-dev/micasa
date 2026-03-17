@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/cpcloud/micasa/internal/config"
 	"github.com/cpcloud/micasa/internal/data"
@@ -169,10 +169,13 @@ func (m *Model) openChat() tea.Cmd {
 	ti := textinput.New()
 	ti.Placeholder = "Ask about your home data... (/help for commands)"
 	ti.CharLimit = 500
-	ti.Width = m.chatInputWidth()
+	ti.SetWidth(m.chatInputWidth())
 	blinkCmd := ti.Focus()
 
-	vp := viewport.New(m.chatViewportWidth(), m.chatViewportHeight())
+	vp := viewport.New(
+		viewport.WithWidth(m.chatViewportWidth()),
+		viewport.WithHeight(m.chatViewportHeight()),
+	)
 	vp.KeyMap.Left.SetEnabled(false)
 	vp.KeyMap.Right.SetEnabled(false)
 
@@ -1262,7 +1265,7 @@ func (m *Model) llmModelLabel() string {
 }
 
 // handleChatKey processes keys when the chat overlay is active.
-func (m *Model) handleChatKey(key tea.KeyMsg) tea.Cmd {
+func (m *Model) handleChatKey(key tea.KeyPressMsg) tea.Cmd {
 	// Completer navigation takes priority over normal input handling.
 	if mc := m.chat.Completer; mc != nil && !mc.Loading {
 		switch key.String() {
@@ -1379,11 +1382,11 @@ func (m *Model) buildChatOverlay() string {
 	title := m.styles.HeaderSection().Render(titleText)
 
 	vpH := m.chatViewportHeight()
-	m.chat.Viewport.Width = innerW
-	m.chat.Viewport.Height = vpH
+	m.chat.Viewport.SetWidth(innerW)
+	m.chat.Viewport.SetHeight(vpH)
 	vpView := m.chat.Viewport.View()
 
-	m.chat.Input.Width = innerW - 2
+	m.chat.Input.SetWidth(innerW - 2)
 	inputView := m.chat.Input.View()
 
 	// Model completer list (between input and viewport).

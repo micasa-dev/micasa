@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // columnFinderState holds the state for the fuzzy column jump overlay.
@@ -123,7 +123,7 @@ func (cf *columnFinderState) clampCursor() {
 }
 
 // handleColumnFinderKey processes keys while the column finder is open.
-func (m *Model) handleColumnFinderKey(key tea.KeyMsg) tea.Cmd {
+func (m *Model) handleColumnFinderKey(key tea.KeyPressMsg) tea.Cmd {
 	cf := m.columnFinder
 	if cf == nil {
 		return nil
@@ -159,10 +159,8 @@ func (m *Model) handleColumnFinderKey(key tea.KeyMsg) tea.Cmd {
 		return nil
 	default:
 		// Append printable characters to the query.
-		for _, r := range key.Runes {
-			cf.Query += string(r)
-		}
-		if len(key.Runes) > 0 {
+		if key.Text != "" {
+			cf.Query += key.Text
 			cf.refilter()
 		}
 		return nil

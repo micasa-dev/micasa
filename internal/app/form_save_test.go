@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
@@ -868,7 +868,7 @@ func TestCtrlQDirtyFormShowsConfirmation(t *testing.T) {
 	require.True(t, m.fs.formDirty)
 
 	// ctrl+q on a dirty form should show confirmation, not quit.
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
 	assert.Nil(t, cmd, "should not quit immediately")
 	assert.Equal(t, confirmFormQuitDiscard, m.confirm, "confirm dialog should be active")
 	assert.Equal(t, modeForm, m.mode, "should still be in form mode")
@@ -885,9 +885,9 @@ func TestCtrlQDirtyFormConfirmQuits(t *testing.T) {
 	m.checkFormDirty()
 
 	// ctrl+q triggers confirmation, y quits.
-	m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
+	m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
 	require.Equal(t, confirmFormQuitDiscard, m.confirm)
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	_, cmd := m.Update(keyPress("y"))
 	assert.NotNil(t, cmd, "y after ctrl+q should return quit command")
 
 	// Database should have the original value, not the unsaved edit.
@@ -906,7 +906,7 @@ func TestCtrlQDirtyFormCancelStaysInForm(t *testing.T) {
 	m.checkFormDirty()
 
 	// ctrl+q triggers confirmation, n cancels.
-	m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
+	m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
 	require.Equal(t, confirmFormQuitDiscard, m.confirm)
 	sendKey(m, "n")
 	assert.Equal(t, confirmNone, m.confirm, "confirm should be dismissed")
@@ -921,7 +921,7 @@ func TestCtrlQCleanFormQuitsImmediately(t *testing.T) {
 	require.False(t, m.fs.formDirty)
 
 	// ctrl+q on a clean form should quit immediately.
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
 	assert.NotNil(t, cmd, "clean form ctrl+q should quit immediately")
 	assert.Equal(t, confirmNone, m.confirm, "no confirm needed for clean form")
 }

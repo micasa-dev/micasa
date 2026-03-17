@@ -15,10 +15,10 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
@@ -1035,7 +1035,7 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 // --- Keyboard handler ---
 
 // handleExtractionKey processes keys when the extraction overlay is visible.
-func (m *Model) handleExtractionKey(msg tea.KeyMsg) tea.Cmd {
+func (m *Model) handleExtractionKey(msg tea.KeyPressMsg) tea.Cmd {
 	ex := m.ex.extraction
 	if ex.modelPicker != nil && !ex.modelPicker.Loading {
 		return m.handleExtractionModelPickerKey(msg)
@@ -1047,7 +1047,7 @@ func (m *Model) handleExtractionKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 // handleExtractionPipelineKey handles keys in pipeline navigation mode.
-func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
+func (m *Model) handleExtractionPipelineKey(msg tea.KeyPressMsg) tea.Cmd {
 	ex := m.ex.extraction
 	switch msg.String() {
 	case keyEsc:
@@ -1056,7 +1056,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		m.interruptExtraction()
 	case keyJ, keyDown:
 		ex.cursorManual = true
-		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height
+		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height()
 		scrollable := !ex.Done || ex.stepExpanded(ex.cursorStep())
 		if overflow && scrollable && !ex.Viewport.AtBottom() {
 			vp, cmd := ex.Viewport.Update(msg)
@@ -1086,7 +1086,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyMsg) tea.Cmd {
 		}
 	case keyK, keyUp:
 		ex.cursorManual = true
-		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height
+		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height()
 		scrollable := !ex.Done || ex.stepExpanded(ex.cursorStep())
 		if overflow && scrollable && !ex.Viewport.AtTop() {
 			vp, cmd := ex.Viewport.Update(msg)
@@ -1182,7 +1182,7 @@ func (m *Model) activateExtractionModelPicker() tea.Cmd {
 
 // handleExtractionModelPickerKey handles keys when the extraction model
 // picker is showing.
-func (m *Model) handleExtractionModelPickerKey(msg tea.KeyMsg) tea.Cmd {
+func (m *Model) handleExtractionModelPickerKey(msg tea.KeyPressMsg) tea.Cmd {
 	ex := m.ex.extraction
 	mc := ex.modelPicker
 	switch msg.String() {
@@ -1273,7 +1273,7 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 }
 
 // handleExtractionExploreKey handles keys in table explore mode.
-func (m *Model) handleExtractionExploreKey(msg tea.KeyMsg) tea.Cmd {
+func (m *Model) handleExtractionExploreKey(msg tea.KeyPressMsg) tea.Cmd {
 	ex := m.ex.extraction
 	switch msg.String() {
 	case keyEsc:
@@ -1493,8 +1493,8 @@ func (m *Model) buildExtractionPipelineOverlay(
 		vpH = maxH
 	}
 
-	ex.Viewport.Width = innerW
-	ex.Viewport.Height = vpH
+	ex.Viewport.SetWidth(innerW)
+	ex.Viewport.SetHeight(vpH)
 	ex.Viewport.SetContent(stepContent)
 
 	// When content fits entirely, reset any stale scroll offset so the
@@ -1515,7 +1515,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 			// Cursor step expanded: user may be scrolling, don't reposition.
 		default:
 			// Keep the cursor step header in view.
-			yOff := ex.Viewport.YOffset
+			yOff := ex.Viewport.YOffset()
 			if cursorLine < yOff {
 				ex.Viewport.SetYOffset(cursorLine)
 			} else if cursorLine >= yOff+vpH {
@@ -1529,7 +1529,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 		vpView = appStyles.TextDim().Render(vpView)
 	}
 
-	rule := m.scrollRule(innerW, ex.Viewport.TotalLineCount(), ex.Viewport.Height,
+	rule := m.scrollRule(innerW, ex.Viewport.TotalLineCount(), ex.Viewport.Height(),
 		ex.Viewport.AtTop(), ex.Viewport.AtBottom(), ex.Viewport.ScrollPercent(), symHLine)
 
 	// Model picker section (shown between viewport and hints when active).

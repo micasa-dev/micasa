@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // doubleClickThreshold is the maximum duration between two clicks on the
@@ -39,21 +39,27 @@ const (
 	zoneExtCol = "ext-col-"
 )
 
-// handleMouse dispatches mouse events to the appropriate handler.
-func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	switch {
-	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft:
+// handleMouseClick dispatches click events to the appropriate handler.
+func (m *Model) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
+	if msg.Button == tea.MouseLeft {
 		return m.handleLeftClick(msg)
-	case msg.Button == tea.MouseButtonWheelUp:
+	}
+	return m, nil
+}
+
+// handleMouseWheel dispatches wheel events to scroll handlers.
+func (m *Model) handleMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
+	switch msg.Button {
+	case tea.MouseWheelUp:
 		return m.handleScroll(-1)
-	case msg.Button == tea.MouseButtonWheelDown:
+	case tea.MouseWheelDown:
 		return m.handleScroll(1)
 	}
 	return m, nil
 }
 
 // handleLeftClick routes a left click to the appropriate zone handler.
-func (m *Model) handleLeftClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 	// Overlay dismiss: if an overlay is active and the click is outside it,
 	// dismiss the overlay (same as pressing esc).
 	if m.hasActiveOverlay() {
@@ -151,7 +157,7 @@ func (m *Model) handleLeftClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 // handleHintClick checks if a click landed on a status bar hint and triggers
 // the corresponding action.
-func (m *Model) handleHintClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleHintClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 	type hintAction struct {
 		id     string
 		action func() (tea.Model, tea.Cmd)
@@ -227,7 +233,7 @@ func (m *Model) handleHintClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleOverlayClick handles clicks within an active overlay.
-func (m *Model) handleOverlayClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 	// Dashboard row clicks: single click selects, double-click jumps.
 	if m.dashboardVisible() {
 		for i := range m.dash.nav {
@@ -307,7 +313,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 // selectExtractionPreviewColumn updates the extraction preview column cursor
 // to match the column zone the click's X coordinate falls within.
 func (m *Model) selectExtractionPreviewColumn(
-	ex *extractionLogState, g *previewTableGroup, msg tea.MouseMsg,
+	ex *extractionLogState, g *previewTableGroup, msg tea.MouseClickMsg,
 ) {
 	for i := range g.specs {
 		z := m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, i))
@@ -324,7 +330,7 @@ func (m *Model) selectExtractionPreviewColumn(
 // selectClickedColumn updates the tab's column cursor to match the column
 // zone the click's X coordinate falls within. Column header zones (col-N)
 // share the same X ranges as body cells, so we reuse them.
-func (m *Model) selectClickedColumn(tab *Tab, msg tea.MouseMsg) {
+func (m *Model) selectClickedColumn(tab *Tab, msg tea.MouseClickMsg) {
 	vp := m.tabViewport(tab)
 	for i := range vp.Specs {
 		z := m.zones.Get(fmt.Sprintf("%s%d", zoneCol, i))

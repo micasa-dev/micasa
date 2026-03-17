@@ -107,7 +107,7 @@ func TestCurrencyFlow_ColumnHeaders(t *testing.T) {
 			m.active = tabIndex(tabProjects)
 			require.NoError(t, m.reloadActiveTab())
 			// The rendered view should annotate money headers with the symbol.
-			view := m.View()
+			view := m.View().Content
 			assert.Contains(t, view, m.cur.Symbol())
 		})
 	}
@@ -405,7 +405,7 @@ func TestCurrencyFlow_HouseProfile(t *testing.T) {
 			tax := int64(450000)
 			m.house.PropertyTaxCents = &tax
 			m.showHouse = true
-			view := m.View()
+			view := m.View().Content
 			assert.Contains(t, view, m.cur.FormatOptionalCents(&tax))
 		})
 	}
@@ -416,7 +416,7 @@ func TestCurrencyFlow_HouseProfile_NilTax(t *testing.T) {
 	m := newTestModelWithCurrency(t, "USD", language.AmericanEnglish)
 	m.house.PropertyTaxCents = nil
 	m.showHouse = true
-	view := m.View()
+	view := m.View().Content
 	// Nil tax should not render "$0.00".
 	assert.NotContains(t, view, "$0.00",
 		"nil property tax should not show $0.00")
@@ -835,7 +835,7 @@ func TestCurrencyFlow_FrenchLocale_FormAndView(t *testing.T) {
 	// Compact notation uses comma as decimal: "2,5k" (French) vs "2.5k" (US).
 	sendKey(m, "esc")
 	require.NoError(t, m.reloadActiveTab())
-	view := m.View()
+	view := m.View().Content
 	assert.Contains(t, view, "2,5k",
 		"French locale should use comma decimal in compact notation")
 }
@@ -1010,7 +1010,7 @@ func TestCurrencyFlow_EnvCurrency_FirstRun(t *testing.T) {
 	// View should show pound symbol.
 	sendKey(m, "esc")
 	require.NoError(t, m.reloadActiveTab())
-	view := m.View()
+	view := m.View().Content
 	assert.Contains(t, view, cur.Symbol(),
 		"GBP from MICASA_LOCALE_CURRENCY should render pound symbol")
 }

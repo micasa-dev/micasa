@@ -6,17 +6,17 @@ package app
 import (
 	"reflect"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
 )
 
 // selectOrdinal returns the 1-based ordinal (1-9) if the key is a digit key,
 // and true. Returns 0, false otherwise.
-func selectOrdinal(msg tea.KeyMsg) (int, bool) {
-	if msg.Type != tea.KeyRunes || len(msg.Runes) != 1 {
+func selectOrdinal(msg tea.KeyPressMsg) (int, bool) {
+	if msg.Text == "" || len([]rune(msg.Text)) != 1 {
 		return 0, false
 	}
-	r := msg.Runes[0]
+	r := []rune(msg.Text)[0]
 	if r >= '1' && r <= '9' {
 		return int(r - '0'), true
 	}
@@ -63,11 +63,11 @@ func (m *Model) jumpSelectToOrdinal(n int) {
 	target := n - 1 // convert to 0-based index
 
 	// 'g' resets the Select cursor to position 0.
-	gotoTop := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+	gotoTop := tea.KeyPressMsg{Code: 'g', Text: "g"}
 	m.formUpdate(gotoTop)
 
 	// Send target number of 'j' (down) presses.
-	down := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
+	down := tea.KeyPressMsg{Code: 'j', Text: "j"}
 	for range target {
 		m.formUpdate(down)
 	}

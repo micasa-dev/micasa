@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -252,20 +253,26 @@ func TestCalendarGridColumnAlignment(t *testing.T) {
 	require.NotEqual(t, -1, labelIdx, "day-label line not found")
 	require.NotEqual(t, -1, lastDayIdx, "line with 29 and 30 not found")
 
-	suPos := strings.Index(lines[labelIdx], "Su")
-	moPos := strings.Index(lines[labelIdx], "Mo")
-	pos29 := strings.Index(lines[lastDayIdx], "29")
-	pos30 := strings.Index(lines[lastDayIdx], "30")
+	// Strip ANSI escape sequences before comparing visual column positions.
+	// Different styled spans produce different-length escapes, so raw byte
+	// positions are unreliable for alignment checks.
+	labelPlain := ansi.Strip(lines[labelIdx])
+	lastPlain := ansi.Strip(lines[lastDayIdx])
+
+	suPos := strings.Index(labelPlain, "Su")
+	moPos := strings.Index(labelPlain, "Mo")
+	pos29 := strings.Index(lastPlain, "29")
+	pos30 := strings.Index(lastPlain, "30")
 	require.GreaterOrEqual(t, suPos, 0)
 	require.GreaterOrEqual(t, pos29, 0)
 	assert.Equalf(t, suPos, pos29,
 		"column misalignment: Su at col %d but 29 at col %d\nlabels: %q\nlast:   %q",
-		suPos, pos29, lines[labelIdx], lines[lastDayIdx])
+		suPos, pos29, labelPlain, lastPlain)
 	require.GreaterOrEqual(t, moPos, 0)
 	require.GreaterOrEqual(t, pos30, 0)
 	assert.Equalf(t, moPos, pos30,
 		"column misalignment: Mo at col %d but 30 at col %d\nlabels: %q\nlast:   %q",
-		moPos, pos30, lines[labelIdx], lines[lastDayIdx])
+		moPos, pos30, labelPlain, lastPlain)
 }
 
 func TestCalendarFixedHeight(t *testing.T) {

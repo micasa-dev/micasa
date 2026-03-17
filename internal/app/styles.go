@@ -3,7 +3,25 @@
 
 package app
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+)
+
+// adaptiveColor holds light and dark hex values, replacing the removed
+// lipgloss.AdaptiveColor from v1. Resolved at style-build time via the
+// isDark flag obtained from tea.BackgroundColorMsg.
+type adaptiveColor struct {
+	Light, Dark string
+}
+
+func (c adaptiveColor) resolve(isDark bool) color.Color {
+	if isDark {
+		return lipgloss.Color(c.Dark)
+	}
+	return lipgloss.Color(c.Light)
+}
 
 // Styles holds the application's pre-built lipgloss styles. Fields are private;
 // use the public accessor methods to read them. Duplicate style definitions
@@ -55,9 +73,9 @@ type Styles struct {
 
 // Colorblind-safe palette (Wong) with adaptive light/dark variants.
 //
-// Each color uses lipgloss.AdaptiveColor{Light, Dark} so the UI looks
-// correct on both dark and light terminal backgrounds. The Light values
-// are darkened/saturated versions of the Dark values to maintain contrast
+// Each pair holds light and dark hex values, resolved when styles are
+// built via DefaultStyles(isDark). The Light values are
+// darkened/saturated versions of the Dark values to maintain contrast
 // on white backgrounds.
 //
 // Chromatic roles:
@@ -78,27 +96,45 @@ type Styles struct {
 //	Surface deep:     Dark #111827  Light #E5E7EB
 //	On-accent text:   Dark #0F172A  Light #FFFFFF
 var (
-	accent    = lipgloss.AdaptiveColor{Light: "#0072B2", Dark: "#56B4E9"}
-	secondary = lipgloss.AdaptiveColor{Light: "#D55E00", Dark: "#E69F00"}
-	success   = lipgloss.AdaptiveColor{Light: "#007A5A", Dark: "#009E73"}
-	warning   = lipgloss.AdaptiveColor{Light: "#B8860B", Dark: "#F0E442"}
-	danger    = lipgloss.AdaptiveColor{Light: "#CC3311", Dark: "#D55E00"}
-	muted     = lipgloss.AdaptiveColor{Light: "#AA4499", Dark: "#CC79A7"}
+	accentPair    = adaptiveColor{Light: "#0072B2", Dark: "#56B4E9"}
+	secondaryPair = adaptiveColor{Light: "#D55E00", Dark: "#E69F00"}
+	successPair   = adaptiveColor{Light: "#007A5A", Dark: "#009E73"}
+	warningPair   = adaptiveColor{Light: "#B8860B", Dark: "#F0E442"}
+	dangerPair    = adaptiveColor{Light: "#CC3311", Dark: "#D55E00"}
+	mutedPair     = adaptiveColor{Light: "#AA4499", Dark: "#CC79A7"}
 
-	textBright = lipgloss.AdaptiveColor{Light: "#1F2937", Dark: "#E5E7EB"}
-	textMid    = lipgloss.AdaptiveColor{Light: "#4B5563", Dark: "#9CA3AF"}
-	textDim    = lipgloss.AdaptiveColor{Light: "#4B5563", Dark: "#6B7280"}
-	surface    = lipgloss.AdaptiveColor{Light: "#F3F4F6", Dark: "#1F2937"}
-	onAccent   = lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#0F172A"}
-	border     = lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#374151"}
+	textBrightPair = adaptiveColor{Light: "#1F2937", Dark: "#E5E7EB"}
+	textMidPair    = adaptiveColor{Light: "#4B5563", Dark: "#9CA3AF"}
+	textDimPair    = adaptiveColor{Light: "#4B5563", Dark: "#6B7280"}
+	surfacePair    = adaptiveColor{Light: "#F3F4F6", Dark: "#1F2937"}
+	onAccentPair   = adaptiveColor{Light: "#FFFFFF", Dark: "#0F172A"}
+	borderPair     = adaptiveColor{Light: "#D1D5DB", Dark: "#374151"}
+	calCursorFg    = adaptiveColor{Light: "#FFFFFF", Dark: "#000000"}
 )
 
-// appStyles is the package-level singleton. Created once at init; never
-// mutated. All rendering code reads from this pointer instead of copying
-// the struct through function parameters.
-var appStyles = DefaultStyles()
+// appIsDark tracks whether the terminal has a dark background. Updated
+// alongside appStyles when tea.BackgroundColorMsg is received.
+var appIsDark = true
 
-func DefaultStyles() *Styles {
+// appStyles is the package-level singleton. Rebuilt when the terminal's
+// dark/light status is detected. All rendering code reads from this
+// pointer instead of copying the struct through function parameters.
+var appStyles = DefaultStyles(appIsDark)
+
+func DefaultStyles(isDark bool) *Styles {
+	accent := accentPair.resolve(isDark)
+	secondary := secondaryPair.resolve(isDark)
+	success := successPair.resolve(isDark)
+	warning := warningPair.resolve(isDark)
+	danger := dangerPair.resolve(isDark)
+	muted := mutedPair.resolve(isDark)
+	textBright := textBrightPair.resolve(isDark)
+	textMid := textMidPair.resolve(isDark)
+	textDim := textDimPair.resolve(isDark)
+	surface := surfacePair.resolve(isDark)
+	onAccent := onAccentPair.resolve(isDark)
+	border := borderPair.resolve(isDark)
+
 	return &Styles{
 		fgTextDim:    lipgloss.NewStyle().Foreground(textDim),
 		fgTextMid:    lipgloss.NewStyle().Foreground(textMid),
@@ -173,7 +209,7 @@ func DefaultStyles() *Styles {
 			Bold(true),
 		calCursor: lipgloss.NewStyle().
 			Background(accent).
-			Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#000000"}).
+			Foreground(calCursorFg.resolve(isDark)).
 			Bold(true),
 		calSelected: lipgloss.NewStyle().
 			Foreground(secondary).

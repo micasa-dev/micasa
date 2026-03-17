@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -783,7 +783,7 @@ func TestMaintenanceInlineEditEverySetIntervalAndSaves(t *testing.T) {
 
 	// Type "12" and press enter to save.
 	for _, ch := range "12" {
-		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		m.Update(tea.KeyPressMsg{Code: ch, Text: string(ch)})
 	}
 	sendKey(m, "enter")
 

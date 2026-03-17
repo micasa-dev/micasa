@@ -5,37 +5,52 @@ package main
 
 import (
 	"fmt"
+	"image/color"
+	"os"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 // Wong palette colors (duplicated from internal/app/styles.go so the CLI
 // binary does not import the full TUI package).
-var (
-	helpAccent    = lipgloss.AdaptiveColor{Light: "#0072B2", Dark: "#56B4E9"}
-	helpSecondary = lipgloss.AdaptiveColor{Light: "#D55E00", Dark: "#E69F00"}
-	helpDim       = lipgloss.AdaptiveColor{Light: "#4B5563", Dark: "#6B7280"}
-	helpMid       = lipgloss.AdaptiveColor{Light: "#4B5563", Dark: "#9CA3AF"}
-)
+type helpColor struct{ Light, Dark string }
+
+func (c helpColor) resolve(isDark bool) color.Color {
+	if isDark {
+		return lipgloss.Color(c.Dark)
+	}
+	return lipgloss.Color(c.Light)
+}
 
 var (
-	helpHeading = lipgloss.NewStyle().
-			Foreground(helpAccent).
-			Bold(true)
-	helpCmd = lipgloss.NewStyle().
-		Foreground(helpSecondary)
-	helpFlag = lipgloss.NewStyle().
-			Foreground(helpSecondary)
-	helpDesc = lipgloss.NewStyle().
-			Foreground(helpMid)
-	helpDimStyle = lipgloss.NewStyle().
-			Foreground(helpDim)
+	helpAccentPair    = helpColor{Light: "#0072B2", Dark: "#56B4E9"}
+	helpSecondaryPair = helpColor{Light: "#D55E00", Dark: "#E69F00"}
+	helpDimPair       = helpColor{Light: "#4B5563", Dark: "#6B7280"}
+	helpMidPair       = helpColor{Light: "#4B5563", Dark: "#9CA3AF"}
 )
+
+func helpStyles(isDark bool) (heading, cmd, flag, desc, dim lipgloss.Style) {
+	heading = lipgloss.NewStyle().
+		Foreground(helpAccentPair.resolve(isDark)).
+		Bold(true)
+	cmd = lipgloss.NewStyle().
+		Foreground(helpSecondaryPair.resolve(isDark))
+	flag = lipgloss.NewStyle().
+		Foreground(helpSecondaryPair.resolve(isDark))
+	desc = lipgloss.NewStyle().
+		Foreground(helpMidPair.resolve(isDark))
+	dim = lipgloss.NewStyle().
+		Foreground(helpDimPair.resolve(isDark))
+	return
+}
 
 func styledHelp(cmd *cobra.Command, _ []string) {
+	isDark := lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
+	helpHeading, helpCmd, helpFlag, helpDesc, helpDimStyle := helpStyles(isDark)
+
 	var b strings.Builder
 
 	if cmd.Long != "" {

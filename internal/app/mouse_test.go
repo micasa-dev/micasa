@@ -8,22 +8,27 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
-	zone "github.com/lrstanley/bubblezone"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// sendMouse sends a mouse event to the model at the given position.
-func sendMouse(m *Model, x, y int, button tea.MouseButton, action tea.MouseAction) {
-	m.Update(tea.MouseMsg{X: x, Y: y, Button: button, Action: action})
+// sendMouseClick sends a mouse click event to the model at the given position.
+func sendMouseClick(m *Model, x, y int, button tea.MouseButton) {
+	m.Update(tea.MouseClickMsg{X: x, Y: y, Button: button})
 }
 
-// sendClick sends a left mouse button press at the given position.
+// sendMouseWheel sends a mouse wheel event to the model.
+func sendMouseWheel(m *Model, x, y int, button tea.MouseButton) {
+	m.Update(tea.MouseWheelMsg{X: x, Y: y, Button: button})
+}
+
+// sendClick sends a left mouse button click at the given position.
 func sendClick(m *Model, x, y int) {
-	sendMouse(m, x, y, tea.MouseButtonLeft, tea.MouseActionPress)
+	sendMouseClick(m, x, y, tea.MouseLeft)
 }
 
 // requireZone renders the view and returns the zone info, skipping if not found.
@@ -141,10 +146,10 @@ func TestScrollWheelMovesCursor(t *testing.T) {
 	require.Greater(t, len(tab.CellRows), 1)
 	tab.Table.SetCursor(0)
 
-	sendMouse(m, 10, 10, tea.MouseButtonWheelDown, tea.MouseActionPress)
+	sendMouseWheel(m, 10, 10, tea.MouseWheelDown)
 	assert.Equal(t, 1, tab.Table.Cursor(), "scroll down should move cursor to 1")
 
-	sendMouse(m, 10, 10, tea.MouseButtonWheelUp, tea.MouseActionPress)
+	sendMouseWheel(m, 10, 10, tea.MouseWheelUp)
 	assert.Equal(t, 0, tab.Table.Cursor(), "scroll up should move cursor back to 0")
 }
 
@@ -248,11 +253,11 @@ func TestScrollWheelInHelpOverlay(t *testing.T) {
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport)
 
-	initialOffset := m.helpViewport.YOffset
+	initialOffset := m.helpViewport.YOffset()
 
-	sendMouse(m, 10, 10, tea.MouseButtonWheelDown, tea.MouseActionPress)
+	sendMouseWheel(m, 10, 10, tea.MouseWheelDown)
 
-	assert.Greater(t, m.helpViewport.YOffset, initialOffset,
+	assert.Greater(t, m.helpViewport.YOffset(), initialOffset,
 		"scroll down in help overlay should advance viewport")
 }
 
@@ -321,7 +326,7 @@ func TestMouseNoOpOnRelease(t *testing.T) {
 	m := newTestModelWithStore(t)
 	before := m.active
 
-	sendMouse(m, 10, 10, tea.MouseButtonLeft, tea.MouseActionRelease)
+	m.Update(tea.MouseReleaseMsg{X: 10, Y: 10, Button: tea.MouseLeft})
 	assert.Equal(t, before, m.active, "mouse release should not change state")
 }
 
@@ -472,10 +477,10 @@ func TestDashboardScrollWheel(t *testing.T) {
 	require.Greater(t, len(m.dash.nav), 1, "need multiple dashboard nav items")
 
 	m.dash.cursor = 0
-	sendMouse(m, 10, 10, tea.MouseButtonWheelDown, tea.MouseActionPress)
+	sendMouseWheel(m, 10, 10, tea.MouseWheelDown)
 	assert.Equal(t, 1, m.dash.cursor, "scroll down in dashboard should move cursor")
 
-	sendMouse(m, 10, 10, tea.MouseButtonWheelUp, tea.MouseActionPress)
+	sendMouseWheel(m, 10, 10, tea.MouseWheelUp)
 	assert.Equal(t, 0, m.dash.cursor, "scroll up in dashboard should move cursor back")
 }
 
@@ -604,9 +609,9 @@ func TestExtractionRowClickSelectsRow(t *testing.T) {
 
 	z := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtRow, 1))
 
-	m.handleOverlayClick(tea.MouseMsg{
+	m.handleOverlayClick(tea.MouseClickMsg{
 		X: z.StartX, Y: z.StartY,
-		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+		Button: tea.MouseLeft,
 	})
 	assert.Equal(t, 1, ex.previewRow, "clicking ext-row-1 should move preview row cursor to 1")
 }
@@ -631,9 +636,9 @@ func TestExtractionColClickSelectsCol(t *testing.T) {
 	for i := 1; i < 10; i++ {
 		z := m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, i))
 		if z != nil && !z.IsZero() {
-			m.handleOverlayClick(tea.MouseMsg{
+			m.handleOverlayClick(tea.MouseClickMsg{
 				X: z.StartX, Y: z.StartY,
-				Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+				Button: tea.MouseLeft,
 			})
 			assert.Equal(t, i, ex.previewCol,
 				"clicking ext-col-%d header should move preview column cursor", i)
@@ -672,9 +677,9 @@ func TestExtractionRowClickSelectsColumn(t *testing.T) {
 
 	rowZ := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtRow, 1))
 	// Click at the X of the secondary column, Y of row 1.
-	m.handleOverlayClick(tea.MouseMsg{
+	m.handleOverlayClick(tea.MouseClickMsg{
 		X: colZ.StartX, Y: rowZ.StartY,
-		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+		Button: tea.MouseLeft,
 	})
 	assert.Equal(t, 1, ex.previewRow, "clicking should move row cursor to 1")
 	assert.Equal(t, 1, ex.previewCol,
@@ -694,9 +699,9 @@ func TestExtractionClickIgnoredWhenNotExploring(t *testing.T) {
 
 	z := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtRow, 1))
 
-	m.handleOverlayClick(tea.MouseMsg{
+	m.handleOverlayClick(tea.MouseClickMsg{
 		X: z.StartX, Y: z.StartY,
-		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+		Button: tea.MouseLeft,
 	})
 	assert.Equal(t, 0, ex.previewRow,
 		"clicking row in non-explore mode should not update preview cursor")
@@ -718,9 +723,9 @@ func TestExtractionTabClickSwitchesTab(t *testing.T) {
 
 	z := requireExtractionZone(t, m, fmt.Sprintf("%s%d", zoneExtTab, 1))
 
-	m.handleOverlayClick(tea.MouseMsg{
+	m.handleOverlayClick(tea.MouseClickMsg{
 		X: z.StartX, Y: z.StartY,
-		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
+		Button: tea.MouseLeft,
 	})
 	assert.Equal(t, 1, ex.previewTab,
 		"clicking ext-tab-1 should switch to second preview tab")

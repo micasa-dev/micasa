@@ -12,8 +12,8 @@ import (
 	"slices"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -326,7 +326,7 @@ func (m *Model) openOpsTree() {
 }
 
 // handleOpsTreeKey handles key events for the ops tree overlay.
-func (m *Model) handleOpsTreeKey(key tea.KeyMsg) tea.Cmd {
+func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
 	tree := m.opsTree
 	if tree == nil {
 		return nil

@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/table"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/locale"
-	zone "github.com/lrstanley/bubblezone"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,38 +49,60 @@ func newTestModel(t *testing.T) *Model {
 	return m
 }
 
-func sendKey(m *Model, key string) {
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
-	// Some keys need special types.
+// keyPress builds a tea.KeyPressMsg from a human-readable key string (the
+// same format used by the key constants in model.go). This replaces the v1
+// tea.KeyPressMsg struct construction.
+func keyPress(key string) tea.KeyPressMsg {
 	switch key {
 	case "enter":
-		msg = tea.KeyMsg{Type: tea.KeyEnter}
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
 	case "esc":
-		msg = tea.KeyMsg{Type: tea.KeyEscape}
+		return tea.KeyPressMsg{Code: tea.KeyEscape}
 	case "tab":
-		msg = tea.KeyMsg{Type: tea.KeyTab}
+		return tea.KeyPressMsg{Code: tea.KeyTab}
 	case "shift+tab":
-		msg = tea.KeyMsg{Type: tea.KeyShiftTab}
-	case "ctrl+c":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlC}
-	case keyCtrlN:
-		msg = tea.KeyMsg{Type: tea.KeyCtrlN}
-	case "ctrl+o":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlO}
-	case "ctrl+s":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlS}
-	case "ctrl+b":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlB}
-	case "ctrl+e":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlE}
-	case "ctrl+f":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlF}
-	case "ctrl+j":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlJ}
-	case "ctrl+k":
-		msg = tea.KeyMsg{Type: tea.KeyCtrlK}
+		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+	case "backspace":
+		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "up":
+		return tea.KeyPressMsg{Code: tea.KeyUp}
+	case "down":
+		return tea.KeyPressMsg{Code: tea.KeyDown}
+	case "left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft}
+	case "right":
+		return tea.KeyPressMsg{Code: tea.KeyRight}
+	case "pgup":
+		return tea.KeyPressMsg{Code: tea.KeyPgUp}
+	case "pgdown":
+		return tea.KeyPressMsg{Code: tea.KeyPgDown}
+	case "home":
+		return tea.KeyPressMsg{Code: tea.KeyHome}
+	case "end":
+		return tea.KeyPressMsg{Code: tea.KeyEnd}
+	case "shift+up":
+		return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModShift}
+	case "shift+down":
+		return tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift}
+	case "space":
+		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 	}
-	m.Update(msg)
+	// ctrl+<letter> combos
+	if len(key) > 5 && key[:5] == "ctrl+" {
+		ch := rune(key[5])
+		return tea.KeyPressMsg{Code: ch, Mod: tea.ModCtrl}
+	}
+	// Single printable character.
+	runes := []rune(key)
+	if len(runes) == 1 {
+		return tea.KeyPressMsg{Code: runes[0], Text: key}
+	}
+	// Fallback: multi-rune string treated as text.
+	return tea.KeyPressMsg{Code: runes[0], Text: key}
+}
+
+func sendKey(m *Model, key string) {
+	m.Update(keyPress(key))
 }
 
 func TestStartsInNormalMode(t *testing.T) {
@@ -253,7 +275,7 @@ func TestQuitOnlyInNormalMode(t *testing.T) {
 
 	// In edit mode, 'ctrl+q' should quit (returns tea.Quit).
 	sendKey(m, "i")
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
 	assert.NotNil(t, cmd, "'ctrl+q' should quit even in edit mode")
 }
 
@@ -316,17 +338,17 @@ func TestHelpViewportScrolling(t *testing.T) {
 
 	// Scroll down and verify offset moves.
 	sendKey(m, "j")
-	if m.helpViewport.TotalLineCount() > m.helpViewport.Height {
-		assert.NotZero(t, m.helpViewport.YOffset, "expected viewport to scroll down on 'j'")
+	if m.helpViewport.TotalLineCount() > m.helpViewport.Height() {
+		assert.NotZero(t, m.helpViewport.YOffset(), "expected viewport to scroll down on 'j'")
 	}
 
 	// Scroll back up.
 	sendKey(m, "k")
-	assert.Equal(t, 0, m.helpViewport.YOffset, "expected viewport at top after scrolling back up")
+	assert.Equal(t, 0, m.helpViewport.YOffset(), "expected viewport at top after scrolling back up")
 
 	// Go to bottom with G.
 	sendKey(m, "G")
-	if m.helpViewport.TotalLineCount() > m.helpViewport.Height {
+	if m.helpViewport.TotalLineCount() > m.helpViewport.Height() {
 		assert.True(t, m.helpViewport.AtBottom(), "expected viewport at bottom after 'G'")
 	}
 
@@ -346,7 +368,7 @@ func TestHelpOverlayFixedWidthOnScroll(t *testing.T) {
 	m.height = 20 // Small height forces scrolling.
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport, "expected help visible")
-	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height {
+	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
 		t.Skip("help content fits without scrolling at this height")
 	}
 
@@ -373,7 +395,7 @@ func TestHelpScrollIndicatorChanges(t *testing.T) {
 	m.height = 20
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport, "expected help visible")
-	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height {
+	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
 		t.Skip("help content fits without scrolling at this height")
 	}
 
@@ -546,7 +568,7 @@ func TestTabSwitchKeysBlockedInEditMode(t *testing.T) {
 
 func TestModeBadgeFixedWidth(t *testing.T) {
 	t.Parallel()
-	styles := DefaultStyles()
+	styles := DefaultStyles(true)
 	normalBadge := styles.ModeNormal().Render("NAV")
 	normalWidth := lipgloss.Width(normalBadge)
 

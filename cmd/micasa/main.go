@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"runtime/debug"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/cpcloud/micasa/internal/app"
 	"github.com/cpcloud/micasa/internal/config"
 	"github.com/cpcloud/micasa/internal/data"
@@ -152,9 +152,12 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 	if len(cfg.Warnings) > 0 {
-		warnStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-			Light: "#B8860B", Dark: "#F0E442", // Wong yellow
-		})
+		isDark := lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
+		warnColor := "#F0E442" // Wong yellow (dark bg)
+		if !isDark {
+			warnColor = "#B8860B" // Wong yellow (light bg)
+		}
+		warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(warnColor))
 		for _, w := range cfg.Warnings {
 			fmt.Fprintln(os.Stderr, warnStyle.Render("warning:")+" "+w)
 		}
@@ -219,7 +222,7 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 	fmt.Fprint(os.Stderr, "\033[22;2t\033]2;micasa\007")
 	defer fmt.Fprint(os.Stderr, "\033[23;2t")
 
-	_, err = tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
+	_, err = tea.NewProgram(model).Run()
 	if err != nil {
 		return fmt.Errorf("running program: %w", err)
 	}

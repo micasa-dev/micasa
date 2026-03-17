@@ -6,8 +6,8 @@ package app
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,49 +50,49 @@ func TestSelectOrdinal(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name   string
-		msg    tea.KeyMsg
+		msg    tea.KeyPressMsg
 		wantN  int
 		wantOk bool
 	}{
 		{
 			name:   "key 1",
-			msg:    tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}},
+			msg:    tea.KeyPressMsg{Code: '1', Text: "1"},
 			wantN:  1,
 			wantOk: true,
 		},
 		{
 			name:   "key 5",
-			msg:    tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'5'}},
+			msg:    tea.KeyPressMsg{Code: '5', Text: "5"},
 			wantN:  5,
 			wantOk: true,
 		},
 		{
 			name:   "key 9",
-			msg:    tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'9'}},
+			msg:    tea.KeyPressMsg{Code: '9', Text: "9"},
 			wantN:  9,
 			wantOk: true,
 		},
 		{
 			name:   "key 0 is not an ordinal",
-			msg:    tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'0'}},
+			msg:    tea.KeyPressMsg{Code: '0', Text: "0"},
 			wantN:  0,
 			wantOk: false,
 		},
 		{
 			name:   "letter key",
-			msg:    tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}},
+			msg:    tea.KeyPressMsg{Code: 'a', Text: "a"},
 			wantN:  0,
 			wantOk: false,
 		},
 		{
 			name:   "enter key",
-			msg:    tea.KeyMsg{Type: tea.KeyEnter},
+			msg:    tea.KeyPressMsg{Code: tea.KeyEnter},
 			wantN:  0,
 			wantOk: false,
 		},
 		{
 			name:   "empty runes",
-			msg:    tea.KeyMsg{Type: tea.KeyRunes, Runes: nil},
+			msg:    tea.KeyPressMsg{},
 			wantN:  0,
 			wantOk: false,
 		},

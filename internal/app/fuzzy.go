@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // fuzzyMatch scores how well query matches target (case-insensitive).

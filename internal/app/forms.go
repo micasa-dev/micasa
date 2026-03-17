@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/locale"
@@ -845,17 +845,17 @@ func incidentFormValues(item data.Incident, cur locale.Currency) *incidentFormDa
 func incidentStatusOptions() []huh.Option[string] {
 	type entry struct {
 		value string
-		color lipgloss.AdaptiveColor
+		color adaptiveColor
 	}
 	statuses := []entry{
-		{data.IncidentStatusOpen, accent},
-		{data.IncidentStatusInProgress, success},
-		{data.IncidentStatusResolved, textDim},
+		{data.IncidentStatusOpen, accentPair},
+		{data.IncidentStatusInProgress, successPair},
+		{data.IncidentStatusResolved, textDimPair},
 	}
 	opts := make([]huh.Option[string], len(statuses))
 	for i, s := range statuses {
 		label := statusLabel(s.value)
-		colored := lipgloss.NewStyle().Foreground(s.color).Render(label)
+		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
 		opts[i] = huh.NewOption(colored, s.value)
 	}
 	return withOrdinals(opts)
@@ -864,17 +864,17 @@ func incidentStatusOptions() []huh.Option[string] {
 func incidentSeverityOptions() []huh.Option[string] {
 	type entry struct {
 		value string
-		color lipgloss.AdaptiveColor
+		color adaptiveColor
 	}
 	severities := []entry{
-		{data.IncidentSeverityUrgent, danger},
-		{data.IncidentSeveritySoon, warning},
-		{data.IncidentSeverityWhenever, textDim},
+		{data.IncidentSeverityUrgent, dangerPair},
+		{data.IncidentSeveritySoon, warningPair},
+		{data.IncidentSeverityWhenever, textDimPair},
 	}
 	opts := make([]huh.Option[string], len(severities))
 	for i, s := range severities {
 		label := statusLabel(s.value)
-		colored := lipgloss.NewStyle().Foreground(s.color).Render(label)
+		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
 		opts[i] = huh.NewOption(colored, s.value)
 	}
 	return withOrdinals(opts)
@@ -883,14 +883,14 @@ func incidentSeverityOptions() []huh.Option[string] {
 func seasonOptions() []huh.Option[string] {
 	type entry struct {
 		value string
-		color lipgloss.AdaptiveColor
+		color adaptiveColor
 	}
 	seasons := []entry{
-		{"", textDim},
-		{data.SeasonSpring, success},
-		{data.SeasonSummer, warning},
-		{data.SeasonFall, secondary},
-		{data.SeasonWinter, accent},
+		{"", textDimPair},
+		{data.SeasonSpring, successPair},
+		{data.SeasonSummer, warningPair},
+		{data.SeasonFall, secondaryPair},
+		{data.SeasonWinter, accentPair},
 	}
 	opts := make([]huh.Option[string], len(seasons))
 	for i, s := range seasons {
@@ -898,7 +898,7 @@ func seasonOptions() []huh.Option[string] {
 		if s.value != "" {
 			label = statusLabel(s.value)
 		}
-		colored := lipgloss.NewStyle().Foreground(s.color).Render(label)
+		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
 		opts[i] = huh.NewOption(colored, s.value)
 	}
 	return withOrdinals(opts)
@@ -1730,55 +1730,69 @@ func applyFormDefaults(form *huh.Form) {
 }
 
 // formTheme builds a huh form theme using the app's Wong palette.
-func formTheme() *huh.Theme {
-	t := huh.ThemeBase()
+// It returns a huh.ThemeFunc so the form can re-resolve colors when the
+// terminal's dark/light status changes.
+func formTheme() huh.ThemeFunc {
+	return func(isDark bool) *huh.Styles {
+		t := huh.ThemeBase(isDark)
 
-	marker := lipgloss.NewStyle().
-		SetString(" ∗").
-		Foreground(secondary)
+		accent := accentPair.resolve(isDark)
+		secondary := secondaryPair.resolve(isDark)
+		success := successPair.resolve(isDark)
+		textBright := textBrightPair.resolve(isDark)
+		textMid := textMidPair.resolve(isDark)
+		textDim := textDimPair.resolve(isDark)
+		surface := surfacePair.resolve(isDark)
+		onAccent := onAccentPair.resolve(isDark)
+		border := borderPair.resolve(isDark)
 
-	// Focused field styles.
-	t.Focused.Base = t.Focused.Base.BorderForeground(border)
-	t.Focused.Card = t.Focused.Base
-	t.Focused.Title = t.Focused.Title.Foreground(accent).Bold(true)
-	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(accent).Bold(true).MarginBottom(1)
-	t.Focused.Description = t.Focused.Description.Foreground(textDim)
-	t.Focused.ErrorIndicator = marker
-	t.Focused.ErrorMessage = marker
-	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(accent)
-	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(accent)
-	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(accent)
-	t.Focused.Option = t.Focused.Option.Foreground(textBright)
-	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(accent)
-	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(success).Bold(true)
-	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(success).SetString("[•] ")
-	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(textMid).SetString("[ ] ")
-	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(textBright)
-	t.Focused.FocusedButton = t.Focused.FocusedButton.Foreground(onAccent).Background(accent)
-	t.Focused.BlurredButton = t.Focused.BlurredButton.Foreground(textMid).Background(surface)
+		marker := lipgloss.NewStyle().
+			SetString(" ∗").
+			Foreground(secondary)
 
-	t.Focused.Directory = lipgloss.NewStyle().Foreground(accent).Bold(true)
-	t.Focused.File = lipgloss.NewStyle().Foreground(textBright)
+		// Focused field styles.
+		t.Focused.Base = t.Focused.Base.BorderForeground(border)
+		t.Focused.Card = t.Focused.Base
+		t.Focused.Title = t.Focused.Title.Foreground(accent).Bold(true)
+		t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(accent).Bold(true).MarginBottom(1)
+		t.Focused.Description = t.Focused.Description.Foreground(textDim)
+		t.Focused.ErrorIndicator = marker
+		t.Focused.ErrorMessage = marker
+		t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(accent)
+		t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(accent)
+		t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(accent)
+		t.Focused.Option = t.Focused.Option.Foreground(textBright)
+		t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(accent)
+		t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(success).Bold(true)
+		t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(success).SetString("[•] ")
+		t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(textMid).SetString("[ ] ")
+		t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(textBright)
+		t.Focused.FocusedButton = t.Focused.FocusedButton.Foreground(onAccent).Background(accent)
+		t.Focused.BlurredButton = t.Focused.BlurredButton.Foreground(textMid).Background(surface)
 
-	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(accent)
-	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(textDim)
-	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(accent)
+		t.Focused.Directory = lipgloss.NewStyle().Foreground(accent).Bold(true)
+		t.Focused.File = lipgloss.NewStyle().Foreground(textBright)
 
-	// Blurred inherits focused, then dims.
-	t.Blurred = t.Focused
-	t.Blurred.Base = t.Blurred.Base.BorderStyle(lipgloss.HiddenBorder())
-	t.Blurred.Card = t.Blurred.Base
-	t.Blurred.Title = t.Blurred.Title.Foreground(textMid).Bold(false)
-	t.Blurred.NoteTitle = t.Blurred.NoteTitle.Foreground(textMid).Bold(false)
-	t.Blurred.TextInput.Prompt = t.Blurred.TextInput.Prompt.Foreground(textDim)
-	t.Blurred.TextInput.Text = t.Blurred.TextInput.Text.Foreground(textMid)
-	t.Blurred.NextIndicator = lipgloss.NewStyle()
-	t.Blurred.PrevIndicator = lipgloss.NewStyle()
+		t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(accent)
+		t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(textDim)
+		t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(accent)
 
-	t.Group.Title = t.Focused.Title
-	t.Group.Description = t.Focused.Description
+		// Blurred inherits focused, then dims.
+		t.Blurred = t.Focused
+		t.Blurred.Base = t.Blurred.Base.BorderStyle(lipgloss.HiddenBorder())
+		t.Blurred.Card = t.Blurred.Base
+		t.Blurred.Title = t.Blurred.Title.Foreground(textMid).Bold(false)
+		t.Blurred.NoteTitle = t.Blurred.NoteTitle.Foreground(textMid).Bold(false)
+		t.Blurred.TextInput.Prompt = t.Blurred.TextInput.Prompt.Foreground(textDim)
+		t.Blurred.TextInput.Text = t.Blurred.TextInput.Text.Foreground(textMid)
+		t.Blurred.NextIndicator = lipgloss.NewStyle()
+		t.Blurred.PrevIndicator = lipgloss.NewStyle()
 
-	return t
+		t.Group.Title = t.Focused.Title
+		t.Group.Description = t.Focused.Description
+
+		return t
+	}
 }
 
 func formKeyMap() *huh.KeyMap {
@@ -2078,21 +2092,21 @@ func projectOptions(projects []data.Project) []huh.Option[uint] {
 func statusOptions() []huh.Option[string] {
 	type entry struct {
 		value string
-		color lipgloss.AdaptiveColor
+		color adaptiveColor
 	}
 	statuses := []entry{
-		{data.ProjectStatusIdeating, muted},
-		{data.ProjectStatusPlanned, accent},
-		{data.ProjectStatusQuoted, secondary},
-		{data.ProjectStatusInProgress, success},
-		{data.ProjectStatusDelayed, warning},
-		{data.ProjectStatusCompleted, textDim},
-		{data.ProjectStatusAbandoned, danger},
+		{data.ProjectStatusIdeating, mutedPair},
+		{data.ProjectStatusPlanned, accentPair},
+		{data.ProjectStatusQuoted, secondaryPair},
+		{data.ProjectStatusInProgress, successPair},
+		{data.ProjectStatusDelayed, warningPair},
+		{data.ProjectStatusCompleted, textDimPair},
+		{data.ProjectStatusAbandoned, dangerPair},
 	}
 	opts := make([]huh.Option[string], len(statuses))
 	for i, s := range statuses {
 		label := statusLabel(s.value)
-		colored := lipgloss.NewStyle().Foreground(s.color).Render(label)
+		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
 		opts[i] = huh.NewOption(colored, s.value)
 	}
 	return withOrdinals(opts)

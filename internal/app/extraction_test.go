@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/cpcloud/micasa/internal/extract"
 	"github.com/cpcloud/micasa/internal/llm"
@@ -51,24 +52,24 @@ func newExtractionModel(t *testing.T, steps map[extractionStep]stepStatus) *Mode
 }
 
 func sendExtractionKey(m *Model, key string) {
-	var msg tea.KeyMsg
+	var msg tea.KeyPressMsg
 	switch key {
 	case "enter":
-		msg = tea.KeyMsg{Type: tea.KeyEnter}
+		msg = tea.KeyPressMsg{Code: tea.KeyEnter}
 	case "esc":
-		msg = tea.KeyMsg{Type: tea.KeyEscape}
+		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
 	case keyCtrlB:
-		msg = tea.KeyMsg{Type: tea.KeyCtrlB}
+		msg = tea.KeyPressMsg{Code: 'b', Mod: tea.ModCtrl}
 	case keyCtrlQ:
-		msg = tea.KeyMsg{Type: tea.KeyCtrlQ}
+		msg = tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl}
 	case "backspace":
-		msg = tea.KeyMsg{Type: tea.KeyBackspace}
+		msg = tea.KeyPressMsg{Code: tea.KeyBackspace}
 	case "up":
-		msg = tea.KeyMsg{Type: tea.KeyUp}
+		msg = tea.KeyPressMsg{Code: tea.KeyUp}
 	case "down":
-		msg = tea.KeyMsg{Type: tea.KeyDown}
+		msg = tea.KeyPressMsg{Code: tea.KeyDown}
 	default:
-		msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
+		msg = keyPress(key)
 	}
 	m.Update(msg)
 }
@@ -277,10 +278,13 @@ func TestRenderOperationPreview_TabbedInterface(t *testing.T) {
 	m.ex.extraction.enterExploreMode(m.cur)
 	m.ex.extraction.previewTab = 1
 	out = m.renderOperationPreviewSection(60, true)
-	assert.Contains(t, out, "Title")
-	assert.Contains(t, out, "Invoice")
-	assert.Contains(t, out, "Notes")
-	assert.Contains(t, out, "Repair")
+	// Strip ANSI: lipgloss v2 may render cursor-row styling per-character,
+	// splitting contiguous text across escape sequences.
+	plain := ansi.Strip(out)
+	assert.Contains(t, plain, "Title")
+	assert.Contains(t, plain, "Invoice")
+	assert.Contains(t, plain, "Notes")
+	assert.Contains(t, plain, "Repair")
 }
 
 func TestRenderOperationPreview_EmptyOps(t *testing.T) {
@@ -1779,7 +1783,7 @@ func TestExtraction_CollapseResetsViewportOffset(t *testing.T) {
 
 	// The text step header should be visible (offset reset to 0).
 	assert.Contains(t, out, "text", "text step should be visible after collapse")
-	assert.Equal(t, 0, ex.Viewport.YOffset, "viewport offset should reset when content fits")
+	assert.Equal(t, 0, ex.Viewport.YOffset(), "viewport offset should reset when content fits")
 }
 
 // --- Ext child rendering coverage ---
@@ -3275,7 +3279,7 @@ func TestExtractionTSVToggle_HintShownInFooter(t *testing.T) {
 	m.width = 120
 	m.height = 40
 
-	view := m.View()
+	view := m.View().Content
 	assert.Contains(t, view, "layout", "footer should show layout hint when done with LLM")
 }
 

@@ -3,7 +3,7 @@
 
 package app
 
-import tea "github.com/charmbracelet/bubbletea"
+import tea "charm.land/bubbletea/v2"
 
 // waitForStream returns a Cmd that blocks until the next value arrives on ch.
 // If the channel is open, wrap converts the value to a tea.Msg.

@@ -6,7 +6,7 @@ package app
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -188,7 +188,7 @@ func TestHandleColumnFinderKey_EscCloses(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.openColumnFinder()
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyEscape})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, m.columnFinder)
 	assert.Contains(t, m.statusView(), "NAV", "finder should close after esc")
 }
@@ -201,8 +201,8 @@ func TestHandleColumnFinderKey_Typing(t *testing.T) {
 	initial := len(cf.Matches)
 
 	// Type "st" to filter.
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 's', Text: "s"})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 't', Text: "t"})
 
 	assert.Equal(t, "st", cf.Query)
 	if initial > 1 {
@@ -216,11 +216,11 @@ func TestHandleColumnFinderKey_Backspace(t *testing.T) {
 	m.openColumnFinder()
 	cf := m.columnFinder
 
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	require.Equal(t, "ab", cf.Query)
 
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyBackspace})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "a", cf.Query)
 }
 
@@ -231,16 +231,16 @@ func TestHandleColumnFinderKey_BackspaceMultibyte(t *testing.T) {
 	cf := m.columnFinder
 
 	// Type a multi-byte character followed by an ASCII character.
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'ü'}})
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 'ü', Text: "ü"})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Equal(t, "üx", cf.Query)
 
 	// Backspace should remove 'x', leaving the full 'ü' intact.
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyBackspace})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "ü", cf.Query)
 
 	// Backspace again should remove 'ü' entirely, not just one byte.
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyBackspace})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, cf.Query)
 }
 
@@ -250,9 +250,9 @@ func TestHandleColumnFinderKey_CtrlU(t *testing.T) {
 	m.openColumnFinder()
 	cf := m.columnFinder
 
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyCtrlU})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 'f', Text: "f"})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	assert.Empty(t, cf.Query)
 }
 
@@ -267,14 +267,14 @@ func TestHandleColumnFinderKey_Navigation(t *testing.T) {
 
 	assert.Equal(t, 0, cf.Cursor)
 
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, cf.Cursor)
 
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, cf.Cursor)
 
 	// Should clamp at top.
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, cf.Cursor)
 }
 
@@ -305,7 +305,7 @@ func TestSlashBlockedOnDashboard(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.showDashboard = true
-	cmd, handled := m.handleDashboardKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cmd, handled := m.handleDashboardKeys(tea.KeyPressMsg{Code: '/', Text: "/"})
 	assert.True(t, handled, "/ should be blocked on dashboard")
 	assert.Nil(t, cmd)
 }
@@ -341,7 +341,7 @@ func TestColumnFinderEnterJumps(t *testing.T) {
 	cf.Cursor = 1
 	target := cf.Matches[1].Entry.FullIndex
 
-	m.handleColumnFinderKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, m.columnFinder)
 	assert.NotContains(t, m.buildView(), "Jump to Column", "finder should close after enter")
 	tab := m.effectiveTab()
