@@ -5,6 +5,7 @@ package relay
 
 import (
 	"context"
+	"time"
 
 	"github.com/cpcloud/micasa/internal/sync"
 )
@@ -15,6 +16,12 @@ const (
 
 	// maxActiveInvites is the maximum number of active invites per household.
 	maxActiveInvites = 3
+
+	// keyExchangeExpiry bounds how long a key exchange record is valid.
+	// After this duration, GetKeyExchangeResult returns not-found and
+	// GetPendingExchanges filters the record out. Limits the window
+	// during which encrypted credentials sit on the relay.
+	keyExchangeExpiry = 1 * time.Hour
 )
 
 // Store defines the persistence interface for the relay server.

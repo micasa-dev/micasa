@@ -340,7 +340,8 @@ func (m *MemStore) GetPendingExchanges(
 
 	var result []sync.PendingKeyExchange
 	for _, ex := range m.exchanges {
-		if ex.householdID == householdID && !ex.completed {
+		if ex.householdID == householdID && !ex.completed &&
+			time.Since(ex.createdAt) <= keyExchangeExpiry {
 			result = append(result, sync.PendingKeyExchange{
 				ID:              ex.id,
 				JoinerPublicKey: ex.joinerPublicKey,
@@ -411,6 +412,10 @@ func (m *MemStore) GetKeyExchangeResult(
 	ex, ok := m.exchanges[exchangeID]
 	if !ok {
 		return sync.KeyExchangeResult{}, fmt.Errorf("key exchange %s not found", exchangeID)
+	}
+
+	if time.Since(ex.createdAt) > keyExchangeExpiry {
+		return sync.KeyExchangeResult{}, fmt.Errorf("key exchange %s expired", exchangeID)
 	}
 
 	if !ex.completed {

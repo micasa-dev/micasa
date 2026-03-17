@@ -439,7 +439,11 @@ func (s *PgStore) GetPendingExchanges(
 ) ([]sync.PendingKeyExchange, error) {
 	var rows []pgKeyExchange
 	err := s.db.WithContext(ctx).
-		Where("household_id = ? AND completed = false", householdID).
+		Where(
+			"household_id = ? AND completed = false AND created_at > ?",
+			householdID,
+			time.Now().Add(-keyExchangeExpiry),
+		).
 		Find(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("get pending exchanges: %w", err)
@@ -527,6 +531,10 @@ func (s *PgStore) GetKeyExchangeResult(
 				return fmt.Errorf("key exchange %s not found", exchangeID)
 			}
 			return fmt.Errorf("get exchange: %w", err)
+		}
+
+		if time.Since(ex.CreatedAt) > keyExchangeExpiry {
+			return fmt.Errorf("key exchange %s expired", exchangeID)
 		}
 
 		if !ex.Completed {

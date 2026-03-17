@@ -1482,3 +1482,66 @@ func TestStatusIncludesBlobStorage(t *testing.T) {
 	assert.Equal(t, int64(len(payload)), status.BlobStorage.UsedBytes)
 	assert.True(t, status.BlobStorage.QuotaBytes > 0)
 }
+
+func TestKeyExchangeExpiredReturnsError(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create invite and join to get a key exchange record.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	joinBody, _ := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
+		DeviceName: "phone",
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var joinResp sync.JoinResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+
+	// Backdate the exchange record to beyond the expiry window.
+	store.mu.Lock()
+	ex := store.exchanges[joinResp.ExchangeID]
+	require.NotNil(t, ex)
+	ex.createdAt = time.Now().Add(-2 * keyExchangeExpiry)
+	store.mu.Unlock()
+
+	// GetKeyExchangeResult should now return an error (expired).
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	// GetPendingExchanges should exclude the expired exchange.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"GET",
+			"/households/"+hh.HouseholdID+"/pending-exchanges",
+			nil,
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var pendingResp struct {
+		Exchanges []sync.PendingKeyExchange `json:"exchanges"`
+	}
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&pendingResp))
+	assert.Empty(t, pendingResp.Exchanges, "expired exchange should not appear in pending list")
+}
