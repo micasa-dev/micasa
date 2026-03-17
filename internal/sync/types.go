@@ -56,7 +56,8 @@ type Household struct {
 
 // BlobStorage reports blob storage usage for a household.
 type BlobStorage struct {
-	UsedBytes  int64 `json:"used_bytes"`
+	UsedBytes int64 `json:"used_bytes"`
+	// QuotaBytes is the per-household blob quota in bytes. 0 means unlimited.
 	QuotaBytes int64 `json:"quota_bytes"`
 }
 
