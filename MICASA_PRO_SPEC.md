@@ -1076,17 +1076,18 @@ CREATE TABLE ops (
     seq          BIGINT NOT NULL,
     household_id TEXT NOT NULL REFERENCES households(id),
     id           TEXT NOT NULL,  -- ULID from client
-    device_id    TEXT NOT NULL,
+    device_id    TEXT NOT NULL,  -- no FK: device revocation must not cascade-delete ops
     nonce        BYTEA NOT NULL,
     ciphertext   BYTEA NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (household_id, seq)
 );
+CREATE UNIQUE INDEX idx_ops_dedup ON ops(household_id, id);
 
 CREATE TABLE invites (
     code         TEXT PRIMARY KEY,
     household_id TEXT NOT NULL REFERENCES households(id),
-    created_by   TEXT NOT NULL,  -- device_id
+    created_by   TEXT NOT NULL,  -- device_id (no FK: revocation must not cascade)
     expires_at   TIMESTAMPTZ NOT NULL,
     consumed     BOOLEAN NOT NULL DEFAULT false,
     attempts     INTEGER NOT NULL DEFAULT 0,
@@ -1106,7 +1107,7 @@ CREATE TABLE key_exchanges (
 );
 
 CREATE TABLE blobs (
-    household_id TEXT NOT NULL,
+    household_id TEXT NOT NULL REFERENCES households(id),
     hash         TEXT NOT NULL,  -- SHA-256 hex
     data         BYTEA NOT NULL,
     size_bytes   BIGINT NOT NULL,

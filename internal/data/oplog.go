@@ -241,6 +241,8 @@ func (c *deviceIDCell) set(id string) {
 }
 
 // DeviceID returns this device's sync device ID, initializing if needed.
+// This is a best-effort accessor for display and comparison purposes only.
+// Oplog writes use resolveDeviceID which properly propagates errors.
 func (s *Store) DeviceID() string {
 	id, err := s.deviceCell.resolve(s.db)
 	if err != nil {

@@ -4,7 +4,6 @@
 package crypto
 
 import (
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -49,13 +48,8 @@ func validDeviceToken(s string) bool {
 	if len(s) != deviceTokenLen {
 		return false
 	}
-	_, err := hex.DecodeString(s)
-	if err != nil {
-		return false
-	}
-	// Reject uppercase hex. hex.DecodeString accepts both cases.
 	for _, c := range s {
-		if c >= 'A' && c <= 'F' {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
 			return false
 		}
 	}

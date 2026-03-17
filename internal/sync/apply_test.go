@@ -160,12 +160,12 @@ func TestApplyOpsSortsBySeqBeforeApplying(t *testing.T) {
 	assert.Equal(t, "Updated Name", vendor.Name)
 }
 
-func TestApplyOneConflictCheckInsideTransaction(t *testing.T) {
+func TestApplyOneRemoteWinsLWWClearsLocalAppliedAt(t *testing.T) {
 	t.Parallel()
 
-	// This test verifies that the conflict-check query runs inside the
-	// transaction (not before it), preventing a TOCTOU race where a
-	// local op could be created between the check and the apply.
+	// Verifies the remote-wins LWW path: when a newer remote op conflicts
+	// with an older local unsynced op, the remote op is applied and the
+	// local op's applied_at is cleared (all within one transaction).
 	dbPath := t.TempDir() + "/test.db"
 	store, err := data.Open(dbPath)
 	require.NoError(t, err)
