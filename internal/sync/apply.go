@@ -202,16 +202,15 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 // stripNonColumnKeys removes payload keys that should not be written to the
 // database from remote operations. This includes:
 //   - Keys with no corresponding DB column (e.g. blob_ref on documents)
-//   - Sensitive columns that remote ops must not control (deleted_at,
-//     created_at, updated_at) to prevent a malicious relay from injecting
-//     soft-deletes or timestamp manipulation
+//   - deleted_at: prevents a malicious relay from injecting soft-deletes
+//
+// created_at and updated_at are intentionally preserved so that records
+// maintain their original timestamps across devices.
 func stripNonColumnKeys(tableName string, row map[string]any) {
 	if tableName == data.TableDocuments {
 		delete(row, "blob_ref")
 	}
 	delete(row, "deleted_at")
-	delete(row, "created_at")
-	delete(row, "updated_at")
 }
 
 func applyDelete(tx *gorm.DB, op OpPayload) error {

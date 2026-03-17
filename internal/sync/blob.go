@@ -13,11 +13,12 @@ import (
 	"net/url"
 
 	"github.com/cpcloud/micasa/internal/crypto"
+	"golang.org/x/crypto/nacl/secretbox"
 )
 
 // maxBlobDownload is the maximum size of an encrypted blob response.
 // Plaintext limit (50 MB) + NaCl secretbox overhead (nonce + poly1305 tag).
-const maxBlobDownload int64 = 50<<20 + crypto.NonceSize + 16
+const maxBlobDownload int64 = 50<<20 + crypto.NonceSize + secretbox.Overhead
 
 // UploadBlob encrypts plaintext with the household key and uploads it
 // to the relay. Treats HTTP 409 (blob already exists) as success (dedup).

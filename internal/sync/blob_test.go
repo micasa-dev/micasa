@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -183,4 +184,33 @@ func TestBlobUploadRejectsHashMismatch(t *testing.T) {
 	err := client.UploadBlob(hhID, fakeHash, plaintext)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "hash mismatch")
+}
+
+func TestBlobDownloadIntegrityCheckFailsOnTamperedContent(t *testing.T) {
+	t.Parallel()
+
+	// Encrypt different content under the household key so decryption
+	// succeeds but the plaintext hash won't match the requested hash.
+	key, err := crypto.GenerateHouseholdKey()
+	require.NoError(t, err)
+
+	realPlaintext := []byte("the real content")
+	tamperedPlaintext := []byte("tampered content!")
+	realHash := sha256Hex(realPlaintext)
+
+	sealed, err := crypto.Encrypt(key, tamperedPlaintext)
+	require.NoError(t, err)
+
+	// Serve the tampered ciphertext for any GET request.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(sealed)
+	}))
+	t.Cleanup(srv.Close)
+
+	client := sync.NewClient(srv.URL, "fake-token", key)
+	_, err = client.DownloadBlob("hh-id", realHash)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "integrity")
+	assert.Contains(t, err.Error(), realHash)
 }

@@ -19,6 +19,7 @@ func BoxSeal(
 	senderPrivateKey, recipientPublicKey [KeySize]byte,
 	plaintext []byte,
 ) ([]byte, error) {
+	// Best-effort: only clears this function's stack copy.
 	defer zeroize(senderPrivateKey[:])
 	var nonce [NonceSize]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
@@ -34,6 +35,7 @@ func BoxOpen(
 	recipientPrivateKey, senderPublicKey [KeySize]byte,
 	sealed []byte,
 ) ([]byte, error) {
+	// Best-effort: only clears this function's stack copy.
 	defer zeroize(recipientPrivateKey[:])
 	if len(sealed) < NonceSize+boxOverhead {
 		return nil, fmt.Errorf(
