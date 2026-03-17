@@ -418,211 +418,24 @@ func runProSync(dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewClient(deps.device.RelayURL, deps.token, deps.key)
+	engine := sync.NewEngine(deps.store, client, deps.device.HouseholdID)
 
-	pulled, err := pullAll(deps.store, client, deps.device.LastSeq)
+	result, err := engine.Sync(context.Background())
 	if err != nil {
 		return err
 	}
 
-	pushed, pushedOps, err := pushAll(deps.store, client)
-	if err != nil {
-		return err
+	fmt.Fprintf(os.Stderr, "pulled %d ops, pushed %d ops\n", result.Pulled, result.Pushed)
+	if result.BlobsUp > 0 {
+		fmt.Fprintf(os.Stderr, "uploaded %d blobs\n", result.BlobsUp)
 	}
-
-	// Upload blobs for pushed document ops.
-	uploaded, uploadErrs := uploadPendingBlobs(
-		deps.store,
-		client,
-		deps.device.HouseholdID,
-		pushedOps,
-	)
-
-	// Fetch blobs for documents that arrived without data.
-	fetched, fetchErrs := fetchPendingBlobs(deps.store, client, deps.device.HouseholdID)
-
-	fmt.Fprintf(os.Stderr, "pulled %d ops, pushed %d ops\n", pulled, pushed)
-	if uploaded > 0 {
-		fmt.Fprintf(os.Stderr, "uploaded %d blobs\n", uploaded)
+	if result.BlobsDown > 0 {
+		fmt.Fprintf(os.Stderr, "fetched %d blobs\n", result.BlobsDown)
 	}
-	if fetched > 0 {
-		fmt.Fprintf(os.Stderr, "fetched %d blobs\n", fetched)
-	}
-	if blobErrs := uploadErrs + fetchErrs; blobErrs > 0 {
-		fmt.Fprintf(os.Stderr, "warning: %d blob operation(s) failed\n", blobErrs)
+	if result.BlobErrs > 0 {
+		fmt.Fprintf(os.Stderr, "warning: %d blob operation(s) failed\n", result.BlobErrs)
 	}
 	return nil
-}
-
-func pullAll(
-	store *data.Store,
-	client *sync.Client,
-	lastSeq int64,
-) (int, error) {
-	total := 0
-	seq := lastSeq
-	for {
-		result, err := client.Pull(seq, 100)
-		if err != nil {
-			return total, fmt.Errorf("pull: %w", err)
-		}
-		if len(result.Ops) == 0 {
-			break
-		}
-
-		ar := sync.ApplyOps(store.GormDB(), result.Ops)
-		if len(ar.Errors) > 0 {
-			return total, fmt.Errorf("apply ops: %w", ar.Errors[0])
-		}
-		total += ar.Applied + ar.Conflicts
-
-		// Update last seq from the highest envelope seq.
-		// The relay returns ops ordered by seq (ascending), so the max
-		// is always the last element, but we scan defensively.
-		for _, dop := range result.Ops {
-			if dop.Envelope.Seq > seq {
-				seq = dop.Envelope.Seq
-			}
-		}
-		if err := store.UpdateSyncDevice(map[string]any{
-			"last_seq": seq,
-		}); err != nil {
-			return total, fmt.Errorf("update last seq: %w", err)
-		}
-
-		if !result.HasMore {
-			break
-		}
-	}
-	return total, nil
-}
-
-func pushAll(store *data.Store, client *sync.Client) (int, []sync.OpPayload, error) {
-	unsynced, err := store.UnsyncedOps()
-	if err != nil {
-		return 0, nil, fmt.Errorf("load unsynced ops: %w", err)
-	}
-	if len(unsynced) == 0 {
-		return 0, nil, nil
-	}
-
-	ops := make([]sync.OpPayload, 0, len(unsynced))
-	for _, entry := range unsynced {
-		ops = append(ops, sync.OpPayload{
-			ID:        entry.ID,
-			TableName: entry.TableName,
-			RowID:     entry.RowID,
-			OpType:    entry.OpType,
-			Payload:   entry.Payload,
-			DeviceID:  entry.DeviceID,
-			CreatedAt: entry.CreatedAt,
-		})
-	}
-
-	pushResp, err := client.Push(ops)
-	if err != nil {
-		return 0, nil, fmt.Errorf("push: %w", err)
-	}
-
-	ids := make([]string, 0, len(pushResp.Confirmed))
-	for _, c := range pushResp.Confirmed {
-		ids = append(ids, c.ID)
-	}
-	if err := store.MarkSynced(ids); err != nil {
-		return 0, nil, fmt.Errorf("mark synced: %w", err)
-	}
-
-	return len(pushResp.Confirmed), ops, nil
-}
-
-// --- blob sync helpers ---
-
-// uploadPendingBlobs uploads blobs for document ops that were just pushed.
-// Returns the number of successful uploads and the number of errors.
-func uploadPendingBlobs(
-	store *data.Store,
-	client *sync.Client,
-	householdID string,
-	ops []sync.OpPayload,
-) (int, int) {
-	uploaded, errCount := 0, 0
-	for _, op := range ops {
-		if op.TableName != data.TableDocuments {
-			continue
-		}
-		// Extract blob_ref from the payload JSON.
-		var payload map[string]any
-		if err := json.Unmarshal([]byte(op.Payload), &payload); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: unmarshal payload for %s: %v\n", op.RowID, err)
-			errCount++
-			continue
-		}
-		blobRef, _ := payload["blob_ref"].(string)
-		if blobRef == "" {
-			continue
-		}
-
-		// Skip if already on relay.
-		exists, err := client.HasBlob(householdID, blobRef)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: check blob %s: %v\n", blobRef, err)
-			errCount++
-			continue
-		}
-		if exists {
-			continue
-		}
-
-		// Load full document to get Data.
-		doc, err := store.GetDocument(op.RowID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: load document %s: %v\n", op.RowID, err)
-			errCount++
-			continue
-		}
-		if doc.Data == nil {
-			continue // metadata-only or pending
-		}
-
-		if err := client.UploadBlob(householdID, blobRef, doc.Data); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: upload blob %s: %v\n", blobRef, err)
-			errCount++
-			continue
-		}
-		uploaded++
-	}
-	return uploaded, errCount
-}
-
-// fetchPendingBlobs downloads blobs for documents that have a checksum
-// but no local data (arrived via sync without the blob).
-// Returns the number of successful fetches and the number of errors.
-func fetchPendingBlobs(
-	store *data.Store,
-	client *sync.Client,
-	householdID string,
-) (int, int) {
-	pending, err := store.PendingBlobDocuments()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: query pending blobs: %v\n", err)
-		return 0, 1
-	}
-
-	fetched, errCount := 0, 0
-	for _, doc := range pending {
-		plaintext, err := client.DownloadBlob(householdID, doc.ChecksumSHA256)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: download blob %s: %v\n", doc.ChecksumSHA256, err)
-			errCount++
-			continue
-		}
-		if err := store.UpdateDocumentData(doc.ID, plaintext); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: save blob %s: %v\n", doc.ID, err)
-			errCount++
-			continue
-		}
-		fetched++
-	}
-	return fetched, errCount
 }
 
 // --- pro invite ---
@@ -892,17 +705,18 @@ exchangeDone:
 		return fmt.Errorf("update sync device: %w", err)
 	}
 
-	// Initial pull.
+	// Initial pull using the sync engine (pull-only: nothing to push on a fresh join).
 	syncClient := sync.NewClient(relayURL, result.DeviceToken, key)
-	pulled, err := pullAll(store, syncClient, 0)
+	engine := sync.NewEngine(store, syncClient, householdID)
+	syncResult, err := engine.Sync(context.Background())
 	if err != nil {
 		return fmt.Errorf("initial pull: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "joined household %s\n", householdID)
 	fmt.Fprintf(os.Stderr, "device: %s\n", result.DeviceID)
-	if pulled > 0 {
-		fmt.Fprintf(os.Stderr, "pulled %d ops\n", pulled)
+	if syncResult.Pulled > 0 {
+		fmt.Fprintf(os.Stderr, "pulled %d ops\n", syncResult.Pulled)
 	}
 	return nil
 }
