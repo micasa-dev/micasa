@@ -55,6 +55,9 @@ func syncableTable(table string) bool {
 // through a Store.
 var errNoDeviceIDCell = fmt.Errorf("device ID cell not in context")
 
+// ErrNoSyncDevice is returned when no sync device record exists.
+var ErrNoSyncDevice = errors.New("no sync device")
+
 // resolveDeviceID extracts the device ID from the GORM transaction's
 // context (set per-Store at Open time).
 func resolveDeviceID(tx *gorm.DB) (string, error) {
@@ -292,10 +295,14 @@ func (s *Store) AllOplogEntries() ([]SyncOplogEntry, error) {
 }
 
 // GetSyncDevice returns the single local sync device record.
+// Returns ErrNoSyncDevice when no device has been registered.
 func (s *Store) GetSyncDevice() (SyncDevice, error) {
 	var dev SyncDevice
 	if err := s.db.First(&dev).Error; err != nil {
-		return SyncDevice{}, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return SyncDevice{}, ErrNoSyncDevice
+		}
+		return SyncDevice{}, fmt.Errorf("get sync device: %w", err)
 	}
 	return dev, nil
 }

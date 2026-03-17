@@ -20,7 +20,6 @@ import (
 	"github.com/cpcloud/micasa/internal/sync"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
-	"gorm.io/gorm"
 )
 
 const (
@@ -87,7 +86,7 @@ func resolveProDeps(dbPath string) (*proDeps, error) {
 
 	dev, err := store.GetSyncDevice()
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, data.ErrNoSyncDevice) {
 			return nil, fmt.Errorf("sync not set up -- run `micasa pro init` first")
 		}
 		return nil, fmt.Errorf("read sync state: %w", err)

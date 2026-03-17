@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/cpcloud/micasa/internal/sync"
@@ -15,6 +16,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 // openTestPgStore opens a PgStore for testing, skipping if RELAY_POSTGRES_DSN
@@ -34,10 +36,14 @@ func openTestPgStore(t *testing.T) *PgStore {
 	store := NewPgStore(db)
 	require.NoError(t, store.AutoMigrate())
 
-	// Truncate all tables for a clean slate (order matters for FKs).
-	for _, table := range []string{
-		"blobs", "ops", "key_exchanges", "invites", "devices", "households",
-	} {
+	// Derive table names from pgModels and truncate in reverse order
+	// (child tables first) so FK constraints are satisfied.
+	tables := make([]string, 0, len(pgModels))
+	for _, m := range pgModels {
+		tables = append(tables, m.(schema.Tabler).TableName())
+	}
+	slices.Reverse(tables)
+	for _, table := range tables {
 		require.NoError(t, db.Exec("TRUNCATE "+table+" CASCADE").Error)
 	}
 

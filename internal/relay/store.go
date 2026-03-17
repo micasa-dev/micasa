@@ -9,6 +9,14 @@ import (
 	"github.com/cpcloud/micasa/internal/sync"
 )
 
+const (
+	// MaxInviteAttempts is the maximum number of join attempts per invite code.
+	MaxInviteAttempts = 5
+
+	// MaxActiveInvites is the maximum number of active invites per household.
+	MaxActiveInvites = 3
+)
+
 // Store defines the persistence interface for the relay server.
 // Implementations handle storage of encrypted operations and device
 // registration without needing to decrypt any user data.

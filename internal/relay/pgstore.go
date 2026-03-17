@@ -13,6 +13,7 @@ import (
 	"github.com/cpcloud/micasa/internal/uid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -98,12 +99,6 @@ type pgBlob struct {
 
 func (pgBlob) TableName() string { return "blobs" }
 
-// maxInviteAttempts is the maximum number of join attempts per invite code.
-const maxInviteAttempts = 5
-
-// maxActiveInvites is the maximum number of active invites per household.
-const maxActiveInvites = 3
-
 // OpenPgStore connects to a Postgres database and returns a PgStore.
 func OpenPgStore(dsn string) (*PgStore, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -120,16 +115,20 @@ func NewPgStore(db *gorm.DB) *PgStore {
 	return &PgStore{db: db}
 }
 
+// pgModels is the canonical list of GORM models managed by PgStore.
+// Used by AutoMigrate and tests to avoid maintaining parallel lists.
+var pgModels = []any{
+	&pgHousehold{},
+	&pgDevice{},
+	&pgOp{},
+	&pgInvite{},
+	&pgKeyExchange{},
+	&pgBlob{},
+}
+
 // AutoMigrate creates/updates the database schema.
 func (s *PgStore) AutoMigrate() error {
-	return s.db.AutoMigrate(
-		&pgHousehold{},
-		&pgDevice{},
-		&pgOp{},
-		&pgInvite{},
-		&pgKeyExchange{},
-		&pgBlob{},
-	)
+	return s.db.AutoMigrate(pgModels...)
 }
 
 func (s *PgStore) Push(ctx context.Context, ops []sync.Envelope) ([]sync.PushConfirmation, error) {
@@ -259,31 +258,37 @@ func (s *PgStore) RegisterDevice(
 	ctx context.Context,
 	req sync.RegisterDeviceRequest,
 ) (sync.RegisterDeviceResponse, error) {
-	// Verify household exists.
-	var count int64
-	if err := s.db.WithContext(ctx).Model(&pgHousehold{}).
-		Where("id = ?", req.HouseholdID).Count(&count).Error; err != nil {
-		return sync.RegisterDeviceResponse{}, fmt.Errorf("check household: %w", err)
-	}
-	if count == 0 {
-		return sync.RegisterDeviceResponse{}, fmt.Errorf("household %s not found", req.HouseholdID)
-	}
-
 	devID := uid.New()
 	token, tokenHash, err := generateToken()
 	if err != nil {
 		return sync.RegisterDeviceResponse{}, err
 	}
 
-	dev := pgDevice{
-		ID:          devID,
-		HouseholdID: req.HouseholdID,
-		Name:        req.Name,
-		PublicKey:   req.PublicKey,
-		TokenSHA:    tokenHash,
-	}
-	if err := s.db.WithContext(ctx).Create(&dev).Error; err != nil {
-		return sync.RegisterDeviceResponse{}, fmt.Errorf("create device: %w", err)
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Verify household exists within the transaction.
+		var count int64
+		if err := tx.Model(&pgHousehold{}).
+			Where("id = ?", req.HouseholdID).Count(&count).Error; err != nil {
+			return fmt.Errorf("check household: %w", err)
+		}
+		if count == 0 {
+			return fmt.Errorf("household %s not found", req.HouseholdID)
+		}
+
+		dev := pgDevice{
+			ID:          devID,
+			HouseholdID: req.HouseholdID,
+			Name:        req.Name,
+			PublicKey:   req.PublicKey,
+			TokenSHA:    tokenHash,
+		}
+		if err := tx.Create(&dev).Error; err != nil {
+			return fmt.Errorf("create device: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return sync.RegisterDeviceResponse{}, err
 	}
 
 	return sync.RegisterDeviceResponse{
@@ -296,20 +301,18 @@ func (s *PgStore) AuthenticateDevice(ctx context.Context, token string) (sync.De
 	sha := tokenSHA256(token)
 
 	var dev pgDevice
-	err := s.db.WithContext(ctx).
-		Where("token_sha = ? AND revoked = false", sha).
-		First(&dev).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return sync.Device{}, fmt.Errorf("invalid token")
-		}
-		return sync.Device{}, fmt.Errorf("authenticate: %w", err)
+	result := s.db.WithContext(ctx).Raw(
+		"UPDATE devices SET last_seen = now() "+
+			"WHERE token_sha = ? AND revoked = false "+
+			"RETURNING *",
+		sha,
+	).Scan(&dev)
+	if result.Error != nil {
+		return sync.Device{}, fmt.Errorf("authenticate: %w", result.Error)
 	}
-
-	// Update last_seen (fire-and-forget, don't block auth on this).
-	now := time.Now()
-	_ = s.db.WithContext(ctx).Model(&pgDevice{}).
-		Where("id = ?", dev.ID).Update("last_seen", now).Error
+	if result.RowsAffected == 0 {
+		return sync.Device{}, fmt.Errorf("invalid token")
+	}
 
 	return pgDeviceToSync(dev), nil
 }
@@ -327,8 +330,8 @@ func (s *PgStore) CreateInvite(
 	if err != nil {
 		return sync.InviteCode{}, fmt.Errorf("count invites: %w", err)
 	}
-	if active >= maxActiveInvites {
-		return sync.InviteCode{}, fmt.Errorf("max active invites reached (%d)", maxActiveInvites)
+	if active >= MaxActiveInvites {
+		return sync.InviteCode{}, fmt.Errorf("max active invites reached (%d)", MaxActiveInvites)
 	}
 
 	code, err := generateInviteCode()
@@ -376,7 +379,7 @@ func (s *PgStore) StartJoin(
 		}
 
 		inv.Attempts++
-		if inv.Attempts >= maxInviteAttempts {
+		if inv.Attempts >= MaxInviteAttempts {
 			inv.Consumed = true
 			if err := tx.Save(&inv).Error; err != nil {
 				return fmt.Errorf("update invite: %w", err)
@@ -503,35 +506,42 @@ func (s *PgStore) GetKeyExchangeResult(
 	ctx context.Context,
 	exchangeID string,
 ) (sync.KeyExchangeResult, error) {
-	var ex pgKeyExchange
-	err := s.db.WithContext(ctx).Where("id = ?", exchangeID).First(&ex).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return sync.KeyExchangeResult{}, fmt.Errorf("key exchange %s not found", exchangeID)
+	var result sync.KeyExchangeResult
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var ex pgKeyExchange
+		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
+			Where("id = ?", exchangeID).First(&ex).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("key exchange %s not found", exchangeID)
+			}
+			return fmt.Errorf("get exchange: %w", err)
 		}
-		return sync.KeyExchangeResult{}, fmt.Errorf("get exchange: %w", err)
-	}
 
-	if !ex.Completed {
-		return sync.KeyExchangeResult{Ready: false}, nil
-	}
+		if !ex.Completed {
+			result = sync.KeyExchangeResult{Ready: false}
+			return nil
+		}
 
-	result := sync.KeyExchangeResult{
-		Ready:                 true,
-		EncryptedHouseholdKey: ex.EncryptedHouseholdKey,
-		DeviceID:              ex.DeviceID,
-		DeviceToken:           ex.DeviceToken,
-	}
+		result = sync.KeyExchangeResult{
+			Ready:                 true,
+			EncryptedHouseholdKey: ex.EncryptedHouseholdKey,
+			DeviceID:              ex.DeviceID,
+			DeviceToken:           ex.DeviceToken,
+		}
 
-	// Single-use: clear credentials after first retrieval.
-	_ = s.db.WithContext(ctx).Model(&pgKeyExchange{}).
-		Where("id = ?", exchangeID).
-		Updates(map[string]any{
-			"encrypted_household_key": nil,
-			"device_token":            "",
-		}).Error
+		// Single-use: clear credentials atomically within this transaction.
+		if err := tx.Model(&pgKeyExchange{}).
+			Where("id = ?", exchangeID).
+			Updates(map[string]any{
+				"encrypted_household_key": nil,
+				"device_token":            "",
+			}).Error; err != nil {
+			return fmt.Errorf("clear exchange credentials: %w", err)
+		}
 
-	return result, nil
+		return nil
+	})
+	return result, err
 }
 
 func (s *PgStore) ListDevices(

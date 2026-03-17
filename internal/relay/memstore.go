@@ -254,8 +254,8 @@ func (m *MemStore) CreateInvite(
 			active++
 		}
 	}
-	if active >= 3 {
-		return sync.InviteCode{}, fmt.Errorf("max active invites reached (3)")
+	if active >= MaxActiveInvites {
+		return sync.InviteCode{}, fmt.Errorf("max active invites reached (%d)", MaxActiveInvites)
 	}
 
 	code, err := generateInviteCode()
@@ -267,7 +267,7 @@ func (m *MemStore) CreateInvite(
 		householdID:  householdID,
 		inviterDevID: deviceID,
 		expiresAt:    time.Now().Add(24 * time.Hour),
-		maxAttempts:  5,
+		maxAttempts:  MaxInviteAttempts,
 	}
 
 	return sync.InviteCode{
