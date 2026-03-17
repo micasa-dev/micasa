@@ -45,6 +45,7 @@ type MemStore struct {
 type deviceRecord struct {
 	device   sync.Device
 	tokenSHA string // sha256(raw_token) hex — used as tokenIndex key
+	revoked  bool
 }
 
 type inviteRecord struct {
@@ -233,7 +234,11 @@ func (m *MemStore) AuthenticateDevice(_ context.Context, token string) (sync.Dev
 	if !ok {
 		return sync.Device{}, fmt.Errorf("invalid token")
 	}
-	return m.devices[devID].device, nil
+	rec := m.devices[devID]
+	if rec.revoked {
+		return sync.Device{}, fmt.Errorf("invalid token")
+	}
+	return rec.device, nil
 }
 
 func (m *MemStore) CreateInvite(
@@ -437,7 +442,7 @@ func (m *MemStore) ListDevices(
 
 	var result []sync.Device
 	for _, rec := range m.devices {
-		if rec.device.HouseholdID == householdID {
+		if rec.device.HouseholdID == householdID && !rec.revoked {
 			result = append(result, rec.device)
 		}
 	}
@@ -459,10 +464,11 @@ func (m *MemStore) RevokeDevice(
 		return fmt.Errorf("device does not belong to this household")
 	}
 
-	// Remove token from index.
+	// Remove token from index so the device can no longer authenticate.
 	delete(m.tokenIndex, rec.tokenSHA)
-	// Remove device.
-	delete(m.devices, deviceID)
+	// Mark as revoked (matching PgStore behavior — keeps the record).
+	rec.revoked = true
+	m.devices[deviceID] = rec
 	return nil
 }
 
@@ -550,7 +556,7 @@ func (m *MemStore) PutBlob(_ context.Context, householdID, hash string, data []b
 	for _, b := range hhBlobs {
 		used += int64(len(b))
 	}
-	if used+int64(len(data)) > m.blobQuotaBytes() {
+	if used > m.blobQuotaBytes()-int64(len(data)) {
 		return errQuotaExceeded
 	}
 

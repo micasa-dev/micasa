@@ -175,6 +175,10 @@ func validateInsertPayloadID(row map[string]any, rowID string) error {
 	return nil
 }
 
+// applyInsert creates a new row from the remote payload. The payload's
+// created_at is intentionally preserved (not stripped) so that records
+// maintain their original creation timestamp across devices. This differs
+// from applyUpdate which strips created_at to prevent overwrites.
 func applyInsert(tx *gorm.DB, op OpPayload) error {
 	var row map[string]any
 	if err := json.Unmarshal([]byte(op.Payload), &row); err != nil {
@@ -197,7 +201,14 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 	delete(updates, "id")
 	delete(updates, "created_at")
 	stripNonColumnKeys(op.TableName, updates)
-	return tx.Table(op.TableName).Where("id = ?", op.RowID).Updates(updates).Error
+	result := tx.Table(op.TableName).Where("id = ?", op.RowID).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("update %s/%s: row not found", op.TableName, op.RowID)
+	}
+	return nil
 }
 
 // stripNonColumnKeys removes payload keys that should not be written to the

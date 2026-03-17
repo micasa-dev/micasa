@@ -432,7 +432,10 @@ func (h *Handler) handlePutBlob(
 		case errors.Is(err, errBlobExists):
 			writeJSON(w, http.StatusConflict, map[string]string{"status": "exists"})
 		case errors.Is(err, errQuotaExceeded):
-			usage, _ := h.store.BlobUsage(r.Context(), hhID)
+			usage, usageErr := h.store.BlobUsage(r.Context(), hhID)
+			if usageErr != nil {
+				h.log.Error("blob usage query in quota error path", "error", usageErr)
+			}
 			writeJSON(w, http.StatusRequestEntityTooLarge, map[string]any{
 				"error":       "blob storage quota exceeded",
 				"used_bytes":  usage,

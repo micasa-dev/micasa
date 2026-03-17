@@ -354,6 +354,29 @@ func TestApplyUpdateStripsCreatedAt(t *testing.T) {
 		"created_at should not be overwritten by remote update")
 }
 
+func TestApplyUpdateMissingRowReturnsError(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "nonexistent-vendor",
+		OpType:    "update",
+		Payload:   `{"name":"Ghost"}`,
+	}
+	err = applyUpdate(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "row not found")
+}
+
 func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {
 	t.Parallel()
 

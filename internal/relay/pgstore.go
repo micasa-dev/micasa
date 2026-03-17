@@ -664,7 +664,7 @@ func (s *PgStore) PutBlob(ctx context.Context, householdID, hash string, data []
 			Scan(&used).Error; err != nil {
 			return fmt.Errorf("check quota: %w", err)
 		}
-		if used+int64(len(data)) > defaultBlobQuota {
+		if used > defaultBlobQuota-int64(len(data)) {
 			return errQuotaExceeded
 		}
 

@@ -127,7 +127,10 @@ func writeOplogEntryRaw(tx *gorm.DB, tableName, rowID, opType, payload string) e
 
 // documentOplogPayload builds a JSON payload for a document oplog entry,
 // excluding the BLOB Data field to keep oplog entries small. Includes a
-// blob_ref field with the SHA-256 checksum for content-addressed blob sync.
+// blob_ref field set to the SHA-256 checksum — this is the relay's
+// content-addressed storage key. It equals ChecksumSHA256 today but is
+// a separate field so the relay storage scheme can evolve independently
+// of the integrity checksum.
 type documentOplogPayload struct {
 	ID              string     `json:"id"`
 	Title           string     `json:"title"`
