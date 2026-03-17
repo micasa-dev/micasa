@@ -439,6 +439,9 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 	var joinResp sync.JoinResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
 	assert.NotEmpty(t, joinResp.ExchangeID)
+	// Exchange IDs must be 256-bit crypto-random hex, not ULIDs.
+	assert.Len(t, joinResp.ExchangeID, 64, "exchange ID should be 64 hex chars (256-bit)")
+	assert.Regexp(t, `^[0-9a-f]{64}$`, joinResp.ExchangeID)
 	assert.NotEmpty(t, joinResp.InviterPublicKey)
 
 	// Step 3: Inviter checks pending exchanges.

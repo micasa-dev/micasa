@@ -17,6 +17,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// newCryptoToken returns a 256-bit (32-byte) crypto-random hex string.
+// Used for exchange IDs where unpredictability matters more than
+// time-sortability (unlike entity ULIDs).
+func newCryptoToken() string {
+	var b [32]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
+	return hex.EncodeToString(b[:])
+}
+
 // MemStore is an in-memory implementation of Store for testing.
 type MemStore struct {
 	mu         gosync.Mutex
@@ -299,7 +310,7 @@ func (m *MemStore) StartJoin(
 		return sync.JoinResponse{}, fmt.Errorf("inviter device not found")
 	}
 
-	exchangeID := uid.New()
+	exchangeID := newCryptoToken()
 	m.exchanges[exchangeID] = &keyExchangeRecord{
 		id:              exchangeID,
 		householdID:     inv.householdID,
