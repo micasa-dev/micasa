@@ -1021,11 +1021,11 @@ The relay lives in this repo at `cmd/relay/main.go`. Shared types
 (encryption envelope, oplog entry JSON schema) live in an `internal/sync`
 package importable by both `cmd/micasa` and `cmd/relay`.
 
-### Stack: GCP (Cloud Run + Firestore + Cloud Storage)
+### Stack: GCP (Cloud Run + Cloud SQL + Cloud Storage)
 
-GCP was chosen because the operator (Phillip) knows it well. Predictability
-and existing knowledge trump marginal cost or simplicity advantages of
-other platforms at this scale.
+GCP was chosen because the operator (Phillip) knows it well. Everything
+stays within GCP's IAM/OAuth perimeter — no external credentials to
+manage.
 
 #### Cloud Run — compute
 
@@ -1037,146 +1037,156 @@ The relay is a single Go binary deployed as a container to Cloud Run.
 - **Custom domain** via Cloud Run domain mapping (e.g., `sync.micasa.dev`)
 - **Min instances: 0** for v1 (accept cold start latency of ~1-2s; sync
   is not latency-sensitive). Bump to 1 when paying customers depend on it.
+- **Multi-instance:** Cloud Run can run multiple instances concurrently
+  since Postgres handles write coordination.
 
 Deployment: `gcloud run deploy relay --source .` from `cmd/relay/`.
 
-#### Firestore — relay metadata and encrypted ops
+#### Cloud SQL (Postgres) — relay metadata and encrypted ops
 
-Firestore (Native mode) stores all relay state. No SQL database needed.
+Cloud SQL (Postgres) stores all relay state. SQL is the natural fit for
+the relay's access patterns (insert ops, range query by seq, CRUD on
+devices/households) and provides the same query language used throughout
+the codebase.
 
-**Data model:**
+**Schema:**
 
+```sql
+CREATE TABLE households (
+    id          TEXT PRIMARY KEY,
+    seq_counter BIGINT NOT NULL DEFAULT 0,
+    stripe_subscription_id TEXT,
+    stripe_status TEXT,  -- 'active', 'past_due', 'canceled', ''
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE devices (
+    id           TEXT PRIMARY KEY,
+    household_id TEXT NOT NULL REFERENCES households(id),
+    name         TEXT NOT NULL,
+    token_sha    TEXT NOT NULL,  -- SHA-256 hex of bearer token
+    last_seen    TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revoked      BOOLEAN NOT NULL DEFAULT false
+);
+CREATE INDEX idx_devices_household ON devices(household_id);
+CREATE INDEX idx_devices_token_sha ON devices(token_sha);
+
+CREATE TABLE ops (
+    seq          BIGINT NOT NULL,
+    household_id TEXT NOT NULL REFERENCES households(id),
+    id           TEXT NOT NULL,  -- ULID from client
+    device_id    TEXT NOT NULL,
+    nonce        BYTEA NOT NULL,
+    ciphertext   BYTEA NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (household_id, seq)
+);
+
+CREATE TABLE invites (
+    code         TEXT PRIMARY KEY,
+    household_id TEXT NOT NULL REFERENCES households(id),
+    created_by   TEXT NOT NULL,  -- device_id
+    expires_at   TIMESTAMPTZ NOT NULL,
+    consumed     BOOLEAN NOT NULL DEFAULT false,
+    attempts     INTEGER NOT NULL DEFAULT 0,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE key_exchanges (
+    id                      TEXT PRIMARY KEY,
+    household_id            TEXT NOT NULL REFERENCES households(id),
+    joiner_device_id        TEXT,
+    joiner_public_key       BYTEA,
+    encrypted_household_key BYTEA,
+    device_token            TEXT,
+    device_id               TEXT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed               BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE TABLE blobs (
+    household_id TEXT NOT NULL,
+    hash         TEXT NOT NULL,  -- SHA-256 hex
+    data         BYTEA NOT NULL,
+    size_bytes   BIGINT NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (household_id, hash)
+);
 ```
-households/{household_id}
-    ├── created_at: timestamp
-    ├── seq_counter: integer (monotonic, incremented atomically)
-    ├── stripe_subscription_id: string
-    ├── stripe_status: string ("active", "past_due", "canceled")
-    │
-    ├── devices/{device_id}
-    │       ├── name: string
-    │       ├── token_hash: string (bcrypt hash of bearer token)
-    │       ├── last_seen: timestamp
-    │       ├── created_at: timestamp
-    │       ├── revoked: boolean
-    │
-    ├── ops/{seq}  (document ID = zero-padded sequence number)
-    │       ├── id: string (ULID from client)
-    │       ├── device_id: string
-    │       ├── nonce: bytes
-    │       ├── ciphertext: bytes
-    │       ├── created_at: timestamp
-    │
-    ├── invites/{code}
-    │       ├── created_by: string (device_id)
-    │       ├── expires_at: timestamp
-    │       ├── consumed: boolean
-    │       ├── attempts: integer
-    │
-    └── key_exchange/{exchange_id}
-            ├── joiner_device_id: string
-            ├── joiner_public_key: bytes
-            ├── encrypted_household_key: bytes (set by inviter)
-            ├── created_at: timestamp
-            ├── completed: boolean
+
+**Why Cloud SQL (Postgres):**
+
+- Same SQL used everywhere else in the codebase — no learning curve
+- Full ACID transactions for atomic seq increment
+- Rich tooling: `psql`, `pg_dump`, ad-hoc queries for debugging
+- Predictable pricing — fixed instance cost, no per-operation surprises
+- Multi-instance Cloud Run works natively via Cloud SQL Auth Proxy
+- Local development uses plain Postgres (docker or nix)
+- Stays within GCP IAM — Cloud Run service account authenticates
+  automatically via Cloud SQL Auth Proxy, no connection strings needed
+- The `database/sql` + `pgx` Go ecosystem is mature and well-known
+
+**Instance sizing for v1:**
+
+`db-f1-micro` (shared-core, 0.6 GB RAM, 10 GB SSD) at ~$7-10/month.
+Even 1 paying subscriber ($9/month) covers the infrastructure. Upgrade
+to `db-g1-small` when connection count or query volume warrants it.
+
+**Connection from Cloud Run:**
+
+Cloud Run connects to Cloud SQL via the built-in Cloud SQL Auth Proxy
+sidecar. The connection string uses a Unix socket:
+
+```go
+dsn := fmt.Sprintf(
+    "host=/cloudsql/%s dbname=%s user=%s sslmode=disable",
+    instanceConnectionName, dbName, dbUser,
+)
+db, err := sql.Open("pgx", dsn)
 ```
 
-**Why Firestore over Postgres:**
-
-- Fully managed — no provisioning, no connection strings, no backups,
-  no connection pooling, no pgBouncer
-- Scales to zero cost when idle (Postgres runs 24/7 even with no traffic)
-- The relay has no relational queries — it stores/retrieves opaque blobs
-  by sequence number and manages a handful of metadata documents
-- Atomic increment on `seq_counter` via Firestore transactions
-- Free tier: 50K reads, 20K writes, 1 GiB storage per day — easily covers
-  hundreds of households at low sync frequency
-- If Firestore ever becomes the bottleneck or too expensive per-operation,
-  migrating to Cloud SQL (Postgres) is straightforward — the relay's
-  data access patterns are simple CRUD
-
-**Firestore vs Cloud SQL (Postgres) — full comparison:**
-
-| Dimension | Firestore | Cloud SQL (Postgres) |
-|-----------|-----------|---------------------|
-| **Idle cost** | $0 (no instance running) | ~$7-10/month minimum (`db-f1-micro`, always on) |
-| **Ops model** | Zero management, no patches, no backups to configure | Managed but still needs connection pooling, maintenance windows, storage scaling |
-| **Pricing model** | Per-operation (reads/writes/deletes) | Fixed instance cost + storage |
-| **Scale-to-zero** | Yes, native | No — smallest instance runs 24/7 |
-| **Relational queries** | No joins, no aggregations, limited filtering | Full SQL |
-| **Transactions** | Yes, but limited to 500 writes per transaction | Full ACID, no write limits |
-| **Schema flexibility** | Schemaless — add fields freely, no migrations | Rigid schema, requires migrations |
-| **Go SDK** | `cloud.google.com/go/firestore` — decent, some quirks | `database/sql` + `pgx` — mature, well-known |
-| **Testing locally** | Firestore emulator (works, somewhat clunky) | Local Postgres (docker, trivial) |
-| **Data export/debug** | Console or `gcloud firestore export` | `pg_dump`, `psql`, rich tooling ecosystem |
-| **Cost at 500 households** | $5-20/month (depends on sync frequency) | ~$15-25/month (small instance + storage) |
-| **Cost at 5000 households** | Could spike — per-op pricing adds up with frequent syncs | Predictable — instance cost is fixed, scales with instance size |
-| **Migration path** | Firestore → Postgres is straightforward (simple CRUD) | Postgres → Firestore is also straightforward |
-| **Pulumi support** | Full (`firestore.NewDatabase`, index management) | Full (`sql.NewDatabaseInstance`, users, DBs) |
-
-**When Firestore becomes the wrong choice:**
-
-- If per-operation costs grow faster than revenue (many households syncing
-  frequently — each sync pull is N document reads)
-- If you need complex queries against relay metadata (reporting, analytics
-  on usage patterns)
-- If local development/testing with the emulator becomes too painful
-- If the 1MB document size limit is hit for ops (unlikely — encrypted
-  oplog entries are small, but worth monitoring)
-
-**When to reconsider:**
-
-If monthly Firestore costs exceed ~$50 and are growing faster than
-revenue, evaluate migrating to Cloud SQL. The relay's data access
-patterns (insert op, range query by seq, CRUD on devices/households)
-map trivially to Postgres tables. The migration is mechanical, not
-architectural.
-
-**Decision: Firestore for v1.** The zero-idle-cost and zero-management
-properties dominate at the side-project stage. Revisit at ~500 paying
-households or when per-op costs become non-trivial.
+No passwords in environment variables — IAM database authentication
+uses the Cloud Run service account identity.
 
 **Monotonic sequence counter:**
 
-```go
-// Atomic increment using Firestore transaction
-func (r *Relay) NextSeq(ctx context.Context, householdID string) (int64, error) {
-    ref := r.firestore.Collection("households").Doc(householdID)
-    var seq int64
-    err := r.firestore.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-        doc, err := tx.Get(ref)
-        if err != nil {
-            return err
-        }
-        seq = doc.Data()["seq_counter"].(int64) + 1
-        return tx.Update(ref, []firestore.Update{
-            {Path: "seq_counter", Value: seq},
-        })
-    })
-    return seq, err
-}
+```sql
+-- Atomic increment using Postgres advisory lock or UPDATE ... RETURNING
+UPDATE households
+SET seq_counter = seq_counter + 1
+WHERE id = $1
+RETURNING seq_counter;
 ```
+
+Single statement, atomic, no application-level locking needed.
 
 **Pull query:**
 
-```go
-// Efficient range query on ops subcollection
-ops := r.firestore.Collection("households").Doc(householdID).
-    Collection("ops").
-    Where("__name__", ">", fmt.Sprintf("%012d", afterSeq)).
-    OrderBy("__name__", firestore.Asc).
-    Limit(limit).
-    Documents(ctx)
+```sql
+SELECT seq, id, device_id, nonce, ciphertext, created_at
+FROM ops
+WHERE household_id = $1 AND seq > $2
+ORDER BY seq ASC
+LIMIT $3;
 ```
 
-Ops are keyed by zero-padded sequence number (e.g., `000000004827`),
-so lexicographic ordering equals numeric ordering. Firestore's native
-ordering on document IDs makes the pull query a simple range scan.
+The `(household_id, seq)` primary key makes this an efficient index
+range scan.
 
-#### Cloud Storage — encrypted document BLOBs
+#### Cloud Storage — encrypted document BLOBs (future)
 
-Large encrypted BLOBs (documents up to 50MB) are stored in a Cloud Storage
-bucket, not in Firestore (which has a 1MB document size limit).
+For v1, encrypted BLOBs are stored in the `blobs` Postgres table (see
+schema above). This keeps the infrastructure simple — one database for
+everything. At the 50 MB max document size and 1 GB household quota,
+Postgres handles this comfortably.
+
+If blob storage outgrows Postgres (many households with large document
+libraries), migrate to a Cloud Storage bucket keyed by
+`{household_id}/{sha256_hash}`. The Store interface abstracts this — the
+handler and client code don't change.
+
+For the future Cloud Storage path:
 
 - **Bucket:** `micasa-relay-blobs` (single bucket, objects keyed by
   `{household_id}/{sha256_hash}`)
@@ -1203,13 +1213,13 @@ func (r *Relay) CheckBlobQuota(ctx context.Context, householdID string, newBlobS
 ### Auth
 
 - **Device registration:** `micasa pro init` calls `POST /households`,
-  relay generates a random bearer token, returns it to the client, stores
-  a bcrypt hash in Firestore.
+  relay generates a 256-bit crypto-random bearer token, returns it to
+  the client, stores a SHA-256 hash in the `devices` table.
 - **Request auth:** every API call includes `Authorization: Bearer <token>`.
-  Relay hashes the token and compares against the stored hash for the
-  claimed device_id.
+  Relay computes SHA-256 of the token for O(1) index lookup in the
+  `devices` table.
 - **Subscription gating:** on push/pull, relay checks
-  `households/{id}.stripe_status == "active"`. If not, returns 402. Client
+  `households.stripe_status = 'active'`. If not, returns 402. Client
   shows "Subscription inactive — sync paused."
 
 ### Cost model
@@ -1219,115 +1229,44 @@ At launch (0-50 households, low sync frequency):
 | Component | Estimated monthly cost |
 |-----------|----------------------|
 | Cloud Run | $0 (within free tier — 2M requests/month, scales to zero) |
-| Firestore | $0 (within free tier — 50K reads, 20K writes/day) |
-| Cloud Storage | $0.026/GB/month for blob storage, ~$0 at launch |
-| **Total** | **~$0-5/month** |
+| Cloud SQL | ~$7-10 (`db-f1-micro`, always on) |
+| **Total** | **~$7-10/month** |
 
 At moderate scale (500 households):
 
 | Component | Estimated monthly cost |
 |-----------|----------------------|
 | Cloud Run | $5-15 (beyond free tier, still minimal) |
-| Firestore | $5-20 (depends on sync frequency; reads are $0.06/100K) |
-| Cloud Storage | $5-10 (assuming ~50 GB total across all households) |
-| **Total** | **~$15-45/month** |
+| Cloud SQL | ~$15-25 (`db-g1-small` + storage) |
+| **Total** | **~$20-40/month** |
 
 The $89/year price point per household is >90% margin even at moderate
 scale. At 500 households that's ~$44K ARR against ~$500/year in infra.
+Even at launch, a single subscriber covers the Cloud SQL cost.
 
 ### Monitoring
 
 For v1, use GCP's built-in tooling:
 
 - **Cloud Run metrics:** request count, latency, error rate (built-in)
-- **Firestore metrics:** read/write ops, storage (built-in)
-- **Cloud Storage metrics:** object count, storage size (built-in)
+- **Cloud SQL metrics:** connections, query latency, CPU, storage (built-in)
 - **Cloud Logging:** structured logs from the relay binary (automatic
   with Cloud Run)
 - **Alerting:** Cloud Monitoring alerts on error rate > 1% and
-  Firestore daily ops approaching free tier limits
+  Cloud SQL connection count approaching limits
 
 Skip Prometheus/Grafana until the built-in dashboards are insufficient.
 
-### Infrastructure as Code: Pulumi
+### Infrastructure
 
-All GCP infrastructure is managed with [Pulumi](https://www.pulumi.com/)
-using the Go SDK. Infrastructure definitions live in `infra/` at the repo
-root.
-
-```
-infra/
-  main.go          # Pulumi program (Go)
-  Pulumi.yaml      # Project config
-  Pulumi.prod.yaml # Stack config (prod)
-```
-
-Pulumi was chosen over Terraform because:
-- Go SDK — same language as the relay, no HCL context-switching
-- Type-safe resource definitions with IDE autocomplete
-- State managed via Pulumi Cloud (free tier) or a GCS backend
-
-**Managed resources:**
-
-```go
-// infra/main.go (sketch)
-func main() {
-    pulumi.Run(func(ctx *pulumi.Context) error {
-        // Firestore database (Native mode)
-        db, _ := firestore.NewDatabase(ctx, "relay-db", &firestore.DatabaseArgs{
-            Project:       pulumi.String("micasa-relay"),
-            LocationId:    pulumi.String("us-east1"),
-            Type:          pulumi.String("FIRESTORE_NATIVE"),
-        })
-
-        // Cloud Storage bucket for encrypted BLOBs
-        bucket, _ := storage.NewBucket(ctx, "relay-blobs", &storage.BucketArgs{
-            Name:     pulumi.String("micasa-relay-blobs"),
-            Location: pulumi.String("US-EAST1"),
-            LifecycleRules: storage.BucketLifecycleRuleArray{...},
-        })
-
-        // Cloud Run service
-        service, _ := cloudrunv2.NewService(ctx, "relay", &cloudrunv2.ServiceArgs{
-            Location: pulumi.String("us-east1"),
-            Template: &cloudrunv2.ServiceTemplateArgs{
-                Containers: cloudrunv2.ServiceTemplateContainerArray{
-                    &cloudrunv2.ServiceTemplateContainerArgs{
-                        Image: pulumi.String("gcr.io/micasa-relay/relay:latest"),
-                        Envs:  cloudrunv2.ServiceTemplateContainerEnvArray{...},
-                    },
-                },
-                Scaling: &cloudrunv2.ServiceTemplateScalingArgs{
-                    MinInstanceCount: pulumi.Int(0),
-                    MaxInstanceCount: pulumi.Int(3),
-                },
-            },
-        })
-
-        // Custom domain mapping
-        // IAM bindings (Cloud Run invoker, Firestore user, GCS object admin)
-        // Stripe webhook secret in Secret Manager
-
-        return nil
-    })
-}
-```
-
-**Deployment:**
-
-```bash
-cd infra
-pulumi up           # preview and apply infrastructure changes
-pulumi stack output # show Cloud Run URL, bucket name, etc.
-```
+**Region:** `us-east1` (South Carolina). Single region is fine for v1 —
+the data is small and the sync protocol tolerates latency.
 
 **Container builds:** Use Cloud Build or `docker build` locally and push
 to GCR/Artifact Registry. The Cloud Run service pulls the image on deploy.
 
-**Region:** `us-east1` (South Carolina). Close to home, single region is
-fine for v1 — the data is small and the sync protocol tolerates latency.
-Multi-region only matters if you have users on other continents, which is
-a great problem to have later.
+Infrastructure-as-code tooling TBD — will be sorted out during actual
+deployment.
 
 ---
 
@@ -1348,10 +1287,10 @@ All core library/API code is implemented and tested:
 
 ### Remaining (v1)
 
-- **Firestore store** — production Store implementation replacing MemStore.
-  Firestore collections for households, devices, ops, invites, key exchanges.
-  Atomic seq increment via Firestore transactions.
-- **`cmd/relay/main.go`** — entry point wiring Firestore store, HTTP handler,
+- **Postgres store** — production Store implementation replacing MemStore.
+  Postgres tables for households, devices, ops, invites, key exchanges,
+  blobs. Atomic seq increment via `UPDATE ... RETURNING`.
+- **`cmd/relay/main.go`** — entry point wiring Postgres store, HTTP handler,
   Stripe webhook secret from env/Secret Manager.
 - **CLI commands** — `micasa pro init`, `sync`, `status`, `invite`,
   `join <code>`, `devices`, `devices revoke <id>`, `conflicts`, `storage`.
@@ -1361,8 +1300,8 @@ All core library/API code is implemented and tested:
   (`◈` synced, `◉` syncing, `○` offline).
 - **Document BLOB sync** — content-addressed Cloud Storage, lazy pull,
   blob upload/download relay endpoints, 1 GB household quota.
-- **Infrastructure** — Pulumi (`infra/`): Firestore database, Cloud Storage
-  bucket, Cloud Run service, IAM, Secret Manager. Deploy to `us-east1`.
+- **Infrastructure** — Cloud SQL instance, Cloud Run service, IAM, Secret
+  Manager. Deploy to `us-east1`. IaC tooling TBD.
 - **Key rotation** — `micasa pro keys rotate`: generate new household key,
   re-encrypt all relay data client-side, distribute to non-revoked devices
   via key exchange, revoke compromised device.
