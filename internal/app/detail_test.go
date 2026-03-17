@@ -22,9 +22,9 @@ func TestOpenDetailSetsContext(t *testing.T) {
 	m.active = tabIndex(tabMaintenance)
 	require.Nil(t, m.detail())
 
-	require.NoError(t, m.openServiceLogDetail(42, "Test Item"))
+	require.NoError(t, m.openServiceLogDetail("01JTEST00000000000000042", "Test Item"))
 	require.NotNil(t, m.detail())
-	assert.Equal(t, uint(42), m.detail().ParentRowID)
+	assert.Equal(t, "01JTEST00000000000000042", m.detail().ParentRowID)
 	assert.Equal(
 		t,
 		"Maintenance"+breadcrumbSep+"Test Item"+breadcrumbSep+"Service Log",
@@ -36,7 +36,7 @@ func TestCloseDetailRestoresParent(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(42, "Test Item")
+	_ = m.openServiceLogDetail("01JTEST00000000000000042", "Test Item")
 
 	m.closeDetail()
 	assert.Nil(t, m.detail())
@@ -51,7 +51,7 @@ func TestEffectiveTabReturnsDetailWhenOpen(t *testing.T) {
 	require.NotNil(t, mainTab)
 	assert.Equal(t, tabMaintenance, mainTab.Kind)
 
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 	detailTab := m.effectiveTab()
 	require.NotNil(t, detailTab)
 	require.NotNil(t, detailTab.Handler)
@@ -71,7 +71,7 @@ func TestEscInNormalModeClosesDetail(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 	require.NotNil(t, m.detail())
 	sendKey(m, "esc")
 	assert.Nil(t, m.detail())
@@ -81,7 +81,7 @@ func TestEscInEditModeDoesNotCloseDetail(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	sendKey(m, "i") // enter edit mode
 	require.Equal(t, modeEdit, m.mode)
@@ -94,7 +94,7 @@ func TestTabSwitchBlockedInDetailView(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	before := m.active
 	sendKey(m, "f")
@@ -105,7 +105,7 @@ func TestColumnNavWorksInDetailView(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	tab := m.effectiveTab()
 	require.NotNil(t, tab)
@@ -125,7 +125,7 @@ func TestDetailTabHasServiceLogSpecs(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	tab := m.effectiveTab()
 	require.Len(t, tab.Specs, 6)
@@ -139,7 +139,7 @@ func TestHandlerForFormKindFindsDetailHandler(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	handler := m.handlerForFormKind(formServiceLog)
 	require.NotNil(t, handler)
@@ -148,7 +148,7 @@ func TestHandlerForFormKindFindsDetailHandler(t *testing.T) {
 
 func TestServiceLogHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := serviceLogHandler{maintenanceItemID: 5}
+	h := serviceLogHandler{maintenanceItemID: "01JTEST00000000000000005"}
 	assert.Equal(t, formServiceLog, h.FormKind())
 }
 
@@ -176,7 +176,7 @@ func TestVendorOptions(t *testing.T) {
 	m := newTestModel(t)
 	opts := vendorOpts("Self (homeowner)", m.vendors)
 	require.NotEmpty(t, opts, "expected at least 1 vendor option (Self)")
-	assert.Equal(t, uint(0), opts[0].Value, "expected first vendor option value=0 (Self)")
+	assert.Empty(t, opts[0].Value, "expected first vendor option value=\"\" (Self)")
 }
 
 func TestServiceLogColumnSpecs(t *testing.T) {
@@ -195,7 +195,7 @@ func TestServiceLogRowsSelfPerformed(t *testing.T) {
 	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{
-			ID:         1,
+			ID:         "01JTEST00000000000000001",
 			ServicedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 			Notes:      "test note",
 		},
@@ -203,16 +203,16 @@ func TestServiceLogRowsSelfPerformed(t *testing.T) {
 	_, meta, cellRows := serviceLogRows(entries, nil, cur)
 	require.Len(t, cellRows, 1)
 	assert.Equal(t, "Self", cellRows[0][2].Value)
-	assert.Equal(t, uint(1), meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
 }
 
 func TestServiceLogRowsVendorPerformed(t *testing.T) {
 	t.Parallel()
 	cur := locale.DefaultCurrency()
-	vendorID := uint(5)
+	vendorID := "01JTEST00000000000000005"
 	entries := []data.ServiceLogEntry{
 		{
-			ID:         2,
+			ID:         "01JTEST00000000000000002",
 			ServicedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
 			VendorID:   &vendorID,
 			Vendor:     data.Vendor{Name: "Acme Plumbing"},
@@ -220,7 +220,7 @@ func TestServiceLogRowsVendorPerformed(t *testing.T) {
 	}
 	_, _, cellRows := serviceLogRows(entries, nil, cur)
 	assert.Equal(t, "Acme Plumbing", cellRows[0][2].Value)
-	assert.Equal(t, uint(5), cellRows[0][2].LinkID)
+	assert.Equal(t, "01JTEST00000000000000005", cellRows[0][2].LinkID)
 }
 
 func TestServiceLogRowsSelfHasNoLink(t *testing.T) {
@@ -228,22 +228,22 @@ func TestServiceLogRowsSelfHasNoLink(t *testing.T) {
 	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
 		{
-			ID:         1,
+			ID:         "01JTEST00000000000000001",
 			ServicedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 	_, _, cellRows := serviceLogRows(entries, nil, cur)
-	assert.Zero(t, cellRows[0][2].LinkID)
+	assert.Empty(t, cellRows[0][2].LinkID)
 }
 
 func TestServiceLogRowsDocCount(t *testing.T) {
 	t.Parallel()
 	cur := locale.DefaultCurrency()
 	entries := []data.ServiceLogEntry{
-		{ID: 1, ServicedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
-		{ID: 2, ServicedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)},
+		{ID: "01JTEST00000000000000001", ServicedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
+		{ID: "01JTEST00000000000000002", ServicedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)},
 	}
-	docCounts := map[uint]int{1: 3}
+	docCounts := map[string]int{"01JTEST00000000000000001": 3}
 	_, _, cellRows := serviceLogRows(entries, docCounts, cur)
 	require.Len(t, cellRows, 2)
 	assert.Equal(t, "3", cellRows[0][int(serviceLogColDocs)].Value)
@@ -265,7 +265,7 @@ func TestResizeTablesIncludesDetail(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	m.resizeTables()
 	assert.Positive(t, m.detail().Tab.Table.Height())
@@ -275,7 +275,7 @@ func TestSortWorksInDetailView(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	tab := m.effectiveTab()
 	tab.ColCursor = 1 // Date column
@@ -341,7 +341,7 @@ func newTestModelWithDetailRows(t *testing.T) *Model {
 
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JTEST00000000000000001", "Test")
 
 	tab := m.effectiveTab()
 	// Seed a couple rows.
@@ -350,7 +350,7 @@ func newTestModelWithDetailRows(t *testing.T) *Model {
 		{"2", "2026-02-01", "Acme", "$150.00", "second"},
 	})
 	tab.Table.SetCursor(0)
-	tab.Rows = []rowMeta{{ID: 1}, {ID: 2}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001"}, {ID: "01JTEST00000000000000002"}}
 	tab.CellRows = [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -375,7 +375,7 @@ func TestSelectedRowMetaUsesDetailTab(t *testing.T) {
 	m := newTestModelWithDetailRows(t)
 	meta, ok := m.selectedRowMeta()
 	require.True(t, ok)
-	assert.Equal(t, uint(1), meta.ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta.ID)
 }
 
 func TestSelectedCellUsesDetailTab(t *testing.T) {
@@ -390,7 +390,7 @@ func TestApplianceMaintenanceDetailOpens(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
-	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
+	require.NoError(t, m.openApplianceMaintenanceDetail("01JTEST00000000000000005", "Dishwasher"))
 	require.NotNil(t, m.detail())
 	assert.Equal(t, "Appliances"+breadcrumbSep+"Dishwasher", m.detail().Breadcrumb)
 	assert.Equal(t, "Maintenance", m.detail().Tab.Name)
@@ -399,7 +399,7 @@ func TestApplianceMaintenanceDetailOpens(t *testing.T) {
 
 func TestApplianceMaintenanceHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newApplianceMaintenanceHandler(1)
+	h := newApplianceMaintenanceHandler("01JTEST00000000000000001")
 	assert.Equal(t, formMaintenance, h.FormKind())
 }
 
@@ -433,7 +433,7 @@ func TestDrilldownStackPushPop(t *testing.T) {
 	m.active = tabIndex(tabMaintenance)
 
 	// Push first level.
-	require.NoError(t, m.openServiceLogDetail(10, "HVAC Filter"))
+	require.NoError(t, m.openServiceLogDetail("01JTEST00000000000000010", "HVAC Filter"))
 	assert.True(t, m.inDetail())
 	assert.Len(t, m.detailStack, 1)
 	assert.Equal(t, "Service Log", m.detail().Tab.Name)
@@ -450,12 +450,12 @@ func TestNestedDrilldownApplianceMaintServiceLog(t *testing.T) {
 	m.active = tabIndex(tabAppliances)
 
 	// Level 1: Appliance → Maintenance
-	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
+	require.NoError(t, m.openApplianceMaintenanceDetail("01JTEST00000000000000005", "Dishwasher"))
 	assert.Len(t, m.detailStack, 1)
 	assert.Equal(t, "Maintenance", m.detail().Tab.Name)
 
 	// Level 2: Maintenance → Service Log (nested)
-	require.NoError(t, m.openServiceLogDetail(42, "Filter Replacement"))
+	require.NoError(t, m.openServiceLogDetail("01JTEST00000000000000042", "Filter Replacement"))
 	assert.Len(t, m.detailStack, 2)
 	assert.Equal(t, "Service Log", m.detail().Tab.Name)
 
@@ -475,8 +475,8 @@ func TestCloseAllDetailsCollapsesStack(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 
-	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
-	require.NoError(t, m.openServiceLogDetail(42, "Filter"))
+	require.NoError(t, m.openApplianceMaintenanceDetail("01JTEST00000000000000005", "Dishwasher"))
+	require.NoError(t, m.openServiceLogDetail("01JTEST00000000000000042", "Filter"))
 	assert.Len(t, m.detailStack, 2)
 
 	m.closeAllDetails()
@@ -499,7 +499,7 @@ func TestCloseAllDetailsDeepStackFinalState(t *testing.T) {
 	require.NotEmpty(t, appliances)
 
 	// Find an appliance with maintenance items so nested drilldown works.
-	var applianceID uint
+	var applianceID string
 	var items []data.MaintenanceItem
 	for _, a := range appliances {
 		items, err = m.store.ListMaintenanceByAppliance(a.ID, false)
@@ -559,12 +559,12 @@ func TestBreadcrumbsMultiLevel(t *testing.T) {
 	m.height = 40
 	m.active = tabIndex(tabAppliances)
 
-	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
+	require.NoError(t, m.openApplianceMaintenanceDetail("01JTEST00000000000000005", "Dishwasher"))
 	bc1 := m.breadcrumbView()
 	assert.Contains(t, bc1, "Appliances")
 	assert.Contains(t, bc1, "Dishwasher")
 
-	require.NoError(t, m.openServiceLogDetail(42, "Filter Replacement"))
+	require.NoError(t, m.openServiceLogDetail("01JTEST00000000000000042", "Filter Replacement"))
 	bc2 := m.breadcrumbView()
 	assert.Contains(t, bc2, "Appliances")
 	assert.Contains(t, bc2, "Dishwasher")
@@ -577,8 +577,8 @@ func TestEscPopsOneLevel(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 
-	require.NoError(t, m.openApplianceMaintenanceDetail(5, "Dishwasher"))
-	require.NoError(t, m.openServiceLogDetail(42, "Filter"))
+	require.NoError(t, m.openApplianceMaintenanceDetail("01JTEST00000000000000005", "Dishwasher"))
+	require.NoError(t, m.openServiceLogDetail("01JTEST00000000000000042", "Filter"))
 	assert.Len(t, m.detailStack, 2)
 
 	sendKey(m, "esc")
@@ -597,7 +597,7 @@ func TestVendorQuoteDrilldown(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabVendors)
 
-	require.NoError(t, m.openVendorQuoteDetail(3, "Acme Plumbing"))
+	require.NoError(t, m.openVendorQuoteDetail("01JTEST00000000000000003", "Acme Plumbing"))
 	require.True(t, m.inDetail())
 	assert.Equal(t, "Quotes", m.detail().Tab.Name)
 	assert.Contains(t, m.detail().Breadcrumb, "Vendors")
@@ -620,7 +620,7 @@ func TestVendorJobsDrilldown(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabVendors)
 
-	require.NoError(t, m.openVendorJobsDetail(3, "Acme Plumbing"))
+	require.NoError(t, m.openVendorJobsDetail("01JTEST00000000000000003", "Acme Plumbing"))
 	require.True(t, m.inDetail())
 	assert.Equal(t, "Jobs", m.detail().Tab.Name)
 	assert.Contains(t, m.detail().Breadcrumb, "Vendors")
@@ -638,13 +638,13 @@ func TestVendorJobsDrilldown(t *testing.T) {
 
 func TestVendorQuoteHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newVendorQuoteHandler(1)
+	h := newVendorQuoteHandler("01JTEST00000000000000001")
 	assert.Equal(t, formQuote, h.FormKind())
 }
 
 func TestVendorJobsHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newVendorJobsHandler(1)
+	h := newVendorJobsHandler("01JTEST00000000000000001")
 	assert.Equal(t, formServiceLog, h.FormKind())
 }
 
@@ -657,7 +657,7 @@ func TestProjectQuoteDrilldown(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabProjects)
 
-	require.NoError(t, m.openProjectQuoteDetail(7, "Kitchen Remodel"))
+	require.NoError(t, m.openProjectQuoteDetail("01JTEST00000000000000007", "Kitchen Remodel"))
 	require.True(t, m.inDetail())
 	assert.Equal(t, "Quotes", m.detail().Tab.Name)
 	assert.Contains(t, m.detail().Breadcrumb, "Projects")
@@ -677,7 +677,7 @@ func TestProjectQuoteDrilldown(t *testing.T) {
 
 func TestProjectQuoteHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newProjectQuoteHandler(1)
+	h := newProjectQuoteHandler("01JTEST00000000000000001")
 	assert.Equal(t, formQuote, h.FormKind())
 }
 
@@ -788,7 +788,7 @@ func TestOpenDetailForRow_NestedApplianceMaintenanceLog(t *testing.T) {
 	require.NotEmpty(t, appliances)
 
 	// Find an appliance that has linked maintenance items.
-	var applianceID uint
+	var applianceID string
 	var items []data.MaintenanceItem
 	for _, a := range appliances {
 		items, err = m.store.ListMaintenanceByAppliance(a.ID, false)
@@ -844,7 +844,7 @@ func TestNavigateToLinkClosesDetailStack(t *testing.T) {
 
 	// Follow the Project link from the detail view.
 	link := &columnLink{TargetTab: tabProjects}
-	require.NoError(t, m.navigateToLink(link, 1))
+	require.NoError(t, m.navigateToLink(link, "01JTEST00000000000000001"))
 
 	// Detail stack should be fully collapsed and we should be on Projects.
 	assert.False(t, m.inDetail(), "detail stack should be closed after navigateToLink")
@@ -860,7 +860,7 @@ func TestProjectDocumentDrilldown(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabProjects)
 
-	require.NoError(t, m.openProjectDocumentDetail(7, "Kitchen Remodel"))
+	require.NoError(t, m.openProjectDocumentDetail("01JTEST00000000000000007", "Kitchen Remodel"))
 	require.True(t, m.inDetail())
 	assert.Equal(t, tabDocuments.String(), m.detail().Tab.Name)
 	assert.Contains(t, m.detail().Breadcrumb, "Projects")
@@ -880,7 +880,7 @@ func TestApplianceDocumentDrilldown(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabAppliances)
 
-	require.NoError(t, m.openApplianceDocumentDetail(5, "Dishwasher"))
+	require.NoError(t, m.openApplianceDocumentDetail("01JTEST00000000000000005", "Dishwasher"))
 	require.True(t, m.inDetail())
 	assert.Equal(t, tabDocuments.String(), m.detail().Tab.Name)
 	assert.Contains(t, m.detail().Breadcrumb, "Appliances")
@@ -890,13 +890,13 @@ func TestApplianceDocumentDrilldown(t *testing.T) {
 
 func TestProjectDocumentHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newEntityDocumentHandler(data.DocumentEntityProject, 1)
+	h := newEntityDocumentHandler(data.DocumentEntityProject, "01JTEST00000000000000001")
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
 func TestApplianceDocumentHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newEntityDocumentHandler(data.DocumentEntityAppliance, 1)
+	h := newEntityDocumentHandler(data.DocumentEntityAppliance, "01JTEST00000000000000001")
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
@@ -962,7 +962,7 @@ func TestOpenDetailForRow_ApplianceDocuments(t *testing.T) {
 
 func TestServiceLogDocumentHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newEntityDocumentHandler(data.DocumentEntityServiceLog, 1)
+	h := newEntityDocumentHandler(data.DocumentEntityServiceLog, "01JTEST00000000000000001")
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
@@ -1017,7 +1017,7 @@ func TestMaintenanceColumnSpecsIncludeDocs(t *testing.T) {
 
 func TestMaintenanceDocumentHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newEntityDocumentHandler(data.DocumentEntityMaintenance, 1)
+	h := newEntityDocumentHandler(data.DocumentEntityMaintenance, "01JTEST00000000000000001")
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
@@ -1052,7 +1052,7 @@ func TestQuoteColumnSpecsIncludeDocs(t *testing.T) {
 
 func TestQuoteDocumentHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newEntityDocumentHandler(data.DocumentEntityQuote, 1)
+	h := newEntityDocumentHandler(data.DocumentEntityQuote, "01JTEST00000000000000001")
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
@@ -1087,7 +1087,7 @@ func TestVendorColumnSpecsIncludeDocs(t *testing.T) {
 
 func TestVendorDocumentHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := newEntityDocumentHandler(data.DocumentEntityVendor, 1)
+	h := newEntityDocumentHandler(data.DocumentEntityVendor, "01JTEST00000000000000001")
 	assert.Equal(t, formDocument, h.FormKind())
 }
 
@@ -1122,7 +1122,7 @@ func TestNestedApplianceMaintenanceDocuments(t *testing.T) {
 	require.NotEmpty(t, appliances)
 
 	// Find an appliance with maintenance items.
-	var applianceID uint
+	var applianceID string
 	var items []data.MaintenanceItem
 	for _, a := range appliances {
 		items, err = m.store.ListMaintenanceByAppliance(a.ID, false)

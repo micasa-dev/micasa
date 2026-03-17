@@ -22,10 +22,10 @@ func TestProjectRows(t *testing.T) {
 	start := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 	projects := []data.Project{
 		{
-			ID:            1,
+			ID:            "01JTEST00000000000000001",
 			Title:         "Kitchen",
 			ProjectType:   data.ProjectType{Name: "Renovation"},
-			ProjectTypeID: 1,
+			ProjectTypeID: "01JTEST00000000000000001",
 			Status:        data.ProjectStatusPlanned,
 			BudgetCents:   &budget,
 			StartDate:     &start,
@@ -33,7 +33,7 @@ func TestProjectRows(t *testing.T) {
 	}
 	rows, meta, cells := projectRows(projects, nil, nil, cur)
 	require.Len(t, rows, 1)
-	assert.Equal(t, uint(1), meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
 	assert.False(t, meta[0].Deleted)
 	assert.Equal(t, "Kitchen", cells[0][2].Value)
 	assert.Equal(t, "$1,000.00", cells[0][4].Value)
@@ -46,7 +46,7 @@ func TestProjectRowsDeleted(t *testing.T) {
 	cur := locale.DefaultCurrency()
 	projects := []data.Project{
 		{
-			ID:        1,
+			ID:        "01JTEST00000000000000001",
 			Title:     "Old Project",
 			DeletedAt: gorm.DeletedAt{Time: time.Now(), Valid: true},
 		},
@@ -61,20 +61,20 @@ func TestQuoteRows(t *testing.T) {
 	labor := int64(20000)
 	quotes := []data.Quote{
 		{
-			ID:         1,
-			ProjectID:  1,
+			ID:         "01JTEST00000000000000001",
+			ProjectID:  "01JTEST00000000000000001",
 			Project:    data.Project{Title: "Kitchen"},
 			Vendor:     data.Vendor{Name: "ContractorCo"},
-			VendorID:   1,
+			VendorID:   "01JTEST00000000000000001",
 			TotalCents: 50000,
 			LaborCents: &labor,
 		},
 	}
 	rows, meta, cells := quoteRows(quotes, nil, cur)
 	require.Len(t, rows, 1)
-	assert.Equal(t, uint(1), meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
 	assert.Equal(t, "Kitchen", cells[0][1].Value)
-	assert.Equal(t, uint(1), cells[0][1].LinkID)
+	assert.Equal(t, "01JTEST00000000000000001", cells[0][1].LinkID)
 	assert.Equal(t, "ContractorCo", cells[0][2].Value)
 	assert.Equal(t, "$500.00", cells[0][3].Value)
 }
@@ -84,23 +84,33 @@ func TestQuoteRowsFallbackProjectName(t *testing.T) {
 	cur := locale.DefaultCurrency()
 	quotes := []data.Quote{
 		{
-			ID:         1,
-			ProjectID:  42,
+			ID:         "01JTEST00000000000000001",
+			ProjectID:  "01JTEST00000000000000042",
 			TotalCents: 100,
 		},
 	}
 	_, _, cells := quoteRows(quotes, nil, cur)
-	assert.Equal(t, "Project 42", cells[0][1].Value)
+	assert.Equal(t, "Project 01JTEST00000000000000042", cells[0][1].Value)
 }
 
 func TestQuoteRowsDocCount(t *testing.T) {
 	t.Parallel()
 	cur := locale.DefaultCurrency()
 	quotes := []data.Quote{
-		{ID: 1, ProjectID: 1, Project: data.Project{Title: "Kitchen"}, TotalCents: 100},
-		{ID: 2, ProjectID: 1, Project: data.Project{Title: "Kitchen"}, TotalCents: 200},
+		{
+			ID:         "01JTEST00000000000000001",
+			ProjectID:  "01JTEST00000000000000001",
+			Project:    data.Project{Title: "Kitchen"},
+			TotalCents: 100,
+		},
+		{
+			ID:         "01JTEST00000000000000002",
+			ProjectID:  "01JTEST00000000000000001",
+			Project:    data.Project{Title: "Kitchen"},
+			TotalCents: 200,
+		},
 	}
-	docCounts := map[uint]int{2: 5}
+	docCounts := map[string]int{"01JTEST00000000000000002": 5}
 	_, _, cells := quoteRows(quotes, docCounts, cur)
 	require.Len(t, cells, 2)
 	assert.Equal(t, "0", cells[0][int(quoteColDocs)].Value)
@@ -110,11 +120,11 @@ func TestQuoteRowsDocCount(t *testing.T) {
 
 func TestMaintenanceRows(t *testing.T) {
 	t.Parallel()
-	appID := uint(5)
+	appID := "01JTEST00000000000000005"
 	lastServiced := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	items := []data.MaintenanceItem{
 		{
-			ID:             1,
+			ID:             "01JTEST00000000000000001",
 			Name:           "HVAC Filter",
 			Category:       data.MaintenanceCategory{Name: "HVAC"},
 			ApplianceID:    &appID,
@@ -123,14 +133,14 @@ func TestMaintenanceRows(t *testing.T) {
 			IntervalMonths: 3,
 		},
 	}
-	logCounts := map[uint]int{1: 4}
+	logCounts := map[string]int{"01JTEST00000000000000001": 4}
 	rows, meta, cells := maintenanceRows(items, logCounts, nil)
 	require.Len(t, rows, 1)
-	assert.Equal(t, uint(1), meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
 	assert.Equal(t, "HVAC Filter", cells[0][int(maintenanceColItem)].Value)
 	assert.Equal(t, "HVAC", cells[0][int(maintenanceColCategory)].Value)
 	assert.Equal(t, "AC Unit", cells[0][int(maintenanceColAppliance)].Value)
-	assert.Equal(t, uint(5), cells[0][int(maintenanceColAppliance)].LinkID)
+	assert.Equal(t, "01JTEST00000000000000005", cells[0][int(maintenanceColAppliance)].LinkID)
 	assert.Equal(t, "3m", cells[0][int(maintenanceColEvery)].Value)
 	assert.Equal(t, "4", cells[0][int(maintenanceColLog)].Value)
 }
@@ -138,10 +148,10 @@ func TestMaintenanceRows(t *testing.T) {
 func TestMaintenanceRowsDocCount(t *testing.T) {
 	t.Parallel()
 	items := []data.MaintenanceItem{
-		{ID: 1, Name: "HVAC Filter", IntervalMonths: 3},
-		{ID: 2, Name: "Gutters", IntervalMonths: 6},
+		{ID: "01JTEST00000000000000001", Name: "HVAC Filter", IntervalMonths: 3},
+		{ID: "01JTEST00000000000000002", Name: "Gutters", IntervalMonths: 6},
 	}
-	docCounts := map[uint]int{1: 7}
+	docCounts := map[string]int{"01JTEST00000000000000001": 7}
 	_, _, cells := maintenanceRows(items, nil, docCounts)
 	require.Len(t, cells, 2)
 	assert.Equal(t, "7", cells[0][int(maintenanceColDocs)].Value)
@@ -152,13 +162,17 @@ func TestMaintenanceRowsDocCount(t *testing.T) {
 func TestMaintenanceRowsNoAppliance(t *testing.T) {
 	t.Parallel()
 	items := []data.MaintenanceItem{
-		{ID: 1, Name: "Gutters", Category: data.MaintenanceCategory{Name: "Exterior"}},
+		{
+			ID:       "01JTEST00000000000000001",
+			Name:     "Gutters",
+			Category: data.MaintenanceCategory{Name: "Exterior"},
+		},
 	}
 	_, _, cells := maintenanceRows(items, nil, nil)
 	appCol := int(maintenanceColAppliance)
 	assert.Empty(t, cells[0][appCol].Value)
 	assert.True(t, cells[0][appCol].Null, "nil appliance should produce a null cell")
-	assert.Zero(t, cells[0][appCol].LinkID)
+	assert.Empty(t, cells[0][appCol].LinkID)
 }
 
 // Step 12: Due-date items use the same urgency cell kind as interval items,
@@ -168,7 +182,7 @@ func TestMaintenanceRowsDueDateUrgencyCell(t *testing.T) {
 	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
 	items := []data.MaintenanceItem{
 		{
-			ID:       1,
+			ID:       "01JTEST00000000000000001",
 			Name:     "Inspect Roof",
 			DueDate:  &due,
 			Category: data.MaintenanceCategory{Name: "Exterior"},
@@ -190,7 +204,7 @@ func TestMaintenanceRowsSeasonCell(t *testing.T) {
 	t.Parallel()
 	items := []data.MaintenanceItem{
 		{
-			ID:       1,
+			ID:       "01JTEST00000000000000001",
 			Name:     "Clean Gutters",
 			Season:   data.SeasonSpring,
 			Category: data.MaintenanceCategory{Name: "Exterior"},
@@ -207,7 +221,7 @@ func TestMaintenanceRowsNoSeason(t *testing.T) {
 	t.Parallel()
 	items := []data.MaintenanceItem{
 		{
-			ID:       1,
+			ID:       "01JTEST00000000000000001",
 			Name:     "Oil Furnace",
 			Category: data.MaintenanceCategory{Name: "HVAC"},
 		},
@@ -226,7 +240,7 @@ func TestApplianceRows(t *testing.T) {
 	now := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 	items := []data.Appliance{
 		{
-			ID:           1,
+			ID:           "01JTEST00000000000000001",
 			Name:         "Fridge",
 			Brand:        "Samsung",
 			ModelNumber:  "RF28R",
@@ -234,10 +248,10 @@ func TestApplianceRows(t *testing.T) {
 			CostCents:    &cost,
 		},
 	}
-	maintCounts := map[uint]int{1: 2}
+	maintCounts := map[string]int{"01JTEST00000000000000001": 2}
 	rows, meta, cells := applianceRows(items, maintCounts, nil, now, cur)
 	require.Len(t, rows, 1)
-	assert.Equal(t, uint(1), meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
 	assert.Equal(t, "Fridge", cells[0][1].Value)
 	assert.Equal(t, "Samsung", cells[0][2].Value)
 	assert.Equal(t, "2023-06-15", cells[0][6].Value)
@@ -251,7 +265,7 @@ func TestApplianceRowsNoOptionalFields(t *testing.T) {
 	cur := locale.DefaultCurrency()
 	now := time.Now()
 	items := []data.Appliance{
-		{ID: 1, Name: "Lamp"},
+		{ID: "01JTEST00000000000000001", Name: "Lamp"},
 	}
 	_, _, cells := applianceRows(items, nil, nil, now, cur)
 	assert.Empty(t, cells[0][6].Value, "expected empty purchase date")
@@ -276,21 +290,21 @@ func TestDocumentRows(t *testing.T) {
 	t.Parallel()
 	docs := []data.Document{
 		{
-			ID:         1,
+			ID:         "01JTEST00000000000000001",
 			Title:      "Invoice",
 			EntityKind: data.DocumentEntityProject,
-			EntityID:   42,
+			EntityID:   "01JTEST00000000000000042",
 			MIMEType:   "application/pdf",
 			SizeBytes:  2048,
 			UpdatedAt:  time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 	names := entityNameMap{
-		{Kind: data.DocumentEntityProject, ID: 42}: "Kitchen Reno",
+		{Kind: data.DocumentEntityProject, ID: "01JTEST00000000000000042"}: "Kitchen Reno",
 	}
 	rows, meta, cells := documentRows(docs, names)
 	require.Len(t, rows, 1)
-	assert.Equal(t, uint(1), meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
 	assert.Equal(t, "Invoice", cells[0][1].Value)
 	assert.Equal(t, "P Kitchen Reno", cells[0][2].Value)
 	assert.Equal(t, "application/pdf", cells[0][3].Value)
@@ -301,7 +315,7 @@ func TestEntityDocumentRows(t *testing.T) {
 	t.Parallel()
 	docs := []data.Document{
 		{
-			ID:        1,
+			ID:        "01JTEST00000000000000001",
 			Title:     "Manual",
 			MIMEType:  "application/pdf",
 			SizeBytes: 1048576, // 1 MB
@@ -310,7 +324,7 @@ func TestEntityDocumentRows(t *testing.T) {
 	}
 	rows, meta, cells := entityDocumentRows(docs)
 	require.Len(t, rows, 1)
-	assert.Equal(t, uint(1), meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
 	assert.Equal(t, "Manual", cells[0][1].Value)
 	assert.Equal(t, "application/pdf", cells[0][2].Value)
 	assert.Equal(t, "1.0 MB", cells[0][3].Value)
@@ -347,16 +361,24 @@ func TestDocSizeBytesZero(t *testing.T) {
 func TestDocumentEntityLabel(t *testing.T) {
 	t.Parallel()
 	names := entityNameMap{
-		{Kind: "project", ID: 5}:    "Kitchen Reno",
-		{Kind: "appliance", ID: 12}: "Dishwasher",
+		{Kind: "project", ID: "01JTEST00000000000000005"}:   "Kitchen Reno",
+		{Kind: "appliance", ID: "01JTEST00000000000000012"}: "Dishwasher",
 	}
-	assert.Empty(t, documentEntityLabel("", 0, names))
-	assert.Equal(t, "P Kitchen Reno", documentEntityLabel("project", 5, names))
-	assert.Equal(t, "A Dishwasher", documentEntityLabel("appliance", 12, names))
+	assert.Empty(t, documentEntityLabel("", "", names))
 	assert.Equal(
 		t,
-		"V #99",
-		documentEntityLabel("vendor", 99, names),
+		"P Kitchen Reno",
+		documentEntityLabel("project", "01JTEST00000000000000005", names),
+	)
+	assert.Equal(
+		t,
+		"A Dishwasher",
+		documentEntityLabel("appliance", "01JTEST00000000000000012", names),
+	)
+	assert.Equal(
+		t,
+		"V #01JTEST00000000000000099",
+		documentEntityLabel("vendor", "01JTEST00000000000000099", names),
 		"fallback for missing name",
 	)
 }
@@ -399,7 +421,7 @@ func TestProjectRowsNullOptionalFields(t *testing.T) {
 	t.Parallel()
 	cur := locale.DefaultCurrency()
 	projects := []data.Project{
-		{ID: 1, Title: "Minimal", Status: data.ProjectStatusPlanned},
+		{ID: "01JTEST00000000000000001", Title: "Minimal", Status: data.ProjectStatusPlanned},
 	}
 	_, _, cells := projectRows(projects, nil, nil, cur)
 	require.Len(t, cells, 1)

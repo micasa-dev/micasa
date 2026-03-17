@@ -162,7 +162,7 @@ func TestDatePickerEscClearsFormState(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	dateVal := testDate
-	id := uint(42)
+	id := "01JTEST00000000000000042"
 
 	// Simulate what openDatePicker does: set form state then open calendar.
 	m.fs.editID = &id

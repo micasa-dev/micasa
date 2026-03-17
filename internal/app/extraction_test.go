@@ -934,7 +934,7 @@ func TestStartExtraction_ImageWithExistingText_SkipsOCR(t *testing.T) {
 
 	existingText := "Previously extracted invoice text"
 	cmd := m.startExtractionOverlay(
-		1, "receipt.png", []byte("fake"), "image/png", existingText, nil,
+		"01JTEST00000000000000001", "receipt.png", []byte("fake"), "image/png", existingText, nil,
 	)
 
 	require.NotNil(t, cmd, "should return a command for LLM step")
@@ -960,7 +960,12 @@ func TestStartExtraction_PDFWithExistingText_SkipsOCR(t *testing.T) {
 
 	existingText := "Invoice #12345\nTotal: $100.00"
 	cmd := m.startExtractionOverlay(
-		1, "invoice.pdf", []byte("fake-pdf"), extract.MIMEApplicationPDF, existingText, nil,
+		"01JTEST00000000000000001",
+		"invoice.pdf",
+		[]byte("fake-pdf"),
+		extract.MIMEApplicationPDF,
+		existingText,
+		nil,
 	)
 
 	require.NotNil(t, cmd)
@@ -986,7 +991,12 @@ func TestStartExtraction_ExistingTextPreservesExtractData(t *testing.T) {
 	existingText := "OCR result from previous run"
 	tsvData := []byte("level\tpage\tblock\n1\t1\t1\n")
 	cmd := m.startExtractionOverlay(
-		1, "receipt.png", []byte("fake"), "image/png", existingText, tsvData,
+		"01JTEST00000000000000001",
+		"receipt.png",
+		[]byte("fake"),
+		"image/png",
+		existingText,
+		tsvData,
 	)
 
 	require.NotNil(t, cmd)
@@ -1008,7 +1018,7 @@ func TestStartExtraction_EmptyText_RunsOCRNormally(t *testing.T) {
 	}
 
 	cmd := m.startExtractionOverlay(
-		1, "receipt.png", []byte("fake"), "image/png", "", nil,
+		"01JTEST00000000000000001", "receipt.png", []byte("fake"), "image/png", "", nil,
 	)
 
 	require.NotNil(t, cmd)
@@ -1032,7 +1042,7 @@ func TestStartExtraction_WhitespaceOnlyText_RunsOCR(t *testing.T) {
 	}
 
 	cmd := m.startExtractionOverlay(
-		1, "receipt.png", []byte("fake"), "image/png", "   \n\t  ", nil,
+		"01JTEST00000000000000001", "receipt.png", []byte("fake"), "image/png", "   \n\t  ", nil,
 	)
 
 	require.NotNil(t, cmd)
@@ -1049,7 +1059,7 @@ func TestStartExtraction_PlainTextWithExistingText_SkipsToLLM(t *testing.T) {
 
 	existingText := "Some previously extracted content"
 	cmd := m.startExtractionOverlay(
-		1, "notes.txt", []byte("fake"), "text/plain", existingText, nil,
+		"01JTEST00000000000000001", "notes.txt", []byte("fake"), "text/plain", existingText, nil,
 	)
 
 	require.NotNil(t, cmd)
@@ -2020,15 +2030,16 @@ func TestDispatch_VendorCrossReference(t *testing.T) {
 	doc := data.Document{Title: "Invoice", FileName: "inv.pdf"}
 	require.NoError(t, m.store.CreateDocument(&doc))
 
-	// Simulate LLM output: create vendor then quote referencing it with
-	// a fictional vendor_id that doesn't match the real DB ID.
+	// Simulate LLM output: create vendor then quote referencing it.
+	// The vendor_id "1" matches the shadow ordinal assigned to the new vendor
+	// (no pre-existing vendors, so ordinal starts at 1).
 	ops := []extract.Operation{
 		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Garcia Plumbing",
 		}},
 		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   float64(1),
-			"project_id":  float64(project.ID),
+			"vendor_id":   "1",
+			"project_id":  project.ID,
 			"total_cents": float64(150000),
 		}},
 	}
@@ -2096,8 +2107,8 @@ func TestDispatch_InvalidProjectIDShowsError(t *testing.T) {
 
 	ops := []extract.Operation{
 		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   float64(acme.ID),
-			"project_id":  float64(9999),
+			"vendor_id":   acme.ID,
+			"project_id":  "01JTEST0000NONEXISTENT99",
 			"total_cents": float64(50000),
 		}},
 	}
@@ -2157,14 +2168,14 @@ func TestDispatch_OffsetCrossReference(t *testing.T) {
 	}
 
 	// LLM creates a new vendor and a quote referencing it.
-	// The LLM sees max vendor ID = 3, so it emits vendor_id: 4.
+	// With 3 pre-existing vendors, shadow ordinal starts at 4.
 	ops := []extract.Operation{
 		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Delta Electric",
 		}},
 		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   float64(4),
-			"project_id":  float64(project.ID),
+			"vendor_id":   "4",
+			"project_id":  project.ID,
 			"total_cents": float64(200000),
 		}},
 	}
@@ -2241,13 +2252,14 @@ func TestDispatch_DuplicateVendorDedup(t *testing.T) {
 	existingID := vendorsBefore[0].ID
 
 	// LLM creates a vendor with the same name and a quote referencing it.
+	// With 1 pre-existing vendor, shadow ordinal starts at 2.
 	ops := []extract.Operation{
 		{Action: "create", Table: data.TableVendors, Data: map[string]any{
 			"name": "Acme Plumbing",
 		}},
 		{Action: "create", Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   float64(2),
-			"project_id":  float64(project.ID),
+			"vendor_id":   "2",
+			"project_id":  project.ID,
 			"total_cents": float64(75000),
 		}},
 	}
@@ -2318,8 +2330,8 @@ func TestDispatch_DuplicateApplianceDedup(t *testing.T) {
 		}},
 		{Action: "create", Table: data.TableMaintenanceItems, Data: map[string]any{
 			"name":         "Flush Tank",
-			"appliance_id": float64(2),
-			"category_id":  float64(catID),
+			"appliance_id": "2",
+			"category_id":  catID,
 		}},
 	}
 

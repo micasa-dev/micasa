@@ -168,7 +168,7 @@ func TestNavigateToLinkClearsStaleFlag(t *testing.T) {
 	// Navigate to the Vendors tab via a link. The target ID doesn't need
 	// to match an actual row — we just verify the tab reload happens.
 	link := &columnLink{TargetTab: tabVendors}
-	_ = m.navigateToLink(link, 1)
+	_ = m.navigateToLink(link, "01JNOTEXIST0000000000LINK1")
 
 	vendorIdx := tabIndex(tabVendors)
 	assert.False(t, m.tabs[vendorIdx].Stale, "vendors tab should not be stale after navigateToLink")

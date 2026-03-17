@@ -21,7 +21,7 @@ func TestDashMaintSplitRows(t *testing.T) {
 	m.dash.data = dashboardData{
 		Overdue: []maintenanceUrgency{{
 			Item: data.MaintenanceItem{
-				ID:             1,
+				ID:             "01JTEST00000000000000001",
 				Name:           "Replace Filter",
 				LastServicedAt: &lastSrv,
 			},
@@ -29,7 +29,7 @@ func TestDashMaintSplitRows(t *testing.T) {
 			DaysFromNow:   -14,
 		}},
 		Upcoming: []maintenanceUrgency{{
-			Item:        data.MaintenanceItem{ID: 2, Name: "Check Pump"},
+			Item:        data.MaintenanceItem{ID: "01JTEST00000000000000002", Name: "Check Pump"},
 			DaysFromNow: 10,
 		}},
 	}
@@ -98,11 +98,19 @@ func TestDashExpiringRowsOverdueAndUpcoming(t *testing.T) {
 	m.dash.data = dashboardData{
 		ExpiringWarranties: []warrantyStatus{
 			{
-				Appliance:   data.Appliance{ID: 1, Name: "Fridge", WarrantyExpiry: &expiredDate},
+				Appliance: data.Appliance{
+					ID:             "01JTEST00000000000000001",
+					Name:           "Fridge",
+					WarrantyExpiry: &expiredDate,
+				},
 				DaysFromNow: -20,
 			},
 			{
-				Appliance:   data.Appliance{ID: 2, Name: "Oven", WarrantyExpiry: &upcomingDate},
+				Appliance: data.Appliance{
+					ID:             "01JTEST00000000000000002",
+					Name:           "Oven",
+					WarrantyExpiry: &upcomingDate,
+				},
 				DaysFromNow: 55,
 			},
 		},

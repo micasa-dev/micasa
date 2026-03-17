@@ -18,7 +18,7 @@ func TestNotePreviewOpensOnEnter(t *testing.T) {
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
 	// Open service log detail (has Notes column).
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JNOTEXIST000000000000001", "Test")
 	tab := m.effectiveTab()
 	require.NotNil(t, tab, "expected detail tab")
 
@@ -29,7 +29,7 @@ func TestNotePreviewOpensOnEnter(t *testing.T) {
 		},
 	)
 	tab.Table.SetCursor(0)
-	tab.Rows = []rowMeta{{ID: 1}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001"}}
 	tab.CellRows = [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -74,11 +74,11 @@ func TestNotePreviewDoesNotOpenOnEmptyNote(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JNOTEXIST000000000000001", "Test")
 	tab := m.effectiveTab()
 
 	tab.Table.SetRows([]table.Row{{"1", "2026-01-15", "Self", "", ""}})
-	tab.Rows = []rowMeta{{ID: 1}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001"}}
 	tab.CellRows = [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -157,11 +157,11 @@ func TestEnterHintShowsPreviewOnNotesColumn(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JNOTEXIST000000000000001", "Test")
 	tab := m.effectiveTab()
 	tab.ColCursor = 4 // Notes column
 	tab.Table.SetRows([]table.Row{{"1", "2026-01-15", "Self", "", "some note"}})
-	tab.Rows = []rowMeta{{ID: 1}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001"}}
 	tab.CellRows = [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -224,7 +224,7 @@ func TestMultilineNotesRenderedAsSingleLineInTable(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JNOTEXIST000000000000001", "Test")
 	tab := m.effectiveTab()
 	require.NotNil(t, tab)
 
@@ -233,7 +233,7 @@ func TestMultilineNotesRenderedAsSingleLineInTable(t *testing.T) {
 	tab.Table.SetRows([]table.Row{
 		{"1", "2026-01-15", "Self", "$50.00", multilineNote},
 	})
-	tab.Rows = []rowMeta{{ID: 1}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001"}}
 	tab.CellRows = [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -290,7 +290,7 @@ func TestLongNotesTruncatedInTableView(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JNOTEXIST000000000000001", "Test")
 	tab := m.effectiveTab()
 	require.NotNil(t, tab)
 
@@ -300,7 +300,7 @@ func TestLongNotesTruncatedInTableView(t *testing.T) {
 		{"1", "2026-01-15", "Self", "$50.00", longNote},
 	})
 	tab.Table.SetCursor(0)
-	tab.Rows = []rowMeta{{ID: 1}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001"}}
 	tab.CellRows = [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -351,7 +351,7 @@ func TestOpenNotesEditOpensTextareaOverlay(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "existing note"}
-	m.openNotesEdit(1, &values.Notes, values)
+	m.openNotesEdit("01JNOTEXIST000000000000001", &values.Notes, values)
 
 	assert.Equal(t, modeForm, m.mode)
 	assert.True(t, m.fs.notesEditMode)
@@ -365,7 +365,7 @@ func TestNotesEditModeShowsEditorHint(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "test"}
-	m.openNotesEdit(1, &values.Notes, values)
+	m.openNotesEdit("01JNOTEXIST000000000000001", &values.Notes, values)
 
 	status := m.statusView()
 	assert.Contains(t, status, "CTRL+E")
@@ -375,7 +375,7 @@ func TestNotesEditModeClearedOnExitForm(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "test"}
-	m.openNotesEdit(1, &values.Notes, values)
+	m.openNotesEdit("01JNOTEXIST000000000000001", &values.Notes, values)
 	require.True(t, m.fs.notesEditMode)
 
 	m.exitForm()
@@ -387,7 +387,7 @@ func TestNotesEditModeClearedOnExitForm(t *testing.T) {
 func TestCtrlEWithoutEditorShowsError(t *testing.T) {
 	m := newTestModel(t)
 	values := &serviceLogFormData{Notes: "test"}
-	m.openNotesEdit(1, &values.Notes, values)
+	m.openNotesEdit("01JNOTEXIST000000000000001", &values.Notes, values)
 
 	// Ensure no editor is set.
 	t.Setenv("EDITOR", "")
@@ -409,7 +409,7 @@ func TestEditorFinishedMsgUpdatesFieldAndReopensTextarea(t *testing.T) {
 	require.NoError(t, os.WriteFile(tmpFile, []byte("edited content\n"), 0o600))
 
 	m.fs.pendingEditor = &editorState{
-		EditID:   42,
+		EditID:   "01JNOTEXIST000000000000042",
 		FormData: values,
 		FieldPtr: &values.Notes,
 		TempFile: tmpFile,
@@ -472,13 +472,13 @@ func TestNotePreviewStillWorksAfterNotesEditChanges(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.active = tabIndex(tabMaintenance)
-	_ = m.openServiceLogDetail(1, "Test")
+	_ = m.openServiceLogDetail("01JNOTEXIST000000000000001", "Test")
 	tab := m.effectiveTab()
 	require.NotNil(t, tab)
 
 	tab.Table.SetRows([]table.Row{{"1", "2026-01-15", "Self", "", "read-only preview"}})
 	tab.Table.SetCursor(0)
-	tab.Rows = []rowMeta{{ID: 1}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001"}}
 	tab.CellRows = [][]cell{
 		{
 			{Value: "1", Kind: cellReadonly},
@@ -500,7 +500,7 @@ func TestDocumentNotesSaveDoesNotTriggerExtraction(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	values := &documentFormData{Notes: "original note"}
-	m.openNotesEdit(1, &values.Notes, values)
+	m.openNotesEdit("01JNOTEXIST000000000000001", &values.Notes, values)
 
 	require.True(t, m.fs.notesEditMode)
 	require.Equal(t, formDocument, m.fs.formKind())

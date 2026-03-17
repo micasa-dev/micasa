@@ -55,9 +55,9 @@ func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 
 	p := &Pipeline{
 		LLMClient: client,
-		DocID:     42,
+		DocID:     "42",
 		Schema: SchemaContext{
-			Vendors: []EntityRow{{ID: 1, Name: "Existing Vendor"}},
+			Vendors: []EntityRow{{ID: "1", Name: "Existing Vendor"}},
 		},
 	}
 
@@ -152,7 +152,7 @@ func TestPipeline_LLMForbiddenAction(t *testing.T) {
 	opsJSON := `{"operations": [{"action": "delete", "table": "vendors", "data": {"id": 1}}]}`
 	_, client := newTestLLMServer(t, opsJSON)
 
-	p := &Pipeline{LLMClient: client, DocID: 1}
+	p := &Pipeline{LLMClient: client, DocID: "1"}
 	r := p.Run(context.Background(), []byte("some text"), "doc.txt", "text/plain")
 
 	assert.False(t, r.LLMUsed)
@@ -168,7 +168,7 @@ func TestPipeline_LLMForbiddenTable(t *testing.T) {
 	opsJSON := `{"operations": [{"action": "create", "table": "users", "data": {"name": "hacker"}}]}`
 	_, client := newTestLLMServer(t, opsJSON)
 
-	p := &Pipeline{LLMClient: client, DocID: 1}
+	p := &Pipeline{LLMClient: client, DocID: "1"}
 	r := p.Run(context.Background(), []byte("some text"), "doc.txt", "text/plain")
 
 	assert.False(t, r.LLMUsed)

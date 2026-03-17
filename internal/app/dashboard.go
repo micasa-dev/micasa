@@ -81,7 +81,7 @@ type insuranceStatus struct {
 // (toggle expand/collapse on Enter) or a data row (jump to tab on Enter).
 type dashNavEntry struct {
 	Tab      TabKind
-	ID       uint
+	ID       string
 	Section  string // section title this entry belongs to
 	IsHeader bool   // true = section header, not a data row
 	InfoOnly bool   // true = cursor can land here but Enter is a no-op
@@ -355,7 +355,7 @@ func dashNavSection[T any](
 	items []T,
 	tab TabKind,
 	section string,
-	id func(T) uint,
+	id func(T) string,
 ) []dashNavEntry {
 	entries := make([]dashNavEntry, len(items))
 	for i, item := range items {
@@ -380,29 +380,29 @@ func (m *Model) buildDashNav() {
 
 	add(dashSectionIncidents, dashNavSection(
 		d.OpenIncidents, tabIncidents, dashSectionIncidents,
-		func(inc data.Incident) uint { return inc.ID },
+		func(inc data.Incident) string { return inc.ID },
 	))
 	add(dashSectionOverdue, dashNavSection(
 		d.Overdue, tabMaintenance, dashSectionOverdue,
-		func(e maintenanceUrgency) uint { return e.Item.ID },
+		func(e maintenanceUrgency) string { return e.Item.ID },
 	))
 	add(dashSectionUpcoming, dashNavSection(
 		d.Upcoming, tabMaintenance, dashSectionUpcoming,
-		func(e maintenanceUrgency) uint { return e.Item.ID },
+		func(e maintenanceUrgency) string { return e.Item.ID },
 	))
 	add(dashSectionSeasonal, dashNavSection(
 		d.Seasonal, tabMaintenance, dashSectionSeasonal,
-		func(item data.MaintenanceItem) uint { return item.ID },
+		func(item data.MaintenanceItem) string { return item.ID },
 	))
 	add(dashSectionProjects, dashNavSection(
 		d.ActiveProjects, tabProjects, dashSectionProjects,
-		func(p data.Project) uint { return p.ID },
+		func(p data.Project) string { return p.ID },
 	))
 
 	// Expiring: warranties + optional insurance renewal row.
 	expiring := dashNavSection(
 		d.ExpiringWarranties, tabAppliances, dashSectionExpiring,
-		func(w warrantyStatus) uint { return w.Appliance.ID },
+		func(w warrantyStatus) string { return w.Appliance.ID },
 	)
 	if d.InsuranceRenewal != nil {
 		expiring = append(expiring, dashNavEntry{

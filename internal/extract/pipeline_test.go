@@ -173,9 +173,9 @@ func TestPipeline_SchemaContext(t *testing.T) {
 	t.Parallel()
 	p := &Pipeline{
 		Schema: SchemaContext{
-			Vendors:    []EntityRow{{ID: 1, Name: "Garcia Plumbing"}},
-			Projects:   []EntityRow{{ID: 1, Name: "Kitchen Remodel"}},
-			Appliances: []EntityRow{{ID: 1, Name: "HVAC Unit"}},
+			Vendors:    []EntityRow{{ID: "1", Name: "Garcia Plumbing"}},
+			Projects:   []EntityRow{{ID: "1", Name: "Kitchen Remodel"}},
+			Appliances: []EntityRow{{ID: "1", Name: "HVAC Unit"}},
 		},
 	}
 	// Without LLM client, schema context is loaded but not used.

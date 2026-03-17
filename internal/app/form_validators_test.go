@@ -177,7 +177,7 @@ func TestProjectFormValues(t *testing.T) {
 	start := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 	project := data.Project{
 		Title:         "Kitchen Remodel",
-		ProjectTypeID: 1,
+		ProjectTypeID: "01JTEST00000000000000001",
 		Status:        data.ProjectStatusInProgress,
 		BudgetCents:   &budget,
 		StartDate:     &start,
@@ -213,7 +213,7 @@ func TestQuoteFormValues(t *testing.T) {
 	t.Parallel()
 	labor := int64(10000)
 	quote := data.Quote{
-		ProjectID:  1,
+		ProjectID:  "01JTEST00000000000000001",
 		TotalCents: 50000,
 		LaborCents: &labor,
 		Vendor:     data.Vendor{Name: "ContractorCo"},
@@ -227,16 +227,16 @@ func TestQuoteFormValues(t *testing.T) {
 
 func TestMaintenanceFormValues(t *testing.T) {
 	t.Parallel()
-	appID := uint(3)
+	appID := "01JTEST00000000000000003"
 	item := data.MaintenanceItem{
 		Name:           "HVAC Filter",
-		CategoryID:     1,
+		CategoryID:     "01JTEST00000000000000001",
 		ApplianceID:    &appID,
 		IntervalMonths: 3,
 	}
 	got := maintenanceFormValues(item, locale.DefaultCurrency())
 	assert.Equal(t, "HVAC Filter", got.Name)
-	assert.Equal(t, uint(3), got.ApplianceID)
+	assert.Equal(t, "01JTEST00000000000000003", got.ApplianceID)
 	assert.Equal(t, "3m", got.IntervalMonths)
 }
 
@@ -244,10 +244,10 @@ func TestMaintenanceFormValuesNoAppliance(t *testing.T) {
 	t.Parallel()
 	item := data.MaintenanceItem{
 		Name:       "Smoke Detectors",
-		CategoryID: 1,
+		CategoryID: "01JTEST00000000000000001",
 	}
 	got := maintenanceFormValues(item, locale.DefaultCurrency())
-	assert.Zero(t, got.ApplianceID)
+	assert.Empty(t, got.ApplianceID)
 }
 
 func TestMaintenanceFormValuesDueDate(t *testing.T) {
@@ -255,7 +255,7 @@ func TestMaintenanceFormValuesDueDate(t *testing.T) {
 	due := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
 	item := data.MaintenanceItem{
 		Name:       "Inspect Roof",
-		CategoryID: 1,
+		CategoryID: "01JTEST00000000000000001",
 		DueDate:    &due,
 	}
 	got := maintenanceFormValues(item, locale.DefaultCurrency())
@@ -300,7 +300,7 @@ func TestHouseFormValues(t *testing.T) {
 func TestServiceLogFormValues(t *testing.T) {
 	t.Parallel()
 	cost := int64(15000)
-	vendorID := uint(1)
+	vendorID := "01JTEST00000000000000001"
 	entry := data.ServiceLogEntry{
 		ServicedAt: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
 		VendorID:   &vendorID,
@@ -310,7 +310,7 @@ func TestServiceLogFormValues(t *testing.T) {
 	got := serviceLogFormValues(entry, locale.DefaultCurrency())
 	assert.Equal(t, "2025-01-15", got.ServicedAt)
 	assert.Equal(t, "$150.00", got.Cost)
-	assert.Equal(t, uint(1), got.VendorID)
+	assert.Equal(t, "01JTEST00000000000000001", got.VendorID)
 }
 
 func TestServiceLogFormValuesNoVendor(t *testing.T) {
@@ -319,7 +319,7 @@ func TestServiceLogFormValuesNoVendor(t *testing.T) {
 		ServicedAt: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
 	}
 	got := serviceLogFormValues(entry, locale.DefaultCurrency())
-	assert.Zero(t, got.VendorID)
+	assert.Empty(t, got.VendorID)
 	assert.Empty(t, got.Cost)
 }
 

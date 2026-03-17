@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cpcloud/micasa/internal/uid"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )
@@ -100,7 +102,7 @@ func BuildEntityKindToTable(models []any) map[string]string {
 }
 
 type HouseProfile struct {
-	ID               uint `gorm:"primaryKey"`
+	ID               string `gorm:"primaryKey;size:26"`
 	Nickname         string
 	AddressLine1     string
 	AddressLine2     string
@@ -133,14 +135,14 @@ type HouseProfile struct {
 }
 
 type ProjectType struct {
-	ID        uint   `gorm:"primaryKey"`
+	ID        string `gorm:"primaryKey;size:26"`
 	Name      string `gorm:"uniqueIndex"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type Vendor struct {
-	ID          uint   `gorm:"primaryKey"`
+	ID          string `gorm:"primaryKey;size:26"`
 	Name        string `gorm:"uniqueIndex"`
 	ContactName string
 	Email       string
@@ -154,9 +156,9 @@ type Vendor struct {
 }
 
 type Project struct {
-	ID            uint `gorm:"primaryKey"`
+	ID            string `gorm:"primaryKey;size:26"`
 	Title         string
-	ProjectTypeID uint
+	ProjectTypeID string
 	ProjectType   ProjectType `gorm:"constraint:OnDelete:RESTRICT;"`
 	Status        string      `                                                                              default:"planned"`
 	Description   string
@@ -171,10 +173,10 @@ type Project struct {
 }
 
 type Quote struct {
-	ID             uint    `gorm:"primaryKey"`
-	ProjectID      uint    `gorm:"index"`
+	ID             string  `gorm:"primaryKey;size:26"`
+	ProjectID      string  `gorm:"index"`
 	Project        Project `gorm:"constraint:OnDelete:RESTRICT;"`
-	VendorID       uint    `gorm:"index"`
+	VendorID       string  `gorm:"index"`
 	Vendor         Vendor  `gorm:"constraint:OnDelete:RESTRICT;"`
 	TotalCents     int64
 	LaborCents     *int64
@@ -189,14 +191,14 @@ type Quote struct {
 }
 
 type MaintenanceCategory struct {
-	ID        uint   `gorm:"primaryKey"`
+	ID        string `gorm:"primaryKey;size:26"`
 	Name      string `gorm:"uniqueIndex"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type Appliance struct {
-	ID             uint `gorm:"primaryKey"`
+	ID             string `gorm:"primaryKey;size:26"`
 	Name           string
 	Brand          string
 	ModelNumber    string
@@ -213,11 +215,11 @@ type Appliance struct {
 }
 
 type MaintenanceItem struct {
-	ID             uint `gorm:"primaryKey"`
+	ID             string `gorm:"primaryKey;size:26"`
 	Name           string
-	CategoryID     uint                `gorm:"index"`
+	CategoryID     string              `gorm:"index"`
 	Category       MaintenanceCategory `gorm:"constraint:OnDelete:RESTRICT;"`
-	ApplianceID    *uint               `gorm:"index"`
+	ApplianceID    *string             `gorm:"index"`
 	Appliance      Appliance           `gorm:"constraint:OnDelete:SET NULL;"`
 	Season         string
 	LastServicedAt *time.Time `                                                                                  extract:"-"`
@@ -234,7 +236,7 @@ type MaintenanceItem struct {
 }
 
 type Incident struct {
-	ID             uint `gorm:"primaryKey"`
+	ID             string `gorm:"primaryKey;size:26"`
 	Title          string
 	Description    string
 	Status         string     `                                                                               default:"open"`
@@ -244,9 +246,9 @@ type Incident struct {
 	DateResolved   *time.Time `                                                                                              extract:"-"`
 	Location       string
 	CostCents      *int64
-	ApplianceID    *uint     `gorm:"index"`
+	ApplianceID    *string   `gorm:"index"`
 	Appliance      Appliance `gorm:"constraint:OnDelete:SET NULL;"`
-	VendorID       *uint     `gorm:"index"`
+	VendorID       *string   `gorm:"index"`
 	Vendor         Vendor    `gorm:"constraint:OnDelete:SET NULL;"`
 	Notes          string
 	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:incident"`
@@ -256,12 +258,12 @@ type Incident struct {
 }
 
 type ServiceLogEntry struct {
-	ID                uint            `gorm:"primaryKey"`
-	MaintenanceItemID uint            `gorm:"index"`
+	ID                string          `gorm:"primaryKey;size:26"`
+	MaintenanceItemID string          `gorm:"index"`
 	MaintenanceItem   MaintenanceItem `gorm:"constraint:OnDelete:CASCADE;"`
 	ServicedAt        time.Time
-	VendorID          *uint  `gorm:"index"`
-	Vendor            Vendor `gorm:"constraint:OnDelete:SET NULL;"`
+	VendorID          *string `gorm:"index"`
+	Vendor            Vendor  `gorm:"constraint:OnDelete:SET NULL;"`
 	CostCents         *int64
 	Notes             string
 	Documents         []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:service_log"`
@@ -271,11 +273,11 @@ type ServiceLogEntry struct {
 }
 
 type Document struct {
-	ID              uint `gorm:"primaryKey"`
+	ID              string `gorm:"primaryKey;size:26"`
 	Title           string
 	FileName        string `gorm:"column:file_name"`
 	EntityKind      string `gorm:"index:idx_doc_entity"`
-	EntityID        uint   `gorm:"index:idx_doc_entity"`
+	EntityID        string `gorm:"index:idx_doc_entity"`
 	MIMEType        string `                             extract:"-"`
 	SizeBytes       int64  `                             extract:"-"`
 	ChecksumSHA256  string `gorm:"column:sha256"         extract:"-"`
@@ -291,9 +293,9 @@ type Document struct {
 }
 
 type DeletionRecord struct {
-	ID         uint       `gorm:"primaryKey"`
+	ID         string     `gorm:"primaryKey;size:26"`
 	Entity     string     `gorm:"index:idx_entity_restored,priority:1"`
-	TargetID   uint       `gorm:"index"`
+	TargetID   string     `gorm:"index"`
 	DeletedAt  time.Time  `gorm:"index"`
 	RestoredAt *time.Time `gorm:"index:idx_entity_restored,priority:2"`
 }
@@ -313,4 +315,88 @@ type ChatInput struct {
 	ID        uint   `gorm:"primaryKey"`
 	Input     string `gorm:"not null"`
 	CreatedAt time.Time
+}
+
+func (x *HouseProfile) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *ProjectType) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *Vendor) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *Project) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *Quote) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *MaintenanceCategory) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *Appliance) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *MaintenanceItem) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *Incident) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *ServiceLogEntry) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *Document) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *DeletionRecord) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
 }

@@ -24,7 +24,9 @@ func TestInlineEditProjectTextColumnOpensInlineInput(t *testing.T) {
 	m.reloadAll()
 
 	// Inline edit the Title column -- should open inline input.
-	require.NoError(t, m.inlineEditProject(1, projectColTitle))
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	require.NoError(t, m.inlineEditProject(tab.Rows[0].ID, projectColTitle))
 	require.NotNil(t, m.inlineInput, "expected inline input for text column (Title)")
 	assert.Equal(t, "Title", m.inlineInput.Title)
 	assert.NotEqual(t, modeForm, m.mode, "inline input should not switch to modeForm")
@@ -43,7 +45,9 @@ func TestInlineEditProjectSelectColumnOpensFormOverlay(t *testing.T) {
 	m.reloadAll()
 
 	// Inline edit the Status column -- should open form overlay.
-	require.NoError(t, m.inlineEditProject(1, projectColStatus))
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	require.NoError(t, m.inlineEditProject(tab.Rows[0].ID, projectColStatus))
 	assert.Nil(t, m.inlineInput, "select column should NOT open inline input")
 	assert.Equal(t, modeForm, m.mode, "select column should open form overlay")
 }
@@ -60,6 +64,15 @@ func TestInlineEditVendorTextColumnsUseInlineInput(t *testing.T) {
 	m.exitForm()
 	m.reloadAll()
 
+	// Switch to vendor tab.
+	for i, tab := range m.tabs {
+		if tab.Kind == tabVendors {
+			m.active = i
+			break
+		}
+	}
+	require.NoError(t, m.reloadActiveTab())
+
 	// All editable vendor columns are text, so they should all use inline input.
 	cases := []struct {
 		col   vendorCol
@@ -73,7 +86,14 @@ func TestInlineEditVendorTextColumnsUseInlineInput(t *testing.T) {
 	}
 	for _, tc := range cases {
 		m.closeInlineInput()
-		require.NoErrorf(t, m.inlineEditVendor(1, tc.col), "inlineEditVendor col %d", tc.col)
+		tab := m.activeTab()
+		require.NotEmpty(t, tab.Rows)
+		require.NoErrorf(
+			t,
+			m.inlineEditVendor(tab.Rows[0].ID, tc.col),
+			"inlineEditVendor col %d",
+			tc.col,
+		)
 		require.NotNilf(t, m.inlineInput, "col %d (%s) should open inline input", tc.col, tc.title)
 		assert.Equalf(t, tc.title, m.inlineInput.Title, "col %d title mismatch", tc.col)
 	}
@@ -91,8 +111,19 @@ func TestInlineEditAppliaceDateColumnOpensCalendar(t *testing.T) {
 	m.exitForm()
 	m.reloadAll()
 
+	// Switch to appliance tab.
+	for i, tab := range m.tabs {
+		if tab.Kind == tabAppliances {
+			m.active = i
+			break
+		}
+	}
+	require.NoError(t, m.reloadActiveTab())
+
 	// Purchase date column should open calendar picker.
-	require.NoError(t, m.inlineEditAppliance(1, applianceColPurchased))
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	require.NoError(t, m.inlineEditAppliance(tab.Rows[0].ID, applianceColPurchased))
 	assert.NotNil(t, m.calendar, "date column should open calendar picker")
 	assert.Nil(t, m.inlineInput, "date column should NOT open inline input")
 }

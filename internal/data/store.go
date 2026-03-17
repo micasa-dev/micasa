@@ -49,9 +49,9 @@ func listQuery[T any](
 	return items, nil
 }
 
-func getByID[T any](s *Store, id uint, prepare func(*gorm.DB) *gorm.DB) (T, error) {
+func getByID[T any](s *Store, id string, prepare func(*gorm.DB) *gorm.DB) (T, error) {
 	var item T
-	err := prepare(s.db).First(&item, id).Error
+	err := prepare(s.db).First(&item, "id = ?", id).Error
 	return item, err
 }
 
@@ -65,7 +65,7 @@ func findOrCreate[T any](
 	nameLabel string,
 	lookup func(*gorm.DB) *gorm.DB,
 	entity string,
-	id func(T) uint,
+	id func(T) string,
 	deleted func(T) bool,
 ) (T, error) {
 	if strings.TrimSpace(name) == "" {
@@ -100,7 +100,7 @@ type dependencyCheck struct {
 	errFmt string
 }
 
-func (s *Store) checkDependencies(id uint, checks []dependencyCheck) error {
+func (s *Store) checkDependencies(id string, checks []dependencyCheck) error {
 	for _, c := range checks {
 		n, err := s.countDependents(c.model, c.fkCol, id)
 		if err != nil {
@@ -374,7 +374,7 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 
 	// Lookup helpers that panic on missing seed data. SeedDefaults must run
 	// before SeedDemoDataFrom; a missing type/category is a programming error.
-	typeID := func(name string) uint {
+	typeID := func(name string) string {
 		var pt ProjectType
 		if err := s.db.Where(ColName+" = ?", name).First(&pt).Error; err != nil {
 			panic(
@@ -387,7 +387,7 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 		}
 		return pt.ID
 	}
-	catID := func(name string) uint {
+	catID := func(name string) string {
 		var mc MaintenanceCategory
 		if err := s.db.Where(ColName+" = ?", name).First(&mc).Error; err != nil {
 			panic(
@@ -562,7 +562,7 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 	// Documents: attach a couple to projects, appliances, and an incident.
 	type docSeed struct {
 		title, fileName, mime, kind string
-		entityID                    uint
+		entityID                    string
 		ops                         []byte // pre-built extraction ops JSON
 	}
 	docSeeds := []docSeed{
@@ -675,7 +675,7 @@ func (s *Store) ListVendors(includeDeleted bool) ([]Vendor, error) {
 	})
 }
 
-func (s *Store) GetVendor(id uint) (Vendor, error) {
+func (s *Store) GetVendor(id string) (Vendor, error) {
 	return getByID[Vendor](s, id, identity)
 }
 
@@ -690,12 +690,12 @@ func (s *Store) FindOrCreateVendor(vendor Vendor) (Vendor, error) {
 	return findOrCreateVendor(s.db, vendor)
 }
 
-// MaxIDs returns the current maximum auto-increment ID for each of the
-// named tables. Tables with no rows are omitted from the result.
-func (s *Store) MaxIDs(tables ...string) (map[string]uint, error) {
-	result := make(map[string]uint, len(tables))
+// MaxIDs returns the current maximum ID (lexicographic for ULIDs) for each of
+// the named tables. Tables with no rows are omitted from the result.
+func (s *Store) MaxIDs(tables ...string) (map[string]string, error) {
+	result := make(map[string]string, len(tables))
 	for _, table := range tables {
-		var maxID *uint
+		var maxID *string
 		if err := s.db.Table(table).Select("MAX(id)").Scan(&maxID).Error; err != nil {
 			return nil, fmt.Errorf("max id for %s: %w", table, err)
 		}
@@ -706,27 +706,41 @@ func (s *Store) MaxIDs(tables ...string) (map[string]uint, error) {
 	return result, nil
 }
 
+// RowCounts returns the number of non-deleted rows for each of the named
+// tables. Tables with no rows return 0.
+func (s *Store) RowCounts(tables ...string) (map[string]int, error) {
+	result := make(map[string]int, len(tables))
+	for _, table := range tables {
+		var count int64
+		if err := s.db.Table(table).Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("row count for %s: %w", table, err)
+		}
+		result[table] = int(count)
+	}
+	return result, nil
+}
+
 func (s *Store) UpdateVendor(vendor Vendor) error {
 	return s.updateByID(&Vendor{}, vendor.ID, vendor)
 }
 
 // CountQuotesByVendor returns the number of non-deleted quotes per vendor ID.
-func (s *Store) CountQuotesByVendor(vendorIDs []uint) (map[uint]int, error) {
+func (s *Store) CountQuotesByVendor(vendorIDs []string) (map[string]int, error) {
 	return s.countByFK(&Quote{}, ColVendorID, vendorIDs)
 }
 
 // CountServiceLogsByVendor returns the number of non-deleted service log entries per vendor ID.
-func (s *Store) CountServiceLogsByVendor(vendorIDs []uint) (map[uint]int, error) {
+func (s *Store) CountServiceLogsByVendor(vendorIDs []string) (map[string]int, error) {
 	return s.countByFK(&ServiceLogEntry{}, ColVendorID, vendorIDs)
 }
 
 // CountQuotesByProject returns the number of non-deleted quotes per project ID.
-func (s *Store) CountQuotesByProject(projectIDs []uint) (map[uint]int, error) {
+func (s *Store) CountQuotesByProject(projectIDs []string) (map[string]int, error) {
 	return s.countByFK(&Quote{}, ColProjectID, projectIDs)
 }
 
 // ListQuotesByVendor returns all quotes for a specific vendor.
-func (s *Store) ListQuotesByVendor(vendorID uint, includeDeleted bool) ([]Quote, error) {
+func (s *Store) ListQuotesByVendor(vendorID string, includeDeleted bool) ([]Quote, error) {
 	return listQuery[Quote](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
 		return db.Where(ColVendorID+" = ?", vendorID).
 			Preload("Vendor", unscopedPreload).
@@ -736,7 +750,7 @@ func (s *Store) ListQuotesByVendor(vendorID uint, includeDeleted bool) ([]Quote,
 }
 
 // ListQuotesByProject returns all quotes for a specific project.
-func (s *Store) ListQuotesByProject(projectID uint, includeDeleted bool) ([]Quote, error) {
+func (s *Store) ListQuotesByProject(projectID string, includeDeleted bool) ([]Quote, error) {
 	return listQuery[Quote](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
 		return db.Where(ColProjectID+" = ?", projectID).
 			Preload("Vendor", unscopedPreload).
@@ -747,7 +761,7 @@ func (s *Store) ListQuotesByProject(projectID uint, includeDeleted bool) ([]Quot
 
 // ListServiceLogsByVendor returns all service log entries for a specific vendor.
 func (s *Store) ListServiceLogsByVendor(
-	vendorID uint,
+	vendorID string,
 	includeDeleted bool,
 ) ([]ServiceLogEntry, error) {
 	return listQuery[ServiceLogEntry](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
@@ -783,7 +797,7 @@ func (s *Store) ListMaintenance(includeDeleted bool) ([]MaintenanceItem, error) 
 }
 
 func (s *Store) ListMaintenanceByAppliance(
-	applianceID uint,
+	applianceID string,
 	includeDeleted bool,
 ) ([]MaintenanceItem, error) {
 	return listQuery[MaintenanceItem](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
@@ -793,7 +807,7 @@ func (s *Store) ListMaintenanceByAppliance(
 	})
 }
 
-func (s *Store) GetProject(id uint) (Project, error) {
+func (s *Store) GetProject(id string) (Project, error) {
 	return getByID[Project](s, id, func(db *gorm.DB) *gorm.DB {
 		return db.Preload("ProjectType")
 	})
@@ -807,7 +821,7 @@ func (s *Store) UpdateProject(project Project) error {
 	return s.updateByID(&Project{}, project.ID, project)
 }
 
-func (s *Store) GetQuote(id uint) (Quote, error) {
+func (s *Store) GetQuote(id string) (Quote, error) {
 	return getByID[Quote](s, id, func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Vendor", unscopedPreload).
 			Preload("Project", func(q *gorm.DB) *gorm.DB {
@@ -838,7 +852,7 @@ func (s *Store) UpdateQuote(quote Quote, vendor Vendor) error {
 	})
 }
 
-func (s *Store) GetMaintenance(id uint) (MaintenanceItem, error) {
+func (s *Store) GetMaintenance(id string) (MaintenanceItem, error) {
 	return getByID[MaintenanceItem](s, id, func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Category").Preload("Appliance", unscopedPreload)
 	})
@@ -857,7 +871,7 @@ func (s *Store) FindOrCreateMaintenance(item MaintenanceItem) (MaintenanceItem, 
 			return db.Where(ColName+" = ? AND "+ColCategoryID+" = ?", item.Name, item.CategoryID)
 		},
 		DeletionEntityMaintenance,
-		func(m MaintenanceItem) uint { return m.ID },
+		func(m MaintenanceItem) string { return m.ID },
 		func(m MaintenanceItem) bool { return m.DeletedAt.Valid },
 	)
 }
@@ -872,7 +886,7 @@ func (s *Store) ListAppliances(includeDeleted bool) ([]Appliance, error) {
 	})
 }
 
-func (s *Store) GetAppliance(id uint) (Appliance, error) {
+func (s *Store) GetAppliance(id string) (Appliance, error) {
 	return getByID[Appliance](s, id, identity)
 }
 
@@ -889,7 +903,7 @@ func (s *Store) FindOrCreateAppliance(item Appliance) (Appliance, error) {
 			return db.Where(ColName+" = ?", item.Name)
 		},
 		DeletionEntityAppliance,
-		func(a Appliance) uint { return a.ID },
+		func(a Appliance) string { return a.ID },
 		func(a Appliance) bool { return a.DeletedAt.Valid },
 	)
 }
@@ -905,7 +919,7 @@ func (s *Store) UpdateAppliance(item Appliance) error {
 // syncLastServiced sets a maintenance item's LastServicedAt to the most recent
 // ServicedAt from its non-deleted service log entries. If no entries exist the
 // field is left unchanged, preserving any manually-set value.
-func syncLastServiced(tx *gorm.DB, maintenanceItemID uint) error {
+func syncLastServiced(tx *gorm.DB, maintenanceItemID string) error {
 	var latest ServiceLogEntry
 	err := tx.Where(ColMaintenanceItemID+" = ?", maintenanceItemID).
 		Order(ColServicedAt + " desc, " + ColID + " desc").
@@ -922,7 +936,7 @@ func syncLastServiced(tx *gorm.DB, maintenanceItemID uint) error {
 }
 
 func (s *Store) ListServiceLog(
-	maintenanceItemID uint,
+	maintenanceItemID string,
 	includeDeleted bool,
 ) ([]ServiceLogEntry, error) {
 	return listQuery[ServiceLogEntry](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
@@ -932,7 +946,7 @@ func (s *Store) ListServiceLog(
 	})
 }
 
-func (s *Store) GetServiceLog(id uint) (ServiceLogEntry, error) {
+func (s *Store) GetServiceLog(id string) (ServiceLogEntry, error) {
 	return getByID[ServiceLogEntry](s, id, func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Vendor", unscopedPreload)
 	})
@@ -958,7 +972,7 @@ func (s *Store) UpdateServiceLog(entry ServiceLogEntry, vendor Vendor) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Fetch old entry to detect parent change.
 		var old ServiceLogEntry
-		if err := tx.First(&old, entry.ID).Error; err != nil {
+		if err := tx.First(&old, "id = ?", entry.ID).Error; err != nil {
 			return err
 		}
 		if strings.TrimSpace(vendor.Name) != "" {
@@ -983,10 +997,10 @@ func (s *Store) UpdateServiceLog(entry ServiceLogEntry, vendor Vendor) error {
 	})
 }
 
-func (s *Store) DeleteServiceLog(id uint) error {
+func (s *Store) DeleteServiceLog(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var entry ServiceLogEntry
-		if err := tx.First(&entry, id).Error; err != nil {
+		if err := tx.First(&entry, "id = ?", id).Error; err != nil {
 			return err
 		}
 		if err := softDeleteWith(tx, &ServiceLogEntry{}, DeletionEntityServiceLog, id); err != nil {
@@ -996,9 +1010,9 @@ func (s *Store) DeleteServiceLog(id uint) error {
 	})
 }
 
-func (s *Store) RestoreServiceLog(id uint) error {
+func (s *Store) RestoreServiceLog(id string) error {
 	var entry ServiceLogEntry
-	if err := s.db.Unscoped().First(&entry, id).Error; err != nil {
+	if err := s.db.Unscoped().First(&entry, "id = ?", id).Error; err != nil {
 		return err
 	}
 	if err := s.checkParentsAlive([]parentCheck{
@@ -1017,13 +1031,13 @@ func (s *Store) RestoreServiceLog(id uint) error {
 
 // CountServiceLogs returns the number of non-deleted service log entries per
 // maintenance item ID for the given set of IDs.
-func (s *Store) CountServiceLogs(itemIDs []uint) (map[uint]int, error) {
+func (s *Store) CountServiceLogs(itemIDs []string) (map[string]int, error) {
 	return s.countByFK(&ServiceLogEntry{}, ColMaintenanceItemID, itemIDs)
 }
 
 // CountMaintenanceByAppliance returns the count of non-deleted maintenance
 // items for each appliance ID.
-func (s *Store) CountMaintenanceByAppliance(applianceIDs []uint) (map[uint]int, error) {
+func (s *Store) CountMaintenanceByAppliance(applianceIDs []string) (map[string]int, error) {
 	return s.countByFK(&MaintenanceItem{}, ColApplianceID, applianceIDs)
 }
 
@@ -1039,7 +1053,7 @@ func (s *Store) ListIncidents(includeDeleted bool) ([]Incident, error) {
 	})
 }
 
-func (s *Store) GetIncident(id uint) (Incident, error) {
+func (s *Store) GetIncident(id string) (Incident, error) {
 	return getByID[Incident](s, id, func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Appliance", unscopedPreload).Preload("Vendor", unscopedPreload)
 	})
@@ -1053,11 +1067,11 @@ func (s *Store) UpdateIncident(item Incident) error {
 	return s.updateByID(&Incident{}, item.ID, item)
 }
 
-func (s *Store) DeleteIncident(id uint) error {
+func (s *Store) DeleteIncident(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Read the current status so we can restore it later.
 		var current Incident
-		if err := tx.Select(ColStatus).First(&current, id).Error; err != nil {
+		if err := tx.Select(ColStatus).First(&current, "id = ?", id).Error; err != nil {
 			return err
 		}
 		if err := tx.Model(&Incident{}).
@@ -1068,7 +1082,7 @@ func (s *Store) DeleteIncident(id uint) error {
 			}).Error; err != nil {
 			return err
 		}
-		result := tx.Delete(&Incident{}, id)
+		result := tx.Where("id = ?", id).Delete(&Incident{})
 		if result.Error != nil {
 			return result.Error
 		}
@@ -1083,9 +1097,9 @@ func (s *Store) DeleteIncident(id uint) error {
 	})
 }
 
-func (s *Store) RestoreIncident(id uint) error {
+func (s *Store) RestoreIncident(id string) error {
 	var item Incident
-	if err := s.db.Unscoped().First(&item, id).Error; err != nil {
+	if err := s.db.Unscoped().First(&item, "id = ?", id).Error; err != nil {
 		return err
 	}
 	if item.ApplianceID != nil {
@@ -1122,7 +1136,7 @@ func (s *Store) RestoreIncident(id uint) error {
 	})
 }
 
-func (s *Store) HardDeleteIncident(id uint) error {
+func (s *Store) HardDeleteIncident(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Detach linked documents (including soft-deleted ones) so they
 		// survive the incident removal. Documents have intrinsic value
@@ -1131,7 +1145,7 @@ func (s *Store) HardDeleteIncident(id uint) error {
 			Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?", DocumentEntityIncident, id).
 			Updates(map[string]any{
 				ColEntityKind: DocumentEntityNone,
-				ColEntityID:   0,
+				ColEntityID:   "",
 			}).Error; err != nil {
 			return err
 		}
@@ -1142,7 +1156,7 @@ func (s *Store) HardDeleteIncident(id uint) error {
 			return err
 		}
 		// Permanently remove the incident row.
-		result := tx.Unscoped().Delete(&Incident{}, id)
+		result := tx.Unscoped().Where("id = ?", id).Delete(&Incident{})
 		if result.Error != nil {
 			return result.Error
 		}
@@ -1153,11 +1167,11 @@ func (s *Store) HardDeleteIncident(id uint) error {
 	})
 }
 
-func (s *Store) CountIncidentsByAppliance(applianceIDs []uint) (map[uint]int, error) {
+func (s *Store) CountIncidentsByAppliance(applianceIDs []string) (map[string]int, error) {
 	return s.countByFK(&Incident{}, ColApplianceID, applianceIDs)
 }
 
-func (s *Store) CountIncidentsByVendor(vendorIDs []uint) (map[uint]int, error) {
+func (s *Store) CountIncidentsByVendor(vendorIDs []string) (map[string]int, error) {
 	return s.countByFK(&Incident{}, ColVendorID, vendorIDs)
 }
 
@@ -1184,7 +1198,7 @@ func (s *Store) ListDocuments(includeDeleted bool) ([]Document, error) {
 // excluding the BLOB data.
 func (s *Store) ListDocumentsByEntity(
 	entityKind string,
-	entityID uint,
+	entityID string,
 	includeDeleted bool,
 ) ([]Document, error) {
 	return listQuery[Document](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
@@ -1199,14 +1213,14 @@ func (s *Store) ListDocumentsByEntity(
 // two-column polymorphic keys that countByFK can't handle.
 func (s *Store) CountDocumentsByEntity(
 	entityKind string,
-	entityIDs []uint,
-) (map[uint]int, error) {
+	entityIDs []string,
+) (map[string]int, error) {
 	if len(entityIDs) == 0 {
-		return map[uint]int{}, nil
+		return map[string]int{}, nil
 	}
 	type row struct {
-		FK    uint `gorm:"column:fk"`
-		Count int  `gorm:"column:cnt"`
+		FK    string `gorm:"column:fk"`
+		Count int    `gorm:"column:cnt"`
 	}
 	var results []row
 	err := s.db.Model(&Document{}).
@@ -1217,21 +1231,21 @@ func (s *Store) CountDocumentsByEntity(
 	if err != nil {
 		return nil, err
 	}
-	counts := make(map[uint]int, len(results))
+	counts := make(map[string]int, len(results))
 	for _, r := range results {
 		counts[r.FK] = r.Count
 	}
 	return counts, nil
 }
 
-func (s *Store) GetDocument(id uint) (Document, error) {
+func (s *Store) GetDocument(id string) (Document, error) {
 	return getByID[Document](s, id, identity)
 }
 
 // GetDocumentMetadata loads a document by ID without the Data BLOB,
 // ExtractData, or other heavy columns. Use GetDocument when you need
 // the file bytes.
-func (s *Store) GetDocumentMetadata(id uint) (Document, error) {
+func (s *Store) GetDocumentMetadata(id string) (Document, error) {
 	return getByID[Document](s, id, func(db *gorm.DB) *gorm.DB {
 		return db.Select(metadataDocumentColumns)
 	})
@@ -1281,7 +1295,7 @@ func (s *Store) UpdateDocument(doc Document) error {
 // without touching other fields. Called from the extraction overlay after
 // async extraction completes.
 func (s *Store) UpdateDocumentExtraction(
-	id uint,
+	id string,
 	text string,
 	data []byte,
 	model string,
@@ -1310,23 +1324,23 @@ func (s *Store) UpdateDocumentExtraction(
 // Returns nil if the document is already alive or was successfully restored.
 // Returns an error if the document does not exist or restoration fails
 // (e.g. parent entity is also deleted).
-func (s *Store) EnsureDocumentAlive(id uint) error {
+func (s *Store) EnsureDocumentAlive(id string) error {
 	var doc Document
-	if err := s.db.First(&doc, id).Error; err == nil {
+	if err := s.db.First(&doc, "id = ?", id).Error; err == nil {
 		return nil // already alive
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("check document %d: %w", id, err)
+		return fmt.Errorf("check document %s: %w", id, err)
 	}
 	return s.RestoreDocument(id)
 }
 
-func (s *Store) DeleteDocument(id uint) error {
+func (s *Store) DeleteDocument(id string) error {
 	return s.softDelete(&Document{}, DeletionEntityDocument, id)
 }
 
-func (s *Store) RestoreDocument(id uint) error {
+func (s *Store) RestoreDocument(id string) error {
 	var doc Document
-	if err := s.db.Unscoped().First(&doc, id).Error; err != nil {
+	if err := s.db.Unscoped().First(&doc, "id = ?", id).Error; err != nil {
 		return err
 	}
 	if err := s.validateDocumentParent(doc); err != nil {
@@ -1415,7 +1429,7 @@ func TitleFromFilename(name string) string {
 	return string(runes)
 }
 
-func (s *Store) DeleteVendor(id uint) error {
+func (s *Store) DeleteVendor(id string) error {
 	if err := s.checkDependencies(id, []dependencyCheck{
 		{&Quote{}, ColVendorID, "vendor has %d active quote(s) -- delete them first"},
 		{&Incident{}, ColVendorID, "vendor has %d active incident(s) -- delete them first"},
@@ -1425,11 +1439,11 @@ func (s *Store) DeleteVendor(id uint) error {
 	return s.softDelete(&Vendor{}, DeletionEntityVendor, id)
 }
 
-func (s *Store) RestoreVendor(id uint) error {
+func (s *Store) RestoreVendor(id string) error {
 	return s.restoreEntity(&Vendor{}, DeletionEntityVendor, id)
 }
 
-func (s *Store) DeleteProject(id uint) error {
+func (s *Store) DeleteProject(id string) error {
 	if err := s.checkDependencies(id, []dependencyCheck{
 		{&Quote{}, ColProjectID, "project has %d active quote(s) -- delete them first"},
 	}); err != nil {
@@ -1438,11 +1452,11 @@ func (s *Store) DeleteProject(id uint) error {
 	return s.softDelete(&Project{}, DeletionEntityProject, id)
 }
 
-func (s *Store) DeleteQuote(id uint) error {
+func (s *Store) DeleteQuote(id string) error {
 	return s.softDelete(&Quote{}, DeletionEntityQuote, id)
 }
 
-func (s *Store) DeleteMaintenance(id uint) error {
+func (s *Store) DeleteMaintenance(id string) error {
 	if err := s.checkDependencies(id, []dependencyCheck{
 		{&ServiceLogEntry{}, ColMaintenanceItemID, "maintenance item has %d service log(s) -- delete them first"},
 	}); err != nil {
@@ -1451,7 +1465,7 @@ func (s *Store) DeleteMaintenance(id uint) error {
 	return s.softDelete(&MaintenanceItem{}, DeletionEntityMaintenance, id)
 }
 
-func (s *Store) DeleteAppliance(id uint) error {
+func (s *Store) DeleteAppliance(id string) error {
 	if err := s.checkDependencies(id, []dependencyCheck{
 		{&MaintenanceItem{}, ColApplianceID, "appliance has %d active maintenance item(s) -- delete or reassign them first"},
 		{&Incident{}, ColApplianceID, "appliance has %d active incident(s) -- delete them first"},
@@ -1461,13 +1475,13 @@ func (s *Store) DeleteAppliance(id uint) error {
 	return s.softDelete(&Appliance{}, DeletionEntityAppliance, id)
 }
 
-func (s *Store) RestoreProject(id uint) error {
+func (s *Store) RestoreProject(id string) error {
 	return s.restoreEntity(&Project{}, DeletionEntityProject, id)
 }
 
-func (s *Store) RestoreQuote(id uint) error {
+func (s *Store) RestoreQuote(id string) error {
 	var quote Quote
-	if err := s.db.Unscoped().First(&quote, id).Error; err != nil {
+	if err := s.db.Unscoped().First(&quote, "id = ?", id).Error; err != nil {
 		return err
 	}
 	if err := s.checkParentsAlive([]parentCheck{
@@ -1479,9 +1493,9 @@ func (s *Store) RestoreQuote(id uint) error {
 	return s.restoreEntity(&Quote{}, DeletionEntityQuote, id)
 }
 
-func (s *Store) RestoreMaintenance(id uint) error {
+func (s *Store) RestoreMaintenance(id string) error {
 	var item MaintenanceItem
-	if err := s.db.Unscoped().First(&item, id).Error; err != nil {
+	if err := s.db.Unscoped().First(&item, "id = ?", id).Error; err != nil {
 		return err
 	}
 	if err := s.checkParentsAlive([]parentCheck{
@@ -1492,7 +1506,7 @@ func (s *Store) RestoreMaintenance(id uint) error {
 	return s.restoreEntity(&MaintenanceItem{}, DeletionEntityMaintenance, id)
 }
 
-func (s *Store) RestoreAppliance(id uint) error {
+func (s *Store) RestoreAppliance(id string) error {
 	return s.restoreEntity(&Appliance{}, DeletionEntityAppliance, id)
 }
 
@@ -1506,8 +1520,8 @@ var (
 // requireParentAlive returns ErrParentDeleted if the parent record is
 // soft-deleted, or ErrParentNotFound if it doesn't exist at all. Returns nil
 // when the parent is alive.
-func (s *Store) requireParentAlive(model any, id uint) error {
-	err := s.db.First(model, id).Error
+func (s *Store) requireParentAlive(model any, id string) error {
+	err := s.db.First(model, "id = ?", id).Error
 	if err == nil {
 		return nil
 	}
@@ -1515,7 +1529,7 @@ func (s *Store) requireParentAlive(model any, id uint) error {
 		return err
 	}
 	// Distinguish soft-deleted from truly missing.
-	if err := s.db.Unscoped().First(model, id).Error; err != nil {
+	if err := s.db.Unscoped().First(model, "id = ?", id).Error; err != nil {
 		return ErrParentNotFound
 	}
 	return ErrParentDeleted
@@ -1528,7 +1542,7 @@ func (s *Store) requireParentAlive(model any, id uint) error {
 // restored. A nil id means the FK is optional and unset; the check is skipped.
 type parentCheck struct {
 	model any // GORM model pointer -- typed as any because gorm.DB.First accepts any
-	id    *uint
+	id    *string
 	label string
 }
 
@@ -1553,14 +1567,14 @@ func parentRestoreError(entity string, err error) error {
 
 // countDependents counts non-deleted rows in model where fkColumn equals id.
 // GORM's soft-delete scope automatically excludes deleted rows.
-func (s *Store) countDependents(model any, fkColumn string, id uint) (int64, error) {
+func (s *Store) countDependents(model any, fkColumn string, id string) (int64, error) {
 	var count int64
 	err := s.db.Model(model).Where(fkColumn+" = ?", id).Count(&count).Error
 	return count, err
 }
 
-func softDeleteWith(tx *gorm.DB, model any, entity string, id uint) error {
-	result := tx.Delete(model, id)
+func softDeleteWith(tx *gorm.DB, model any, entity string, id string) error {
+	result := tx.Where("id = ?", id).Delete(model)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -1575,7 +1589,7 @@ func softDeleteWith(tx *gorm.DB, model any, entity string, id uint) error {
 	return tx.Create(&record).Error
 }
 
-func (s *Store) softDelete(model any, entity string, id uint) error {
+func (s *Store) softDelete(model any, entity string, id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		return softDeleteWith(tx, model, entity, id)
 	})
@@ -1584,7 +1598,7 @@ func (s *Store) softDelete(model any, entity string, id uint) error {
 // restoreSoftDeleted clears a record's soft-delete timestamp and marks the
 // corresponding DeletionRecord as restored. Callers that need transactional
 // guarantees should pass a *gorm.DB obtained from db.Transaction.
-func restoreSoftDeleted(tx *gorm.DB, model any, entity string, id uint) error {
+func restoreSoftDeleted(tx *gorm.DB, model any, entity string, id string) error {
 	if err := tx.Unscoped().Model(model).
 		Where(ColID+" = ?", id).
 		Update(ColDeletedAt, nil).Error; err != nil {
@@ -1599,7 +1613,7 @@ func restoreSoftDeleted(tx *gorm.DB, model any, entity string, id uint) error {
 		Update(ColRestoredAt, restoredAt).Error
 }
 
-func (s *Store) restoreEntity(model any, entity string, id uint) error {
+func (s *Store) restoreEntity(model any, entity string, id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		return restoreSoftDeleted(tx, model, entity, id)
 	})
@@ -1664,13 +1678,13 @@ func (s *Store) seedMaintenanceCategories() error {
 
 // countByFK groups rows in model by fkColumn and returns a count per FK value.
 // Only non-deleted rows are counted (soft-delete scope applies automatically).
-func (s *Store) countByFK(model any, fkColumn string, ids []uint) (map[uint]int, error) {
+func (s *Store) countByFK(model any, fkColumn string, ids []string) (map[string]int, error) {
 	if len(ids) == 0 {
-		return map[uint]int{}, nil
+		return map[string]int{}, nil
 	}
 	type row struct {
-		FK    uint `gorm:"column:fk"`
-		Count int  `gorm:"column:cnt"`
+		FK    string `gorm:"column:fk"`
+		Count int    `gorm:"column:cnt"`
 	}
 	var results []row
 	err := s.db.Model(model).
@@ -1681,7 +1695,7 @@ func (s *Store) countByFK(model any, fkColumn string, ids []uint) (map[uint]int,
 	if err != nil {
 		return nil, err
 	}
-	counts := make(map[uint]int, len(results))
+	counts := make(map[string]int, len(results))
 	for _, r := range results {
 		counts[r.FK] = r.Count
 	}
@@ -1690,14 +1704,14 @@ func (s *Store) countByFK(model any, fkColumn string, ids []uint) (map[uint]int,
 
 // updateByIDWith updates a record by ID, preserving id, created_at, and
 // deleted_at. Works with both Store.db and transaction handles.
-func updateByIDWith(db *gorm.DB, model any, id uint, values any) error {
+func updateByIDWith(db *gorm.DB, model any, id string, values any) error {
 	return db.Model(model).Where(ColID+" = ?", id).
 		Select("*").
 		Omit(ColID, ColCreatedAt, ColDeletedAt).
 		Updates(values).Error
 }
 
-func (s *Store) updateByID(model any, id uint, values any) error {
+func (s *Store) updateByID(model any, id string, values any) error {
 	return updateByIDWith(s.db, model, id, values)
 }
 
@@ -1705,7 +1719,7 @@ func findOrCreateVendor(tx *gorm.DB, vendor Vendor) (Vendor, error) {
 	existing, err := findOrCreate(tx, vendor, vendor.Name, "vendor name",
 		func(db *gorm.DB) *gorm.DB { return db.Where(ColName+" = ?", vendor.Name) },
 		DeletionEntityVendor,
-		func(v Vendor) uint { return v.ID },
+		func(v Vendor) string { return v.ID },
 		func(v Vendor) bool { return v.DeletedAt.Valid },
 	)
 	if err != nil {
@@ -1725,7 +1739,7 @@ func findOrCreateVendor(tx *gorm.DB, vendor Vendor) (Vendor, error) {
 		return Vendor{}, err
 	}
 	// Re-read so the returned struct reflects the persisted state.
-	if err := tx.First(&existing, existing.ID).Error; err != nil {
+	if err := tx.First(&existing, "id = ?", existing.ID).Error; err != nil {
 		return Vendor{}, err
 	}
 	return existing, nil

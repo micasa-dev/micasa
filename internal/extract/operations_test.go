@@ -458,28 +458,32 @@ func TestValidateOperations_EmptyData(t *testing.T) {
 	assert.Contains(t, err.Error(), "data must not be empty")
 }
 
-// --- ParseUint ---
+// --- ParseStringID ---
 
-func TestParseUint(t *testing.T) {
+func TestParseStringID(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, uint(42), ParseUint(float64(42)))
-	assert.Equal(t, uint(42), ParseUint("42"))
-	assert.Equal(t, uint(42), ParseUint(" 42 "))
-	assert.Equal(t, uint(0), ParseUint(float64(-1)))
-	assert.Equal(t, uint(0), ParseUint("abc"))
-	assert.Equal(t, uint(0), ParseUint(nil))
+	assert.Equal(t, "42", ParseStringID(float64(42)))
+	assert.Equal(t, "42", ParseStringID("42"))
+	assert.Equal(t, "42", ParseStringID(" 42 "))
+	assert.Equal(t, "-1", ParseStringID(float64(-1)))
+	assert.Equal(t, "abc", ParseStringID("abc"))
+	assert.Equal(t, "", ParseStringID(nil))
 	// Concrete integer types from GORM/SQLite map queries.
-	assert.Equal(t, uint(7), ParseUint(uint(7)))
-	assert.Equal(t, uint(9), ParseUint(uint64(9)))
-	assert.Equal(t, uint(5), ParseUint(int64(5)))
-	assert.Equal(t, uint(0), ParseUint(int64(-3)))
-	assert.Equal(t, uint(11), ParseUint(int(11)))
-	assert.Equal(t, uint(0), ParseUint(int(-1)))
-	// json.Number from UseNumber decoder.
-	assert.Equal(t, uint(99), ParseUint(json.Number("99")))
-	assert.Equal(t, uint(0), ParseUint(json.Number("not-a-number")))
+	assert.Equal(t, "7", ParseStringID(uint(7)))
+	assert.Equal(t, "9", ParseStringID(uint64(9)))
+	assert.Equal(t, "5", ParseStringID(int64(5)))
+	assert.Equal(t, "-3", ParseStringID(int64(-3)))
+	assert.Equal(t, "11", ParseStringID(int(11)))
+	assert.Equal(t, "-1", ParseStringID(int(-1)))
+	// json.Number from UseNumber decoder (implements String()).
+	assert.Equal(t, "99", ParseStringID(json.Number("99")))
+	assert.Equal(t, "not-a-number", ParseStringID(json.Number("not-a-number")))
+	// []byte from GORM raw queries.
+	assert.Equal(t, "01JTEST", ParseStringID([]byte("01JTEST")))
 	// Unsupported type.
-	assert.Equal(t, uint(0), ParseUint([]int{1}))
+	assert.Equal(t, "", ParseStringID([]int{1}))
+	// ULID string passes through.
+	assert.Equal(t, "01ARZ3NDEKTSV4RRFFQ69G5FAV", ParseStringID("01ARZ3NDEKTSV4RRFFQ69G5FAV"))
 }
 
 // --- ParseInt64 ---

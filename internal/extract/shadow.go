@@ -4,7 +4,6 @@
 package extract
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -20,23 +19,25 @@ import (
 
 // ShadowDB stages LLM extraction operations in an in-memory SQLite database
 // so that cross-references between batch-created entities (e.g. a quote
-// referencing a just-created vendor) resolve correctly via auto-increment IDs.
+// referencing a just-created vendor) resolve correctly via ordinal tracking.
 //
 // The shadow DB has FK constraints OFF -- it is a staging area, not a
 // validator. Validation happens during commit against the real DB.
-// Auto-increment IDs are seeded from the real DB's max IDs so shadow IDs
-// occupy a disjoint range (max_real_id+1, ...), eliminating ambiguity
-// between references to existing entities and batch-created ones.
+// Each staged entity receives a sequential ordinal string ID (matching what
+// the LLM outputs for batch cross-references) so cross-references within a
+// batch can be remapped to the real ULIDs assigned during commit.
 type ShadowDB struct {
 	db *gorm.DB
 	// created tracks shadow entries per table in insertion order.
 	created map[string][]shadowEntry
+	// nextOrdinal tracks the next sequential ID per table for shadow inserts.
+	nextOrdinal map[string]int
 }
 
-// shadowEntry pairs a shadow auto-increment ID with the original operation
+// shadowEntry pairs a shadow ordinal string ID with the original operation
 // data so synthetic fields (e.g. vendor_name) survive the staging round-trip.
 type shadowEntry struct {
-	shadowID uint
+	shadowID string
 	opData   map[string]any
 }
 
@@ -48,10 +49,11 @@ type shadowFKRemap struct {
 }
 
 // NewShadowDB creates an in-memory SQLite database and migrates the
-// extraction-relevant tables. Auto-increment IDs are seeded from the real
-// DB so shadow IDs occupy a disjoint range from existing real IDs, making
-// cross-references unambiguous. FK constraints are OFF -- the shadow DB
-// is a staging area; validation happens during commit.
+// extraction-relevant tables. Ordinal counters are seeded from the real
+// DB's row counts so shadow ordinals occupy a disjoint range from
+// existing real IDs, matching the sequential numbering the LLM uses for
+// batch cross-references. FK constraints are OFF -- the shadow DB is a
+// staging area; validation happens during commit.
 func NewShadowDB(store *data.Store) (*ShadowDB, error) {
 	db, err := gorm.Open(
 		sqlite.Open(":memory:"),
@@ -67,24 +69,23 @@ func NewShadowDB(store *data.Store) (*ShadowDB, error) {
 		return nil, fmt.Errorf("shadow db migrate: %w", err)
 	}
 
-	// Seed sqlite_sequence so auto-increment starts after the real DB's
-	// max IDs. This ensures shadow IDs never collide with real IDs.
-	maxIDs, err := store.MaxIDs(creatableFKs.order...)
+	// Seed ordinal counters from the real DB's row counts so shadow
+	// ordinals start after the existing entities. This ensures the LLM's
+	// sequential cross-references (max_count+1, max_count+2, ...) map
+	// unambiguously to batch-created entities.
+	nextOrd := make(map[string]int)
+	counts, err := store.RowCounts(creatableFKs.order...)
 	if err != nil {
-		return nil, fmt.Errorf("query max ids: %w", err)
+		return nil, fmt.Errorf("query row counts: %w", err)
 	}
-	for table, maxID := range maxIDs {
-		if err := db.Exec(
-			"INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)",
-			table, maxID,
-		).Error; err != nil {
-			return nil, fmt.Errorf("seed sqlite_sequence for %s: %w", table, err)
-		}
+	for table, count := range counts {
+		nextOrd[table] = count + 1
 	}
 
 	return &ShadowDB{
-		db:      db,
-		created: make(map[string][]shadowEntry),
+		db:          db,
+		created:     make(map[string][]shadowEntry),
+		nextOrdinal: nextOrd,
 	}, nil
 }
 
@@ -125,20 +126,33 @@ func (s *ShadowDB) stageOne(op Operation) error {
 	}
 }
 
-// stageCreate inserts a create operation into the shadow table and records
-// the auto-increment ID assigned by the shadow DB.
+// stageCreate inserts a create operation into the shadow table with a
+// sequential ordinal string ID for cross-reference tracking.
 func (s *ShadowDB) stageCreate(op Operation) error {
 	if err := validateTable(op.Table); err != nil {
 		return err
 	}
 
+	ordinal := s.nextOrdinal[op.Table]
+	if ordinal == 0 {
+		ordinal = 1
+	}
+	s.nextOrdinal[op.Table] = ordinal + 1
+	shadowID := strconv.Itoa(ordinal)
+
 	cols, vals, placeholders, err := buildInsert(op.Table, op.Data)
 	if err != nil {
 		return err
 	}
+
 	if len(cols) == 0 {
 		return fmt.Errorf("no columns to insert")
 	}
+
+	// Prepend the ordinal string as the id column.
+	cols = append([]string{quoteIdent(data.ColID)}, cols...)
+	vals = append([]any{shadowID}, vals...)
+	placeholders = append([]string{"?"}, placeholders...)
 
 	//nolint:gosec // table and column names validated by validateTable and validateColumn
 	sql := fmt.Sprintf(
@@ -153,13 +167,8 @@ func (s *ShadowDB) stageCreate(op Operation) error {
 		return result.Error
 	}
 
-	var lastID uint
-	if err := s.db.Raw("SELECT last_insert_rowid()").Scan(&lastID).Error; err != nil {
-		return fmt.Errorf("last_insert_rowid: %w", err)
-	}
-
 	s.created[op.Table] = append(s.created[op.Table], shadowEntry{
-		shadowID: lastID,
+		shadowID: shadowID,
 		opData:   op.Data,
 	})
 	return nil
@@ -189,11 +198,11 @@ func buildInsert(
 	return cols, vals, placeholders, nil
 }
 
-// CreatedIDs returns the shadow auto-increment IDs for a given table
-// in insertion order.
-func (s *ShadowDB) CreatedIDs(table string) []uint {
+// CreatedIDs returns the shadow ordinal string IDs for a given table in
+// insertion order.
+func (s *ShadowDB) CreatedIDs(table string) []string {
 	entries := s.created[table]
-	ids := make([]uint, len(entries))
+	ids := make([]string, len(entries))
 	for i, e := range entries {
 		ids[i] = e.shadowID
 	}
@@ -211,7 +220,7 @@ func (s *ShadowDB) Commit(store *data.Store, ops []Operation) error {
 }
 
 func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
-	idMap := make(map[string]map[uint]uint) // table -> shadowID -> realID
+	idMap := make(map[string]map[string]string) // table -> shadowID -> realID
 
 	for _, table := range creatableFKs.order {
 		entries := s.created[table]
@@ -220,13 +229,13 @@ func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
 		}
 
 		if idMap[table] == nil {
-			idMap[table] = make(map[uint]uint)
+			idMap[table] = make(map[string]string)
 		}
 
 		for _, entry := range entries {
 			row, err := s.readShadowRow(table, entry.shadowID)
 			if err != nil {
-				return fmt.Errorf("read shadow %s %d: %w", table, entry.shadowID, err)
+				return fmt.Errorf("read shadow %s %s: %w", table, entry.shadowID, err)
 			}
 
 			// Remap FK columns from shadow IDs to real IDs.
@@ -241,7 +250,7 @@ func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
 
 			realID, err := commitRow(store, table, row, entry.opData)
 			if err != nil {
-				return fmt.Errorf("commit %s (shadow %d): %w", table, entry.shadowID, err)
+				return fmt.Errorf("commit %s (shadow %s): %w", table, entry.shadowID, err)
 			}
 
 			idMap[table][entry.shadowID] = realID
@@ -262,7 +271,7 @@ func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
 }
 
 // readShadowRow reads a single row from a shadow table by ID.
-func (s *ShadowDB) readShadowRow(table string, id uint) (map[string]any, error) {
+func (s *ShadowDB) readShadowRow(table string, id string) (map[string]any, error) {
 	var result map[string]any
 	if err := s.db.Table(table).Where("id = ?", id).Take(&result).Error; err != nil {
 		return nil, err
@@ -273,13 +282,13 @@ func (s *ShadowDB) readShadowRow(table string, id uint) (map[string]any, error) 
 // remapFK rewrites a foreign key column value from a shadow ID to the
 // corresponding real ID, if a mapping exists. Values without a mapping
 // are left unchanged (they reference existing real DB entities).
-func remapFK(row map[string]any, fk shadowFKRemap, idMap map[string]map[uint]uint) {
+func remapFK(row map[string]any, fk shadowFKRemap, idMap map[string]map[string]string) {
 	v, ok := row[fk.Column]
 	if !ok || v == nil {
 		return
 	}
-	shadowID := ParseUint(v)
-	if shadowID == 0 {
+	shadowID := ParseStringID(v)
+	if shadowID == "" {
 		return
 	}
 	if tableMap, ok := idMap[fk.Table]; ok {
@@ -291,7 +300,7 @@ func remapFK(row map[string]any, fk shadowFKRemap, idMap map[string]map[uint]uin
 
 // remapDocumentEntity rewrites entity_id on a document row if entity_kind
 // maps to a creatable table whose IDs were remapped.
-func remapDocumentEntity(row map[string]any, idMap map[string]map[uint]uint) {
+func remapDocumentEntity(row map[string]any, idMap map[string]map[string]string) {
 	kind, _ := row[data.ColEntityKind].(string)
 	if kind == "" {
 		// GORM may return []byte for text columns from raw queries.
@@ -303,8 +312,8 @@ func remapDocumentEntity(row map[string]any, idMap map[string]map[uint]uint) {
 	if !ok {
 		return
 	}
-	entityID := ParseUint(row[data.ColEntityID])
-	if entityID == 0 {
+	entityID := ParseStringID(row[data.ColEntityID])
+	if entityID == "" {
 		return
 	}
 	if tableMap, ok := idMap[table]; ok {
@@ -317,13 +326,13 @@ func remapDocumentEntity(row map[string]any, idMap map[string]map[uint]uint) {
 // commitRow creates a single entity in the real DB from shadow row data.
 // opData carries the original operation data for synthetic fields (e.g.
 // vendor_name) that aren't stored in the shadow table.
-// Returns the real auto-increment ID.
+// Returns the real ULID assigned by the database.
 func commitRow(
 	store *data.Store,
 	table string,
 	row map[string]any,
 	opData map[string]any,
-) (uint, error) {
+) (string, error) {
 	switch table {
 	case data.TableVendors:
 		return commitVendor(store, row)
@@ -342,11 +351,11 @@ func commitRow(
 	case data.TableDocuments:
 		return commitDocument(store, row)
 	default:
-		return 0, fmt.Errorf("unsupported table %q", table)
+		return "", fmt.Errorf("unsupported table %q", table)
 	}
 }
 
-func commitVendor(store *data.Store, row map[string]any) (uint, error) {
+func commitVendor(store *data.Store, row map[string]any) (string, error) {
 	v := data.Vendor{}
 	stringField(row, data.ColName, &v.Name)
 	stringField(row, data.ColContactName, &v.ContactName)
@@ -355,16 +364,16 @@ func commitVendor(store *data.Store, row map[string]any) (uint, error) {
 	stringField(row, data.ColWebsite, &v.Website)
 	stringField(row, data.ColNotes, &v.Notes)
 	if strings.TrimSpace(v.Name) == "" {
-		return 0, fmt.Errorf("vendor name is required")
+		return "", fmt.Errorf("vendor name is required")
 	}
 	found, err := store.FindOrCreateVendor(v)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return found.ID, nil
 }
 
-func commitAppliance(store *data.Store, row map[string]any) (uint, error) {
+func commitAppliance(store *data.Store, row map[string]any) (string, error) {
 	a := data.Appliance{}
 	stringField(row, data.ColName, &a.Name)
 	stringField(row, data.ColNotes, &a.Notes)
@@ -377,37 +386,37 @@ func commitAppliance(store *data.Store, row map[string]any) (uint, error) {
 	}
 	found, err := store.FindOrCreateAppliance(a)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return found.ID, nil
 }
 
-func commitProject(store *data.Store, row map[string]any) (uint, error) {
+func commitProject(store *data.Store, row map[string]any) (string, error) {
 	p := data.Project{}
 	stringField(row, data.ColTitle, &p.Title)
 	stringField(row, data.ColDescription, &p.Description)
 	stringField(row, data.ColStatus, &p.Status)
-	p.ProjectTypeID = ParseUint(row[data.ColProjectTypeID])
+	p.ProjectTypeID = ParseStringID(row[data.ColProjectTypeID])
 	if v := toInt64Ptr(row[data.ColBudgetCents]); v != nil {
 		p.BudgetCents = v
 	}
 	if strings.TrimSpace(p.Title) == "" {
-		return 0, fmt.Errorf("project title is required")
+		return "", fmt.Errorf("project title is required")
 	}
 	if p.Status == "" {
 		p.Status = data.ProjectStatusIdeating
 	}
 	if err := store.CreateProject(&p); err != nil {
-		return 0, err
+		return "", err
 	}
 	return p.ID, nil
 }
 
-func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (uint, error) {
+func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (string, error) {
 	q := data.Quote{}
-	q.ProjectID = ParseUint(row[data.ColProjectID])
-	if q.ProjectID == 0 {
-		return 0, fmt.Errorf("quote requires a project_id referencing an existing project")
+	q.ProjectID = ParseStringID(row[data.ColProjectID])
+	if q.ProjectID == "" {
+		return "", fmt.Errorf("quote requires a project_id referencing an existing project")
 	}
 	q.TotalCents = ParseInt64(row[data.ColTotalCents])
 	stringField(row, data.ColNotes, &q.Notes)
@@ -421,10 +430,10 @@ func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (
 
 	// Resolve vendor. After remapping, vendor_id is either:
 	// - A real ID (batch-created vendor already committed, or existing vendor)
-	// - 0 / absent (no vendor reference)
+	// - "" / absent (no vendor reference)
 	var vendor data.Vendor
-	vendorID := ParseUint(row[data.ColVendorID])
-	if vendorID > 0 {
+	vendorID := ParseStringID(row[data.ColVendorID])
+	if vendorID != "" {
 		got, err := store.GetVendor(vendorID)
 		if err == nil {
 			vendor = got
@@ -432,28 +441,28 @@ func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (
 	}
 	// Fall back to vendor_name from original operation data (synthetic field
 	// not stored in the shadow table).
-	if vendor.ID == 0 {
+	if vendor.ID == "" {
 		stringField(opData, "vendor_name", &vendor.Name)
 	}
 
 	if err := store.CreateQuote(&q, vendor); err != nil {
-		return 0, err
+		return "", err
 	}
 	return q.ID, nil
 }
 
-func commitMaintenance(store *data.Store, row map[string]any) (uint, error) {
+func commitMaintenance(store *data.Store, row map[string]any) (string, error) {
 	m := data.MaintenanceItem{}
 	stringField(row, data.ColName, &m.Name)
 	stringField(row, data.ColNotes, &m.Notes)
-	m.CategoryID = ParseUint(row[data.ColCategoryID])
-	if v := ParseUint(row[data.ColApplianceID]); v != 0 {
+	m.CategoryID = ParseStringID(row[data.ColCategoryID])
+	if v := ParseStringID(row[data.ColApplianceID]); v != "" {
 		m.ApplianceID = &v
 	}
 	if v := ParseInt64(row[data.ColIntervalMonths]); v != 0 {
 		n, err := safeconv.Int(v)
 		if err != nil {
-			return 0, fmt.Errorf("interval_months: %w", err)
+			return "", fmt.Errorf("interval_months: %w", err)
 		}
 		m.IntervalMonths = n
 	}
@@ -462,12 +471,12 @@ func commitMaintenance(store *data.Store, row map[string]any) (uint, error) {
 	}
 	found, err := store.FindOrCreateMaintenance(m)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return found.ID, nil
 }
 
-func commitIncident(store *data.Store, row map[string]any, opData map[string]any) (uint, error) {
+func commitIncident(store *data.Store, row map[string]any, opData map[string]any) (string, error) {
 	inc := data.Incident{}
 	stringField(row, data.ColTitle, &inc.Title)
 	stringField(row, data.ColDescription, &inc.Description)
@@ -478,10 +487,10 @@ func commitIncident(store *data.Store, row map[string]any, opData map[string]any
 	if v := toInt64Ptr(row[data.ColCostCents]); v != nil {
 		inc.CostCents = v
 	}
-	if v := ParseUint(row[data.ColApplianceID]); v != 0 {
+	if v := ParseStringID(row[data.ColApplianceID]); v != "" {
 		inc.ApplianceID = &v
 	}
-	if v := ParseUint(row[data.ColVendorID]); v != 0 {
+	if v := ParseStringID(row[data.ColVendorID]); v != "" {
 		inc.VendorID = &v
 	}
 	if inc.VendorID == nil {
@@ -491,7 +500,7 @@ func commitIncident(store *data.Store, row map[string]any, opData map[string]any
 			v := data.Vendor{Name: vendorName}
 			found, err := store.FindOrCreateVendor(v)
 			if err != nil {
-				return 0, fmt.Errorf("find-or-create vendor for incident: %w", err)
+				return "", fmt.Errorf("find-or-create vendor for incident: %w", err)
 			}
 			inc.VendorID = &found.ID
 		}
@@ -504,17 +513,21 @@ func commitIncident(store *data.Store, row map[string]any, opData map[string]any
 	}
 	inc.DateNoticed = parseDateOrNow(opData, data.ColDateNoticed)
 	if strings.TrimSpace(inc.Title) == "" {
-		return 0, fmt.Errorf("incident title is required")
+		return "", fmt.Errorf("incident title is required")
 	}
 	if err := store.CreateIncident(&inc); err != nil {
-		return 0, err
+		return "", err
 	}
 	return inc.ID, nil
 }
 
-func commitServiceLog(store *data.Store, row map[string]any, opData map[string]any) (uint, error) {
+func commitServiceLog(
+	store *data.Store,
+	row map[string]any,
+	opData map[string]any,
+) (string, error) {
 	entry := data.ServiceLogEntry{}
-	entry.MaintenanceItemID = ParseUint(row[data.ColMaintenanceItemID])
+	entry.MaintenanceItemID = ParseStringID(row[data.ColMaintenanceItemID])
 	stringField(row, data.ColNotes, &entry.Notes)
 	if v := toInt64Ptr(row[data.ColCostCents]); v != nil {
 		entry.CostCents = v
@@ -522,32 +535,32 @@ func commitServiceLog(store *data.Store, row map[string]any, opData map[string]a
 	entry.ServicedAt = parseDateOrNow(opData, data.ColServicedAt)
 
 	var vendor data.Vendor
-	vendorID := ParseUint(row[data.ColVendorID])
-	if vendorID > 0 {
+	vendorID := ParseStringID(row[data.ColVendorID])
+	if vendorID != "" {
 		got, err := store.GetVendor(vendorID)
 		if err == nil {
 			vendor = got
 		}
 	}
-	if vendor.ID == 0 {
+	if vendor.ID == "" {
 		stringField(opData, "vendor_name", &vendor.Name)
 	}
 
 	if err := store.CreateServiceLog(&entry, vendor); err != nil {
-		return 0, err
+		return "", err
 	}
 	return entry.ID, nil
 }
 
-func commitDocument(store *data.Store, row map[string]any) (uint, error) {
+func commitDocument(store *data.Store, row map[string]any) (string, error) {
 	doc := data.Document{}
 	stringField(row, data.ColTitle, &doc.Title)
 	stringField(row, data.ColFileName, &doc.FileName)
 	stringField(row, data.ColNotes, &doc.Notes)
 	stringField(row, data.ColEntityKind, &doc.EntityKind)
-	doc.EntityID = ParseUint(row[data.ColEntityID])
+	doc.EntityID = ParseStringID(row[data.ColEntityID])
 	if err := store.CreateDocument(&doc); err != nil {
-		return 0, err
+		return "", err
 	}
 	return doc.ID, nil
 }
@@ -571,19 +584,19 @@ func commitUpdate(store *data.Store, op Operation) error {
 }
 
 func commitUpdateDocument(store *data.Store, op Operation) error {
-	rowID := ParseUint(op.Data[data.ColID])
-	if rowID == 0 {
+	rowID := ParseStringID(op.Data[data.ColID])
+	if rowID == "" {
 		return fmt.Errorf("update documents requires id in data")
 	}
 	doc, err := store.GetDocumentMetadata(rowID)
 	if err != nil {
-		return fmt.Errorf("get document %d: %w", rowID, err)
+		return fmt.Errorf("get document %s: %w", rowID, err)
 	}
 	stringField(op.Data, data.ColTitle, &doc.Title)
 	stringField(op.Data, data.ColNotes, &doc.Notes)
 	stringField(op.Data, data.ColEntityKind, &doc.EntityKind)
 	if v, ok := op.Data[data.ColEntityID]; ok {
-		if n := ParseUint(v); n > 0 {
+		if n := ParseStringID(v); n != "" {
 			doc.EntityID = n
 		}
 	}
@@ -591,23 +604,23 @@ func commitUpdateDocument(store *data.Store, op Operation) error {
 }
 
 func commitUpdateMaintenance(store *data.Store, op Operation) error {
-	rowID := ParseUint(op.Data[data.ColID])
-	if rowID == 0 {
+	rowID := ParseStringID(op.Data[data.ColID])
+	if rowID == "" {
 		return fmt.Errorf("update maintenance_items requires id in data")
 	}
 	item, err := store.GetMaintenance(rowID)
 	if err != nil {
-		return fmt.Errorf("get maintenance_item %d: %w", rowID, err)
+		return fmt.Errorf("get maintenance_item %s: %w", rowID, err)
 	}
 	stringField(op.Data, data.ColName, &item.Name)
 	stringField(op.Data, data.ColNotes, &item.Notes)
 	if v, ok := op.Data[data.ColCategoryID]; ok {
-		if n := ParseUint(v); n > 0 {
+		if n := ParseStringID(v); n != "" {
 			item.CategoryID = n
 		}
 	}
 	if v, ok := op.Data[data.ColApplianceID]; ok {
-		if n := ParseUint(v); n > 0 {
+		if n := ParseStringID(v); n != "" {
 			item.ApplianceID = &n
 		}
 	}
@@ -628,13 +641,13 @@ func commitUpdateMaintenance(store *data.Store, op Operation) error {
 }
 
 func commitUpdateVendor(store *data.Store, op Operation) error {
-	rowID := ParseUint(op.Data[data.ColID])
-	if rowID == 0 {
+	rowID := ParseStringID(op.Data[data.ColID])
+	if rowID == "" {
 		return fmt.Errorf("update vendors requires id in data")
 	}
 	v, err := store.GetVendor(rowID)
 	if err != nil {
-		return fmt.Errorf("get vendor %d: %w", rowID, err)
+		return fmt.Errorf("get vendor %s: %w", rowID, err)
 	}
 	stringField(op.Data, data.ColName, &v.Name)
 	stringField(op.Data, data.ColContactName, &v.ContactName)
@@ -646,13 +659,13 @@ func commitUpdateVendor(store *data.Store, op Operation) error {
 }
 
 func commitUpdateAppliance(store *data.Store, op Operation) error {
-	rowID := ParseUint(op.Data[data.ColID])
-	if rowID == 0 {
+	rowID := ParseStringID(op.Data[data.ColID])
+	if rowID == "" {
 		return fmt.Errorf("update appliances requires id in data")
 	}
 	a, err := store.GetAppliance(rowID)
 	if err != nil {
-		return fmt.Errorf("get appliance %d: %w", rowID, err)
+		return fmt.Errorf("get appliance %s: %w", rowID, err)
 	}
 	stringField(op.Data, data.ColName, &a.Name)
 	stringField(op.Data, data.ColBrand, &a.Brand)
@@ -668,13 +681,13 @@ func commitUpdateAppliance(store *data.Store, op Operation) error {
 }
 
 func commitUpdateQuote(store *data.Store, op Operation) error {
-	rowID := ParseUint(op.Data[data.ColID])
-	if rowID == 0 {
+	rowID := ParseStringID(op.Data[data.ColID])
+	if rowID == "" {
 		return fmt.Errorf("update quotes requires id in data")
 	}
 	q, err := store.GetQuote(rowID)
 	if err != nil {
-		return fmt.Errorf("get quote %d: %w", rowID, err)
+		return fmt.Errorf("get quote %s: %w", rowID, err)
 	}
 	stringField(op.Data, data.ColNotes, &q.Notes)
 	if v, ok := op.Data[data.ColTotalCents]; ok {
@@ -689,24 +702,24 @@ func commitUpdateQuote(store *data.Store, op Operation) error {
 		q.MaterialsCents = &n
 	}
 	if v, ok := op.Data[data.ColProjectID]; ok {
-		if n := ParseUint(v); n > 0 {
+		if n := ParseStringID(v); n != "" {
 			q.ProjectID = n
 		}
 	}
 
 	var vendor data.Vendor
 	if v, ok := op.Data[data.ColVendorID]; ok {
-		if n := ParseUint(v); n > 0 {
+		if n := ParseStringID(v); n != "" {
 			got, getErr := store.GetVendor(n)
 			if getErr == nil {
 				vendor = got
 			}
 		}
 	}
-	if vendor.ID == 0 {
+	if vendor.ID == "" {
 		stringField(op.Data, "vendor_name", &vendor.Name)
 	}
-	if vendor.ID == 0 && vendor.Name == "" {
+	if vendor.ID == "" && vendor.Name == "" {
 		vendor = q.Vendor
 	}
 	return store.UpdateQuote(q, vendor)
@@ -805,40 +818,34 @@ func parseDateOrNow(row map[string]any, key string) time.Time {
 	return time.Now().Truncate(24 * time.Hour)
 }
 
-// ParseUint extracts a uint from an arbitrary value. Handles concrete numeric
-// types (from GORM/SQLite map queries), json.Number, and string
-// representations. Returns 0 for nil, negative, or unparsable values.
-func ParseUint(v any) uint {
+// ParseStringID extracts a string ID from an arbitrary value. Handles string,
+// []byte (from GORM/SQLite map queries), json.Number, and numeric types.
+// Returns "" for nil or empty values.
+func ParseStringID(v any) string {
 	if v == nil {
-		return 0
+		return ""
 	}
 	switch val := v.(type) {
-	case uint:
-		return val
-	case uint64:
-		return uint(val)
-	case int64:
-		if val > 0 {
-			return uint(val)
-		}
-	case int:
-		if val > 0 {
-			return uint(val)
-		}
-	case float64:
-		if val > 0 && val <= math.MaxUint {
-			return uint(val)
-		}
-	case json.Number:
-		if n, err := strconv.ParseUint(val.String(), 10, strconv.IntSize); err == nil {
-			return uint(n)
-		}
 	case string:
-		if n, err := strconv.ParseUint(strings.TrimSpace(val), 10, strconv.IntSize); err == nil {
-			return uint(n)
+		return strings.TrimSpace(val)
+	case []byte:
+		return strings.TrimSpace(string(val))
+	case float64:
+		return strconv.FormatFloat(val, 'f', -1, 64)
+	case int64:
+		return strconv.FormatInt(val, 10)
+	case int:
+		return strconv.Itoa(val)
+	case uint:
+		return strconv.FormatUint(uint64(val), 10)
+	case uint64:
+		return strconv.FormatUint(val, 10)
+	default:
+		if s, ok := v.(interface{ String() string }); ok {
+			return strings.TrimSpace(s.String())
 		}
 	}
-	return 0
+	return ""
 }
 
 // ParseInt64 extracts an int64 from an arbitrary value. Handles concrete

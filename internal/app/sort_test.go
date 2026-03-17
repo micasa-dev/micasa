@@ -39,9 +39,9 @@ func newSortTab() *Tab {
 			},
 		},
 		Rows: []rowMeta{
-			{ID: 3},
-			{ID: 1},
-			{ID: 2},
+			{ID: "3"},
+			{ID: "1"},
+			{ID: "2"},
 		},
 	}
 }
@@ -98,7 +98,7 @@ func TestApplySortsDefaultPK(t *testing.T) {
 	applySorts(tab)
 
 	ids := collectIDs(tab)
-	assert.Equal(t, []uint{1, 2, 3}, ids)
+	assert.Equal(t, []string{"1", "2", "3"}, ids)
 }
 
 func TestApplySortsByNameAsc(t *testing.T) {
@@ -154,7 +154,7 @@ func TestApplySortsNullLastRegardlessOfDirection(t *testing.T) {
 			{{Value: "Bravo", Kind: cellText}},
 			{{Value: "Alpha", Kind: cellText}},
 		},
-		Rows: []rowMeta{{ID: 1}, {ID: 2}, {ID: 3}},
+		Rows: []rowMeta{{ID: "1"}, {ID: "2"}, {ID: "3"}},
 	}
 	toggleSort(tab, 0) // asc
 	applySorts(tab)
@@ -183,7 +183,7 @@ func TestApplySortsEmptySortsNormally(t *testing.T) {
 			{{Value: "", Kind: cellText}},
 			{{Value: "Alpha", Kind: cellText}},
 		},
-		Rows: []rowMeta{{ID: 1}, {ID: 2}, {ID: 3}},
+		Rows: []rowMeta{{ID: "1"}, {ID: "2"}, {ID: "3"}},
 	}
 	toggleSort(tab, 0) // asc
 	applySorts(tab)
@@ -203,7 +203,7 @@ func TestApplySortsNullAfterEmpty(t *testing.T) {
 			{{Value: "", Kind: cellText}},
 			{{Value: "Alpha", Kind: cellText}},
 		},
-		Rows: []rowMeta{{ID: 1}, {ID: 2}, {ID: 3}},
+		Rows: []rowMeta{{ID: "1"}, {ID: "2"}, {ID: "3"}},
 	}
 	toggleSort(tab, 0) // asc
 	applySorts(tab)
@@ -226,7 +226,7 @@ func TestApplySortsMultiKey(t *testing.T) {
 			{{Value: "A", Kind: cellText}, {Value: "Alex", Kind: cellText}},
 			{{Value: "B", Kind: cellText}, {Value: "Mia", Kind: cellText}},
 		},
-		Rows: []rowMeta{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}},
+		Rows: []rowMeta{{ID: "1"}, {ID: "2"}, {ID: "3"}, {ID: "4"}},
 	}
 	toggleSort(tab, 0) // Group asc (primary)
 	toggleSort(tab, 1) // Name asc (secondary)
@@ -283,8 +283,8 @@ func TestSortKeyOnlyInNormalMode(t *testing.T) {
 
 // helpers
 
-func collectIDs(tab *Tab) []uint {
-	ids := make([]uint, len(tab.Rows))
+func collectIDs(tab *Tab) []string {
+	ids := make([]string, len(tab.Rows))
 	for i, m := range tab.Rows {
 		ids[i] = m.ID
 	}

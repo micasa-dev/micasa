@@ -19,11 +19,11 @@ const (
 
 // DocumentSearchResult holds a single FTS5 match with metadata for display.
 type DocumentSearchResult struct {
-	ID         uint
+	ID         string
 	Title      string
 	FileName   string
 	EntityKind string
-	EntityID   uint
+	EntityID   string
 	Snippet    string
 	UpdatedAt  time.Time
 }
@@ -41,7 +41,7 @@ func (s *Store) setupFTS() error {
 			notes,
 			extracted_text,
 			content=%s,
-			content_rowid=id,
+			content_rowid=rowid,
 			tokenize='porter unicode61'
 		)`, tableFTS, TableDocuments)
 	if err := s.db.Exec(createTable).Error; err != nil {
@@ -59,7 +59,7 @@ func (s *Store) setupFTS() error {
 			sql: fmt.Sprintf(`
 				CREATE TRIGGER IF NOT EXISTS %s AFTER INSERT ON %s BEGIN
 					INSERT INTO %s(rowid, title, notes, extracted_text)
-					VALUES (new.id, new.title, new.notes, new.extracted_text);
+					VALUES (new.rowid, new.title, new.notes, new.extracted_text);
 				END`, triggerFTSInsert, TableDocuments, tableFTS),
 		},
 		{
@@ -67,7 +67,7 @@ func (s *Store) setupFTS() error {
 			sql: fmt.Sprintf(`
 				CREATE TRIGGER IF NOT EXISTS %s AFTER DELETE ON %s BEGIN
 					INSERT INTO %s(%s, rowid, title, notes, extracted_text)
-					VALUES ('delete', old.id, old.title, old.notes, old.extracted_text);
+					VALUES ('delete', old.rowid, old.title, old.notes, old.extracted_text);
 				END`, triggerFTSDelete, TableDocuments, tableFTS, tableFTS),
 		},
 		{
@@ -75,9 +75,9 @@ func (s *Store) setupFTS() error {
 			sql: fmt.Sprintf(`
 				CREATE TRIGGER IF NOT EXISTS %s AFTER UPDATE ON %s BEGIN
 					INSERT INTO %s(%s, rowid, title, notes, extracted_text)
-					VALUES ('delete', old.id, old.title, old.notes, old.extracted_text);
+					VALUES ('delete', old.rowid, old.title, old.notes, old.extracted_text);
 					INSERT INTO %s(rowid, title, notes, extracted_text)
-					VALUES (new.id, new.title, new.notes, new.extracted_text);
+					VALUES (new.rowid, new.title, new.notes, new.extracted_text);
 				END`, triggerFTSUpdate, TableDocuments, tableFTS, tableFTS, tableFTS),
 		},
 	}
@@ -126,7 +126,7 @@ func (s *Store) SearchDocuments(query string) ([]DocumentSearchResult, error) {
 			snippet(%s, -1, '>>>', '<<<', '...', 32) AS snippet,
 			d.updated_at
 		FROM %s
-		JOIN %s d ON d.id = %s.rowid
+		JOIN %s d ON d.rowid = %s.rowid
 		WHERE %s MATCH ?
 			AND d.deleted_at IS NULL
 		ORDER BY rank

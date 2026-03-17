@@ -50,7 +50,7 @@ func newTestModelWithCurrency(t *testing.T, code string, tag language.Tag) *Mode
 }
 
 // seedProject creates a project and returns its ID.
-func seedProject(t *testing.T, m *Model) uint {
+func seedProject(t *testing.T, m *Model) string {
 	t.Helper()
 	types, err := m.store.ProjectTypes()
 	require.NoError(t, err)
@@ -433,7 +433,12 @@ func TestCurrencyFlow_ProjectRows(t *testing.T) {
 			cur := locale.MustResolve(code, testLocale(code))
 			budget := int64(250000)
 			projects := []data.Project{
-				{ID: 1, Title: "Test", Status: data.ProjectStatusPlanned, BudgetCents: &budget},
+				{
+					ID:          "01JTEST00000000000000001",
+					Title:       "Test",
+					Status:      data.ProjectStatusPlanned,
+					BudgetCents: &budget,
+				},
 			}
 			_, _, cells := projectRows(projects, nil, nil, cur)
 			require.Len(t, cells, 1)
@@ -449,7 +454,7 @@ func TestCurrencyFlow_QuoteRows(t *testing.T) {
 			cur := locale.MustResolve(code, testLocale(code))
 			quotes := []data.Quote{
 				{
-					ID: 1, ProjectID: 1, VendorID: 1,
+					ID: "01JTEST00000000000000001", ProjectID: "01JTEST00000000000000001", VendorID: "01JTEST00000000000000001",
 					Project:    data.Project{Title: "Test"},
 					Vendor:     data.Vendor{Name: "Co"},
 					TotalCents: 75000,
@@ -469,7 +474,9 @@ func TestCurrencyFlow_ApplianceRows(t *testing.T) {
 			cur := locale.MustResolve(code, testLocale(code))
 			cost := int64(89900)
 			now := time.Now()
-			items := []data.Appliance{{ID: 1, Name: "Test", CostCents: &cost}}
+			items := []data.Appliance{
+				{ID: "01JTEST00000000000000001", Name: "Test", CostCents: &cost},
+			}
 			_, _, cells := applianceRows(items, nil, nil, now, cur)
 			require.Len(t, cells, 1)
 			assert.Equal(t, cur.FormatCents(89900), cells[0][9].Value)
@@ -551,7 +558,7 @@ func TestCurrencyFlow_ServiceLogFormValues(t *testing.T) {
 			cur := locale.MustResolve(code, testLocale(code))
 			cost := int64(5000)
 			entry := data.ServiceLogEntry{
-				MaintenanceItemID: 1,
+				MaintenanceItemID: "01JTEST00000000000000001",
 				ServicedAt:        time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 				CostCents:         &cost,
 			}
@@ -567,7 +574,7 @@ func TestCurrencyFlow_QuoteFormValues(t *testing.T) {
 		t.Run(code, func(t *testing.T) {
 			cur := locale.MustResolve(code, testLocale(code))
 			quote := data.Quote{
-				ProjectID:  1,
+				ProjectID:  "01JTEST00000000000000001",
 				TotalCents: 250000,
 				Vendor:     data.Vendor{Name: "TestCo"},
 			}

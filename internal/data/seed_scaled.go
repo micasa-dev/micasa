@@ -84,7 +84,7 @@ func (s *Store) SeedScaledDataFrom(h *fake.HomeFaker, years int) (SeedSummary, e
 
 	// Lookup helpers that panic on missing seed data. SeedDefaults must run
 	// before this function; a missing type/category is a programming error.
-	typeID := func(name string) uint {
+	typeID := func(name string) string {
 		var pt ProjectType
 		if err := s.db.Where(ColName+" = ?", name).First(&pt).Error; err != nil {
 			panic(fmt.Sprintf(
@@ -94,7 +94,7 @@ func (s *Store) SeedScaledDataFrom(h *fake.HomeFaker, years int) (SeedSummary, e
 		}
 		return pt.ID
 	}
-	catID := func(name string) uint {
+	catID := func(name string) string {
 		var mc MaintenanceCategory
 		if err := s.db.Where(ColName+" = ?", name).First(&mc).Error; err != nil {
 			panic(fmt.Sprintf(
@@ -545,7 +545,7 @@ func seedBaseDocuments(
 ) []Document {
 	type docSeed struct {
 		title, fileName, mime, kind string
-		entityID                    uint
+		entityID                    string
 	}
 
 	var seeds []docSeed

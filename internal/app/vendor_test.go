@@ -60,13 +60,13 @@ func TestVendorRows(t *testing.T) {
 	t.Parallel()
 	rows, meta, cells := vendorRows(
 		sampleVendors(),
-		map[uint]int{1: 3},
-		map[uint]int{2: 5},
+		map[string]int{"01JTEST00000000000000001": 3},
+		map[string]int{"01JTEST00000000000000002": 5},
 		nil,
 	)
 	require.Len(t, rows, 2)
-	assert.Equal(t, uint(1), meta[0].ID)
-	assert.Equal(t, uint(2), meta[1].ID)
+	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
+	assert.Equal(t, "01JTEST00000000000000002", meta[1].ID)
 	// Vendor 1 has 3 quotes, 0 jobs.
 	assert.Equal(t, "3", cells[0][6].Value)
 	assert.Equal(t, "0", cells[0][7].Value)
@@ -77,7 +77,7 @@ func TestVendorRows(t *testing.T) {
 
 func TestVendorRowsDocCount(t *testing.T) {
 	t.Parallel()
-	docCounts := map[uint]int{1: 9}
+	docCounts := map[string]int{"01JTEST00000000000000001": 9}
 	_, _, cells := vendorRows(sampleVendors(), nil, nil, docCounts)
 	require.Len(t, cells, 2)
 	assert.Equal(t, "9", cells[0][int(vendorColDocs)].Value)
@@ -155,8 +155,8 @@ func TestVendorJobsRowsSetsItemLinkID(t *testing.T) {
 	t.Parallel()
 	entries := []data.ServiceLogEntry{
 		{
-			ID:                1,
-			MaintenanceItemID: 7,
+			ID:                "01JTEST00000000000000001",
+			MaintenanceItemID: "01JTEST00000000000000007",
 			MaintenanceItem:   data.MaintenanceItem{Name: "HVAC Filter"},
 			ServicedAt:        time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
@@ -164,18 +164,23 @@ func TestVendorJobsRowsSetsItemLinkID(t *testing.T) {
 	_, _, cells := vendorJobsRows(entries, locale.DefaultCurrency())
 	require.Len(t, cells, 1)
 	assert.Equal(t, "HVAC Filter", cells[0][1].Value)
-	assert.Equal(t, uint(7), cells[0][1].LinkID)
+	assert.Equal(t, "01JTEST00000000000000007", cells[0][1].LinkID)
 }
 
 func sampleVendors() []data.Vendor {
 	return []data.Vendor{
 		{
-			ID:          1,
+			ID:          "01JTEST00000000000000001",
 			Name:        "Acme Plumbing",
 			ContactName: "Jo Smith",
 			Email:       "jo@example.com",
 			Phone:       "555-0142",
 		},
-		{ID: 2, Name: "Sparks Electric", ContactName: "Tom", Phone: "555-0231"},
+		{
+			ID:          "01JTEST00000000000000002",
+			Name:        "Sparks Electric",
+			ContactName: "Tom",
+			Phone:       "555-0231",
+		},
 	}
 }

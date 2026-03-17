@@ -211,7 +211,7 @@ type Model struct {
 	inlineInput           *inlineInputState
 	magMode               bool        // easter egg: display numbers as order-of-magnitude
 	confirm               confirmKind // active confirmation dialog (zero = none)
-	hardDeleteID          uint        // entity ID pending permanent deletion
+	hardDeleteID          string      // entity ID pending permanent deletion
 	lastRowClick          rowClickState
 	lastDashClick         rowClickState
 	isDark                bool // terminal background is dark
@@ -864,7 +864,7 @@ func (m *Model) handleNormalEnter() error {
 	// On a linked column with a target, follow the FK.
 	if spec.Link != nil {
 		if c, ok := m.selectedCell(col); ok {
-			if c.LinkID > 0 {
+			if c.LinkID != "" {
 				return m.navigateToLink(spec.Link, c.LinkID)
 			}
 			m.setStatusInfo("Nothing to follow.")
@@ -875,7 +875,7 @@ func (m *Model) handleNormalEnter() error {
 	// On a polymorphic entity cell, resolve the target tab from the kind letter.
 	if spec.Kind == cellEntity {
 		if c, ok := m.selectedCell(col); ok {
-			if c.LinkID > 0 && len(c.Value) > 0 {
+			if c.LinkID != "" && len(c.Value) > 0 {
 				if target, ok := entityLetterTab[c.Value[0]]; ok {
 					return m.navigateToLink(&columnLink{TargetTab: target}, c.LinkID)
 				}
@@ -1065,9 +1065,9 @@ type detailDef struct {
 	tabKind    TabKind
 	subName    string
 	specs      func() []columnSpec
-	handler    func(parentID uint) TabHandler
+	handler    func(parentID string) TabHandler
 	breadcrumb func(m *Model, parentName string) string
-	getName    func(store *data.Store, id uint) (string, error) // resolve parent display name
+	getName    func(store *data.Store, id string) (string, error) // resolve parent display name
 }
 
 // stdBreadcrumb returns a breadcrumb builder that produces the standard
@@ -1086,7 +1086,7 @@ var (
 		tabKind: tabMaintenance,
 		subName: "Service Log",
 		specs:   serviceLogColumnSpecs,
-		handler: func(id uint) TabHandler { return serviceLogHandler{maintenanceItemID: id} },
+		handler: func(id string) TabHandler { return serviceLogHandler{maintenanceItemID: id} },
 		breadcrumb: func(m *Model, parentName string) string {
 			// When drilled from the top-level Maintenance tab, the breadcrumb
 			// starts with "Maintenance"; when nested (e.g. Appliances > … >
@@ -1097,7 +1097,7 @@ var (
 			}
 			return bc
 		},
-		getName: func(s *data.Store, id uint) (string, error) {
+		getName: func(s *data.Store, id string) (string, error) {
 			item, err := s.GetMaintenance(id)
 			if err != nil {
 				return "", fmt.Errorf("load maintenance item: %w", err)
@@ -1109,9 +1109,9 @@ var (
 		tabKind:    tabAppliances,
 		subName:    "Maintenance",
 		specs:      applianceMaintenanceColumnSpecs,
-		handler:    func(id uint) TabHandler { return newApplianceMaintenanceHandler(id) },
+		handler:    func(id string) TabHandler { return newApplianceMaintenanceHandler(id) },
 		breadcrumb: stdBreadcrumb("Appliances", ""),
-		getName: func(s *data.Store, id uint) (string, error) {
+		getName: func(s *data.Store, id string) (string, error) {
 			a, err := s.GetAppliance(id)
 			if err != nil {
 				return "", fmt.Errorf("load appliance: %w", err)
@@ -1123,7 +1123,7 @@ var (
 		tabKind:    tabVendors,
 		subName:    tabQuotes.String(),
 		specs:      vendorQuoteColumnSpecs,
-		handler:    func(id uint) TabHandler { return newVendorQuoteHandler(id) },
+		handler:    func(id string) TabHandler { return newVendorQuoteHandler(id) },
 		breadcrumb: stdBreadcrumb("Vendors", tabQuotes.String()),
 		getName:    getVendorName,
 	}
@@ -1131,7 +1131,7 @@ var (
 		tabKind:    tabVendors,
 		subName:    "Jobs",
 		specs:      vendorJobsColumnSpecs,
-		handler:    func(id uint) TabHandler { return newVendorJobsHandler(id) },
+		handler:    func(id string) TabHandler { return newVendorJobsHandler(id) },
 		breadcrumb: stdBreadcrumb("Vendors", "Jobs"),
 		getName:    getVendorName,
 	}
@@ -1139,7 +1139,7 @@ var (
 		tabKind:    tabProjects,
 		subName:    tabQuotes.String(),
 		specs:      projectQuoteColumnSpecs,
-		handler:    func(id uint) TabHandler { return newProjectQuoteHandler(id) },
+		handler:    func(id string) TabHandler { return newProjectQuoteHandler(id) },
 		breadcrumb: stdBreadcrumb("Projects", tabQuotes.String()),
 		getName:    getProjectTitle,
 	}
@@ -1147,7 +1147,7 @@ var (
 		tabKind:    tabProjects,
 		subName:    tabDocuments.String(),
 		specs:      entityDocumentColumnSpecs,
-		handler:    func(id uint) TabHandler { return newEntityDocumentHandler(data.DocumentEntityProject, id) },
+		handler:    func(id string) TabHandler { return newEntityDocumentHandler(data.DocumentEntityProject, id) },
 		breadcrumb: stdBreadcrumb("Projects", tabDocuments.String()),
 		getName:    getProjectTitle,
 	}
@@ -1155,7 +1155,7 @@ var (
 		tabKind:    tabIncidents,
 		subName:    tabDocuments.String(),
 		specs:      entityDocumentColumnSpecs,
-		handler:    func(id uint) TabHandler { return newEntityDocumentHandler(data.DocumentEntityIncident, id) },
+		handler:    func(id string) TabHandler { return newEntityDocumentHandler(data.DocumentEntityIncident, id) },
 		breadcrumb: stdBreadcrumb("Incidents", tabDocuments.String()),
 		getName:    getIncidentTitle,
 	}
@@ -1163,9 +1163,9 @@ var (
 		tabKind:    tabAppliances,
 		subName:    tabDocuments.String(),
 		specs:      entityDocumentColumnSpecs,
-		handler:    func(id uint) TabHandler { return newEntityDocumentHandler(data.DocumentEntityAppliance, id) },
+		handler:    func(id string) TabHandler { return newEntityDocumentHandler(data.DocumentEntityAppliance, id) },
 		breadcrumb: stdBreadcrumb("Appliances", tabDocuments.String()),
-		getName: func(s *data.Store, id uint) (string, error) {
+		getName: func(s *data.Store, id string) (string, error) {
 			a, err := s.GetAppliance(id)
 			if err != nil {
 				return "", fmt.Errorf("load appliance: %w", err)
@@ -1177,7 +1177,7 @@ var (
 		tabKind: tabMaintenance,
 		subName: tabDocuments.String(),
 		specs:   entityDocumentColumnSpecs,
-		handler: func(id uint) TabHandler {
+		handler: func(id string) TabHandler {
 			return newEntityDocumentHandler(data.DocumentEntityServiceLog, id)
 		},
 		breadcrumb: func(_ *Model, parentName string) string {
@@ -1185,7 +1185,7 @@ var (
 			// detail, so the parent breadcrumb is already on the stack.
 			return parentName + breadcrumbSep + tabDocuments.String()
 		},
-		getName: func(s *data.Store, id uint) (string, error) {
+		getName: func(s *data.Store, id string) (string, error) {
 			entry, err := s.GetServiceLog(id)
 			if err != nil {
 				return "", fmt.Errorf("load service log: %w", err)
@@ -1197,7 +1197,7 @@ var (
 		tabKind:    tabMaintenance,
 		subName:    tabDocuments.String(),
 		specs:      entityDocumentColumnSpecs,
-		handler:    func(id uint) TabHandler { return newEntityDocumentHandler(data.DocumentEntityMaintenance, id) },
+		handler:    func(id string) TabHandler { return newEntityDocumentHandler(data.DocumentEntityMaintenance, id) },
 		breadcrumb: stdBreadcrumb("Maintenance", tabDocuments.String()),
 		getName:    getMaintenanceName,
 	}
@@ -1205,7 +1205,7 @@ var (
 		tabKind:    tabQuotes,
 		subName:    tabDocuments.String(),
 		specs:      entityDocumentColumnSpecs,
-		handler:    func(id uint) TabHandler { return newEntityDocumentHandler(data.DocumentEntityQuote, id) },
+		handler:    func(id string) TabHandler { return newEntityDocumentHandler(data.DocumentEntityQuote, id) },
 		breadcrumb: stdBreadcrumb("Quotes", tabDocuments.String()),
 		getName:    getQuoteDisplayName,
 	}
@@ -1213,14 +1213,14 @@ var (
 		tabKind:    tabVendors,
 		subName:    tabDocuments.String(),
 		specs:      entityDocumentColumnSpecs,
-		handler:    func(id uint) TabHandler { return newEntityDocumentHandler(data.DocumentEntityVendor, id) },
+		handler:    func(id string) TabHandler { return newEntityDocumentHandler(data.DocumentEntityVendor, id) },
 		breadcrumb: stdBreadcrumb("Vendors", tabDocuments.String()),
 		getName:    getVendorName,
 	}
 )
 
 // Shared getName helpers for defs that resolve the same entity type.
-func getVendorName(s *data.Store, id uint) (string, error) {
+func getVendorName(s *data.Store, id string) (string, error) {
 	v, err := s.GetVendor(id)
 	if err != nil {
 		return "", fmt.Errorf("load vendor: %w", err)
@@ -1228,7 +1228,7 @@ func getVendorName(s *data.Store, id uint) (string, error) {
 	return v.Name, nil
 }
 
-func getIncidentTitle(s *data.Store, id uint) (string, error) {
+func getIncidentTitle(s *data.Store, id string) (string, error) {
 	inc, err := s.GetIncident(id)
 	if err != nil {
 		return "", fmt.Errorf("load incident: %w", err)
@@ -1236,7 +1236,7 @@ func getIncidentTitle(s *data.Store, id uint) (string, error) {
 	return inc.Title, nil
 }
 
-func getProjectTitle(s *data.Store, id uint) (string, error) {
+func getProjectTitle(s *data.Store, id string) (string, error) {
 	p, err := s.GetProject(id)
 	if err != nil {
 		return "", fmt.Errorf("load project: %w", err)
@@ -1244,7 +1244,7 @@ func getProjectTitle(s *data.Store, id uint) (string, error) {
 	return p.Title, nil
 }
 
-func getMaintenanceName(s *data.Store, id uint) (string, error) {
+func getMaintenanceName(s *data.Store, id string) (string, error) {
 	item, err := s.GetMaintenance(id)
 	if err != nil {
 		return "", fmt.Errorf("load maintenance item: %w", err)
@@ -1252,16 +1252,16 @@ func getMaintenanceName(s *data.Store, id uint) (string, error) {
 	return item.Name, nil
 }
 
-func getQuoteDisplayName(s *data.Store, id uint) (string, error) {
+func getQuoteDisplayName(s *data.Store, id string) (string, error) {
 	q, err := s.GetQuote(id)
 	if err != nil {
 		return "", fmt.Errorf("load quote: %w", err)
 	}
-	return fmt.Sprintf("%s #%d", q.Vendor.Name, q.ID), nil
+	return q.Vendor.Name + " #" + q.ID, nil
 }
 
 // openDetailFromDef opens a drilldown using a detail definition.
-func (m *Model) openDetailFromDef(def detailDef, parentID uint, parentName string) error {
+func (m *Model) openDetailFromDef(def detailDef, parentID string, parentName string) error {
 	specs := def.specs()
 	return m.openDetailWith(detailContext{
 		ParentTabIndex: m.active,
@@ -1277,31 +1277,31 @@ func (m *Model) openDetailFromDef(def detailDef, parentID uint, parentName strin
 	})
 }
 
-func (m *Model) openServiceLogDetail(maintID uint, maintName string) error {
+func (m *Model) openServiceLogDetail(maintID string, maintName string) error {
 	return m.openDetailFromDef(serviceLogDef, maintID, maintName)
 }
 
-func (m *Model) openApplianceMaintenanceDetail(applianceID uint, applianceName string) error {
+func (m *Model) openApplianceMaintenanceDetail(applianceID string, applianceName string) error {
 	return m.openDetailFromDef(applianceMaintenanceDef, applianceID, applianceName)
 }
 
-func (m *Model) openVendorQuoteDetail(vendorID uint, vendorName string) error {
+func (m *Model) openVendorQuoteDetail(vendorID string, vendorName string) error {
 	return m.openDetailFromDef(vendorQuoteDef, vendorID, vendorName)
 }
 
-func (m *Model) openVendorJobsDetail(vendorID uint, vendorName string) error {
+func (m *Model) openVendorJobsDetail(vendorID string, vendorName string) error {
 	return m.openDetailFromDef(vendorJobsDef, vendorID, vendorName)
 }
 
-func (m *Model) openProjectQuoteDetail(projectID uint, projectTitle string) error {
+func (m *Model) openProjectQuoteDetail(projectID string, projectTitle string) error {
 	return m.openDetailFromDef(projectQuoteDef, projectID, projectTitle)
 }
 
-func (m *Model) openProjectDocumentDetail(projectID uint, projectTitle string) error {
+func (m *Model) openProjectDocumentDetail(projectID string, projectTitle string) error {
 	return m.openDetailFromDef(projectDocumentDef, projectID, projectTitle)
 }
 
-func (m *Model) openApplianceDocumentDetail(applianceID uint, applianceName string) error {
+func (m *Model) openApplianceDocumentDetail(applianceID string, applianceName string) error {
 	return m.openDetailFromDef(applianceDocumentDef, applianceID, applianceName)
 }
 
@@ -1357,7 +1357,7 @@ var detailRoutes = []detailRoute{
 // openDetailForRow dispatches a drilldown based on the current tab kind and the
 // column that was activated. Supports nested drilldowns (e.g. Appliance →
 // Maintenance → Service Log).
-func (m *Model) openDetailForRow(tab *Tab, rowID uint, colTitle string) error {
+func (m *Model) openDetailForRow(tab *Tab, rowID string, colTitle string) error {
 	for _, route := range detailRoutes {
 		if route.colTitle != colTitle {
 			continue
@@ -1637,7 +1637,7 @@ func (m *Model) startCellOrFormEdit() error {
 
 	// If the column is linked and the cell has a target ID, navigate cross-tab.
 	if spec.Link != nil {
-		if c, ok := m.selectedCell(col); ok && c.LinkID > 0 {
+		if c, ok := m.selectedCell(col); ok && c.LinkID != "" {
 			return m.navigateToLink(spec.Link, c.LinkID)
 		}
 	}
@@ -1650,7 +1650,7 @@ func (m *Model) startCellOrFormEdit() error {
 
 // navigateToLink closes any open drilldown stack, switches to the target tab,
 // and selects the row matching the FK.
-func (m *Model) navigateToLink(link *columnLink, targetID uint) error {
+func (m *Model) navigateToLink(link *columnLink, targetID string) error {
 	m.closeAllDetails()
 	m.switchToTab(tabIndex(link.TargetTab))
 	tab := m.activeTab()
@@ -1658,7 +1658,7 @@ func (m *Model) navigateToLink(link *columnLink, targetID uint) error {
 		return fmt.Errorf("target tab not found")
 	}
 	if !selectRowByID(tab, targetID) {
-		m.setStatusError(fmt.Sprintf("Linked item %d not found (deleted?).", targetID))
+		m.setStatusError(fmt.Sprintf("Linked item %s not found (deleted?).", targetID))
 	}
 	return nil
 }
@@ -2302,7 +2302,7 @@ func (m *Model) saveDeferredDocumentForm() tea.Cmd {
 	m.exitForm()
 
 	cmd := m.startExtractionOverlay(
-		0, // no DB ID yet
+		"", // no DB ID yet
 		doc.FileName,
 		doc.Data,
 		doc.MIMEType,
@@ -2648,7 +2648,7 @@ func (m *Model) helpOverlayKey(keyMsg tea.KeyPressMsg) tea.Cmd {
 	return nil
 }
 
-func selectRowByID(tab *Tab, id uint) bool {
+func selectRowByID(tab *Tab, id string) bool {
 	for idx, meta := range tab.Rows {
 		if meta.ID == id {
 			tab.Table.SetCursor(idx)
@@ -2972,7 +2972,7 @@ func (m *Model) launchExternalEditor() tea.Cmd {
 	_ = f.Close()
 
 	m.fs.pendingEditor = &editorState{
-		EditID:   0,
+		EditID:   "",
 		FormData: m.fs.formData,
 		FieldPtr: m.fs.notesFieldPtr,
 		TempFile: f.Name(),
@@ -3029,7 +3029,7 @@ func (m *Model) handleEditorFinished(msg editorFinishedMsg) tea.Cmd {
 
 // reopenNotesEdit restores the textarea overlay from a pending editor state.
 func (m *Model) reopenNotesEdit(pe *editorState) {
-	if pe.EditID > 0 {
+	if pe.EditID != "" {
 		id := pe.EditID
 		m.fs.editID = &id
 	}

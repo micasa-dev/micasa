@@ -15,7 +15,7 @@ type defaultsTestStruct struct {
 	Name     string  `default:"unnamed"`
 	Count    int     `default:"42"`
 	BigCount int64   `default:"100"`
-	ID       uint    `default:"1"`
+	Num      uint    `default:"1"`
 	Rate     float64 `default:"3.14"`
 	NoTag    string
 }
@@ -27,7 +27,7 @@ func TestApplyDefaults_setsZeroFields(t *testing.T) {
 	assert.Equal(t, "unnamed", v.Name)
 	assert.Equal(t, 42, v.Count)
 	assert.Equal(t, int64(100), v.BigCount)
-	assert.Equal(t, uint(1), v.ID)
+	assert.Equal(t, uint(1), v.Num)
 	assert.InDelta(t, 3.14, v.Rate, 0.001)
 	assert.Empty(t, v.NoTag)
 }

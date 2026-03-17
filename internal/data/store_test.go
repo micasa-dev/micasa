@@ -261,7 +261,7 @@ func TestServiceLogCRUD(t *testing.T) {
 	assert.Len(t, entries, 2)
 
 	// CountServiceLogs.
-	counts, err := store.CountServiceLogs([]uint{maintID})
+	counts, err := store.CountServiceLogs([]string{maintID})
 	require.NoError(t, err)
 	assert.Equal(t, 2, counts[maintID])
 }
@@ -350,7 +350,7 @@ func TestServiceLogMoveBetweenParentsSyncsBoth(t *testing.T) {
 
 	jan15 := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
 
-	getMaint := func(id uint) MaintenanceItem {
+	getMaint := func(id string) MaintenanceItem {
 		t.Helper()
 		item, err := store.GetMaintenance(id)
 		require.NoError(t, err)
@@ -397,7 +397,7 @@ func TestSoftDeletePersistsAcrossRuns(t *testing.T) {
 		Title: "Persist Test", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned,
 	}))
 	projects, _ := store1.ListProjects(false)
-	var projectID uint
+	var projectID string
 	for _, p := range projects {
 		if p.Title == "Persist Test" {
 			projectID = p.ID
@@ -498,7 +498,7 @@ func TestCountQuotesByVendor(t *testing.T) {
 		))
 	}
 
-	counts, err := store.CountQuotesByVendor([]uint{vendorID})
+	counts, err := store.CountQuotesByVendor([]string{vendorID})
 	require.NoError(t, err)
 	assert.Equal(t, 2, counts[vendorID])
 
@@ -528,7 +528,7 @@ func TestCountServiceLogsByVendor(t *testing.T) {
 		Vendor{Name: "Job Vendor"},
 	))
 
-	counts, err := store.CountServiceLogsByVendor([]uint{vendorID})
+	counts, err := store.CountServiceLogsByVendor([]string{vendorID})
 	require.NoError(t, err)
 	assert.Equal(t, 1, counts[vendorID])
 }
@@ -762,8 +762,9 @@ func TestDeleteApplianceBlockedByMaintenance(t *testing.T) {
 func TestGetAppliance(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	require.NoError(t, store.CreateAppliance(&Appliance{Name: "Fridge"}))
-	got, err := store.GetAppliance(1)
+	a := &Appliance{Name: "Fridge"}
+	require.NoError(t, store.CreateAppliance(a))
+	got, err := store.GetAppliance(a.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "Fridge", got.Name)
 }
@@ -771,18 +772,19 @@ func TestGetAppliance(t *testing.T) {
 func TestGetApplianceNotFound(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, err := store.GetAppliance(9999)
+	_, err := store.GetAppliance("01JNOTEXIST000000000009999")
 	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
 func TestUpdateAppliance(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	require.NoError(t, store.CreateAppliance(&Appliance{Name: "Fridge"}))
-	got, _ := store.GetAppliance(1)
+	app := &Appliance{Name: "Fridge"}
+	require.NoError(t, store.CreateAppliance(app))
+	got, _ := store.GetAppliance(app.ID)
 	got.Brand = "Samsung"
 	require.NoError(t, store.UpdateAppliance(got))
-	updated, _ := store.GetAppliance(1)
+	updated, _ := store.GetAppliance(app.ID)
 	assert.Equal(t, "Samsung", updated.Brand)
 }
 
@@ -792,8 +794,9 @@ func TestListMaintenanceByAppliance(t *testing.T) {
 	categories, _ := store.MaintenanceCategories()
 	catID := categories[0].ID
 
-	require.NoError(t, store.CreateAppliance(&Appliance{Name: "Fridge"}))
-	appID := uint(1)
+	app := &Appliance{Name: "Fridge"}
+	require.NoError(t, store.CreateAppliance(app))
+	appID := app.ID
 	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
 		Name: "Clean coils", CategoryID: catID, ApplianceID: &appID,
 	}))
@@ -813,15 +816,16 @@ func TestCountMaintenanceByAppliance(t *testing.T) {
 	categories, _ := store.MaintenanceCategories()
 	catID := categories[0].ID
 
-	require.NoError(t, store.CreateAppliance(&Appliance{Name: "Fridge"}))
-	appID := uint(1)
+	app := &Appliance{Name: "Fridge"}
+	require.NoError(t, store.CreateAppliance(app))
+	appID := app.ID
 	for _, name := range []string{"Clean coils", "Replace filter"} {
 		require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
 			Name: name, CategoryID: catID, ApplianceID: &appID,
 		}))
 	}
 
-	counts, err := store.CountMaintenanceByAppliance([]uint{appID})
+	counts, err := store.CountMaintenanceByAppliance([]string{appID})
 	require.NoError(t, err)
 	assert.Equal(t, 2, counts[appID])
 }
@@ -832,20 +836,19 @@ func TestUpdateServiceLog(t *testing.T) {
 	categories, _ := store.MaintenanceCategories()
 	catID := categories[0].ID
 
-	require.NoError(
-		t,
-		store.CreateMaintenance(&MaintenanceItem{Name: "HVAC filter", CategoryID: catID}),
-	)
+	mi := &MaintenanceItem{Name: "HVAC filter", CategoryID: catID}
+	require.NoError(t, store.CreateMaintenance(mi))
 	now := time.Now().Truncate(time.Second)
-	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
-		MaintenanceItemID: 1, ServicedAt: now, Notes: "initial",
-	}, Vendor{}))
+	sle := &ServiceLogEntry{
+		MaintenanceItemID: mi.ID, ServicedAt: now, Notes: "initial",
+	}
+	require.NoError(t, store.CreateServiceLog(sle, Vendor{}))
 
-	created, _ := store.GetServiceLog(1)
+	created, _ := store.GetServiceLog(sle.ID)
 	created.Notes = "updated"
 	require.NoError(t, store.UpdateServiceLog(created, Vendor{Name: "HVAC Pros"}))
 
-	updated, _ := store.GetServiceLog(1)
+	updated, _ := store.GetServiceLog(sle.ID)
 	assert.Equal(t, "updated", updated.Notes)
 	assert.NotNil(t, updated.VendorID)
 }
@@ -856,18 +859,17 @@ func TestUpdateServiceLogClearVendor(t *testing.T) {
 	categories, _ := store.MaintenanceCategories()
 	catID := categories[0].ID
 
-	require.NoError(
-		t,
-		store.CreateMaintenance(&MaintenanceItem{Name: "HVAC filter", CategoryID: catID}),
-	)
+	mi := &MaintenanceItem{Name: "HVAC filter", CategoryID: catID}
+	require.NoError(t, store.CreateMaintenance(mi))
 	now := time.Now().Truncate(time.Second)
-	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
-		MaintenanceItemID: 1, ServicedAt: now,
-	}, Vendor{Name: "HVAC Pros"}))
+	sle := &ServiceLogEntry{
+		MaintenanceItemID: mi.ID, ServicedAt: now,
+	}
+	require.NoError(t, store.CreateServiceLog(sle, Vendor{Name: "HVAC Pros"}))
 
-	created, _ := store.GetServiceLog(1)
+	created, _ := store.GetServiceLog(sle.ID)
 	require.NoError(t, store.UpdateServiceLog(created, Vendor{}))
-	updated, _ := store.GetServiceLog(1)
+	updated, _ := store.GetServiceLog(sle.ID)
 	assert.Nil(t, updated.VendorID)
 }
 
@@ -877,12 +879,14 @@ func TestListMaintenanceByApplianceIncludeDeleted(t *testing.T) {
 	categories, _ := store.MaintenanceCategories()
 	catID := categories[0].ID
 
-	require.NoError(t, store.CreateAppliance(&Appliance{Name: "Fridge"}))
-	appID := uint(1)
-	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+	app := &Appliance{Name: "Fridge"}
+	require.NoError(t, store.CreateAppliance(app))
+	appID := app.ID
+	mi := &MaintenanceItem{
 		Name: "Clean coils", CategoryID: catID, ApplianceID: &appID,
-	}))
-	require.NoError(t, store.DeleteMaintenance(1))
+	}
+	require.NoError(t, store.CreateMaintenance(mi))
+	require.NoError(t, store.DeleteMaintenance(mi.ID))
 
 	items, _ := store.ListMaintenanceByAppliance(appID, false)
 	assert.Empty(t, items)
@@ -1807,7 +1811,7 @@ func TestCountQuotesByProject(t *testing.T) {
 		Vendor{Name: "V2"},
 	))
 
-	counts, err := store.CountQuotesByProject([]uint{projectID})
+	counts, err := store.CountQuotesByProject([]string{projectID})
 	require.NoError(t, err)
 	assert.Equal(t, 2, counts[projectID])
 
@@ -1912,7 +1916,7 @@ func TestDocumentCRUD(t *testing.T) {
 	store := newTestStore(t)
 
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "Invoice", EntityKind: DocumentEntityProject, EntityID: 1,
+		Title: "Invoice", EntityKind: DocumentEntityProject, EntityID: "01JTEST00000000000000001",
 		MIMEType: "application/pdf", SizeBytes: 1024, Data: []byte("fake-pdf"),
 	}))
 
@@ -1938,23 +1942,29 @@ func TestCountDocumentsByEntity(t *testing.T) {
 	store := newTestStore(t)
 
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "Doc1", EntityKind: DocumentEntityProject, EntityID: 10,
+		Title: "Doc1", EntityKind: DocumentEntityProject, EntityID: "01JTEST00000000000000010",
 	}))
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "Doc2", EntityKind: DocumentEntityProject, EntityID: 10,
+		Title: "Doc2", EntityKind: DocumentEntityProject, EntityID: "01JTEST00000000000000010",
 	}))
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "Doc3", EntityKind: DocumentEntityAppliance, EntityID: 10,
+		Title: "Doc3", EntityKind: DocumentEntityAppliance, EntityID: "01JTEST00000000000000010",
 	}))
 
-	counts, err := store.CountDocumentsByEntity(DocumentEntityProject, []uint{10, 99})
+	counts, err := store.CountDocumentsByEntity(
+		DocumentEntityProject,
+		[]string{"01JTEST00000000000000010", "01JTEST00000000000000099"},
+	)
 	require.NoError(t, err)
-	assert.Equal(t, 2, counts[10])
-	assert.Zero(t, counts[99])
+	assert.Equal(t, 2, counts["01JTEST00000000000000010"])
+	assert.Zero(t, counts["01JTEST00000000000000099"])
 
-	counts, err = store.CountDocumentsByEntity(DocumentEntityAppliance, []uint{10})
+	counts, err = store.CountDocumentsByEntity(
+		DocumentEntityAppliance,
+		[]string{"01JTEST00000000000000010"},
+	)
 	require.NoError(t, err)
-	assert.Equal(t, 1, counts[10])
+	assert.Equal(t, 1, counts["01JTEST00000000000000010"])
 
 	empty, err := store.CountDocumentsByEntity(DocumentEntityProject, nil)
 	require.NoError(t, err)
@@ -1966,13 +1976,17 @@ func TestListDocumentsByEntity(t *testing.T) {
 	store := newTestStore(t)
 
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "ProjDoc", EntityKind: DocumentEntityProject, EntityID: 5,
+		Title: "ProjDoc", EntityKind: DocumentEntityProject, EntityID: "01JTEST00000000000000005",
 	}))
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "AppDoc", EntityKind: DocumentEntityAppliance, EntityID: 5,
+		Title: "AppDoc", EntityKind: DocumentEntityAppliance, EntityID: "01JTEST00000000000000005",
 	}))
 
-	docs, err := store.ListDocumentsByEntity(DocumentEntityProject, 5, false)
+	docs, err := store.ListDocumentsByEntity(
+		DocumentEntityProject,
+		"01JTEST00000000000000005",
+		false,
+	)
 	require.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "ProjDoc", docs[0].Title)
@@ -1984,22 +1998,26 @@ func TestListDocumentsByEntityIncludeDeleted(t *testing.T) {
 	store := newTestStore(t)
 
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "Active", EntityKind: DocumentEntityProject, EntityID: 1,
+		Title: "Active", EntityKind: DocumentEntityProject, EntityID: "01JTEST00000000000000001",
 	}))
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "ToDelete", EntityKind: DocumentEntityProject, EntityID: 1,
+		Title: "ToDelete", EntityKind: DocumentEntityProject, EntityID: "01JTEST00000000000000001",
 	}))
 
-	docs, _ := store.ListDocumentsByEntity(DocumentEntityProject, 1, false)
+	docs, _ := store.ListDocumentsByEntity(DocumentEntityProject, "01JTEST00000000000000001", false)
 	require.Len(t, docs, 2)
 
 	require.NoError(t, store.DeleteDocument(docs[0].ID))
 
-	active, err := store.ListDocumentsByEntity(DocumentEntityProject, 1, false)
+	active, err := store.ListDocumentsByEntity(
+		DocumentEntityProject,
+		"01JTEST00000000000000001",
+		false,
+	)
 	require.NoError(t, err)
 	assert.Len(t, active, 1)
 
-	all, err := store.ListDocumentsByEntity(DocumentEntityProject, 1, true)
+	all, err := store.ListDocumentsByEntity(DocumentEntityProject, "01JTEST00000000000000001", true)
 	require.NoError(t, err)
 	assert.Len(t, all, 2)
 }
@@ -2324,7 +2342,7 @@ func TestSoftDeleteRestoreDocument(t *testing.T) {
 	store := newTestStore(t)
 
 	require.NoError(t, store.CreateDocument(&Document{
-		Title: "Receipt", EntityKind: DocumentEntityProject, EntityID: 1,
+		Title: "Receipt", EntityKind: DocumentEntityProject, EntityID: "01JTEST00000000000000001",
 	}))
 
 	docs, _ := store.ListDocuments(false)
@@ -2338,7 +2356,7 @@ func TestSoftDeleteRestoreDocument(t *testing.T) {
 	require.Len(t, all, 1)
 	assert.True(t, all[0].DeletedAt.Valid)
 
-	// Restore requires no parent check for entity_id=1 since no actual
+	// Restore requires no parent check for this entity_id since no actual
 	// project/appliance exists -- this tests the happy path where the
 	// parent entity doesn't exist (ErrParentNotFound from requireParentAlive).
 	// In real usage the parent always exists before the document is created.
@@ -2670,7 +2688,7 @@ func TestDeleteIncidentSetsStatusResolved(t *testing.T) {
 
 	// Fetch with Unscoped to see the soft-deleted row.
 	var inc Incident
-	require.NoError(t, store.db.Unscoped().First(&inc, id).Error)
+	require.NoError(t, store.db.Unscoped().First(&inc, "id = ?", id).Error)
 	assert.Equal(t, IncidentStatusResolved, inc.Status)
 }
 
@@ -2702,7 +2720,7 @@ func TestRestoreIncidentFallsBackToOpen(t *testing.T) {
 	id := items[0].ID
 
 	// Simulate a legacy soft-delete with no previous_status saved.
-	require.NoError(t, store.db.Delete(&Incident{}, id).Error)
+	require.NoError(t, store.db.Where("id = ?", id).Delete(&Incident{}).Error)
 	require.NoError(t, store.RestoreIncident(id))
 
 	inc, err := store.GetIncident(id)
@@ -2723,7 +2741,7 @@ func TestHardDeleteIncidentRemovesRow(t *testing.T) {
 
 	// Not visible even with Unscoped.
 	var inc Incident
-	err := store.db.Unscoped().First(&inc, id).Error
+	err := store.db.Unscoped().First(&inc, "id = ?", id).Error
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
@@ -2747,8 +2765,8 @@ func TestHardDeleteIncidentDetachesLinkedDocuments(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, docs)
 
-	// Document still exists, detached (entity_kind="", entity_id=0).
-	detached, err := store.ListDocumentsByEntity(DocumentEntityNone, 0, false)
+	// Document still exists, detached (entity_kind="", entity_id="").
+	detached, err := store.ListDocumentsByEntity(DocumentEntityNone, "", false)
 	require.NoError(t, err)
 	require.Len(t, detached, 1)
 	assert.Equal(t, "Photo", detached[0].Title)
@@ -2780,7 +2798,7 @@ func TestHardDeleteIncidentDetachesSoftDeletedDocuments(t *testing.T) {
 	require.NoError(t, store.HardDeleteIncident(incID))
 
 	// Document is detached and still soft-deleted.
-	detached, err := store.ListDocumentsByEntity(DocumentEntityNone, 0, true)
+	detached, err := store.ListDocumentsByEntity(DocumentEntityNone, "", true)
 	require.NoError(t, err)
 	require.Len(t, detached, 1)
 	assert.Equal(t, "Receipt", detached[0].Title)
@@ -2842,7 +2860,7 @@ func TestEnsureDocumentAlive_NonExistentFails(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	err := store.EnsureDocumentAlive(999)
+	err := store.EnsureDocumentAlive("01JNOTEXIST000000000000999")
 	assert.Error(t, err)
 }
 
@@ -2866,7 +2884,7 @@ func TestUpdateDocumentExtraction_WorksOnSoftDeletedDoc(t *testing.T) {
 
 	// Verify via unscoped read.
 	var saved Document
-	require.NoError(t, store.db.Unscoped().First(&saved, doc.ID).Error)
+	require.NoError(t, store.db.Unscoped().First(&saved, "id = ?", doc.ID).Error)
 	assert.Equal(t, "extracted text", saved.ExtractedText)
 	assert.Equal(t, "test-model", saved.ExtractionModel)
 }
@@ -2874,6 +2892,6 @@ func TestUpdateDocumentExtraction_WorksOnSoftDeletedDoc(t *testing.T) {
 func TestHardDeleteIncidentNotFound(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	err := store.HardDeleteIncident(999)
+	err := store.HardDeleteIncident("01JNOTEXIST000000000000999")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }

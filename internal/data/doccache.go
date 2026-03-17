@@ -14,10 +14,10 @@ import (
 // ExtractDocument writes the document's BLOB content to the XDG cache
 // directory and returns the resulting filesystem path. If the cached file
 // already exists and has the expected size, the extraction is skipped.
-func (s *Store) ExtractDocument(id uint) (string, error) {
+func (s *Store) ExtractDocument(id string) (string, error) {
 	var doc Document
 	err := s.db.Select("data", "file_name", "sha256", "size_bytes").
-		First(&doc, id).Error
+		First(&doc, "id = ?", id).Error
 	if err != nil {
 		return "", fmt.Errorf("load document content: %w", err)
 	}

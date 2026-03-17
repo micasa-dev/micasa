@@ -117,11 +117,11 @@ func TestDashboardNavigation(t *testing.T) {
 	m.dash.data = nonEmptyDashboard()
 	// Populate nav with 5 entries.
 	m.dash.nav = []dashNavEntry{
-		{Tab: tabMaintenance, ID: 1},
-		{Tab: tabMaintenance, ID: 2},
-		{Tab: tabProjects, ID: 3},
-		{Tab: tabAppliances, ID: 4},
-		{Tab: tabMaintenance, ID: 5},
+		{Tab: tabMaintenance, ID: "01JTEST00000000000000001"},
+		{Tab: tabMaintenance, ID: "01JTEST00000000000000002"},
+		{Tab: tabProjects, ID: "01JTEST00000000000000003"},
+		{Tab: tabAppliances, ID: "01JTEST00000000000000004"},
+		{Tab: tabMaintenance, ID: "01JTEST00000000000000005"},
 	}
 	m.dash.cursor = 0
 
@@ -151,8 +151,8 @@ func TestDashboardEnterKeyJumps(t *testing.T) {
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
 	m.dash.nav = []dashNavEntry{
-		{Tab: tabMaintenance, ID: 1},
-		{Tab: tabProjects, ID: 42},
+		{Tab: tabMaintenance, ID: "01JTEST00000000000000001"},
+		{Tab: tabProjects, ID: "01JTEST00000000000000042"},
 	}
 	m.dash.cursor = 1
 
@@ -166,7 +166,7 @@ func TestDashboardBlocksTableKeys(t *testing.T) {
 	m := newTestModel(t)
 	m.showDashboard = true
 	m.dash.data = nonEmptyDashboard()
-	m.dash.nav = []dashNavEntry{{Tab: tabMaintenance, ID: 1}}
+	m.dash.nav = []dashNavEntry{{Tab: tabMaintenance, ID: "01JTEST00000000000000001"}}
 	m.dash.cursor = 0
 	startTab := m.active
 
@@ -255,8 +255,8 @@ func TestDashboardViewSeasonalSection(t *testing.T) {
 
 	m.dash.data = dashboardData{
 		Seasonal: []data.MaintenanceItem{
-			{ID: 1, Name: "Clean Gutters", Season: data.SeasonSpring},
-			{ID: 2, Name: "Service AC", Season: data.SeasonSpring},
+			{ID: "01JTEST00000000000000001", Name: "Clean Gutters", Season: data.SeasonSpring},
+			{ID: "01JTEST00000000000000002", Name: "Service AC", Season: data.SeasonSpring},
 		},
 	}
 	m.dash.expanded = map[string]bool{
@@ -399,7 +399,7 @@ func TestDashboardOverlayFitsHeight(t *testing.T) {
 	for i := range overdue {
 		overdue[i] = maintenanceUrgency{
 			Item: data.MaintenanceItem{
-				ID:   uint(i + 1), //nolint:gosec // i bounded by slice length (≤12)
+				ID:   fmt.Sprintf("01JTEST%020d", i+1),
 				Name: fmt.Sprintf("Long maintenance task %d", i+1),
 			},
 			DaysFromNow:   -(i + 1),
@@ -412,7 +412,7 @@ func TestDashboardOverlayFitsHeight(t *testing.T) {
 			Title:  fmt.Sprintf("Project with a fairly long name %d", i+1),
 			Status: data.ProjectStatusInProgress,
 		}
-		projects[i].ID = uint(100 + i) //nolint:gosec // i bounded by slice length (≤8)
+		projects[i].ID = fmt.Sprintf("01JTEST%020d", 100+i)
 	}
 	m.dash.data = dashboardData{
 		Overdue:        overdue,
@@ -490,17 +490,17 @@ func TestBuildDashNav(t *testing.T) {
 			{Title: "Burst pipe", Severity: data.IncidentSeverityUrgent},
 		},
 		Overdue: []maintenanceUrgency{{
-			Item:        data.MaintenanceItem{ID: 10, Name: "Filter"},
+			Item:        data.MaintenanceItem{ID: "01JTEST00000000000000010", Name: "Filter"},
 			NextDue:     overdueDue,
 			DaysFromNow: daysUntil(now, overdueDue),
 		}},
-		ActiveProjects: []data.Project{{ID: 20, Title: "Deck"}},
+		ActiveProjects: []data.Project{{ID: "01JTEST00000000000000020", Title: "Deck"}},
 		ExpiringWarranties: []warrantyStatus{{
-			Appliance:   data.Appliance{ID: 30, Name: "Fridge"},
+			Appliance:   data.Appliance{ID: "01JTEST00000000000000030", Name: "Fridge"},
 			DaysFromNow: 45,
 		}},
 	}
-	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
 	// Expand incidents (default) so its data rows appear in nav.
 	m.dash.expanded = map[string]bool{
 		dashSectionIncidents: true,
@@ -515,7 +515,7 @@ func TestBuildDashNav(t *testing.T) {
 	assert.True(t, m.dash.nav[0].IsHeader)
 	assert.Equal(t, dashSectionIncidents, m.dash.nav[0].Section)
 	assert.Equal(t, tabIncidents, m.dash.nav[1].Tab)
-	assert.Equal(t, uint(5), m.dash.nav[1].ID)
+	assert.Equal(t, "01JTEST00000000000000005", m.dash.nav[1].ID)
 
 	// Collapsed sections: just headers.
 	assert.True(t, m.dash.nav[2].IsHeader)
@@ -530,7 +530,7 @@ func TestBuildDashNav(t *testing.T) {
 	m.buildDashNav()
 	require.Len(t, m.dash.nav, 6) // +1 data row
 	assert.Equal(t, tabMaintenance, m.dash.nav[3].Tab)
-	assert.Equal(t, uint(10), m.dash.nav[3].ID)
+	assert.Equal(t, "01JTEST00000000000000010", m.dash.nav[3].ID)
 }
 
 func TestRenderMiniTable(t *testing.T) {
@@ -713,7 +713,7 @@ func TestDashboardViewScrollsWithSmallBudget(t *testing.T) {
 	for i := range overdue {
 		overdue[i] = maintenanceUrgency{
 			Item: data.MaintenanceItem{
-				ID:   uint(i + 1), //nolint:gosec // i bounded by slice length (≤8)
+				ID:   fmt.Sprintf("01JTEST%020d", i+1),
 				Name: fmt.Sprintf("Task %d", i+1),
 			},
 			DaysFromNow: -(i + 1),
@@ -725,7 +725,7 @@ func TestDashboardViewScrollsWithSmallBudget(t *testing.T) {
 			Title:  fmt.Sprintf("Proj %d", i+1),
 			Status: "underway",
 		}
-		projects[i].ID = uint(100 + i) //nolint:gosec // i bounded by slice length (≤5)
+		projects[i].ID = fmt.Sprintf("01JTEST%020d", 100+i)
 	}
 	m.dash.data = dashboardData{
 		Overdue:        overdue,
@@ -775,7 +775,7 @@ func TestDashboardScrollFollowsCursor(t *testing.T) {
 	for i := range overdue {
 		overdue[i] = maintenanceUrgency{
 			Item: data.MaintenanceItem{
-				ID:   uint(i + 1), //nolint:gosec // i bounded by slice length (≤10)
+				ID:   fmt.Sprintf("01JTEST%020d", i+1),
 				Name: fmt.Sprintf("Item %d", i+1),
 			},
 			DaysFromNow: -(i + 1),
@@ -813,12 +813,12 @@ func TestDashboardExpandCollapseWithEKey(t *testing.T) {
 			Severity: data.IncidentSeverityUrgent,
 		}},
 		Overdue: []maintenanceUrgency{{
-			Item:        data.MaintenanceItem{ID: 10, Name: "Filter"},
+			Item:        data.MaintenanceItem{ID: "01JTEST00000000000000010", Name: "Filter"},
 			NextDue:     overdueDue,
 			DaysFromNow: daysUntil(now, overdueDue),
 		}},
 	}
-	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.prepareDashboardView()
 
@@ -859,12 +859,12 @@ func TestDashboardSectionNavWithShiftJK(t *testing.T) {
 			Severity: data.IncidentSeverityUrgent,
 		}},
 		Overdue: []maintenanceUrgency{{
-			Item:        data.MaintenanceItem{ID: 10, Name: "Filter"},
+			Item:        data.MaintenanceItem{ID: "01JTEST00000000000000010", Name: "Filter"},
 			DaysFromNow: daysUntil(now, overdueDue),
 		}},
-		ActiveProjects: []data.Project{{ID: 20, Title: "Deck"}},
+		ActiveProjects: []data.Project{{ID: "01JTEST00000000000000020", Title: "Deck"}},
 	}
-	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
@@ -904,7 +904,7 @@ func TestDashboardEnterKeyJumpsToIncidents(t *testing.T) {
 			Severity: data.IncidentSeverityUrgent,
 		}},
 	}
-	m.dash.data.OpenIncidents[0].ID = 42
+	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000042"
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
@@ -912,7 +912,7 @@ func TestDashboardEnterKeyJumpsToIncidents(t *testing.T) {
 	m.dash.cursor = 0
 	sendKey(m, "j")
 	require.False(t, m.dash.nav[m.dash.cursor].IsHeader, "should be on a data row")
-	assert.Equal(t, uint(42), m.dash.nav[m.dash.cursor].ID)
+	assert.Equal(t, "01JTEST00000000000000042", m.dash.nav[m.dash.cursor].ID)
 
 	// Press Enter to jump.
 	sendKey(m, "enter")
@@ -943,8 +943,8 @@ func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 			DaysFromNow: daysUntil(now, expiry),
 		}},
 	}
-	m.dash.data.OpenIncidents[0].ID = 5
-	m.dash.data.ExpiringWarranties[0].Appliance.ID = 99
+	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
+	m.dash.data.ExpiringWarranties[0].Appliance.ID = "01JTEST00000000000000099"
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
@@ -962,7 +962,7 @@ func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 	// Move down into the data row.
 	sendKey(m, "j")
 	require.False(t, m.dash.nav[m.dash.cursor].IsHeader, "should be on a data row")
-	assert.Equal(t, uint(99), m.dash.nav[m.dash.cursor].ID)
+	assert.Equal(t, "01JTEST00000000000000099", m.dash.nav[m.dash.cursor].ID)
 
 	// Press Enter to jump to the Appliances tab.
 	sendKey(m, "enter")
@@ -993,7 +993,7 @@ func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 			DaysFromNow: 60,
 		},
 	}
-	m.dash.data.OpenIncidents[0].ID = 5
+	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
@@ -1052,7 +1052,7 @@ func TestDashboardGoTopResetsScroll(t *testing.T) {
 	for i := range overdue {
 		overdue[i] = maintenanceUrgency{
 			Item: data.MaintenanceItem{
-				ID:   uint(i + 1), //nolint:gosec // i bounded by slice length (≤10)
+				ID:   fmt.Sprintf("01JTEST%020d", i+1),
 				Name: fmt.Sprintf("Task %d", i+1),
 			},
 			DaysFromNow: -(i + 1),
@@ -1150,11 +1150,20 @@ func TestDashboardScrollReachesAllSections(t *testing.T) {
 			{Title: "Burst pipe", Severity: data.IncidentSeverityUrgent},
 		},
 		Overdue: []maintenanceUrgency{
-			{Item: data.MaintenanceItem{ID: 10, Name: "Filter"}, DaysFromNow: -5},
-			{Item: data.MaintenanceItem{ID: 11, Name: "Gutters"}, DaysFromNow: -3},
+			{
+				Item:        data.MaintenanceItem{ID: "01JTEST00000000000000010", Name: "Filter"},
+				DaysFromNow: -5,
+			},
+			{
+				Item:        data.MaintenanceItem{ID: "01JTEST00000000000000011", Name: "Gutters"},
+				DaysFromNow: -3,
+			},
 		},
 		Upcoming: []maintenanceUrgency{
-			{Item: data.MaintenanceItem{ID: 20, Name: "HVAC"}, DaysFromNow: 7},
+			{
+				Item:        data.MaintenanceItem{ID: "01JTEST00000000000000020", Name: "HVAC"},
+				DaysFromNow: 7,
+			},
 		},
 		ActiveProjects: []data.Project{
 			{Title: "Kitchen reno", Status: "underway"},
@@ -1164,10 +1173,10 @@ func TestDashboardScrollReachesAllSections(t *testing.T) {
 			{Appliance: data.Appliance{Name: "Fridge"}, DaysFromNow: 30},
 		},
 	}
-	m.dash.data.OpenIncidents[0].ID = 1
-	m.dash.data.ActiveProjects[0].ID = 100
-	m.dash.data.ExpiringWarranties[0].Appliance.ID = 200
-	m.dash.data.ExpiringWarranties[1].Appliance.ID = 201
+	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000001"
+	m.dash.data.ActiveProjects[0].ID = "01JTEST00000000000000100"
+	m.dash.data.ExpiringWarranties[0].Appliance.ID = "01JTEST00000000000000200"
+	m.dash.data.ExpiringWarranties[1].Appliance.ID = "01JTEST00000000000000201"
 
 	// Expand all sections.
 	m.dash.expanded = map[string]bool{
@@ -1212,7 +1221,7 @@ func TestDashboardScrollIndicators(t *testing.T) {
 	for i := range overdue {
 		overdue[i] = maintenanceUrgency{
 			Item: data.MaintenanceItem{
-				ID:   uint(i + 1), //nolint:gosec // i bounded by slice length (<=15)
+				ID:   fmt.Sprintf("01JTEST%020d", i+1),
 				Name: fmt.Sprintf("Task %d", i+1),
 			},
 			DaysFromNow: -(i + 1),

@@ -18,7 +18,7 @@ type Pipeline struct {
 	LLMClient     *llm.Client   // nil = skip LLM extraction
 	Extractors    []Extractor   // nil = DefaultExtractors(0, 0, true)
 	Schema        SchemaContext // DDL + entity rows for prompt
-	DocID         uint          // document ID for UPDATE operations
+	DocID         string        // document ID for UPDATE operations
 	SendTSV       bool          // send spatial layout annotations to LLM
 	ConfThreshold int           // confidence threshold for spatial annotations
 }

@@ -64,13 +64,13 @@ func TestDocumentFormValuesRoundTrip(t *testing.T) {
 	doc := data.Document{
 		Title:      "My Doc",
 		EntityKind: data.DocumentEntityProject,
-		EntityID:   42,
+		EntityID:   "01JTEST00000000000000042",
 		Notes:      "doc notes",
 	}
 	fd := documentFormValues(doc)
 	assert.Equal(t, "My Doc", fd.Title)
 	assert.Equal(t, data.DocumentEntityProject, fd.EntityRef.Kind)
-	assert.Equal(t, uint(42), fd.EntityRef.ID)
+	assert.Equal(t, "01JTEST00000000000000042", fd.EntityRef.ID)
 	assert.Equal(t, "doc notes", fd.Notes)
 }
 
@@ -82,7 +82,7 @@ func TestDocumentFormValuesNoEntity(t *testing.T) {
 	fd := documentFormValues(doc)
 	assert.Equal(t, "Standalone Doc", fd.Title)
 	assert.Empty(t, fd.EntityRef.Kind)
-	assert.Equal(t, uint(0), fd.EntityRef.ID)
+	assert.Empty(t, fd.EntityRef.ID)
 }
 
 // ---------------------------------------------------------------------------
@@ -156,8 +156,8 @@ func TestDocumentEntityOptionsIncludesEntities(t *testing.T) {
 
 func TestIncidentFormValuesRoundTrip(t *testing.T) {
 	t.Parallel()
-	appID := uint(5)
-	vendorID := uint(3)
+	appID := "01JTEST00000000000000005"
+	vendorID := "01JTEST00000000000000003"
 	cost := int64(15000)
 	resolved := time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
 	item := data.Incident{
@@ -196,8 +196,8 @@ func TestIncidentFormValuesNilOptionals(t *testing.T) {
 		DateNoticed: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	fd := incidentFormValues(item, locale.DefaultCurrency())
-	assert.Equal(t, uint(0), fd.ApplianceID)
-	assert.Equal(t, uint(0), fd.VendorID)
+	assert.Empty(t, fd.ApplianceID)
+	assert.Empty(t, fd.VendorID)
 	assert.Empty(t, fd.Cost)
 	assert.Empty(t, fd.DateResolved)
 }
@@ -208,17 +208,17 @@ func TestIncidentFormValuesNilOptionals(t *testing.T) {
 
 func TestServiceLogFormValuesRoundTrip(t *testing.T) {
 	t.Parallel()
-	vendorID := uint(7)
+	vendorID := "01JTEST00000000000000007"
 	cost := int64(5000)
 	entry := data.ServiceLogEntry{
-		MaintenanceItemID: 10,
+		MaintenanceItemID: "01JTEST00000000000000010",
 		ServicedAt:        time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 		VendorID:          &vendorID,
 		CostCents:         &cost,
 		Notes:             "service notes",
 	}
 	fd := serviceLogFormValues(entry, locale.DefaultCurrency())
-	assert.Equal(t, uint(10), fd.MaintenanceItemID)
+	assert.Equal(t, "01JTEST00000000000000010", fd.MaintenanceItemID)
 	assert.Equal(t, "2026-01-15", fd.ServicedAt)
 	assert.Equal(t, vendorID, fd.VendorID)
 	assert.Equal(t, "$50.00", fd.Cost)
@@ -228,11 +228,11 @@ func TestServiceLogFormValuesRoundTrip(t *testing.T) {
 func TestServiceLogFormValuesNilOptionals(t *testing.T) {
 	t.Parallel()
 	entry := data.ServiceLogEntry{
-		MaintenanceItemID: 1,
+		MaintenanceItemID: "01JTEST00000000000000001",
 		ServicedAt:        time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	fd := serviceLogFormValues(entry, locale.DefaultCurrency())
-	assert.Equal(t, uint(0), fd.VendorID)
+	assert.Empty(t, fd.VendorID)
 	assert.Empty(t, fd.Cost)
 }
 

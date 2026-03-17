@@ -857,8 +857,8 @@ func TestSortIndicatorIncludesLeadingSpace(t *testing.T) {
 func TestColumnHasLinks(t *testing.T) {
 	t.Parallel()
 	rows := [][]cell{
-		{{Value: "Self", LinkID: 0}, {Value: "42"}},
-		{{Value: "Vendor A", LinkID: 5}, {Value: "43"}},
+		{{Value: "Self", LinkID: ""}, {Value: "42"}},
+		{{Value: "Vendor A", LinkID: "01JNOTEXIST000000000000005"}, {Value: "43"}},
 	}
 	assert.True(t, columnHasLinks(rows, 0), "column 0 has a linked row")
 	assert.False(t, columnHasLinks(rows, 1), "column 1 has no linked rows")
@@ -867,8 +867,8 @@ func TestColumnHasLinks(t *testing.T) {
 func TestColumnHasLinks_AllZero(t *testing.T) {
 	t.Parallel()
 	rows := [][]cell{
-		{{Value: "Self", LinkID: 0}},
-		{{Value: "Self", LinkID: 0}},
+		{{Value: "Self", LinkID: ""}},
+		{{Value: "Self", LinkID: ""}},
 	}
 	assert.False(t, columnHasLinks(rows, 0))
 }
@@ -1038,7 +1038,7 @@ func TestRowCountShowsDeletedCount(t *testing.T) {
 	require.NotNil(t, tab)
 
 	// Mark the single row as deleted and enable ShowDeleted.
-	tab.Rows = []rowMeta{{ID: 1, Deleted: true}}
+	tab.Rows = []rowMeta{{ID: "01JTEST00000000000000001", Deleted: true}}
 	tab.ShowDeleted = true
 	view := m.tableView(tab)
 	assert.Contains(t, view, "1 deleted",
@@ -1199,7 +1199,9 @@ func TestRequiredLegendHiddenOnInlineEdit(t *testing.T) {
 	m.reloadAll()
 
 	// Inline-edit the Status column -- a Select via openInlineEdit.
-	require.NoError(t, m.inlineEditProject(1, projectColStatus))
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	require.NoError(t, m.inlineEditProject(tab.Rows[0].ID, projectColStatus))
 	require.Equal(t, modeForm, m.mode, "inline edit should activate form mode")
 	m.fs.form.Init()
 

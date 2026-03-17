@@ -113,7 +113,7 @@ func NewTabs() []Tab {
 
 func incidentRows(
 	items []data.Incident,
-	docCounts map[uint]int,
+	docCounts map[string]int,
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(inc data.Incident) rowSpec {
@@ -133,7 +133,7 @@ func incidentRows(
 			ID:      inc.ID,
 			Deleted: inc.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", inc.ID), Kind: cellReadonly},
+				{Value: inc.ID, Kind: cellReadonly},
 				{Value: inc.Title, Kind: cellText},
 				{Value: inc.Status, Kind: cellStatus},
 				{Value: inc.Severity, Kind: cellStatus},
@@ -166,8 +166,8 @@ func applianceMaintenanceColumnSpecs() []columnSpec {
 
 func applianceMaintenanceRows(
 	items []data.MaintenanceItem,
-	logCounts map[uint]int,
-	docCounts map[uint]int,
+	logCounts map[string]int,
+	docCounts map[string]int,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(item data.MaintenanceItem) rowSpec {
 		intervalCell := maintenanceIntervalCell(item)
@@ -176,7 +176,7 @@ func applianceMaintenanceRows(
 			ID:      item.ID,
 			Deleted: item.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", item.ID), Kind: cellReadonly},
+				{Value: item.ID, Kind: cellReadonly},
 				{Value: item.Name, Kind: cellText},
 				{Value: item.Category.Name, Kind: cellText},
 				maintenanceSeasonCell(item.Season),
@@ -192,12 +192,12 @@ func applianceMaintenanceRows(
 
 func serviceLogRows(
 	entries []data.ServiceLogEntry,
-	docCounts map[uint]int,
+	docCounts map[string]int,
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(entries, func(e data.ServiceLogEntry) rowSpec {
 		performedBy := "Self"
-		var vendorLinkID uint
+		var vendorLinkID string
 		if e.VendorID != nil && e.Vendor.Name != "" {
 			performedBy = e.Vendor.Name
 			vendorLinkID = *e.VendorID
@@ -206,7 +206,7 @@ func serviceLogRows(
 			ID:      e.ID,
 			Deleted: e.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", e.ID), Kind: cellReadonly},
+				{Value: e.ID, Kind: cellReadonly},
 				{Value: e.ServicedAt.Format(data.DateLayout), Kind: cellDate},
 				{Value: performedBy, Kind: cellText, LinkID: vendorLinkID},
 				centsCell(e.CostCents, cur),
@@ -219,8 +219,8 @@ func serviceLogRows(
 
 func applianceRows(
 	items []data.Appliance,
-	maintCounts map[uint]int,
-	docCounts map[uint]int,
+	maintCounts map[string]int,
+	docCounts map[string]int,
 	now time.Time,
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
@@ -233,7 +233,7 @@ func applianceRows(
 			ID:      a.ID,
 			Deleted: a.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", a.ID), Kind: cellReadonly},
+				{Value: a.ID, Kind: cellReadonly},
 				{Value: a.Name, Kind: cellText},
 				{Value: a.Brand, Kind: cellText},
 				{Value: a.ModelNumber, Kind: cellText},
@@ -308,16 +308,16 @@ func applianceAge(purchased *time.Time, now time.Time) string {
 
 func vendorRows(
 	vendors []data.Vendor,
-	quoteCounts map[uint]int,
-	jobCounts map[uint]int,
-	docCounts map[uint]int,
+	quoteCounts map[string]int,
+	jobCounts map[string]int,
+	docCounts map[string]int,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(vendors, func(v data.Vendor) rowSpec {
 		return rowSpec{
 			ID:      v.ID,
 			Deleted: v.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", v.ID), Kind: cellReadonly},
+				{Value: v.ID, Kind: cellReadonly},
 				{Value: v.Name, Kind: cellText},
 				{Value: v.ContactName, Kind: cellText},
 				{Value: v.Email, Kind: cellText},
@@ -333,7 +333,7 @@ func vendorRows(
 
 // countStr formats a count map value as a display string.
 // Zero or absent entries render as "0".
-func countStr(counts map[uint]int, id uint) string {
+func countStr(counts map[string]int, id string) string {
 	if n := counts[id]; n > 0 {
 		return fmt.Sprintf("%d", n)
 	}
@@ -342,7 +342,7 @@ func countStr(counts map[uint]int, id uint) string {
 
 // idColumnSpec returns the standard ID column spec shared by all tables.
 func idColumnSpec() columnSpec {
-	return columnSpec{Title: "ID", Min: 4, Max: 6, Align: alignRight, Kind: cellReadonly}
+	return columnSpec{Title: "ID", Min: 7, Max: 26, Align: alignRight, Kind: cellReadonly}
 }
 
 func specsToColumns(specs []columnSpec) []table.Column {
@@ -371,8 +371,8 @@ func newTable(columns []table.Column) table.Model {
 
 func projectRows(
 	projects []data.Project,
-	quoteCounts map[uint]int,
-	docCounts map[uint]int,
+	quoteCounts map[string]int,
+	docCounts map[string]int,
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(projects, func(p data.Project) rowSpec {
@@ -380,7 +380,7 @@ func projectRows(
 			ID:      p.ID,
 			Deleted: p.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", p.ID), Kind: cellReadonly},
+				{Value: p.ID, Kind: cellReadonly},
 				{Value: p.ProjectType.Name, Kind: cellText},
 				{Value: p.Title, Kind: cellText},
 				{Value: p.Status, Kind: cellStatus},
@@ -400,16 +400,16 @@ func projectRows(
 // views omit the parent's column).
 func quoteRowSpec(
 	q data.Quote,
-	docCounts map[uint]int,
+	docCounts map[string]int,
 	cur locale.Currency,
 	includeProject, includeVendor bool,
 ) rowSpec {
 	cells := make([]cell, 0, 9)
-	cells = append(cells, cell{Value: fmt.Sprintf("%d", q.ID), Kind: cellReadonly})
+	cells = append(cells, cell{Value: q.ID, Kind: cellReadonly})
 	if includeProject {
 		projectName := q.Project.Title
 		if projectName == "" {
-			projectName = fmt.Sprintf("Project %d", q.ProjectID)
+			projectName = "Project " + q.ProjectID
 		}
 		cells = append(cells, cell{Value: projectName, Kind: cellText, LinkID: q.ProjectID})
 	}
@@ -429,7 +429,7 @@ func quoteRowSpec(
 
 func quoteRows(
 	quotes []data.Quote,
-	docCounts map[uint]int,
+	docCounts map[string]int,
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(quotes, func(q data.Quote) rowSpec {
@@ -446,8 +446,8 @@ func maintenanceSeasonCell(season string) cell {
 
 func maintenanceRows(
 	items []data.MaintenanceItem,
-	logCounts map[uint]int,
-	docCounts map[uint]int,
+	logCounts map[string]int,
+	docCounts map[string]int,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(items, func(item data.MaintenanceItem) rowSpec {
 		intervalCell := maintenanceIntervalCell(item)
@@ -462,7 +462,7 @@ func maintenanceRows(
 			ID:      item.ID,
 			Deleted: item.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", item.ID), Kind: cellReadonly},
+				{Value: item.ID, Kind: cellReadonly},
 				{Value: item.Name, Kind: cellText},
 				{Value: item.Category.Name, Kind: cellText},
 				maintenanceSeasonCell(item.Season),
@@ -501,14 +501,14 @@ func cellsToRow(cells []cell) table.Row {
 
 // rowSpec describes one table row from an entity.
 type rowSpec struct {
-	ID      uint
+	ID      string
 	Deleted bool
 	Cells   []cell
 }
 
 // entityIDs extracts the ID from each element using the given accessor.
-func entityIDs[T any](items []T, id func(T) uint) []uint {
-	ids := make([]uint, len(items))
+func entityIDs[T any](items []T, id func(T) string) []string {
+	ids := make([]string, len(items))
 	for i, item := range items {
 		ids[i] = id(item)
 	}
@@ -539,7 +539,7 @@ func vendorQuoteColumnSpecs() []columnSpec {
 
 func vendorQuoteRows(
 	quotes []data.Quote,
-	docCounts map[uint]int,
+	docCounts map[string]int,
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(quotes, func(q data.Quote) rowSpec {
@@ -557,7 +557,7 @@ func vendorJobsRows(
 			ID:      e.ID,
 			Deleted: e.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", e.ID), Kind: cellReadonly},
+				{Value: e.ID, Kind: cellReadonly},
 				{Value: itemName, Kind: cellText, LinkID: e.MaintenanceItemID},
 				{Value: e.ServicedAt.Format(data.DateLayout), Kind: cellDate},
 				centsCell(e.CostCents, cur),
@@ -573,7 +573,7 @@ func projectQuoteColumnSpecs() []columnSpec {
 
 func projectQuoteRows(
 	quotes []data.Quote,
-	docCounts map[uint]int,
+	docCounts map[string]int,
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(quotes, func(q data.Quote) rowSpec {
@@ -668,7 +668,7 @@ func documentRows(docs []data.Document, names entityNameMap) ([]table.Row, []row
 			ID:      d.ID,
 			Deleted: d.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", d.ID), Kind: cellReadonly},
+				{Value: d.ID, Kind: cellReadonly},
 				{Value: d.Title, Kind: cellText},
 				{
 					Value:  documentEntityLabel(d.EntityKind, d.EntityID, names),
@@ -692,7 +692,7 @@ func entityDocumentRows(docs []data.Document) ([]table.Row, []rowMeta, [][]cell)
 			ID:      d.ID,
 			Deleted: d.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: fmt.Sprintf("%d", d.ID), Kind: cellReadonly},
+				{Value: d.ID, Kind: cellReadonly},
 				{Value: d.Title, Kind: cellText},
 				{Value: d.MIMEType, Kind: cellText},
 				{Value: formatFileSize(docSizeBytes(d)), Kind: cellReadonly},
@@ -739,18 +739,18 @@ var entityKindLetter = map[string]string{
 // documentEntityLabel returns a label like "P Kitchen Reno" with a
 // single-letter kind prefix, or falls back to "project #3" when
 // the name map has no entry.
-func documentEntityLabel(kind string, id uint, names entityNameMap) string {
+func documentEntityLabel(kind string, id string, names entityNameMap) string {
 	if kind == "" {
 		return ""
 	}
 	letter, ok := entityKindLetter[kind]
 	if !ok {
-		return kind + " #" + fmt.Sprintf("%d", id)
+		return kind + " #" + id
 	}
 	if name, found := names[entityRef{Kind: kind, ID: id}]; found {
 		return letter + " " + name
 	}
-	return letter + " #" + fmt.Sprintf("%d", id)
+	return letter + " #" + id
 }
 
 // docSizeBytes returns d.SizeBytes as uint64. The DB column is int64 but

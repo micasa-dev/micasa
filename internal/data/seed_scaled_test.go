@@ -133,13 +133,13 @@ func TestSeedScaledDataFKIntegrity(t *testing.T) {
 	require.NoError(t, err)
 	types, err := store.ProjectTypes()
 	require.NoError(t, err)
-	typeIDs := make(map[uint]bool, len(types))
+	typeIDs := make(map[string]bool, len(types))
 	for _, pt := range types {
 		typeIDs[pt.ID] = true
 	}
 	for _, p := range projects {
 		assert.True(t, typeIDs[p.ProjectTypeID],
-			"project %q has invalid project type ID %d", p.Title, p.ProjectTypeID)
+			"project %q has invalid project type ID %s", p.Title, p.ProjectTypeID)
 	}
 
 	// All maintenance items should have valid categories.
@@ -147,17 +147,17 @@ func TestSeedScaledDataFKIntegrity(t *testing.T) {
 	require.NoError(t, err)
 	cats, err := store.MaintenanceCategories()
 	require.NoError(t, err)
-	catIDs := make(map[uint]bool, len(cats))
+	catIDs := make(map[string]bool, len(cats))
 	for _, c := range cats {
 		catIDs[c.ID] = true
 	}
 	for _, m := range maint {
 		assert.True(t, catIDs[m.CategoryID],
-			"maintenance %q has invalid category ID %d", m.Name, m.CategoryID)
+			"maintenance %q has invalid category ID %s", m.Name, m.CategoryID)
 	}
 
 	// All service logs should reference valid maintenance items.
-	maintIDs := make(map[uint]bool, len(maint))
+	maintIDs := make(map[string]bool, len(maint))
 	for _, m := range maint {
 		maintIDs[m.ID] = true
 	}
@@ -166,7 +166,7 @@ func TestSeedScaledDataFKIntegrity(t *testing.T) {
 		require.NoError(t, err)
 		for _, log := range logs {
 			assert.True(t, maintIDs[log.MaintenanceItemID],
-				"service log references invalid maintenance item ID %d", log.MaintenanceItemID)
+				"service log references invalid maintenance item ID %s", log.MaintenanceItemID)
 		}
 	}
 }

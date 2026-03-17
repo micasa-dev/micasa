@@ -63,7 +63,7 @@ type houseFormData struct {
 
 type projectFormData struct {
 	Title         string
-	ProjectTypeID uint
+	ProjectTypeID string
 	Status        string `default:"planned"`
 	Budget        string
 	Actual        string
@@ -73,7 +73,7 @@ type projectFormData struct {
 }
 
 type quoteFormData struct {
-	ProjectID    uint
+	ProjectID    string
 	VendorName   string
 	ContactName  string
 	Email        string
@@ -98,8 +98,8 @@ const (
 
 type maintenanceFormData struct {
 	Name           string
-	CategoryID     uint
-	ApplianceID    uint // 0 means none
+	CategoryID     string
+	ApplianceID    string // "" means none
 	Season         string
 	ScheduleType   scheduleType
 	LastServiced   string
@@ -112,9 +112,9 @@ type maintenanceFormData struct {
 }
 
 type serviceLogFormData struct {
-	MaintenanceItemID uint
+	MaintenanceItemID string
 	ServicedAt        string `default:"today"`
-	VendorID          uint   // 0 = self
+	VendorID          string // "" = self
 	Cost              string
 	Notes             string
 }
@@ -132,7 +132,7 @@ type vendorFormData struct {
 // The zero value represents "no entity".
 type entityRef struct {
 	Kind string
-	ID   uint
+	ID   string
 }
 
 type documentFormData struct {
@@ -160,8 +160,8 @@ type incidentFormData struct {
 	DateResolved string
 	Location     string
 	Cost         string
-	ApplianceID  uint // 0 means none
-	VendorID     uint // 0 means none (self)
+	ApplianceID  string // "" means none
+	VendorID     string // "" means none (self)
 	Notes        string
 }
 
@@ -282,7 +282,7 @@ func (m *Model) startProjectForm() {
 				Title(requiredTitle("Title")).
 				Value(&values.Title).
 				Validate(requiredText("title")),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Project type").
 				Options(options...).
 				Value(&values.ProjectTypeID),
@@ -295,7 +295,7 @@ func (m *Model) startProjectForm() {
 	m.activateForm(form, values)
 }
 
-func (m *Model) startEditProjectForm(id uint) error {
+func (m *Model) startEditProjectForm(id string) error {
 	project, err := m.store.GetProject(id)
 	if err != nil {
 		return fmt.Errorf("load project: %w", err)
@@ -307,14 +307,14 @@ func (m *Model) startEditProjectForm(id uint) error {
 	return nil
 }
 
-func (m *Model) openProjectForm(values *projectFormData, options []huh.Option[uint]) {
+func (m *Model) openProjectForm(values *projectFormData, options []huh.Option[string]) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
 				Title(requiredTitle("Title")).
 				Value(&values.Title).
 				Validate(requiredText("title")),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Project type").
 				Options(options...).
 				Value(&values.ProjectTypeID),
@@ -363,7 +363,7 @@ func (m *Model) startQuoteForm() error {
 	values.ProjectID = options[0].Value
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Project").
 				Options(options...).
 				Value(&values.ProjectID),
@@ -382,7 +382,7 @@ func (m *Model) startQuoteForm() error {
 	return nil
 }
 
-func (m *Model) startEditQuoteForm(id uint) error {
+func (m *Model) startEditQuoteForm(id string) error {
 	quote, err := m.store.GetQuote(id)
 	if err != nil {
 		return fmt.Errorf("load quote: %w", err)
@@ -401,10 +401,10 @@ func (m *Model) startEditQuoteForm(id uint) error {
 	return nil
 }
 
-func (m *Model) openQuoteForm(values *quoteFormData, projectOpts []huh.Option[uint]) {
+func (m *Model) openQuoteForm(values *quoteFormData, projectOpts []huh.Option[string]) {
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Project").
 				Options(projectOpts...).
 				Value(&values.ProjectID),
@@ -473,7 +473,7 @@ func (m *Model) startMaintenanceForm() error {
 				Title(requiredTitle("Item")).
 				Value(&values.Name).
 				Validate(requiredText("item")),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Category").
 				Options(catOptions...).
 				Value(&values.CategoryID),
@@ -481,7 +481,7 @@ func (m *Model) startMaintenanceForm() error {
 				Title("Season").
 				Options(seasonOptions()...).
 				Value(&values.Season),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Appliance").
 				Options(appOpts...).
 				Value(&values.ApplianceID),
@@ -508,7 +508,7 @@ func (m *Model) startMaintenanceForm() error {
 	return nil
 }
 
-func (m *Model) startEditMaintenanceForm(id uint) error {
+func (m *Model) startEditMaintenanceForm(id string) error {
 	item, err := m.store.GetMaintenance(id)
 	if err != nil {
 		return fmt.Errorf("load maintenance item: %w", err)
@@ -527,8 +527,8 @@ func (m *Model) startEditMaintenanceForm(id uint) error {
 
 func (m *Model) openMaintenanceForm(
 	values *maintenanceFormData,
-	catOptions []huh.Option[uint],
-	appOptions []huh.Option[uint],
+	catOptions []huh.Option[string],
+	appOptions []huh.Option[string],
 ) {
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -536,7 +536,7 @@ func (m *Model) openMaintenanceForm(
 				Title(requiredTitle("Item")).
 				Value(&values.Name).
 				Validate(requiredText("item")),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Category").
 				Options(catOptions...).
 				Value(&values.CategoryID),
@@ -544,7 +544,7 @@ func (m *Model) openMaintenanceForm(
 				Title("Season").
 				Options(seasonOptions()...).
 				Value(&values.Season),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Appliance").
 				Options(appOptions...).
 				Value(&values.ApplianceID),
@@ -613,11 +613,11 @@ func (m *Model) startIncidentForm() error {
 				Value(&values.Location),
 		).Title("Details"),
 		huh.NewGroup(
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Appliance").
 				Options(appOpts...).
 				Value(&values.ApplianceID),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Vendor").
 				Options(vendorOpts...).
 				Value(&values.VendorID),
@@ -627,7 +627,7 @@ func (m *Model) startIncidentForm() error {
 	return nil
 }
 
-func (m *Model) startEditIncidentForm(id uint) error {
+func (m *Model) startEditIncidentForm(id string) error {
 	item, err := m.store.GetIncident(id)
 	if err != nil {
 		return fmt.Errorf("load incident: %w", err)
@@ -646,8 +646,8 @@ func (m *Model) startEditIncidentForm(id uint) error {
 
 func (m *Model) openIncidentForm(
 	values *incidentFormData,
-	appOptions []huh.Option[uint],
-	vendorOptions []huh.Option[uint],
+	appOptions []huh.Option[string],
+	vendorOptions []huh.Option[string],
 ) {
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -677,11 +677,11 @@ func (m *Model) openIncidentForm(
 				Value(&values.Location),
 		).Title("Details"),
 		huh.NewGroup(
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Appliance").
 				Options(appOptions...).
 				Value(&values.ApplianceID),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Vendor").
 				Options(vendorOptions...).
 				Value(&values.VendorID),
@@ -732,12 +732,12 @@ func (m *Model) parseIncidentFormData() (data.Incident, error) {
 	if err != nil {
 		return data.Incident{}, data.FieldError("Cost", err)
 	}
-	var appID *uint
-	if values.ApplianceID > 0 {
+	var appID *string
+	if values.ApplianceID != "" {
 		appID = &values.ApplianceID
 	}
-	var vendorID *uint
-	if values.VendorID > 0 {
+	var vendorID *string
+	if values.VendorID != "" {
 		vendorID = &values.VendorID
 	}
 	return data.Incident{
@@ -755,7 +755,7 @@ func (m *Model) parseIncidentFormData() (data.Incident, error) {
 	}, nil
 }
 
-func (m *Model) inlineEditIncident(id uint, col incidentCol) error {
+func (m *Model) inlineEditIncident(id string, col incidentCol) error {
 	item, err := m.store.GetIncident(id)
 	if err != nil {
 		return fmt.Errorf("load incident: %w", err)
@@ -789,13 +789,13 @@ func (m *Model) inlineEditIncident(id uint, col incidentCol) error {
 			return loadErr
 		}
 		appOpts := applianceOptions(appliances)
-		field := huh.NewSelect[uint]().Title("Appliance").
+		field := huh.NewSelect[string]().Title("Appliance").
 			Options(appOpts...).
 			Value(&values.ApplianceID)
 		m.openInlineEdit(id, field, values)
 	case incidentColVendor:
 		vendorOpts := vendorOpts("(none)", m.vendors)
-		field := huh.NewSelect[uint]().Title("Vendor").
+		field := huh.NewSelect[string]().Title("Vendor").
 			Options(vendorOpts...).
 			Value(&values.VendorID)
 		m.openInlineEdit(id, field, values)
@@ -819,11 +819,11 @@ func (m *Model) inlineEditIncident(id uint, col incidentCol) error {
 }
 
 func incidentFormValues(item data.Incident, cur locale.Currency) *incidentFormData {
-	var appID uint
+	var appID string
 	if item.ApplianceID != nil {
 		appID = *item.ApplianceID
 	}
-	var vendorID uint
+	var vendorID string
 	if item.VendorID != nil {
 		vendorID = *item.VendorID
 	}
@@ -916,9 +916,9 @@ func labelWithDetail(name, detail string) string {
 
 // vendorOpts builds a vendor option list with noneLabel as the leading
 // zero-value entry.
-func vendorOpts(noneLabel string, vendors []data.Vendor) []huh.Option[uint] {
-	options := make([]huh.Option[uint], 0, len(vendors)+1)
-	options = append(options, huh.NewOption(noneLabel, uint(0)))
+func vendorOpts(noneLabel string, vendors []data.Vendor) []huh.Option[string] {
+	options := make([]huh.Option[string], 0, len(vendors)+1)
+	options = append(options, huh.NewOption(noneLabel, ""))
 	for _, v := range vendors {
 		options = append(options, huh.NewOption(labelWithDetail(v.Name, v.ContactName), v.ID))
 	}
@@ -939,7 +939,7 @@ func (m *Model) startApplianceForm() {
 	m.activateForm(form, values)
 }
 
-func (m *Model) startEditApplianceForm(id uint) error {
+func (m *Model) startEditApplianceForm(id string) error {
 	item, err := m.store.GetAppliance(id)
 	if err != nil {
 		return fmt.Errorf("load appliance: %w", err)
@@ -1038,7 +1038,7 @@ func (m *Model) startVendorForm() {
 	m.activateForm(form, values)
 }
 
-func (m *Model) startEditVendorForm(id uint) error {
+func (m *Model) startEditVendorForm(id string) error {
 	vendor, err := m.store.GetVendor(id)
 	if err != nil {
 		return fmt.Errorf("load vendor: %w", err)
@@ -1093,7 +1093,7 @@ func (m *Model) parseVendorFormData() (data.Vendor, error) {
 	}, nil
 }
 
-func (m *Model) inlineEditVendor(id uint, col vendorCol) error {
+func (m *Model) inlineEditVendor(id string, col vendorCol) error {
 	vendor, err := m.store.GetVendor(id)
 	if err != nil {
 		return fmt.Errorf("load vendor: %w", err)
@@ -1127,7 +1127,7 @@ func vendorFormValues(vendor data.Vendor) *vendorFormData {
 	}
 }
 
-func (m *Model) inlineEditProject(id uint, col projectCol) error {
+func (m *Model) inlineEditProject(id string, col projectCol) error {
 	project, err := m.store.GetProject(id)
 	if err != nil {
 		return fmt.Errorf("load project: %w", err)
@@ -1136,7 +1136,7 @@ func (m *Model) inlineEditProject(id uint, col projectCol) error {
 	switch col {
 	case projectColType:
 		options := projectTypeOptions(m.projectTypes)
-		field := huh.NewSelect[uint]().Title("Project type").
+		field := huh.NewSelect[string]().Title("Project type").
 			Options(options...).
 			Value(&values.ProjectTypeID)
 		m.openInlineEdit(id, field, values)
@@ -1182,7 +1182,7 @@ func (m *Model) inlineEditProject(id uint, col projectCol) error {
 	return nil
 }
 
-func (m *Model) inlineEditQuote(id uint, col quoteCol) error {
+func (m *Model) inlineEditQuote(id string, col quoteCol) error {
 	quote, err := m.store.GetQuote(id)
 	if err != nil {
 		return fmt.Errorf("load quote: %w", err)
@@ -1195,7 +1195,7 @@ func (m *Model) inlineEditQuote(id uint, col quoteCol) error {
 	switch col {
 	case quoteColProject:
 		projectOpts := projectOptions(projects)
-		field := huh.NewSelect[uint]().Title("Project").
+		field := huh.NewSelect[string]().Title("Project").
 			Options(projectOpts...).
 			Value(&values.ProjectID)
 		m.openInlineEdit(id, field, values)
@@ -1252,7 +1252,7 @@ func (m *Model) inlineEditQuote(id uint, col quoteCol) error {
 	return nil
 }
 
-func (m *Model) inlineEditMaintenance(id uint, col maintenanceCol) error {
+func (m *Model) inlineEditMaintenance(id string, col maintenanceCol) error {
 	item, err := m.store.GetMaintenance(id)
 	if err != nil {
 		return fmt.Errorf("load maintenance item: %w", err)
@@ -1270,7 +1270,7 @@ func (m *Model) inlineEditMaintenance(id uint, col maintenanceCol) error {
 		)
 	case maintenanceColCategory:
 		catOptions := maintenanceOptions(m.maintenanceCategories)
-		field := huh.NewSelect[uint]().Title("Category").
+		field := huh.NewSelect[string]().Title("Category").
 			Options(catOptions...).
 			Value(&values.CategoryID)
 		m.openInlineEdit(id, field, values)
@@ -1285,7 +1285,7 @@ func (m *Model) inlineEditMaintenance(id uint, col maintenanceCol) error {
 			return loadErr
 		}
 		appOpts := applianceOptions(appliances)
-		field := huh.NewSelect[uint]().Title("Appliance").
+		field := huh.NewSelect[string]().Title("Appliance").
 			Options(appOpts...).
 			Value(&values.ApplianceID)
 		m.openInlineEdit(id, field, values)
@@ -1312,7 +1312,7 @@ func (m *Model) inlineEditMaintenance(id uint, col maintenanceCol) error {
 	return nil
 }
 
-func (m *Model) inlineEditAppliance(id uint, col applianceCol) error {
+func (m *Model) inlineEditAppliance(id string, col applianceCol) error {
 	item, err := m.store.GetAppliance(id)
 	if err != nil {
 		return fmt.Errorf("load appliance: %w", err)
@@ -1348,7 +1348,7 @@ func (m *Model) inlineEditAppliance(id uint, col applianceCol) error {
 	return nil
 }
 
-func (m *Model) startServiceLogForm(maintenanceItemID uint) error {
+func (m *Model) startServiceLogForm(maintenanceItemID string) error {
 	values := &serviceLogFormData{
 		MaintenanceItemID: maintenanceItemID,
 	}
@@ -1360,7 +1360,7 @@ func (m *Model) startServiceLogForm(maintenanceItemID uint) error {
 				Title(requiredTitle("Date serviced")+" (YYYY-MM-DD)").
 				Value(&values.ServicedAt).
 				Validate(requiredDate("date serviced")),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Performed by").
 				Options(vendorOpts...).
 				Value(&values.VendorID),
@@ -1370,7 +1370,7 @@ func (m *Model) startServiceLogForm(maintenanceItemID uint) error {
 	return nil
 }
 
-func (m *Model) startEditServiceLogForm(id uint) error {
+func (m *Model) startEditServiceLogForm(id string) error {
 	entry, err := m.store.GetServiceLog(id)
 	if err != nil {
 		return fmt.Errorf("load service log: %w", err)
@@ -1384,7 +1384,7 @@ func (m *Model) startEditServiceLogForm(id uint) error {
 
 func (m *Model) openServiceLogForm(
 	values *serviceLogFormData,
-	vendorOpts []huh.Option[uint],
+	vendorOpts []huh.Option[string],
 ) {
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -1392,7 +1392,7 @@ func (m *Model) openServiceLogForm(
 				Title(requiredTitle("Date serviced")+" (YYYY-MM-DD)").
 				Value(&values.ServicedAt).
 				Validate(requiredDate("date serviced")),
-			huh.NewSelect[uint]().
+			huh.NewSelect[string]().
 				Title("Performed by").
 				Options(vendorOpts...).
 				Value(&values.VendorID),
@@ -1438,7 +1438,7 @@ func (m *Model) parseServiceLogFormData() (data.ServiceLogEntry, data.Vendor, er
 		Notes:             strings.TrimSpace(values.Notes),
 	}
 	var vendor data.Vendor
-	if values.VendorID > 0 {
+	if values.VendorID != "" {
 		// Look up the vendor to pass to CreateServiceLog/UpdateServiceLog.
 		for _, v := range m.vendors {
 			if v.ID == values.VendorID {
@@ -1450,7 +1450,7 @@ func (m *Model) parseServiceLogFormData() (data.ServiceLogEntry, data.Vendor, er
 	return entry, vendor, nil
 }
 
-func (m *Model) inlineEditServiceLog(id uint, col serviceLogCol) error {
+func (m *Model) inlineEditServiceLog(id string, col serviceLogCol) error {
 	entry, err := m.store.GetServiceLog(id)
 	if err != nil {
 		return fmt.Errorf("load service log: %w", err)
@@ -1461,7 +1461,7 @@ func (m *Model) inlineEditServiceLog(id uint, col serviceLogCol) error {
 		m.openDatePicker(id, &values.ServicedAt, values)
 	case serviceLogColPerformedBy:
 		vendorOpts := vendorOpts("Self (homeowner)", m.vendors)
-		field := huh.NewSelect[uint]().
+		field := huh.NewSelect[string]().
 			Title("Performed by").
 			Options(vendorOpts...).
 			Value(&values.VendorID)
@@ -1484,7 +1484,7 @@ func (m *Model) inlineEditServiceLog(id uint, col serviceLogCol) error {
 }
 
 func serviceLogFormValues(entry data.ServiceLogEntry, cur locale.Currency) *serviceLogFormData {
-	var vendorID uint
+	var vendorID string
 	if entry.VendorID != nil {
 		vendorID = *entry.VendorID
 	}
@@ -1509,11 +1509,11 @@ func requiredDate(label string) func(string) error {
 	}
 }
 
-func applianceOptions(appliances []data.Appliance) []huh.Option[uint] {
-	opts := buildOptions(appliances, func(a data.Appliance) (string, uint) {
+func applianceOptions(appliances []data.Appliance) []huh.Option[string] {
+	opts := buildOptions(appliances, func(a data.Appliance) (string, string) {
 		return labelWithDetail(a.Name, a.Brand), a.ID
 	})
-	return append([]huh.Option[uint]{huh.NewOption("(none)", uint(0))}, opts...)
+	return append([]huh.Option[string]{huh.NewOption("(none)", "")}, opts...)
 }
 
 // entityOptionLabel colors the entire label using the kind's color from the
@@ -1619,7 +1619,7 @@ func (m *Model) documentEntityOptions() ([]huh.Option[entityRef], error) {
 // openDatePicker opens the calendar picker for an inline date edit.
 // When the user picks a date, the form data is saved via the handler.
 func (m *Model) openDatePicker(
-	id uint,
+	id string,
 	dateField *string,
 	values formData,
 ) {
@@ -1668,7 +1668,7 @@ func (m *Model) activateForm(form *huh.Form, values formData) {
 
 // openInlineEdit sets up a single-field inline edit form (overlay).
 // Used for Select fields where a list picker is needed.
-func (m *Model) openInlineEdit(id uint, field huh.Field, values formData) {
+func (m *Model) openInlineEdit(id string, field huh.Field, values formData) {
 	m.fs.editID = &id
 	m.activateForm(huh.NewForm(huh.NewGroup(field)), values)
 	m.fs.formHasRequired = false
@@ -1677,7 +1677,7 @@ func (m *Model) openInlineEdit(id uint, field huh.Field, values formData) {
 // openNotesEdit opens a standalone textarea overlay for editing a notes field.
 // On submit the form data is saved via the handler, just like openInlineEdit
 // for select fields. The textarea supports ctrl+e to escalate to $EDITOR.
-func (m *Model) openNotesEdit(id uint, fieldPtr *string, values formData) {
+func (m *Model) openNotesEdit(id string, fieldPtr *string, values formData) {
 	m.fs.editID = &id
 	m.fs.formData = values
 	m.openNotesTextarea(fieldPtr, values)
@@ -1698,7 +1698,7 @@ func (m *Model) openNotesTextarea(fieldPtr *string, values formData) {
 // openInlineInput sets up a single-field text edit rendered in the status bar,
 // keeping the table visible. Used for simple text and number fields.
 func (m *Model) openInlineInput(
-	id uint,
+	id string,
 	title, placeholder string,
 	fieldPtr *string,
 	validate func(string) error,
@@ -2040,8 +2040,8 @@ func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
 	if err != nil {
 		return data.MaintenanceItem{}, data.FieldError("Cost", err)
 	}
-	var appID *uint
-	if values.ApplianceID > 0 {
+	var appID *string
+	if values.ApplianceID != "" {
 		appID = &values.ApplianceID
 	}
 	return data.MaintenanceItem{
@@ -2059,8 +2059,8 @@ func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
 	}, nil
 }
 
-func buildOptions[T any](items []T, entry func(T) (string, uint)) []huh.Option[uint] {
-	opts := make([]huh.Option[uint], 0, len(items))
+func buildOptions[T any](items []T, entry func(T) (string, string)) []huh.Option[string] {
+	opts := make([]huh.Option[string], 0, len(items))
 	for _, item := range items {
 		label, id := entry(item)
 		opts = append(opts, huh.NewOption(label, id))
@@ -2068,22 +2068,22 @@ func buildOptions[T any](items []T, entry func(T) (string, uint)) []huh.Option[u
 	return withOrdinals(opts)
 }
 
-func projectTypeOptions(types []data.ProjectType) []huh.Option[uint] {
-	return buildOptions(types, func(t data.ProjectType) (string, uint) { return t.Name, t.ID })
+func projectTypeOptions(types []data.ProjectType) []huh.Option[string] {
+	return buildOptions(types, func(t data.ProjectType) (string, string) { return t.Name, t.ID })
 }
 
-func maintenanceOptions(categories []data.MaintenanceCategory) []huh.Option[uint] {
+func maintenanceOptions(categories []data.MaintenanceCategory) []huh.Option[string] {
 	return buildOptions(
 		categories,
-		func(c data.MaintenanceCategory) (string, uint) { return c.Name, c.ID },
+		func(c data.MaintenanceCategory) (string, string) { return c.Name, c.ID },
 	)
 }
 
-func projectOptions(projects []data.Project) []huh.Option[uint] {
-	return buildOptions(projects, func(p data.Project) (string, uint) {
+func projectOptions(projects []data.Project) []huh.Option[string] {
+	return buildOptions(projects, func(p data.Project) (string, string) {
 		label := p.Title
 		if label == "" {
-			label = fmt.Sprintf("Project %d", p.ID)
+			label = "Project " + p.ID
 		}
 		return label, p.ID
 	})
@@ -2224,7 +2224,7 @@ func quoteFormValues(quote data.Quote, cur locale.Currency) *quoteFormData {
 }
 
 func maintenanceFormValues(item data.MaintenanceItem, cur locale.Currency) *maintenanceFormData {
-	var appID uint
+	var appID string
 	if item.ApplianceID != nil {
 		appID = *item.ApplianceID
 	}
@@ -2298,7 +2298,7 @@ func (m *Model) houseFormValues(profile data.HouseProfile) *houseFormData {
 }
 
 func (m *Model) createOrUpdate(
-	idPtr *uint,
+	idPtr *string,
 	create func() error,
 	update func() error,
 ) error {
@@ -2404,7 +2404,7 @@ func (m *Model) startQuickDocumentForm() error {
 	return nil
 }
 
-func (m *Model) startEditDocumentForm(id uint) error {
+func (m *Model) startEditDocumentForm(id string) error {
 	doc, err := m.store.GetDocumentMetadata(id)
 	if err != nil {
 		return fmt.Errorf("load document: %w", err)
@@ -2500,7 +2500,7 @@ func (m *Model) submitDocumentForm() error {
 }
 
 // submitScopedDocumentForm creates a document with the given entity scope.
-func (m *Model) submitScopedDocumentForm(entityKind string, entityID uint) error {
+func (m *Model) submitScopedDocumentForm(entityKind string, entityID string) error {
 	result, err := m.parseDocumentFormData()
 	if err != nil {
 		return err
@@ -2607,7 +2607,7 @@ func (m *Model) showTesseractHint() {
 	_ = m.store.MarkTesseractHintSeen()
 }
 
-func (m *Model) inlineEditDocument(id uint, col documentCol) error {
+func (m *Model) inlineEditDocument(id string, col documentCol) error {
 	doc, err := m.store.GetDocumentMetadata(id)
 	if err != nil {
 		return fmt.Errorf("load document: %w", err)

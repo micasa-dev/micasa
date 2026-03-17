@@ -69,7 +69,7 @@ type formState struct {
 	formDirty       bool
 	formHasRequired bool
 	pendingFormInit tea.Cmd
-	editID          *uint
+	editID          *string
 	notesEditMode   bool
 	notesFieldPtr   *string
 	pendingEditor   *editorState
@@ -100,7 +100,7 @@ type extractState struct {
 	extractors         []extract.Extractor
 	extractionReady    bool
 
-	pendingExtractionDocID *uint
+	pendingExtractionDocID *string
 	extraction             *extractionLogState
 	bgExtractions          []*extractionLogState
 }
@@ -181,7 +181,7 @@ func (k TabKind) plural() string {
 }
 
 type rowMeta struct {
-	ID      uint
+	ID      string
 	Deleted bool
 	Dimmed  bool // true in pin preview mode for non-matching rows
 }
@@ -215,7 +215,7 @@ type Tab struct {
 	CellRows            [][]cell
 	ColCursor           int
 	ViewOffset          int // first visible column in horizontal scroll viewport
-	LastDeleted         *uint
+	LastDeleted         *string
 	ShowDeleted         bool
 	showDeletedExplicit bool // sticky: once true (user pressed 'x'), never cleared; suppresses auto-enable on delete
 	Sorts               []sortEntry
@@ -255,7 +255,7 @@ type statusMsg struct {
 // main tab for all interaction.
 type detailContext struct {
 	ParentTabIndex int
-	ParentRowID    uint
+	ParentRowID    string
 	Breadcrumb     string
 	Tab            Tab
 	Mutated        bool // true when any CUD operation occurred in this detail
@@ -368,8 +368,8 @@ const (
 type cell struct {
 	Value  string
 	Kind   cellKind
-	Null   bool // true when the database value is NULL (not just empty)
-	LinkID uint // FK target ID for cross-tab navigation; 0 = no link
+	Null   bool   // true when the database value is NULL (not just empty)
+	LinkID string // FK target ID for cross-tab navigation; "" = no link
 }
 
 // nullPinKey is the internal key used by the pin/filter system to represent
@@ -399,7 +399,7 @@ type columnSpec struct {
 type inlineInputState struct {
 	Input    textinput.Model
 	Title    string
-	EditID   uint
+	EditID   string
 	FormData formData
 	FieldPtr *string            // pointer into FormData
 	Validate func(string) error // nil = no validation
@@ -408,7 +408,7 @@ type inlineInputState struct {
 // editorState holds context for an in-flight $EDITOR session so we can
 // restore the textarea with the edited content when the editor exits.
 type editorState struct {
-	EditID   uint
+	EditID   string
 	FormData formData
 	FieldPtr *string // pointer into FormData for the notes field
 	TempFile string  // path to the temp file passed to the editor

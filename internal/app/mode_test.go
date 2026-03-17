@@ -44,7 +44,7 @@ func newTestModel(t *testing.T) *Model {
 	// Seed minimal rows so cursor operations don't panic.
 	for i := range m.tabs {
 		m.tabs[i].Table.SetRows([]table.Row{{"1", "test"}})
-		m.tabs[i].Rows = []rowMeta{{ID: 1}}
+		m.tabs[i].Rows = []rowMeta{{ID: "01JTEST00000000000000001"}}
 	}
 	return m
 }

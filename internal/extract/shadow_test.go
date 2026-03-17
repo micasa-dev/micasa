@@ -5,7 +5,6 @@ package extract
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -52,7 +51,7 @@ func TestShadowDB_StageCreateVendor(t *testing.T) {
 
 	ids := sdb.CreatedIDs(data.TableVendors)
 	require.Len(t, ids, 1)
-	assert.Equal(t, uint(1), ids[0])
+	assert.Equal(t, "1", ids[0])
 }
 
 func TestShadowDB_StageMultipleVendors(t *testing.T) {
@@ -70,9 +69,9 @@ func TestShadowDB_StageMultipleVendors(t *testing.T) {
 
 	ids := sdb.CreatedIDs(data.TableVendors)
 	require.Len(t, ids, 3)
-	assert.Equal(t, uint(1), ids[0])
-	assert.Equal(t, uint(2), ids[1])
-	assert.Equal(t, uint(3), ids[2])
+	assert.Equal(t, "1", ids[0])
+	assert.Equal(t, "2", ids[1])
+	assert.Equal(t, "3", ids[2])
 }
 
 func TestShadowDB_StageSkipsUpdates(t *testing.T) {
@@ -147,14 +146,14 @@ func TestShadowDB_CommitVendorThenQuote_CrossReference(t *testing.T) {
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
 
-	// The LLM creates a vendor then references it by fictional ID 1 in the quote.
+	// The LLM creates a vendor then references it by ordinal ID "1" in the quote.
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
 			"name": "Garcia Plumbing",
 		}},
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("1"),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   "1",
+			"project_id":  projectID,
 			"total_cents": jn("150000"),
 		}},
 	}
@@ -196,8 +195,8 @@ func TestShadowDB_CommitApplianceThenMaintenance_CrossReference(t *testing.T) {
 		}},
 		{Action: ActionCreate, Table: data.TableMaintenanceItems, Data: map[string]any{
 			"name":            "Replace HVAC Filter",
-			"appliance_id":    jn("1"),
-			"category_id":     json.Number(fmt.Sprintf("%d", catID)),
+			"appliance_id":    "1",
+			"category_id":     catID,
 			"interval_months": jn("3"),
 		}},
 	}
@@ -243,13 +242,13 @@ func TestShadowDB_CommitMultipleVendorsAndQuotes(t *testing.T) {
 		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{"name": "Plumber A"}},
 		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{"name": "Plumber B"}},
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("1"),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   "1",
+			"project_id":  projectID,
 			"total_cents": jn("100000"),
 		}},
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("2"),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   "2",
+			"project_id":  projectID,
 			"total_cents": jn("200000"),
 		}},
 	}
@@ -265,7 +264,7 @@ func TestShadowDB_CommitMultipleVendorsAndQuotes(t *testing.T) {
 	require.Len(t, quotes, 2)
 
 	// Each quote should reference the correct vendor.
-	vendorIDByName := map[string]uint{}
+	vendorIDByName := map[string]string{}
 	for _, v := range vendors {
 		vendorIDByName[v.Name] = v.ID
 	}
@@ -291,7 +290,7 @@ func TestShadowDB_CommitDocumentUpdate(t *testing.T) {
 
 	ops := []Operation{
 		{Action: ActionUpdate, Table: data.TableDocuments, Data: map[string]any{
-			"id":    json.Number(fmt.Sprintf("%d", doc.ID)),
+			"id":    doc.ID,
 			"title": "Updated Title",
 			"notes": "updated notes",
 		}},
@@ -400,8 +399,8 @@ func TestShadowDB_CommitQuoteWithExistingVendorByID(t *testing.T) {
 	// No vendor create -- the LLM references an existing vendor by real ID.
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   json.Number(fmt.Sprintf("%d", realVendorID)),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   realVendorID,
+			"project_id":  projectID,
 			"total_cents": jn("50000"),
 		}},
 	}
@@ -436,7 +435,7 @@ func TestShadowDB_CommitQuoteWithVendorName(t *testing.T) {
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
 			"vendor_name": "New Plumber",
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"project_id":  projectID,
 			"total_cents": jn("75000"),
 		}},
 	}
@@ -471,7 +470,7 @@ func TestShadowDB_CommitMixedCreatesAndUpdates(t *testing.T) {
 			"name": "Mixed Batch Vendor",
 		}},
 		{Action: ActionUpdate, Table: data.TableDocuments, Data: map[string]any{
-			"id":    json.Number(fmt.Sprintf("%d", doc.ID)),
+			"id":    doc.ID,
 			"title": "Updated via mixed batch",
 		}},
 	}
@@ -511,11 +510,11 @@ func TestShadowDB_ReadShadowRow(t *testing.T) {
 	assert.NotNil(t, row)
 }
 
-func TestShadowDB_AutoIncrementOffset(t *testing.T) {
+func TestShadowDB_OrdinalOffset(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	// Pre-create 3 vendors so max vendor ID = 3.
+	// Pre-create 3 vendors so ordinal starts at 4.
 	for _, name := range []string{"Vendor One", "Vendor Two", "Vendor Three"} {
 		require.NoError(t, store.CreateVendor(&data.Vendor{Name: name}))
 	}
@@ -526,7 +525,7 @@ func TestShadowDB_AutoIncrementOffset(t *testing.T) {
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
 
-	// Stage a new vendor -- should get shadow ID 4 (max real + 1).
+	// Stage a new vendor -- should get ordinal "4" (3 existing + 1).
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
 			"name": "Vendor Four",
@@ -535,14 +534,14 @@ func TestShadowDB_AutoIncrementOffset(t *testing.T) {
 	require.NoError(t, sdb.Stage(ops))
 	ids := sdb.CreatedIDs(data.TableVendors)
 	require.Len(t, ids, 1)
-	assert.Equal(t, uint(4), ids[0], "shadow auto-increment should start after max real ID")
+	assert.Equal(t, "4", ids[0], "shadow ordinal should start after existing row count")
 }
 
 func TestShadowDB_OffsetCrossReference(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	// Pre-create vendors so shadow IDs are offset.
+	// Pre-create vendors so shadow ordinals are offset.
 	for _, name := range []string{"Existing A", "Existing B", "Existing C"} {
 		require.NoError(t, store.CreateVendor(&data.Vendor{Name: name}))
 	}
@@ -560,21 +559,21 @@ func TestShadowDB_OffsetCrossReference(t *testing.T) {
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
 
-	// The LLM creates a vendor (shadow ID 4) and references it by ID.
+	// The LLM creates a vendor (ordinal "4") and references it by ordinal.
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
 			"name": "New Plumber",
 		}},
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("4"),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   "4",
+			"project_id":  projectID,
 			"total_cents": jn("99000"),
 		}},
 	}
 	require.NoError(t, sdb.Stage(ops))
 	require.NoError(t, sdb.Commit(store, ops))
 
-	// Verify the quote links to the newly-created vendor, not existing ID 4.
+	// Verify the quote links to the newly-created vendor.
 	vendors, err := store.ListVendors(false)
 	require.NoError(t, err)
 	require.Len(t, vendors, 4)
@@ -585,7 +584,7 @@ func TestShadowDB_OffsetCrossReference(t *testing.T) {
 			break
 		}
 	}
-	require.NotZero(t, newVendor.ID)
+	require.NotEmpty(t, newVendor.ID)
 
 	quotes, err := store.ListQuotes(false)
 	require.NoError(t, err)
@@ -597,9 +596,14 @@ func TestShadowDB_OffsetExistingVendorNotRemapped(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	// Pre-create 2 vendors (IDs 1 and 2).
+	// Pre-create 2 vendors.
 	require.NoError(t, store.CreateVendor(&data.Vendor{Name: "Existing Plumber"}))
 	require.NoError(t, store.CreateVendor(&data.Vendor{Name: "Another Vendor"}))
+	vendors, err := store.ListVendors(false)
+	require.NoError(t, err)
+	require.Len(t, vendors, 2)
+	existingVendorID := vendors[0].ID
+
 	types, err := store.ProjectTypes()
 	require.NoError(t, err)
 	require.NoError(t, store.CreateProject(&data.Project{
@@ -614,11 +618,11 @@ func TestShadowDB_OffsetExistingVendorNotRemapped(t *testing.T) {
 	sdb, err := NewShadowDB(store)
 	require.NoError(t, err)
 
-	// The LLM references existing vendor ID 1 (below shadow range) -- no remap.
+	// The LLM references an existing vendor by real ULID -- no remap.
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("1"),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   existingVendorID,
+			"project_id":  projectID,
 			"total_cents": jn("50000"),
 		}},
 	}
@@ -628,8 +632,8 @@ func TestShadowDB_OffsetExistingVendorNotRemapped(t *testing.T) {
 	quotes, err := store.ListQuotes(false)
 	require.NoError(t, err)
 	require.Len(t, quotes, 1)
-	// vendor_id=1 is a real ID and should pass through unchanged.
-	assert.Equal(t, uint(1), quotes[0].VendorID)
+	// Real vendor ID should pass through unchanged.
+	assert.Equal(t, existingVendorID, quotes[0].VendorID)
 }
 
 func TestShadowDB_CommitDuplicateApplianceUsesExisting(t *testing.T) {
@@ -681,7 +685,7 @@ func TestShadowDB_CommitDuplicateMaintenanceUsesExisting(t *testing.T) {
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableMaintenanceItems, Data: map[string]any{
 			"name":            "Replace Filter",
-			"category_id":     json.Number(fmt.Sprintf("%d", catID)),
+			"category_id":     catID,
 			"interval_months": jn("6"),
 		}},
 	}
@@ -744,20 +748,20 @@ func TestShadowDB_NormalizeValueHandlesJSONNumber(t *testing.T) {
 
 func TestRemapFK(t *testing.T) {
 	t.Parallel()
-	idMap := map[string]map[uint]uint{
-		data.TableVendors: {1: 42, 2: 43},
+	idMap := map[string]map[string]string{
+		data.TableVendors: {"1": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "2": "01ARZ3NDEKTSV4RRFFQ69G5FAW"},
 	}
 	fk := shadowFKRemap{Column: data.ColVendorID, Table: data.TableVendors}
 
-	// Remap shadow ID 1 -> real ID 42.
-	row := map[string]any{"vendor_id": int64(1)}
+	// Remap shadow ordinal "1" -> real ULID.
+	row := map[string]any{"vendor_id": "1"}
 	remapFK(row, fk, idMap)
-	assert.Equal(t, uint(42), row["vendor_id"])
+	assert.Equal(t, "01ARZ3NDEKTSV4RRFFQ69G5FAV", row["vendor_id"])
 
 	// No mapping -> value unchanged.
-	row = map[string]any{"vendor_id": int64(99)}
+	row = map[string]any{"vendor_id": "99"}
 	remapFK(row, fk, idMap)
-	assert.Equal(t, int64(99), row["vendor_id"])
+	assert.Equal(t, "99", row["vendor_id"])
 
 	// Nil value -> no panic.
 	row = map[string]any{"vendor_id": nil}
@@ -841,11 +845,11 @@ func TestBuildFKGraph_IgnoresNonPolymorphicHasMany(t *testing.T) {
 	t.Parallel()
 
 	type child struct {
-		ID       uint `gorm:"primaryKey"`
-		ParentID uint
+		ID       string `gorm:"primaryKey;size:26"`
+		ParentID string
 	}
 	type parent struct {
-		ID       uint    `gorm:"primaryKey"`
+		ID       string  `gorm:"primaryKey;size:26"`
 		Children []child // non-polymorphic HasMany
 	}
 
@@ -862,12 +866,12 @@ func TestBuildFKGraph_IgnoresPolymorphicToNonDocuments(t *testing.T) {
 	t.Parallel()
 
 	type comment struct {
-		ID         uint `gorm:"primaryKey"`
+		ID         string `gorm:"primaryKey;size:26"`
 		EntityKind string
-		EntityID   uint
+		EntityID   string
 	}
 	type owner struct {
-		ID       uint      `gorm:"primaryKey"`
+		ID       string    `gorm:"primaryKey;size:26"`
 		Comments []comment `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:own"`
 	}
 
@@ -901,8 +905,8 @@ func TestShadowDB_CommitReversedOrder_QuoteBeforeVendor(t *testing.T) {
 	// Ops deliberately in REVERSED order: quote first, then vendor.
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("1"),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   "1",
+			"project_id":  projectID,
 			"total_cents": jn("150000"),
 		}},
 		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
@@ -939,8 +943,8 @@ func TestShadowDB_CommitReversedOrder_MaintenanceBeforeAppliance(t *testing.T) {
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableMaintenanceItems, Data: map[string]any{
 			"name":            "Replace HVAC Filter",
-			"appliance_id":    jn("1"),
-			"category_id":     json.Number(fmt.Sprintf("%d", catID)),
+			"appliance_id":    "1",
+			"category_id":     catID,
 			"interval_months": jn("3"),
 		}},
 		{Action: ActionCreate, Table: data.TableAppliances, Data: map[string]any{
@@ -975,7 +979,7 @@ func TestShadowDB_CommitReversedOrder_DocumentBeforeVendor(t *testing.T) {
 		{Action: ActionCreate, Table: data.TableDocuments, Data: map[string]any{
 			"title":       "Vendor Invoice",
 			"entity_kind": "vendor",
-			"entity_id":   jn("1"),
+			"entity_id":   "1",
 		}},
 		{Action: ActionCreate, Table: data.TableVendors, Data: map[string]any{
 			"name": "DocVendor",
@@ -1022,17 +1026,17 @@ func TestShadowDB_CommitReversedOrder_FullChain(t *testing.T) {
 		{Action: ActionCreate, Table: data.TableDocuments, Data: map[string]any{
 			"title":       "Quote Doc",
 			"entity_kind": "quote",
-			"entity_id":   jn("1"),
+			"entity_id":   "1",
 		}},
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("1"),
-			"project_id":  json.Number(fmt.Sprintf("%d", projectID)),
+			"vendor_id":   "1",
+			"project_id":  projectID,
 			"total_cents": jn("250000"),
 		}},
 		{Action: ActionCreate, Table: data.TableMaintenanceItems, Data: map[string]any{
 			"name":            "Filter Change",
-			"appliance_id":    jn("1"),
-			"category_id":     json.Number(fmt.Sprintf("%d", catID)),
+			"appliance_id":    "1",
+			"category_id":     catID,
 			"interval_months": jn("6"),
 		}},
 		{Action: ActionCreate, Table: data.TableAppliances, Data: map[string]any{
@@ -1102,33 +1106,33 @@ func TestShadowDB_CommitQuoteWithoutProjectID_Fails(t *testing.T) {
 
 func TestRemapDocumentEntity(t *testing.T) {
 	t.Parallel()
-	idMap := map[string]map[uint]uint{
-		data.TableVendors: {1: 42},
+	idMap := map[string]map[string]string{
+		data.TableVendors: {"1": "01ARZ3NDEKTSV4RRFFQ69G5FAV"},
 	}
 
 	// String entity_kind.
 	row := map[string]any{
 		"entity_kind": "vendor",
-		"entity_id":   int64(1),
+		"entity_id":   "1",
 	}
 	remapDocumentEntity(row, idMap)
-	assert.Equal(t, uint(42), row["entity_id"])
+	assert.Equal(t, "01ARZ3NDEKTSV4RRFFQ69G5FAV", row["entity_id"])
 
 	// []byte entity_kind (GORM SQLite behavior).
 	row = map[string]any{
 		"entity_kind": []byte("vendor"),
-		"entity_id":   int64(1),
+		"entity_id":   "1",
 	}
 	remapDocumentEntity(row, idMap)
-	assert.Equal(t, uint(42), row["entity_id"])
+	assert.Equal(t, "01ARZ3NDEKTSV4RRFFQ69G5FAV", row["entity_id"])
 
 	// entity_kind with no mapping in idMap -> no remap.
 	row = map[string]any{
 		"entity_kind": "project",
-		"entity_id":   int64(5),
+		"entity_id":   "5",
 	}
 	remapDocumentEntity(row, idMap)
-	assert.Equal(t, int64(5), row["entity_id"])
+	assert.Equal(t, "5", row["entity_id"])
 }
 
 func TestShadowDB_CommitProject(t *testing.T) {
@@ -1145,7 +1149,7 @@ func TestShadowDB_CommitProject(t *testing.T) {
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableProjects, Data: map[string]any{
 			"title":           "Fence Installation",
-			"project_type_id": jn(fmt.Sprintf("%d", types[0].ID)),
+			"project_type_id": types[0].ID,
 			"status":          data.ProjectStatusPlanned,
 			"description":     "Install a cedar fence",
 			"budget_cents":    jn("500000"),
@@ -1177,7 +1181,7 @@ func TestShadowDB_CommitProjectDefaultStatus(t *testing.T) {
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableProjects, Data: map[string]any{
 			"title":           "Roof Repair",
-			"project_type_id": jn(fmt.Sprintf("%d", types[0].ID)),
+			"project_type_id": types[0].ID,
 		}},
 	}
 	require.NoError(t, sdb.Stage(ops))
@@ -1206,11 +1210,11 @@ func TestShadowDB_CommitProjectThenQuote_CrossReference(t *testing.T) {
 		}},
 		{Action: ActionCreate, Table: data.TableProjects, Data: map[string]any{
 			"title":           "Fence Installation",
-			"project_type_id": jn(fmt.Sprintf("%d", types[0].ID)),
+			"project_type_id": types[0].ID,
 		}},
 		{Action: ActionCreate, Table: data.TableQuotes, Data: map[string]any{
-			"vendor_id":   jn("1"),
-			"project_id":  jn("1"),
+			"vendor_id":   "1",
+			"project_id":  "1",
 			"total_cents": jn("350000"),
 		}},
 	}
@@ -1333,7 +1337,7 @@ func TestShadowDB_CommitServiceLog(t *testing.T) {
 
 	ops := []Operation{
 		{Action: ActionCreate, Table: data.TableServiceLogEntries, Data: map[string]any{
-			"maintenance_item_id": jn(fmt.Sprintf("%d", itemID)),
+			"maintenance_item_id": itemID,
 			"serviced_at":         "2026-02-20",
 			"cost_cents":          jn("15000"),
 			"notes":               "Replaced filter",
@@ -1376,7 +1380,7 @@ func TestShadowDB_CommitUpdateVendor(t *testing.T) {
 
 	ops := []Operation{
 		{Action: ActionUpdate, Table: data.TableVendors, Data: map[string]any{
-			"id":    jn(fmt.Sprintf("%d", vendorID)),
+			"id":    vendorID,
 			"phone": "555-9999",
 			"email": "new@plumbing.com",
 		}},
@@ -1409,7 +1413,7 @@ func TestShadowDB_CommitUpdateAppliance(t *testing.T) {
 
 	ops := []Operation{
 		{Action: ActionUpdate, Table: data.TableAppliances, Data: map[string]any{
-			"id":            jn(fmt.Sprintf("%d", applianceID)),
+			"id":            applianceID,
 			"serial_number": "BSH-12345",
 			"model_number":  "SHP878ZD5N",
 		}},
@@ -1455,7 +1459,7 @@ func TestShadowDB_CommitUpdateQuote(t *testing.T) {
 
 	ops := []Operation{
 		{Action: ActionUpdate, Table: data.TableQuotes, Data: map[string]any{
-			"id":          jn(fmt.Sprintf("%d", q.ID)),
+			"id":          q.ID,
 			"total_cents": jn("125000"),
 			"notes":       "Revised estimate after site visit",
 		}},

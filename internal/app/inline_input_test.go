@@ -17,14 +17,14 @@ func TestOpenInlineInputSetsState(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	var field string
-	m.openInlineInput(42, "Name", "Acme", &field, nil, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000042", "Name", "Acme", &field, nil, &vendorFormData{})
 
 	require.NotNil(t, m.inlineInput)
 	assert.Equal(t, "Name", m.inlineInput.Title)
-	assert.Equal(t, uint(42), m.inlineInput.EditID)
+	assert.Equal(t, "01JTEST00000000000000042", m.inlineInput.EditID)
 	assert.Equal(t, formVendor, m.fs.formKind())
 	require.NotNil(t, m.fs.editID)
-	assert.Equal(t, uint(42), *m.fs.editID)
+	assert.Equal(t, "01JTEST00000000000000042", *m.fs.editID)
 	// The inline input prompt should be visible in the status bar.
 	status := m.statusView()
 	assert.Contains(t, status, "Name:")
@@ -34,7 +34,7 @@ func TestInlineInputEscCloses(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	var field string
-	m.openInlineInput(1, "Name", "", &field, nil, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, nil, &vendorFormData{})
 
 	sendKey(m, "esc")
 
@@ -51,7 +51,7 @@ func TestInlineInputAbsorbsKeys(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	var field string
-	m.openInlineInput(1, "Name", "", &field, nil, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, nil, &vendorFormData{})
 
 	// Keys that would normally toggle house profile or switch tabs should be absorbed.
 	showHouseBefore := m.showHouse
@@ -68,7 +68,7 @@ func TestInlineInputTypingUpdatesValue(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	var field string
-	m.openInlineInput(1, "Name", "", &field, nil, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, nil, &vendorFormData{})
 
 	// Type some characters.
 	for _, ch := range "hello" {
@@ -90,7 +90,7 @@ func TestInlineInputValidationBlocksSubmit(t *testing.T) {
 		}
 		return nil
 	}
-	m.openInlineInput(1, "Name", "", &field, validate, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, validate, &vendorFormData{})
 
 	// Try to submit with empty value -- should fail validation.
 	sendKey(m, "enter")
@@ -106,7 +106,7 @@ func TestInlineInputStatusViewRendersPrompt(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	var field string
-	m.openInlineInput(1, "Name", "", &field, nil, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, nil, &vendorFormData{})
 
 	status := m.statusView()
 	assert.Contains(t, status, "Name:")
@@ -116,7 +116,7 @@ func TestInlineInputPreservesExistingValue(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	field := "existing value"
-	m.openInlineInput(1, "Name", "", &field, nil, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, nil, &vendorFormData{})
 
 	assert.Equal(t, "existing value", m.inlineInput.Input.Value())
 	// The existing value should appear in the inline input view.
@@ -127,7 +127,14 @@ func TestInlineInputPlaceholder(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	var field string
-	m.openInlineInput(1, "Cost", "899.00", &field, nil, &applianceFormData{})
+	m.openInlineInput(
+		"01JTEST00000000000000001",
+		"Cost",
+		"899.00",
+		&field,
+		nil,
+		&applianceFormData{},
+	)
 
 	assert.Equal(t, "899.00", m.inlineInput.Input.Placeholder)
 }
@@ -136,7 +143,7 @@ func TestInlineInputTableStaysVisible(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	var field string
-	m.openInlineInput(1, "Name", "", &field, nil, &vendorFormData{})
+	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, nil, &vendorFormData{})
 
 	// The model should NOT be in form mode, so the table stays visible.
 	assert.NotEqual(t, modeForm, m.mode)

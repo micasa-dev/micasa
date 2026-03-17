@@ -130,7 +130,7 @@ func TestIsDocumentTab(t *testing.T) {
 			name: "entity-scoped document sub-tab",
 			tab: &Tab{
 				Kind:    tabAppliances,
-				Handler: newEntityDocumentHandler("appliance", 1),
+				Handler: newEntityDocumentHandler("appliance", "01JTEST00000000000000001"),
 			},
 			want: true,
 		},

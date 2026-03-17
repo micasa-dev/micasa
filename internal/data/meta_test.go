@@ -41,11 +41,11 @@ func TestBuildEntityKindToTableSkipsNonPolymorphicHasMany(t *testing.T) {
 	t.Parallel()
 
 	type child struct {
-		ID       uint `gorm:"primaryKey"`
-		ParentID uint
+		ID       string `gorm:"primaryKey"`
+		ParentID string
 	}
 	type parent struct {
-		ID       uint    `gorm:"primaryKey"`
+		ID       string  `gorm:"primaryKey"`
 		Children []child // non-polymorphic HasMany
 	}
 
@@ -57,12 +57,12 @@ func TestBuildEntityKindToTableSkipsPolymorphicToNonDocuments(t *testing.T) {
 	t.Parallel()
 
 	type comment struct {
-		ID         uint `gorm:"primaryKey"`
+		ID         string `gorm:"primaryKey"`
 		EntityKind string
-		EntityID   uint
+		EntityID   string
 	}
 	type owner struct {
-		ID       uint      `gorm:"primaryKey"`
+		ID       string    `gorm:"primaryKey"`
 		Comments []comment `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:owner"`
 	}
 

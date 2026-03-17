@@ -42,7 +42,7 @@ func TestFindOrCreateVendorExistingClearsFields(t *testing.T) {
 	require.NoError(t, err)
 
 	var reloaded Vendor
-	require.NoError(t, db.First(&reloaded, v.ID).Error)
+	require.NoError(t, db.First(&reloaded, "id = ?", v.ID).Error)
 	assert.Empty(t, reloaded.Phone, "empty phone should clear existing value")
 }
 
@@ -62,7 +62,7 @@ func TestFindOrCreateVendorExistingPreservesWhenPassedThrough(t *testing.T) {
 	require.NoError(t, err)
 
 	var reloaded Vendor
-	require.NoError(t, db.First(&reloaded, v.ID).Error)
+	require.NoError(t, db.First(&reloaded, "id = ?", v.ID).Error)
 	assert.Equal(t, "555-0000", reloaded.Phone)
 	assert.Equal(t, "keep me", reloaded.Notes)
 }
@@ -83,7 +83,7 @@ func TestFindOrCreateVendorExistingWithUpdates(t *testing.T) {
 	require.NoError(t, err)
 
 	var reloaded Vendor
-	require.NoError(t, db.First(&reloaded, v.ID).Error)
+	require.NoError(t, db.First(&reloaded, "id = ?", v.ID).Error)
 	assert.Equal(t, "Alice", reloaded.ContactName)
 	assert.Equal(t, "alice@update.co", reloaded.Email)
 	assert.Equal(t, "555-1111", reloaded.Phone)

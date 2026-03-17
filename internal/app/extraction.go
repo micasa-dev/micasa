@@ -63,7 +63,7 @@ type extractionStepInfo struct {
 // extractionLogState holds the state of the extraction progress overlay.
 type extractionLogState struct {
 	ID          uint64
-	DocID       uint
+	DocID       string
 	Filename    string
 	Steps       [numExtractionSteps]extractionStepInfo
 	Spinner     spinner.Model
@@ -253,7 +253,7 @@ type extractionLLMPingMsg struct {
 // startExtractionOverlay opens the extraction progress overlay and kicks off
 // the first applicable step. Returns nil if no async steps are needed.
 func (m *Model) startExtractionOverlay(
-	docID uint,
+	docID string,
 	filename string,
 	fileData []byte,
 	mime string,
@@ -871,7 +871,7 @@ func (m *Model) acceptDeferredExtraction() error {
 			applyStringField(op.Data, "notes", &doc.Notes)
 			applyStringField(op.Data, "entity_kind", &doc.EntityKind)
 			if v, ok := op.Data["entity_id"]; ok {
-				if n := extract.ParseUint(v); n > 0 {
+				if n := extract.ParseStringID(v); n != "" {
 					doc.EntityID = n
 				}
 			}
@@ -918,7 +918,7 @@ func (m *Model) acceptExistingExtraction() error {
 	ex := m.ex.extraction
 
 	// Restore the document if it was soft-deleted since extraction started.
-	if m.store != nil && ex.DocID > 0 {
+	if m.store != nil && ex.DocID != "" {
 		if err := m.store.EnsureDocumentAlive(ex.DocID); err != nil {
 			return fmt.Errorf("document was deleted and could not be restored: %w", err)
 		}

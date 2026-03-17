@@ -1009,7 +1009,7 @@ func TestIncidentHardDeleteErrorPath(t *testing.T) {
 	m.active = tabIndex(tabIncidents)
 	m.mode = modeEdit
 	m.confirm = confirmHardDelete
-	m.hardDeleteID = 999999
+	m.hardDeleteID = "01JNOTEXIST000000000999999"
 
 	sendKey(m, "y")
 	assert.Equal(t, confirmNone, m.confirm, "confirm should be cleared even on error")

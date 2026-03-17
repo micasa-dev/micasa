@@ -26,10 +26,10 @@ func TestWithOrdinals(t *testing.T) {
 		}
 	})
 
-	t.Run("prefixes uint options", func(t *testing.T) {
-		opts := withOrdinals([]huh.Option[uint]{
-			huh.NewOption("First", uint(1)),
-			huh.NewOption("Second", uint(2)),
+	t.Run("prefixes string ID options", func(t *testing.T) {
+		opts := withOrdinals([]huh.Option[string]{
+			huh.NewOption("First", "01JTEST00000000000000001"),
+			huh.NewOption("Second", "01JTEST00000000000000002"),
 		})
 		assert.Equal(t, "1. First", opts[0].Key)
 		assert.Equal(t, "2. Second", opts[1].Key)
@@ -220,13 +220,13 @@ func TestJumpSelectToOrdinal(t *testing.T) {
 		assert.Equal(t, "a", val, "value should be unchanged when ordinal exceeds count")
 	})
 
-	t.Run("works with uint select", func(t *testing.T) {
-		val := uint(10)
-		sel := huh.NewSelect[uint]().
+	t.Run("works with string ID select", func(t *testing.T) {
+		val := "01JTEST00000000000000010"
+		sel := huh.NewSelect[string]().
 			Options(
-				huh.NewOption("First", uint(10)),
-				huh.NewOption("Second", uint(20)),
-				huh.NewOption("Third", uint(30)),
+				huh.NewOption("First", "01JTEST00000000000000010"),
+				huh.NewOption("Second", "01JTEST00000000000000020"),
+				huh.NewOption("Third", "01JTEST00000000000000030"),
 			).
 			Value(&val)
 
@@ -236,6 +236,6 @@ func TestJumpSelectToOrdinal(t *testing.T) {
 		m := &Model{fs: formState{form: form}}
 		m.jumpSelectToOrdinal(3)
 
-		require.Equal(t, uint(30), val)
+		require.Equal(t, "01JTEST00000000000000030", val)
 	})
 }

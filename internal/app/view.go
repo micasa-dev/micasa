@@ -633,7 +633,7 @@ func (m *Model) editHint() string {
 	spec := tab.Specs[col]
 	// Show "follow link" hint when on a linked cell with a target.
 	if spec.Link != nil || spec.Kind == cellEntity {
-		if c, ok := m.selectedCell(col); ok && c.LinkID > 0 {
+		if c, ok := m.selectedCell(col); ok && c.LinkID != "" {
 			return "follow " + linkArrow
 		}
 	}
@@ -665,7 +665,7 @@ func (m *Model) enterHint() string {
 		return m.drilldownHint(tab, spec)
 	}
 	if spec.Link != nil || spec.Kind == cellEntity {
-		if c, ok := m.selectedCell(col); ok && c.LinkID > 0 {
+		if c, ok := m.selectedCell(col); ok && c.LinkID != "" {
 			return "follow " + linkArrow
 		}
 	}

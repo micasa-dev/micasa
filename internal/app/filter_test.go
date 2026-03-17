@@ -4,6 +4,7 @@
 package app
 
 import (
+	"fmt"
 	"testing"
 
 	"charm.land/bubbles/v2/table"
@@ -33,7 +34,7 @@ func newFilterTab() *Tab {
 			r[j] = c.Value
 		}
 		rows[i] = r
-		meta[i] = rowMeta{ID: uint(i + 1)} //nolint:gosec // i bounded by slice length
+		meta[i] = rowMeta{ID: fmt.Sprintf("01JTEST%020d", i+1)}
 	}
 	cols := []table.Column{
 		{Title: "ID", Width: 4},
@@ -102,7 +103,7 @@ func newFilterModel(t *testing.T) (*Model, *Tab) {
 			r[j] = c.Value
 		}
 		rows[i] = r
-		meta[i] = rowMeta{ID: uint(i + 1)} //nolint:gosec // i bounded by slice length
+		meta[i] = rowMeta{ID: fmt.Sprintf("01JTEST%020d", i+1)}
 	}
 	cols := []table.Column{
 		{Title: "ID", Width: 4},

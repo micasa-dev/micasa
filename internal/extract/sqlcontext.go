@@ -13,7 +13,7 @@ import (
 
 // EntityRow is a lightweight (id, name) pair for FK context in LLM prompts.
 type EntityRow struct {
-	ID   uint
+	ID   string
 	Name string
 }
 
@@ -109,7 +109,7 @@ var ExtractionTableDefs = []TableDef{
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"name"}},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeInteger},
+				{Name: "id", Type: ColTypeString},
 			}},
 		},
 	},
@@ -119,7 +119,7 @@ var ExtractionTableDefs = []TableDef{
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"name"}},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeInteger},
+				{Name: "id", Type: ColTypeString},
 			}},
 		},
 	},
@@ -150,7 +150,7 @@ var ExtractionTableDefs = []TableDef{
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"project_id", "total_cents"}},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeInteger},
+				{Name: "id", Type: ColTypeString},
 			}},
 		},
 	},
@@ -160,7 +160,7 @@ var ExtractionTableDefs = []TableDef{
 		Actions: []ActionDef{
 			{Action: ActionCreate, Required: []string{"name"}},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeInteger},
+				{Name: "id", Type: ColTypeString},
 			}},
 		},
 	},
@@ -215,7 +215,7 @@ var ExtractionTableDefs = []TableDef{
 		Actions: []ActionDef{
 			{Action: ActionCreate},
 			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeInteger},
+				{Name: "id", Type: ColTypeString},
 			}, Omit: []string{"file_name"}},
 		},
 	},
@@ -342,7 +342,7 @@ func FormatEntityRows(label string, rows []EntityRow) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "-- %s (id, name)\n", label)
 	for _, r := range rows {
-		fmt.Fprintf(&b, "-- %d, %s\n", r.ID, r.Name)
+		fmt.Fprintf(&b, "-- %s, %s\n", r.ID, r.Name)
 	}
 	return b.String()
 }

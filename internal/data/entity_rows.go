@@ -7,7 +7,7 @@ import "fmt"
 
 // EntityRow is a lightweight (id, name) pair for FK context in LLM prompts.
 type EntityRow struct {
-	ID   uint
+	ID   string
 	Name string
 }
 

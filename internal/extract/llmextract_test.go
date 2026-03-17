@@ -18,12 +18,15 @@ func TestBuildExtractionPrompt(t *testing.T) {
 			data.TableVendors:   "CREATE TABLE `vendors` (`id` integer PRIMARY KEY AUTOINCREMENT, `name` text)",
 			data.TableDocuments: "CREATE TABLE `documents` (`id` integer PRIMARY KEY AUTOINCREMENT, `title` text)",
 		},
-		Vendors:    []EntityRow{{ID: 1, Name: "Garcia Plumbing"}, {ID: 2, Name: "Acme Electric"}},
-		Projects:   []EntityRow{{ID: 1, Name: "Kitchen Remodel"}},
-		Appliances: []EntityRow{{ID: 1, Name: "HVAC Unit"}},
+		Vendors: []EntityRow{
+			{ID: "1", Name: "Garcia Plumbing"},
+			{ID: "2", Name: "Acme Electric"},
+		},
+		Projects:   []EntityRow{{ID: "1", Name: "Kitchen Remodel"}},
+		Appliances: []EntityRow{{ID: "1", Name: "HVAC Unit"}},
 	}
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:     42,
+		DocID:     "42",
 		Filename:  "invoice.pdf",
 		MIME:      "application/pdf",
 		SizeBytes: 12345,
@@ -57,7 +60,7 @@ func TestBuildExtractionPrompt(t *testing.T) {
 func TestBuildExtractionPrompt_DualSources(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:    1,
+		DocID:    "1",
 		Filename: "mixed.pdf",
 		MIME:     "application/pdf",
 		Sources: []TextSource{
@@ -77,7 +80,7 @@ func TestBuildExtractionPrompt_DualSources(t *testing.T) {
 func TestBuildExtractionPrompt_OCROnly(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:    1,
+		DocID:    "1",
 		Filename: "scan.pdf",
 		MIME:     "application/pdf",
 		Sources: []TextSource{
@@ -94,7 +97,7 @@ func TestBuildExtractionPrompt_OCROnly(t *testing.T) {
 func TestBuildExtractionPrompt_NoEntities(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:    1,
+		DocID:    "1",
 		Filename: "doc.txt",
 		MIME:     "text/plain",
 		Sources: []TextSource{
@@ -105,10 +108,10 @@ func TestBuildExtractionPrompt_NoEntities(t *testing.T) {
 	assert.NotContains(t, msgs[0].Content, "Existing rows")
 }
 
-func TestBuildExtractionPrompt_ZeroDocID(t *testing.T) {
+func TestBuildExtractionPrompt_EmptyDocID(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:    0,
+		DocID:    "",
 		Filename: "new.pdf",
 		MIME:     "application/pdf",
 		Sources: []TextSource{
@@ -117,14 +120,14 @@ func TestBuildExtractionPrompt_ZeroDocID(t *testing.T) {
 	})
 	require.Len(t, msgs, 2)
 	user := msgs[1].Content
-	assert.NotContains(t, user, "Document ID:", "zero DocID should omit Document ID line")
+	assert.NotContains(t, user, "Document ID:", "empty DocID should omit Document ID line")
 	assert.Contains(t, user, "new.pdf")
 }
 
 func TestBuildExtractionPrompt_NonZeroDocID(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:    42,
+		DocID:    "42",
 		Filename: "existing.pdf",
 		MIME:     "application/pdf",
 		Sources: []TextSource{
@@ -187,7 +190,7 @@ func TestOperationExtractionRules_CoversAllTables(t *testing.T) {
 func TestBuildExtractionPrompt_ContainsFewShotExamples(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:    1,
+		DocID:    "1",
 		Filename: "test.pdf",
 		MIME:     "application/pdf",
 		Schema: SchemaContext{
@@ -218,7 +221,7 @@ const sampleTSV = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft
 func TestBuildExtractionPrompt_SpatialSentWhenEnabled(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "scan.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -242,7 +245,7 @@ func TestBuildExtractionPrompt_SpatialSentWhenEnabled(t *testing.T) {
 func TestBuildExtractionPrompt_SpatialNotSentByDefault(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:    1,
+		DocID:    "1",
 		Filename: "scan.pdf",
 		MIME:     "application/pdf",
 		// SendTSV defaults to false.
@@ -262,7 +265,7 @@ func TestBuildExtractionPrompt_SpatialNotSentByDefault(t *testing.T) {
 func TestBuildExtractionPrompt_SpatialMixedSources(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "mixed.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -287,7 +290,7 @@ func TestBuildExtractionPrompt_SpatialMixedSources(t *testing.T) {
 func TestBuildExtractionPrompt_TSVColumnHintIncluded(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "scan.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -309,7 +312,7 @@ func TestBuildExtractionPrompt_TSVSourceWithoutData(t *testing.T) {
 	// A tesseract source with no Data field should fall back to plain text
 	// even when SendTSV is true.
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "scan.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -329,7 +332,7 @@ func TestBuildExtractionPrompt_SpatialFallbackOnEmptyTSV(t *testing.T) {
 	// TSV with only a header (no data rows) should fall back to plain text.
 	headerOnlyTSV := "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "scan.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -355,7 +358,7 @@ func TestBuildExtractionPrompt_SpatialFallbackOnEmptyTSV(t *testing.T) {
 func TestBuildExtractionPrompt_TSVPreambleMentionsSpatial(t *testing.T) {
 	t.Parallel()
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "scan.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -376,7 +379,7 @@ func TestBuildExtractionPrompt_ConfThresholdThreaded(t *testing.T) {
 	// sampleTSV has confidence 95 and 92. With threshold 96, the line
 	// should show confidence (min 92 < 96). With threshold 70, it should not.
 	msgsHigh := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "scan.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -390,7 +393,7 @@ func TestBuildExtractionPrompt_ConfThresholdThreaded(t *testing.T) {
 		"confidence should appear when min conf (92) < threshold (96)")
 
 	msgsLow := BuildExtractionPrompt(ExtractionPromptInput{
-		DocID:         1,
+		DocID:         "1",
 		Filename:      "scan.pdf",
 		MIME:          "application/pdf",
 		SendTSV:       true,
@@ -429,7 +432,7 @@ func TestFormatDDLBlock_MissingTable(t *testing.T) {
 
 func TestFormatEntityRows(t *testing.T) {
 	t.Parallel()
-	rows := []EntityRow{{ID: 1, Name: "Garcia Plumbing"}, {ID: 2, Name: "Acme Electric"}}
+	rows := []EntityRow{{ID: "1", Name: "Garcia Plumbing"}, {ID: "2", Name: "Acme Electric"}}
 	result := FormatEntityRows(data.TableVendors, rows)
 	assert.Contains(t, result, "-- vendors (id, name)")
 	assert.Contains(t, result, "-- 1, Garcia Plumbing")

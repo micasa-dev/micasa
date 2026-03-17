@@ -13,7 +13,7 @@ import (
 
 // ExtractionPromptInput holds the inputs for building an extraction prompt.
 type ExtractionPromptInput struct {
-	DocID         uint
+	DocID         string
 	Filename      string
 	MIME          string
 	SizeBytes     int64
@@ -65,8 +65,8 @@ func operationExtractionSystemPrompt(ctx SchemaContext, sendTSV bool) string {
 
 func operationExtractionUserMessage(in ExtractionPromptInput) string {
 	var b strings.Builder
-	if in.DocID > 0 {
-		fmt.Fprintf(&b, "Document ID: %d\n", in.DocID)
+	if in.DocID != "" {
+		fmt.Fprintf(&b, "Document ID: %s\n", in.DocID)
 	}
 	fmt.Fprintf(&b, "Filename: %s\n", in.Filename)
 	fmt.Fprintf(&b, "MIME: %s\n", in.MIME)

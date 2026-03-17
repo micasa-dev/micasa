@@ -353,7 +353,7 @@ func TestAddQuoteFormHasOnlyEssentialFields(t *testing.T) {
 func TestAddServiceLogFormHasOnlyEssentialFields(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startServiceLogForm(0))
+	require.NoError(t, m.startServiceLogForm(""))
 	view := formFieldLabels(m)
 	for _, want := range []string{"Date serviced", "Performed by"} {
 		assert.Containsf(t, view, want, "add service log form should contain %q", want)

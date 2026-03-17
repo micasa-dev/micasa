@@ -189,7 +189,7 @@ func TestSearchDocumentsEntityFields(t *testing.T) {
 		Title:         "Project Doc",
 		FileName:      "pd.pdf",
 		EntityKind:    DocumentEntityProject,
-		EntityID:      42,
+		EntityID:      "01JTEST00000000000000042",
 		ExtractedText: "kitchen renovation details",
 	}))
 
@@ -197,7 +197,7 @@ func TestSearchDocumentsEntityFields(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, DocumentEntityProject, results[0].EntityKind)
-	assert.Equal(t, uint(42), results[0].EntityID)
+	assert.Equal(t, "01JTEST00000000000000042", results[0].EntityID)
 }
 
 func TestSearchDocumentsSnippetFromBestColumn(t *testing.T) {

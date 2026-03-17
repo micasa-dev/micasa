@@ -4,6 +4,7 @@
 package app
 
 import (
+	"fmt"
 	"testing"
 
 	"charm.land/bubbles/v2/table"
@@ -305,7 +306,7 @@ func seedTabMoneyCells(tab *Tab, amounts []string) {
 		}
 		cellRows[i] = cr
 		rows[i] = r
-		meta[i] = rowMeta{ID: uint(i + 1)} //nolint:gosec // i bounded by slice length
+		meta[i] = rowMeta{ID: fmt.Sprintf("01JTEST%020d", i+1)}
 	}
 	tab.CellRows = cellRows
 	tab.FullCellRows = cellRows

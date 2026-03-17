@@ -25,19 +25,19 @@ type TabHandler interface {
 	) ([]table.Row, []rowMeta, [][]cell, error)
 
 	// Delete soft-deletes the entity with the given ID.
-	Delete(store *data.Store, id uint) error
+	Delete(store *data.Store, id string) error
 
 	// Restore reverses a soft-delete.
-	Restore(store *data.Store, id uint) error
+	Restore(store *data.Store, id string) error
 
 	// StartAddForm opens a "new entity" form on the model.
 	StartAddForm(m *Model) error
 
 	// StartEditForm opens an "edit entity" form for the given ID.
-	StartEditForm(m *Model, id uint) error
+	StartEditForm(m *Model, id string) error
 
 	// InlineEdit opens a single-field editor for the given column.
-	InlineEdit(m *Model, id uint, col int) error
+	InlineEdit(m *Model, id string, col int) error
 
 	// SubmitForm persists the current form data (create or update).
 	SubmitForm(m *Model) error
@@ -66,18 +66,18 @@ func (m *Model) handlerForFormKind(kind FormKind) TabHandler {
 
 // fetchCounts calls a count function and returns its result, degrading to an
 // empty map on error so the primary entity list still renders.
-func fetchCounts(fn func([]uint) (map[uint]int, error), ids []uint) map[uint]int {
+func fetchCounts(fn func([]string) (map[string]int, error), ids []string) map[string]int {
 	counts, err := fn(ids)
 	if err != nil {
-		return map[uint]int{}
+		return map[string]int{}
 	}
 	return counts
 }
 
 // fetchDocCounts is a convenience wrapper around fetchCounts for document
 // count queries that require an entity kind parameter.
-func fetchDocCounts(store *data.Store, kind string, ids []uint) map[uint]int {
-	return fetchCounts(func(ids []uint) (map[uint]int, error) {
+func fetchDocCounts(store *data.Store, kind string, ids []string) map[string]int {
+	return fetchCounts(func(ids []string) (map[string]int, error) {
 		return store.CountDocumentsByEntity(kind, ids)
 	}, ids)
 }
@@ -98,18 +98,18 @@ func (projectHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ids := entityIDs(projects, func(p data.Project) uint { return p.ID })
+	ids := entityIDs(projects, func(p data.Project) string { return p.ID })
 	quoteCounts := fetchCounts(store.CountQuotesByProject, ids)
 	docCounts := fetchDocCounts(store, data.DocumentEntityProject, ids)
 	rows, meta, cellRows := projectRows(projects, quoteCounts, docCounts, store.Currency())
 	return rows, meta, cellRows, nil
 }
 
-func (projectHandler) Delete(store *data.Store, id uint) error {
+func (projectHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteProject(id)
 }
 
-func (projectHandler) Restore(store *data.Store, id uint) error {
+func (projectHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreProject(id)
 }
 
@@ -118,11 +118,11 @@ func (projectHandler) StartAddForm(m *Model) error {
 	return nil
 }
 
-func (projectHandler) StartEditForm(m *Model, id uint) error {
+func (projectHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditProjectForm(id)
 }
 
-func (projectHandler) InlineEdit(m *Model, id uint, col int) error {
+func (projectHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditProject(id, projectCol(col))
 }
 
@@ -154,17 +154,17 @@ func (quoteHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ids := entityIDs(quotes, func(q data.Quote) uint { return q.ID })
+	ids := entityIDs(quotes, func(q data.Quote) string { return q.ID })
 	docCounts := fetchDocCounts(store, data.DocumentEntityQuote, ids)
 	rows, meta, cellRows := quoteRows(quotes, docCounts, store.Currency())
 	return rows, meta, cellRows, nil
 }
 
-func (quoteHandler) Delete(store *data.Store, id uint) error {
+func (quoteHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteQuote(id)
 }
 
-func (quoteHandler) Restore(store *data.Store, id uint) error {
+func (quoteHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreQuote(id)
 }
 
@@ -172,11 +172,11 @@ func (quoteHandler) StartAddForm(m *Model) error {
 	return m.startQuoteForm()
 }
 
-func (quoteHandler) StartEditForm(m *Model, id uint) error {
+func (quoteHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditQuoteForm(id)
 }
 
-func (quoteHandler) InlineEdit(m *Model, id uint, col int) error {
+func (quoteHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditQuote(id, quoteCol(col))
 }
 
@@ -202,18 +202,18 @@ func (maintenanceHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ids := entityIDs(items, func(item data.MaintenanceItem) uint { return item.ID })
+	ids := entityIDs(items, func(item data.MaintenanceItem) string { return item.ID })
 	logCounts := fetchCounts(store.CountServiceLogs, ids)
 	docCounts := fetchDocCounts(store, data.DocumentEntityMaintenance, ids)
 	rows, meta, cellRows := maintenanceRows(items, logCounts, docCounts)
 	return rows, meta, cellRows, nil
 }
 
-func (maintenanceHandler) Delete(store *data.Store, id uint) error {
+func (maintenanceHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteMaintenance(id)
 }
 
-func (maintenanceHandler) Restore(store *data.Store, id uint) error {
+func (maintenanceHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreMaintenance(id)
 }
 
@@ -221,11 +221,11 @@ func (maintenanceHandler) StartAddForm(m *Model) error {
 	return m.startMaintenanceForm()
 }
 
-func (maintenanceHandler) StartEditForm(m *Model, id uint) error {
+func (maintenanceHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditMaintenanceForm(id)
 }
 
-func (maintenanceHandler) InlineEdit(m *Model, id uint, col int) error {
+func (maintenanceHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditMaintenance(id, maintenanceCol(col))
 }
 
@@ -263,7 +263,7 @@ func (applianceHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ids := entityIDs(items, func(a data.Appliance) uint { return a.ID })
+	ids := entityIDs(items, func(a data.Appliance) string { return a.ID })
 	maintCounts := fetchCounts(store.CountMaintenanceByAppliance, ids)
 	docCounts := fetchDocCounts(store, data.DocumentEntityAppliance, ids)
 	rows, meta, cellRows := applianceRows(
@@ -276,11 +276,11 @@ func (applianceHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (applianceHandler) Delete(store *data.Store, id uint) error {
+func (applianceHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteAppliance(id)
 }
 
-func (applianceHandler) Restore(store *data.Store, id uint) error {
+func (applianceHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreAppliance(id)
 }
 
@@ -289,11 +289,11 @@ func (applianceHandler) StartAddForm(m *Model) error {
 	return nil
 }
 
-func (applianceHandler) StartEditForm(m *Model, id uint) error {
+func (applianceHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditApplianceForm(id)
 }
 
-func (applianceHandler) InlineEdit(m *Model, id uint, col int) error {
+func (applianceHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditAppliance(id, applianceCol(col))
 }
 
@@ -319,17 +319,17 @@ func (incidentHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ids := entityIDs(items, func(inc data.Incident) uint { return inc.ID })
+	ids := entityIDs(items, func(inc data.Incident) string { return inc.ID })
 	docCounts := fetchDocCounts(store, data.DocumentEntityIncident, ids)
 	rows, meta, cellRows := incidentRows(items, docCounts, store.Currency())
 	return rows, meta, cellRows, nil
 }
 
-func (incidentHandler) Delete(store *data.Store, id uint) error {
+func (incidentHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteIncident(id)
 }
 
-func (incidentHandler) Restore(store *data.Store, id uint) error {
+func (incidentHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreIncident(id)
 }
 
@@ -337,11 +337,11 @@ func (incidentHandler) StartAddForm(m *Model) error {
 	return m.startIncidentForm()
 }
 
-func (incidentHandler) StartEditForm(m *Model, id uint) error {
+func (incidentHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditIncidentForm(id)
 }
 
-func (incidentHandler) InlineEdit(m *Model, id uint, col int) error {
+func (incidentHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditIncident(id, incidentCol(col))
 }
 
@@ -372,9 +372,9 @@ func (incidentHandler) SyncFixedValues(_ *Model, specs []columnSpec) {
 type scopedHandler struct {
 	TabHandler   // embedded; delegates FormKind, Delete, Restore, StartEditForm, SyncFixedValues
 	loadFn       func(*data.Store, bool) ([]table.Row, []rowMeta, [][]cell, error)
-	inlineEditFn func(*Model, uint, int) error // nil = TabHandler.InlineEdit
-	startAddFn   func(*Model) error            // nil = TabHandler.StartAddForm
-	submitFn     func(*Model) error            // nil = TabHandler.SubmitForm
+	inlineEditFn func(*Model, string, int) error // nil = TabHandler.InlineEdit
+	startAddFn   func(*Model) error              // nil = TabHandler.StartAddForm
+	submitFn     func(*Model) error              // nil = TabHandler.SubmitForm
 }
 
 func (s scopedHandler) Load(
@@ -391,7 +391,7 @@ func (s scopedHandler) StartAddForm(m *Model) error {
 	return s.TabHandler.StartAddForm(m)
 }
 
-func (s scopedHandler) InlineEdit(m *Model, id uint, col int) error {
+func (s scopedHandler) InlineEdit(m *Model, id string, col int) error {
 	if s.inlineEditFn != nil {
 		return s.inlineEditFn(m, id, col)
 	}
@@ -407,8 +407,8 @@ func (s scopedHandler) SubmitForm(m *Model) error {
 
 // skipColEdit returns an InlineEdit function that skips a removed column by
 // remapping indices at and above skipAt to skipAt+1.
-func skipColEdit(parent TabHandler, skipAt int) func(*Model, uint, int) error {
-	return func(m *Model, id uint, col int) error {
+func skipColEdit(parent TabHandler, skipAt int) func(*Model, string, int) error {
+	return func(m *Model, id string, col int) error {
 		fullCol := col
 		if col >= skipAt {
 			fullCol = col + 1
@@ -421,7 +421,7 @@ func skipColEdit(parent TabHandler, skipAt int) func(*Model, uint, int) error {
 // Scoped handler constructors
 // ---------------------------------------------------------------------------
 
-func newApplianceMaintenanceHandler(applianceID uint) scopedHandler {
+func newApplianceMaintenanceHandler(applianceID string) scopedHandler {
 	parent := maintenanceHandler{}
 	return scopedHandler{
 		TabHandler: parent,
@@ -430,7 +430,7 @@ func newApplianceMaintenanceHandler(applianceID uint) scopedHandler {
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			ids := entityIDs(items, func(item data.MaintenanceItem) uint { return item.ID })
+			ids := entityIDs(items, func(item data.MaintenanceItem) string { return item.ID })
 			logCounts := fetchCounts(store.CountServiceLogs, ids)
 			docCounts := fetchDocCounts(store, data.DocumentEntityMaintenance, ids)
 			rows, meta, cellRows := applianceMaintenanceRows(items, logCounts, docCounts)
@@ -446,7 +446,7 @@ func newApplianceMaintenanceHandler(applianceID uint) scopedHandler {
 // ---------------------------------------------------------------------------
 
 type serviceLogHandler struct {
-	maintenanceItemID uint
+	maintenanceItemID string
 }
 
 func (h serviceLogHandler) FormKind() FormKind { return formServiceLog }
@@ -459,17 +459,17 @@ func (h serviceLogHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ids := entityIDs(entries, func(e data.ServiceLogEntry) uint { return e.ID })
+	ids := entityIDs(entries, func(e data.ServiceLogEntry) string { return e.ID })
 	docCounts := fetchDocCounts(store, data.DocumentEntityServiceLog, ids)
 	rows, meta, cellRows := serviceLogRows(entries, docCounts, store.Currency())
 	return rows, meta, cellRows, nil
 }
 
-func (h serviceLogHandler) Delete(store *data.Store, id uint) error {
+func (h serviceLogHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteServiceLog(id)
 }
 
-func (h serviceLogHandler) Restore(store *data.Store, id uint) error {
+func (h serviceLogHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreServiceLog(id)
 }
 
@@ -477,11 +477,11 @@ func (h serviceLogHandler) StartAddForm(m *Model) error {
 	return m.startServiceLogForm(h.maintenanceItemID)
 }
 
-func (h serviceLogHandler) StartEditForm(m *Model, id uint) error {
+func (h serviceLogHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditServiceLogForm(id)
 }
 
-func (h serviceLogHandler) InlineEdit(m *Model, id uint, col int) error {
+func (h serviceLogHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditServiceLog(id, serviceLogCol(col))
 }
 
@@ -507,7 +507,7 @@ func (vendorHandler) Load(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ids := entityIDs(vendors, func(v data.Vendor) uint { return v.ID })
+	ids := entityIDs(vendors, func(v data.Vendor) string { return v.ID })
 	quoteCounts := fetchCounts(store.CountQuotesByVendor, ids)
 	jobCounts := fetchCounts(store.CountServiceLogsByVendor, ids)
 	docCounts := fetchDocCounts(store, data.DocumentEntityVendor, ids)
@@ -515,11 +515,11 @@ func (vendorHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (vendorHandler) Delete(store *data.Store, id uint) error {
+func (vendorHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteVendor(id)
 }
 
-func (vendorHandler) Restore(store *data.Store, id uint) error {
+func (vendorHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreVendor(id)
 }
 
@@ -528,11 +528,11 @@ func (vendorHandler) StartAddForm(m *Model) error {
 	return nil
 }
 
-func (vendorHandler) StartEditForm(m *Model, id uint) error {
+func (vendorHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditVendorForm(id)
 }
 
-func (vendorHandler) InlineEdit(m *Model, id uint, col int) error {
+func (vendorHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditVendor(id, vendorCol(col))
 }
 
@@ -542,7 +542,7 @@ func (vendorHandler) SubmitForm(m *Model) error {
 
 func (vendorHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
 
-func newVendorQuoteHandler(vendorID uint) scopedHandler {
+func newVendorQuoteHandler(vendorID string) scopedHandler {
 	parent := quoteHandler{}
 	return scopedHandler{
 		TabHandler: parent,
@@ -551,7 +551,7 @@ func newVendorQuoteHandler(vendorID uint) scopedHandler {
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			ids := entityIDs(quotes, func(q data.Quote) uint { return q.ID })
+			ids := entityIDs(quotes, func(q data.Quote) string { return q.ID })
 			docCounts := fetchDocCounts(store, data.DocumentEntityQuote, ids)
 			rows, meta, cellRows := vendorQuoteRows(quotes, docCounts, store.Currency())
 			return rows, meta, cellRows, nil
@@ -560,7 +560,7 @@ func newVendorQuoteHandler(vendorID uint) scopedHandler {
 	}
 }
 
-func newVendorJobsHandler(vendorID uint) scopedHandler {
+func newVendorJobsHandler(vendorID string) scopedHandler {
 	parent := serviceLogHandler{}
 	return scopedHandler{
 		TabHandler: parent,
@@ -572,7 +572,7 @@ func newVendorJobsHandler(vendorID uint) scopedHandler {
 			rows, meta, cellRows := vendorJobsRows(entries, store.Currency())
 			return rows, meta, cellRows, nil
 		},
-		inlineEditFn: func(m *Model, id uint, col int) error {
+		inlineEditFn: func(m *Model, id string, col int) error {
 			switch vendorJobsCol(col) {
 			case vendorJobsColItem:
 				m.setStatusInfo("Edit item from the Maintenance tab.")
@@ -594,7 +594,7 @@ func newVendorJobsHandler(vendorID uint) scopedHandler {
 	}
 }
 
-func newProjectQuoteHandler(projectID uint) scopedHandler {
+func newProjectQuoteHandler(projectID string) scopedHandler {
 	parent := quoteHandler{}
 	return scopedHandler{
 		TabHandler: parent,
@@ -603,7 +603,7 @@ func newProjectQuoteHandler(projectID uint) scopedHandler {
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			ids := entityIDs(quotes, func(q data.Quote) uint { return q.ID })
+			ids := entityIDs(quotes, func(q data.Quote) string { return q.ID })
 			docCounts := fetchDocCounts(store, data.DocumentEntityQuote, ids)
 			rows, meta, cellRows := projectQuoteRows(quotes, docCounts, store.Currency())
 			return rows, meta, cellRows, nil
@@ -633,11 +633,11 @@ func (documentHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (documentHandler) Delete(store *data.Store, id uint) error {
+func (documentHandler) Delete(store *data.Store, id string) error {
 	return store.DeleteDocument(id)
 }
 
-func (documentHandler) Restore(store *data.Store, id uint) error {
+func (documentHandler) Restore(store *data.Store, id string) error {
 	return store.RestoreDocument(id)
 }
 
@@ -645,11 +645,11 @@ func (documentHandler) StartAddForm(m *Model) error {
 	return m.startDocumentForm("")
 }
 
-func (documentHandler) StartEditForm(m *Model, id uint) error {
+func (documentHandler) StartEditForm(m *Model, id string) error {
 	return m.startEditDocumentForm(id)
 }
 
-func (documentHandler) InlineEdit(m *Model, id uint, col int) error {
+func (documentHandler) InlineEdit(m *Model, id string, col int) error {
 	return m.inlineEditDocument(id, documentCol(col))
 }
 
@@ -659,7 +659,7 @@ func (documentHandler) SubmitForm(m *Model) error {
 
 func (documentHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
 
-func newEntityDocumentHandler(entityKind string, entityID uint) scopedHandler {
+func newEntityDocumentHandler(entityKind string, entityID string) scopedHandler {
 	parent := documentHandler{}
 	return scopedHandler{
 		TabHandler: parent,

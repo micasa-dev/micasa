@@ -122,7 +122,7 @@ func renderHeaderRow(
 // LinkID. Used to decide whether to show the → arrow in the header.
 func columnHasLinks(rows [][]cell, col int) bool {
 	for _, row := range rows {
-		if col < len(row) && row[col].LinkID > 0 {
+		if col < len(row) && row[col].LinkID != "" {
 			return true
 		}
 	}
