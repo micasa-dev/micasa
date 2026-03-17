@@ -125,7 +125,7 @@ tables are:
 | `deletion_records` | Local audit trail. Redundant with oplog for sync; rebuilt locally from applied ops. |
 | `settings` | Per-device preferences (e.g., last-used LLM model) |
 | `chat_inputs` | Per-device chat history |
-| `sync_oplog` | The sync mechanism itself |
+| `sync_oplog_entries` | The sync mechanism itself |
 | `sync_device` | Local-only device identity and sync cursor |
 
 ### Key properties
@@ -195,7 +195,7 @@ New:     ID string `gorm:"primaryKey;size:26"` — ULID, globally unique
 - **Time-sortable.** ULID's first 48 bits encode millisecond-precision
   time. `ORDER BY id` produces chronological order. This preserves the
   behavior users expect from auto-increment IDs.
-- **Already in the oplog.** The `sync_oplog.id` field already uses ULIDs.
+- **Already in the oplog.** The `sync_oplog_entries.id` field already uses ULIDs.
   Using ULIDs for row IDs unifies the ID strategy.
 - **Compact.** 26 chars vs UUID's 36. Smaller indices.
 - **No coordination.** Each device generates ULIDs independently with
@@ -261,10 +261,10 @@ Every mutation (insert, update, soft-delete, restore) is captured as an
 operation in a local append-only log before it's applied to the database.
 This log is the unit of sync.
 
-### New table: `sync_oplog`
+### New table: `sync_oplog_entries`
 
 ```sql
-CREATE TABLE sync_oplog (
+CREATE TABLE sync_oplog_entries (
     id TEXT PRIMARY KEY,           -- ULID (time-sortable, globally unique)
     table_name TEXT NOT NULL,      -- e.g. "projects", "maintenance_items"
     row_id TEXT NOT NULL,          -- ULID PK of the affected row (see Section 4)
@@ -278,9 +278,9 @@ CREATE TABLE sync_oplog (
     synced_at TEXT                 -- set when successfully pushed to relay
 );
 
-CREATE INDEX idx_oplog_synced ON sync_oplog(synced_at);
-CREATE INDEX idx_oplog_table_row ON sync_oplog(table_name, row_id);
-CREATE INDEX idx_oplog_unapplied ON sync_oplog(applied_at) WHERE applied_at IS NULL;
+CREATE INDEX idx_oplog_synced ON sync_oplog_entries(synced_at);
+CREATE INDEX idx_oplog_table_row ON sync_oplog_entries(table_name, row_id);
+CREATE INDEX idx_oplog_unapplied ON sync_oplog_entries(applied_at) WHERE applied_at IS NULL;
 ```
 
 **Op lifecycle:**
@@ -353,7 +353,7 @@ as usual.
 - `deletion_records` (local audit trail, rebuilt from oplog)
 - `settings` (per-device preferences)
 - `chat_inputs` (per-device chat history)
-- `sync_oplog` itself
+- `sync_oplog_entries` itself
 - `sync_device` (local-only device identity)
 
 **Special handling for documents:**
@@ -363,6 +363,17 @@ as usual.
 - A `blob_ref` field in the payload points to the content-addressed blob
   in the blob store (the SHA-256 hash already computed for integrity, stored
   in `ChecksumSHA256`).
+- When applying remote document ops, the `blob_ref` key is stripped from
+  the payload before writing to the database — it has no corresponding DB
+  column and exists only to coordinate blob sync. Similarly, `deleted_at`
+  is always stripped to prevent a malicious relay from injecting
+  soft-deletes via crafted payloads.
+
+**Deterministic delete convergence:**
+- When applying a remote "delete" op, the client sets `deleted_at` to the
+  op's `created_at` timestamp (not `time.Now()`). This ensures all devices
+  converge on the same `deleted_at` value for the same delete operation,
+  regardless of when each device processes it.
 
 ### CASCADE handling
 
@@ -463,23 +474,28 @@ household key via an asymmetric key exchange (NaCl box).
 
 ### Encryption envelope
 
-Every operation pushed to the relay is wrapped in:
+Every operation pushed to the relay is wrapped in an `Envelope`:
 
-```json
-{
-  "id": "01J...",
-  "household_id": "hh_...",
-  "device_id": "dev_...",
-  "nonce": "<24 bytes, base64>",
-  "ciphertext": "<encrypted oplog entry, base64>",
-  "created_at": "2026-03-16T10:30:00.000Z",
-  "seq": 4827
+```go
+type Envelope struct {
+    ID         string    `json:"id"`
+    Nonce      []byte    `json:"nonce"`       // 24 bytes (XSalsa20)
+    Ciphertext []byte    `json:"ciphertext"`  // secretbox-sealed oplog entry
+    CreatedAt  time.Time `json:"created_at"`
+    Seq        int64     `json:"seq"`          // assigned by relay on push
 }
 ```
 
-The server sees: household_id, device_id, nonce, ciphertext, timestamp,
-and sequence number. It cannot read the ciphertext. It uses household_id
-to route ops to the right clients and seq for ordering.
+The client constructs `sealed = nonce || ciphertext` for encryption/
+decryption via `crypto.Encrypt`/`crypto.Decrypt`. The nonce and
+ciphertext are split for JSON transport and stored separately on the
+relay.
+
+The server sees: id, nonce, ciphertext, timestamp, and sequence number.
+It cannot read the ciphertext. It uses the authenticated device's
+household_id to route ops and seq for ordering. The `household_id` and
+`device_id` are not in the envelope itself — they come from the
+authenticated device context.
 
 ---
 
@@ -487,7 +503,7 @@ to route ops to the right clients and seq for ordering.
 
 ### Push (client → relay)
 
-1. Client queries `sync_oplog WHERE synced_at IS NULL` (unsynced ops)
+1. Client queries `sync_oplog_entries WHERE synced_at IS NULL` (unsynced ops)
 2. For each op: encrypt payload with household key → envelope
 3. `POST /sync/push` with batch of envelopes
 4. Server stores envelopes, returns confirmed sequence numbers
@@ -545,9 +561,23 @@ The sync pull goroutine must acquire the same write lock as local mutations.
 which serializes on SQLite's write lock. The sync goroutine is just
 another caller — no additional locking needed beyond what SQLite provides.
 
+### Client safety
+
+- **Bounded error reads:** when the relay returns an error response, the
+  client reads at most 4096 bytes of the body (`maxErrorBody`) to prevent
+  a malicious relay from exhausting client memory with an unbounded
+  response.
+- **Table allowlist:** the sync apply layer maintains an explicit allowlist
+  of syncable tables (`allowedSyncTable`). Remote ops targeting unknown
+  tables (e.g., `sync_oplog_entries`, `settings`, `sync_device`) are
+  rejected before any database write.
+- **Insert ID validation:** remote insert payloads must contain a string
+  `id` field matching the op's `row_id`. Mismatches are rejected. This
+  prevents a crafted op from inserting a row with an unexpected ID.
+
 ### Offline behavior
 
-If the relay is unreachable, ops accumulate locally in `sync_oplog` with
+If the relay is unreachable, ops accumulate locally in `sync_oplog_entries` with
 `synced_at = NULL`. Next successful connection pushes the backlog. The app
 is fully functional offline — sync is opportunistic, never blocking.
 
@@ -630,7 +660,8 @@ micasa pro init
 micasa pro invite
 ```
 
-1. Generates a one-time invite code (8-character alphanumeric, expires in 24h)
+1. Generates a one-time invite code (13-character base32 string, expires
+   in 24h)
 2. Displays the code for the user to share (text, verbally, etc.)
 
 The invite code encodes enough information for the joining device to:
@@ -638,12 +669,19 @@ The invite code encodes enough information for the joining device to:
 - Identify the household
 - Initiate a key exchange
 
+**Invite code format:**
+- 8 bytes of `crypto/rand` entropy → base32-encoded without padding →
+  13-character string (A-Z, 2-7) = 64 bits of entropy
+- Expires after 24 hours
+
 **Invite code security:**
-- 8 characters, base32 alphabet (A-Z, 2-7) = ~40 bits of entropy
 - Rate-limited: max 5 join attempts per invite code, then invalidated
-- Rate-limited: max 3 active invite codes per household at any time
+- Rate-limited: max 3 active (unexpired, unconsumed) invite codes per
+  household at any time, enforced with `FOR UPDATE` row locking under
+  Postgres to prevent TOCTOU races
 - Server-side: join attempts from unknown device IDs are rate-limited to
-  1 per second per source IP to prevent brute force
+  1 per second per source IP to prevent brute force (post-v1, handled at
+  infrastructure level)
 
 ### Joining a household
 
@@ -672,7 +710,7 @@ relay after the first successful retrieval — a second GET returns
 exchange ID from being exploited after the joiner has already retrieved
 their credentials.
 
-### Joining with existing data
+### Joining with existing data (post-v1)
 
 If the joining device already has a micasa database (they've been using
 micasa solo), the join process must handle merge:
@@ -687,6 +725,10 @@ This is the one scenario where data could be lost (local edits overridden
 by household state). The join flow should warn the user and create a
 local backup before proceeding.
 
+**Status:** post-v1. For v1, `micasa pro join` requires a fresh database
+(no existing data). Users with existing data should back up first, then
+start with a clean database.
+
 ### Device management
 
 ```bash
@@ -694,9 +736,12 @@ micasa pro devices          # list devices in household
 micasa pro devices revoke   # remove a device (e.g., lost laptop)
 ```
 
-Revoking a device removes its ability to pull new ops from the relay.
-It does NOT rotate the household key (the revoked device still has it).
-For true key rotation after a compromised device, see Section 11.
+Revoking a device sets a `revoked` flag on the device record (the record
+is not deleted, preserving the audit trail). Revoked devices fail
+authentication on all subsequent API calls — they cannot push, pull,
+or access blobs. Revocation does NOT rotate the household key (the
+revoked device retains its copy). For true cryptographic revocation
+after a compromised device, see Section 11 "Key rotation".
 
 ---
 
@@ -724,10 +769,21 @@ When applying pulled ops, the client checks:
    recovery but not reflected in the live tables.
 
 **Recovering a conflict loser:** `micasa pro conflicts` lists ops where
-`applied_at IS NULL AND synced_at IS NOT NULL`. The user can review the
-losing payload and choose to apply it instead, which flips the
-`applied_at` values (sets the loser's, clears the winner's) and
-reapplies the row.
+`applied_at IS NULL AND synced_at IS NOT NULL`. These are ops (either
+local or remote) that lost the LWW comparison — they were recorded in
+the oplog for audit purposes but their effect was not applied to the
+live tables. Specifically:
+- A **local** op loses when a newer remote op for the same row wins.
+  The local op's `applied_at` is cleared (set to NULL) and `synced_at`
+  remains NULL (it was never pushed). All local unsynced ops for that
+  row are cleared, not just the latest, to ensure row state consistency.
+- A **remote** op loses when an older remote op arrives but the local
+  device already has a newer unsynced op. The remote op is recorded
+  with `applied_at = NULL` and `synced_at = now`.
+
+The user can review the losing payload and choose to apply it instead,
+which flips the `applied_at` values (sets the loser's, clears the
+winner's) and reapplies the row.
 
 ### Conflict notification
 
@@ -740,11 +796,16 @@ When a conflict is resolved, the client shows a status bar message:
 ### Delete/edit conflicts
 
 If one client deletes a row and another edits it:
-- Delete wins (consistent with the soft-delete model — the row is
-  recoverable via restore)
+- The later `created_at` wins via standard LWW. If the delete is newer,
+  the edit is discarded. If the edit is newer, the delete is discarded.
+- Deletes are soft-deletes, so even if the delete wins, the row is
+  recoverable via restore.
+- Delete ops use deterministic convergence: all devices set `deleted_at`
+  to the op's `created_at` (not local wall-clock time), ensuring
+  identical `deleted_at` values across devices.
 
 If one client deletes and another restores:
-- The later timestamp wins
+- The later timestamp wins via standard LWW.
 
 ### Document conflicts
 
@@ -795,14 +856,74 @@ unique name. Same merge logic applies.
 ### Threat model
 
 - **Server compromise:** attacker gets encrypted blobs they can't read.
-  No plaintext data is ever stored server-side.
+  No plaintext data is ever stored server-side. The relay stores only
+  ciphertext, nonces, and metadata (household_id, device_id, timestamps,
+  sequence numbers). Attacker gains traffic analysis metadata (who syncs
+  when, payload sizes) but no content.
 - **Device theft:** attacker gets the local SQLite DB (plaintext) and the
   household key. Mitigation: the local DB was always plaintext (that's
-  the current state). The household key allows decrypting sync traffic
-  but the attacker already has the plaintext locally. Net-new risk is
-  minimal.
+  the current state without Pro). The household key allows decrypting
+  relay-stored data and future sync traffic until the key is rotated.
+  **Response:** other household members should run `micasa pro keys rotate`
+  to generate a new household key and revoke the stolen device (see
+  "Key rotation" below).
 - **Network interception:** all client-relay communication is over TLS.
-  Even without TLS, data is E2E encrypted.
+  Even without TLS, data is E2E encrypted with the household key.
+- **Relay MITM during key exchange:** the relay facilitates NaCl box key
+  exchange between inviter and joiner. A compromised relay could
+  substitute its own public key during the exchange, performing a
+  man-in-the-middle attack to intercept the household key. **Mitigation
+  (post-v1):** out-of-band key fingerprint verification — both parties
+  compare a short fingerprint derived from the exchanged public keys.
+  For v1, the risk is accepted: the relay is our own infrastructure, and
+  the invite code's 64-bit entropy + 24h expiry + 5-attempt limit
+  constrains the attack window.
+
+### Known limitations
+
+- **Device revocation is relay-level only.** Revoking a device prevents
+  it from authenticating to the relay (push/pull/blob operations fail).
+  However, the revoked device retains the household key and its local
+  copy of all data. It can decrypt any previously-downloaded ops and
+  any ops it intercepts by other means. Full cryptographic revocation
+  requires key rotation (see below).
+- **LWW clock fragility.** Conflict resolution uses `created_at`
+  timestamps from the originating device. Devices with significantly
+  skewed clocks can cause incorrect conflict winners. NTP-synced clocks
+  are assumed. In practice, modern operating systems keep clocks within
+  milliseconds via NTP, and the conflict scenario (two people editing
+  the same row while both offline) is already rare for a 1-2 person
+  household. If clock skew becomes a problem, a future version could
+  use the relay's monotonic `seq` as the tiebreaker instead of device
+  timestamps.
+- **Max device enforcement gap.** The 4-device limit is checked at join
+  time. If a household somehow exceeds the limit (e.g., concurrent joins
+  racing), excess devices are not retroactively removed. This is
+  acceptable for v1 — the 3-invite-code limit and the key exchange flow
+  make concurrent joins unlikely.
+- **Key exchange credential window.** Between when the inviter completes
+  the key exchange and when the joiner retrieves the credentials, the
+  encrypted household key and device token sit on the relay. Credentials
+  are single-use (cleared after first retrieval) but persist until then.
+  The key exchange record should expire (e.g., 1 hour) to bound this
+  window. **Status:** not yet implemented, tracked for v1.
+
+### Auth model
+
+- **Token format:** 256-bit crypto-random hex string, generated during
+  device registration.
+- **Storage:** client stores the raw token in `device.token` (0600
+  permissions). Relay stores only the SHA-256 hash in `devices.token_sha`.
+- **Lookup:** relay computes `SHA256(token)` and does an indexed lookup on
+  `token_sha` for O(1) authentication. SHA-256 was chosen over bcrypt
+  because: (a) tokens are 256-bit random (not human-chosen passwords),
+  making rainbow tables and brute force infeasible; (b) constant-time
+  indexed lookup is critical for every API request; (c) bcrypt's
+  intentional slowness would add latency to every sync operation.
+- **Subscription gating:** after authentication, push/pull/blob endpoints
+  check `households.stripe_status = 'active'`. Non-active returns 402.
+  Management endpoints (status, devices, invite) work regardless of
+  subscription status.
 
 ### Key rotation
 
@@ -812,16 +933,40 @@ If a device is compromised:
 micasa pro keys rotate
 ```
 
-1. Generates a new household key
-2. Re-encrypts all relay-stored data with the new key (client-side:
-   pull all, decrypt with old key, re-encrypt with new key, push)
-3. Distributes new key to all non-revoked devices via key exchange
-4. Revokes the compromised device
+**Protocol (post-v1):**
+
+1. Caller generates a new 256-bit household key locally
+2. Pull all ops from the relay, decrypt with the old key
+3. Re-encrypt every op with the new key, push replacement batch
+4. Re-encrypt all stored blobs: download each, decrypt with old key,
+   re-encrypt with new key, upload (replacing the old ciphertext)
+5. For each non-revoked device (other than the caller): initiate a key
+   exchange — encrypt the new household key with the target device's
+   NaCl box public key and store on the relay
+6. Other devices pick up the new key on their next sync, switch to it
+7. Revoke the compromised device
+
+**Open design questions:**
+- **In-flight ops:** ops encrypted with the old key that arrive after
+  rotation must be handled. Options: (a) reject them (device must
+  re-encrypt and re-push), (b) the relay stores a "key generation"
+  counter and clients include it in envelopes.
+- **Partial failure:** if rotation fails midway (e.g., network error
+  after re-encrypting half the ops), the relay has a mix of old-key and
+  new-key ciphertext. The client must be able to resume rotation.
+- **Blob re-encryption cost:** for a household at the 1 GB quota limit,
+  rotation means downloading, decrypting, re-encrypting, and re-uploading
+  1 GB. This should run as a background operation with progress reporting.
 
 This is expensive (re-encrypts everything) and should be rare. But
 without it, a compromised device retains the ability to decrypt any
 future ops it intercepts — revoking only prevents relay access, not
 cryptographic access. Key rotation closes that gap.
+
+**Status:** key rotation is post-v1. For v1, device revocation (relay-level)
+is the only response to compromise. Users are advised to treat the
+household key as compromised if a device is lost and to re-create the
+household if they need cryptographic assurance.
 
 ### What the server knows
 
@@ -829,14 +974,16 @@ The relay server knows:
 - Which households exist
 - Which devices belong to each household
 - When ops were created (timestamps)
-- Size of encrypted payloads
-- Sync frequency patterns
+- Size of encrypted payloads (reveals rough data volume)
+- Sync frequency patterns (reveals activity level)
+- Blob count and sizes per household (reveals document usage)
 
 The relay server does NOT know:
 - Any home data (addresses, costs, vendors, projects, etc.)
 - What type of operation occurred (insert vs update vs delete)
 - Which tables were affected
-- Document contents
+- Document contents or filenames
+- The household encryption key
 
 ---
 
@@ -857,13 +1004,11 @@ the device's registered household.
 Push a batch of encrypted operations.
 
 ```json
-// Request
+// Request (household_id and device_id are inferred from the auth token)
 {
   "ops": [
     {
       "id": "01J...",
-      "household_id": "hh_...",
-      "device_id": "dev_...",
       "nonce": "<base64>",
       "ciphertext": "<base64>",
       "created_at": "2026-03-16T10:30:00.000Z"
@@ -882,7 +1027,8 @@ Push a batch of encrypted operations.
 #### `GET /sync/pull?after={seq}&limit={n}`
 
 Pull operations from the relay. Returns ops from all devices in the
-household except the requesting device.
+household except the requesting device. The `limit` parameter caps
+the batch size (default: all available).
 
 ```json
 // Response
@@ -890,7 +1036,6 @@ household except the requesting device.
   "ops": [
     {
       "id": "01J...",
-      "device_id": "dev_...",
       "nonce": "<base64>",
       "ciphertext": "<base64>",
       "created_at": "2026-03-16T10:30:00.000Z",
@@ -901,48 +1046,95 @@ household except the requesting device.
 }
 ```
 
+The `has_more` field indicates whether more ops exist beyond the
+returned batch. The client should continue pulling until `has_more`
+is false.
+
 ### Blob endpoints
 
-#### `PUT /blobs/{household_id}/{hash}`
+All blob endpoints require auth + active subscription.
+
+#### `PUT /blobs/{household_id}/{hash}` (auth + subscription)
 
 Upload an encrypted document BLOB.
 
-Request body: raw encrypted bytes.
-Returns 409 if hash already exists (dedup).
+- Request body: raw encrypted bytes (application/octet-stream)
+- Hash must be exactly 64 lowercase hex characters (validated)
+- Authenticated device must belong to the specified household
+- Max blob size: 50 MB (`maxBlobSize`), enforced via `io.LimitReader`
+- Household quota: 1 GB (`defaultBlobQuota`), enforced server-side
+- Returns 201 on success, 409 if hash already exists (dedup — client
+  treats as success), 413 if quota exceeded (response includes current
+  usage and quota for actionable error display)
 
-#### `GET /blobs/{household_id}/{hash}`
+#### `GET /blobs/{household_id}/{hash}` (auth + subscription)
 
-Download an encrypted document BLOB.
+Download an encrypted document BLOB. Hash is validated (64 lowercase
+hex). Returns raw bytes as `application/octet-stream`, or 404 if not
+found.
 
-#### `HEAD /blobs/{household_id}/{hash}`
+#### `HEAD /blobs/{household_id}/{hash}` (auth + subscription)
 
-Check if a blob exists without downloading.
+Check if a blob exists without downloading. Hash is validated. Returns
+200 if exists, 404 if not.
 
 ### Household endpoints
 
 #### `POST /households`
 
-Create a new household. Called during `micasa pro init`.
+Create a new household and register the first device. Called during
+`micasa pro init`. Returns household_id, device_id, and bearer token.
 
-#### `POST /households/{id}/invite`
+#### `POST /households/{id}/invite` (auth required)
 
-Generate an invite code.
+Generate an invite code. Enforces max 3 active (unexpired, unconsumed)
+invites per household.
 
-#### `POST /households/{id}/join`
+#### `POST /households/{id}/join` (unauthenticated)
 
-Join a household with an invite code. Initiates key exchange.
+Join a household with an invite code. Validates the code, increments
+attempt counter, creates a key exchange record. Returns the exchange ID
+for polling.
 
-#### `GET /households/{id}/devices`
+### Key exchange endpoints
 
-List devices in the household.
+#### `GET /households/{id}/pending-exchanges` (auth required)
 
-#### `DELETE /households/{id}/devices/{device_id}`
+List pending key exchanges for the household. Used by the inviter to
+discover joiners waiting for the household key.
 
-Revoke a device.
+#### `POST /key-exchange/{id}/complete` (auth required)
+
+Complete a key exchange. The inviter sends the household key encrypted
+with the joiner's NaCl box public key, plus a freshly-generated device
+token for the joiner.
+
+#### `GET /key-exchange/{id}` (unauthenticated)
+
+Poll for key exchange completion. The joiner calls this to retrieve the
+encrypted household key and device token. **Single-use:** credentials
+are cleared after the first successful retrieval — subsequent GETs
+return `ready: true` with empty credential fields.
+
+Intentionally unauthenticated because the joiner doesn't have a device
+token yet. The exchange ID is a 256-bit crypto-random hex string, making
+brute-force infeasible.
+
+### Device endpoints
+
+#### `GET /households/{id}/devices` (auth required)
+
+List non-revoked devices in the household.
+
+#### `DELETE /households/{id}/devices/{device_id}` (auth required)
+
+Revoke a device. Sets the `revoked` flag (does not delete the device
+record, preserving audit trail). Revoked devices fail authentication
+on subsequent API calls.
 
 ### Status endpoint
 
-#### `GET /status`
+#### `GET /status` (auth required)
 
 Returns sync status, blob storage usage, and device list.
 
@@ -961,6 +1153,22 @@ Returns sync status, blob storage usage, and device list.
   "stripe_status": "active"
 }
 ```
+
+### Health endpoint
+
+#### `GET /health` (unauthenticated)
+
+Returns 200 OK. Used for Cloud Run health checks.
+
+### Webhook endpoint
+
+#### `POST /webhooks/stripe` (unauthenticated, HMAC-verified)
+
+Receives Stripe webhook events. Verifies the signature using a
+pre-shared webhook secret (HMAC-SHA256, manual verification — not the
+Stripe SDK). Returns 503 if no webhook secret is configured (prevents
+silent signature bypass). Updates `households.stripe_status` and
+`households.stripe_subscription_id` based on event type.
 
 ---
 
@@ -1019,7 +1227,12 @@ micasa pro keys rotate
 
 The relay lives in this repo at `cmd/relay/main.go`. Shared types
 (encryption envelope, oplog entry JSON schema) live in an `internal/sync`
-package importable by both `cmd/micasa` and `cmd/relay`.
+package importable by both `cmd/micasa` and `cmd/relay`. The relay handler
+and store implementations live in `internal/relay/`.
+
+**Current state:** `cmd/relay/main.go` uses `MemStore` for local
+development. Production wiring to `PgStore` (via `DATABASE_URL` env var)
+and Stripe webhook secret configuration are remaining v1 tasks.
 
 ### Stack: GCP (Cloud Run + Cloud SQL + Cloud Storage)
 
@@ -1065,7 +1278,8 @@ CREATE TABLE devices (
     household_id TEXT NOT NULL REFERENCES households(id),
     name         TEXT NOT NULL,
     public_key   BYTEA,          -- NaCl box public key for key exchange
-    token_sha    TEXT NOT NULL,   -- SHA-256 hex of bearer token
+    token_sha    TEXT NOT NULL,   -- SHA-256 hex of bearer token (not bcrypt: tokens are
+                                  --   256-bit random, so SHA-256 suffices and enables O(1) index lookup)
     last_seen    TIMESTAMPTZ,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     revoked      BOOLEAN NOT NULL DEFAULT false
@@ -1205,25 +1419,27 @@ For the future Cloud Storage path:
 
 **Quota enforcement:**
 
-```go
-func (r *Relay) CheckBlobQuota(ctx context.Context, householdID string, newBlobSize int64) error {
-    // List objects with prefix household_id/ and sum sizes
-    // Compare against household's quota (1 GB default)
-    // Return error if exceeded
-}
-```
+Quota is enforced inside `Store.PutBlob()`. The store computes current
+usage (`BlobUsage`) and checks whether adding the new blob would exceed
+the 1 GB household quota. The check uses `used > quota - newSize`
+(safe with signed int64, avoids overflow from `used + newSize > quota`).
+Returns `errQuotaExceeded` with current usage and quota values so the
+handler can return an actionable 413 response.
 
 ### Auth
 
+See Section 11 "Auth model" for full details on token format, storage,
+and the rationale for SHA-256 hashing.
+
 - **Device registration:** `micasa pro init` calls `POST /households`,
-  relay generates a 256-bit crypto-random bearer token, returns it to
-  the client, stores a SHA-256 hash in the `devices` table.
+  relay generates a 256-bit crypto-random hex bearer token, returns it
+  to the client, stores only the SHA-256 hash in `devices.token_sha`.
 - **Request auth:** every API call includes `Authorization: Bearer <token>`.
-  Relay computes SHA-256 of the token for O(1) index lookup in the
-  `devices` table.
-- **Subscription gating:** on push/pull, relay checks
-  `households.stripe_status = 'active'`. If not, returns 402. Client
-  shows "Subscription inactive — sync paused."
+  Relay computes `SHA256(token)` for O(1) indexed lookup.
+- **Subscription gating:** push/pull/blob endpoints check
+  `households.stripe_status = 'active'`. Non-active returns 402 with
+  message "Subscription inactive — sync paused." Management endpoints
+  (status, devices, invite) work regardless of subscription status.
 
 ### Cost model
 
@@ -1280,42 +1496,63 @@ deployment.
 All core library/API code is implemented and tested:
 
 - **ULID migration** — `internal/uid`, GORM hooks, schema migration
-- **Change tracking** — `sync_oplog` table, GORM hooks, CASCADE handling
-- **Encryption** — NaCl secretbox (symmetric), NaCl box (key exchange)
-- **Relay server API** — push/pull, auth, household CRUD, invite/join,
-  key exchange, device management, subscription gating, Stripe webhook
-- **Client sync engine** — push/pull, LWW conflict resolution
+- **Change tracking** — `sync_oplog_entries` table, GORM hooks, CASCADE
+  handling, context-flag suppression of re-logging during remote apply
+- **Encryption** — NaCl secretbox (symmetric), NaCl box (key exchange),
+  `internal/crypto` package with Encrypt/Decrypt/NonceSize
+- **Relay server API** — full HTTP handler (`internal/relay/handler.go`):
+  push/pull, auth (SHA-256 token hashing), household CRUD, invite/join,
+  key exchange (single-use credential retrieval), device management
+  (revocation sets flag, doesn't delete), subscription gating, Stripe
+  webhook (HMAC-SHA256 verification, 503 when no secret configured)
+- **Relay Store interface + two implementations**:
+  - `MemStore` — in-memory, used for tests and local dev
+  - `PgStore` — production Postgres implementation with all 22 Store
+    methods, atomic seq increment via `UPDATE ... RETURNING`, `FOR UPDATE`
+    locking on invite count, GORM + pgx driver
+- **Client sync engine** — push/pull with E2E encryption, LWW conflict
+  resolution (timestamp + device ID tiebreaker), transactional
+  conflict-check-and-apply, deterministic delete convergence
+  (`op.CreatedAt` not `time.Now()`), bounded error body reads
+  (`maxErrorBody = 4096`)
+- **Document BLOB sync** — content-addressed blob store (SHA-256 key),
+  relay endpoints (`PUT`/`GET`/`HEAD /blobs/{household_id}/{hash}`),
+  client methods (`UploadBlob`/`DownloadBlob`/`HasBlob`), lazy pull,
+  1 GB household quota enforced server-side, 50 MB per-blob limit,
+  dedup (409 on existing hash), hash validation (64 lowercase hex chars)
+- **CLI commands** (`cmd/micasa/pro.go`): `pro init`, `pro status`,
+  `pro sync`, `pro invite`, `pro join <code>`, `pro devices`,
+  `pro devices revoke <id>`, `pro conflicts`, `pro storage`. All wired
+  to real relay HTTP calls via the sync Client.
 - **Payment gating** — 402 on push/pull when subscription inactive,
   webhook signature verification (manual HMAC-SHA256)
 
 ### Remaining (v1)
 
-- **Postgres store** — production Store implementation replacing MemStore.
-  Postgres tables for households, devices, ops, invites, key exchanges,
-  blobs. Atomic seq increment via `UPDATE ... RETURNING`.
-- **`cmd/relay/main.go`** — entry point wiring Postgres store, HTTP handler,
-  Stripe webhook secret from env/Secret Manager.
-- **CLI commands** — `micasa pro init`, `sync`, `status`, `invite`,
-  `join <code>`, `devices`, `devices revoke <id>`, `conflicts`, `storage`.
-  Wire the sync engine and crypto to actual relay HTTP calls.
+- **Relay binary wiring** — `cmd/relay/main.go` currently uses MemStore.
+  Wire to PgStore via `DATABASE_URL` env var, read Stripe webhook secret
+  from env/Secret Manager, configure graceful shutdown.
 - **TUI sync integration** — background sync goroutine (startup pull+push,
   periodic 60s, debounced push on mutation), status bar indicator
-  (`◈` synced, `◉` syncing, `○` offline).
-- **Document BLOB sync** — content-addressed Cloud Storage, lazy pull,
-  blob upload/download relay endpoints, 1 GB household quota.
+  (`◈` synced, `◉` syncing, `○` offline, `!` conflict).
 - **Infrastructure** — Cloud SQL instance, Cloud Run service, IAM, Secret
-  Manager. Deploy to `us-east1`. IaC tooling TBD.
-- **Key rotation** — `micasa pro keys rotate`: generate new household key,
-  re-encrypt all relay data client-side, distribute to non-revoked devices
-  via key exchange, revoke compromised device.
+  Manager, container image build. Deploy to `us-east1`. IaC tooling TBD.
 - **Stripe account setup** — create products/prices, configure webhook
-  endpoint URL.
+  endpoint URL, test end-to-end subscription flow.
 
 ### Post-v1
 
-- Join-with-existing-data merge (household HouseProfile wins, local backup)
-- Rate limiting on relay endpoints
-- Landing page and email waitlist
+- **Key rotation** — `micasa pro keys rotate` (see Section 11 for protocol
+  details). Expensive operation that re-encrypts all relay data.
+- **Join-with-existing-data merge** — household HouseProfile wins, local
+  backup created before merge, local-only records pushed as new ops
+- **Rate limiting** — relay endpoint rate limiting handled at GCP
+  infrastructure level (Cloud Armor / API Gateway), not application code
+- **Oplog compaction** — prune old oplog entries after all devices have
+  confirmed receipt, reducing storage and pull times
+- **Data retention automation** — automated cleanup of encrypted data for
+  lapsed subscribers after the 90-day grace period
+- **Landing page** — marketing site and email waitlist
 
 ---
 
@@ -1358,18 +1595,40 @@ All core library/API code is implemented and tested:
 
 - **Schema drift:** If two devices run different micasa versions with
   different schemas, ops may reference columns that don't exist on the
-  other device. Current approach: ops carry full row snapshots. The
-  receiving client applies only the columns it knows. Unknown columns
-  are preserved in oplog but not applied.
+  other device. Current approach: ops carry full row snapshots as JSON.
+  The receiving client applies via `map[string]any`, so unknown columns
+  are silently ignored by GORM (only struct-mapped columns are written).
+  Unknown keys are preserved in the oplog `payload` field for audit.
+  A post-v1 improvement would unmarshal into typed model structs instead
+  of `map[string]any`, making unknown-key handling explicit.
 
-- **Max household size:** 4 devices max for v1. Real households rarely
-  exceed 2-3 people, each with 1-2 devices.
+- **Max household size:** 4 devices max for v1. Enforced at join time
+  by counting non-revoked devices. Real households rarely exceed 2-3
+  people, each with 1-2 devices.
 
-- **Subscription expiry:** When payment lapses, sync stops but local
-  data is unaffected. Relay holds encrypted data for 90 days (grace
-  period), then deletes. Re-subscribing within 90 days resumes sync.
+- **Subscription expiry and data retention:** When payment lapses, sync
+  stops (402 on push/pull) but local data is unaffected. The relay holds
+  encrypted data for 90 days (grace period). Re-subscribing within 90
+  days resumes sync with no data loss. After 90 days, all household data
+  on the relay (ops, blobs, device records, invites) is permanently
+  deleted. **Post-v1:** automated cleanup job. For v1, manual purge via
+  admin tooling.
 
 - **Async key exchange UX:** The join flow requires the inviter's client
-  to be online to complete the key exchange. Set a clear expectation in
-  the UX ("Have both devices online when joining"). Add a timeout with
-  a clear error message.
+  to be online to complete the key exchange (the inviter must encrypt
+  the household key with the joiner's public key). Set a clear
+  expectation in the UX ("Have both devices online when joining"). The
+  CLI `pro invite` command polls for the joiner and completes the
+  exchange interactively. Add a timeout with a clear error message if
+  the joiner doesn't appear within 15 minutes.
+
+- **Key exchange record expiry:** Key exchange records on the relay
+  should expire (e.g., 1 hour after creation) to limit the window
+  during which encrypted credentials sit on the server. Not yet
+  implemented.
+
+- **Oplog compaction:** The oplog grows indefinitely. For long-lived
+  households, old entries should be prunable once all devices have
+  confirmed receipt (i.e., all devices' `last_seq` exceeds the entry's
+  `seq`). **Post-v1:** implement a compaction command or automatic
+  background compaction with a configurable retention period.
