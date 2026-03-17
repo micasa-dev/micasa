@@ -25,6 +25,10 @@ reason = "url.Parse IPv6 host parsing flaw; only caller is isLoopbackURL which p
 id = "GO-2026-4602"
 reason = "os.ReadDir directory traversal via Root-constrained File; micasa uses plain os.ReadDir on a local cache dir, never uses os.OpenRoot"
 
+[[IgnoredVulns]]
+id = "GO-2026-4603"
+reason = "html/template XSS in meta content URL escaping; micasa is a TUI app that never uses html/template; awaiting nixpkgs Go 1.25.8"
+
 # ollama server-side vulnerabilities: micasa is a client that makes HTTP
 # requests to an Ollama server; it does not embed, host, or run the Ollama
 # server, GGUF parser, or model-serving endpoints. These code paths are
