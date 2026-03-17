@@ -29,7 +29,7 @@ func createTestHousehold(t *testing.T, h *Handler) sync.CreateHouseholdResponse 
 	t.Helper()
 	body, _ := json.Marshal(sync.CreateHouseholdRequest{
 		DeviceName: "test-desktop",
-		PublicKey:  []byte("fake-public-key-32-bytes-padding!"),
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
 	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
@@ -528,7 +528,7 @@ func TestJoinInvalidInviteCode(t *testing.T) {
 	joinReq := sync.JoinRequest{
 		InviteCode: "INVALID1",
 		DeviceName: "phone",
-		PublicKey:  []byte("key"),
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	}
 	joinBody, _ := json.Marshal(joinReq)
 	rec := httptest.NewRecorder()
@@ -560,7 +560,7 @@ func TestJoinWrongHouseholdDoesNotConsumeAttempt(t *testing.T) {
 	joinReq := sync.JoinRequest{
 		InviteCode: invite.Code,
 		DeviceName: "phone",
-		PublicKey:  []byte("key"),
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	}
 	joinBody, _ := json.Marshal(joinReq)
 	rec = httptest.NewRecorder()
@@ -603,7 +603,7 @@ func TestJoinMissingFields(t *testing.T) {
 	// Missing device_name.
 	joinBody, _ := json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
-		PublicKey:  []byte("key"),
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(

@@ -15,9 +15,20 @@ import (
 	"github.com/cpcloud/micasa/internal/crypto"
 )
 
+// maxBlobDownload is the maximum size of an encrypted blob response.
+// Plaintext limit (50 MB) + NaCl secretbox overhead (nonce + poly1305 tag).
+const maxBlobDownload int64 = 50<<20 + crypto.NonceSize + 16
+
 // UploadBlob encrypts plaintext with the household key and uploads it
 // to the relay. Treats HTTP 409 (blob already exists) as success (dedup).
 func (c *Client) UploadBlob(householdID, hash string, plaintext []byte) error {
+	got := sha256.Sum256(plaintext)
+	if hex.EncodeToString(got[:]) != hash {
+		return fmt.Errorf(
+			"blob hash mismatch: expected %s, got %s",
+			hash, hex.EncodeToString(got[:]),
+		)
+	}
 	sealed, err := crypto.Encrypt(c.key, plaintext)
 	if err != nil {
 		return fmt.Errorf("encrypt blob: %w", err)
@@ -73,9 +84,12 @@ func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 		return nil, fmt.Errorf("download blob failed (status %d): %s", resp.StatusCode, body)
 	}
 
-	sealed, err := io.ReadAll(resp.Body)
+	sealed, err := io.ReadAll(io.LimitReader(resp.Body, maxBlobDownload+1))
 	if err != nil {
 		return nil, fmt.Errorf("read blob body: %w", err)
+	}
+	if int64(len(sealed)) > maxBlobDownload {
+		return nil, fmt.Errorf("blob response exceeds maximum size (%d bytes)", maxBlobDownload)
 	}
 
 	plaintext, err := crypto.Decrypt(c.key, sealed)

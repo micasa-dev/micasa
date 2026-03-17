@@ -199,14 +199,19 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 	return tx.Table(op.TableName).Where("id = ?", op.RowID).Updates(updates).Error
 }
 
-// stripNonColumnKeys removes payload keys that exist in the oplog JSON
-// but have no corresponding database column. Currently this only affects
-// documents, where the oplog includes a "blob_ref" field for content-
-// addressed blob sync that is not stored as a column.
+// stripNonColumnKeys removes payload keys that should not be written to the
+// database from remote operations. This includes:
+//   - Keys with no corresponding DB column (e.g. blob_ref on documents)
+//   - Sensitive columns that remote ops must not control (deleted_at,
+//     created_at, updated_at) to prevent a malicious relay from injecting
+//     soft-deletes or timestamp manipulation
 func stripNonColumnKeys(tableName string, row map[string]any) {
 	if tableName == data.TableDocuments {
 		delete(row, "blob_ref")
 	}
+	delete(row, "deleted_at")
+	delete(row, "created_at")
+	delete(row, "updated_at")
 }
 
 func applyDelete(tx *gorm.DB, op OpPayload) error {

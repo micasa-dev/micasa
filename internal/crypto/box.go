@@ -19,6 +19,7 @@ func BoxSeal(
 	senderPrivateKey, recipientPublicKey [KeySize]byte,
 	plaintext []byte,
 ) ([]byte, error) {
+	defer zeroize(senderPrivateKey[:])
 	var nonce [NonceSize]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return nil, fmt.Errorf("generate nonce: %w", err)
@@ -33,6 +34,7 @@ func BoxOpen(
 	recipientPrivateKey, senderPublicKey [KeySize]byte,
 	sealed []byte,
 ) ([]byte, error) {
+	defer zeroize(recipientPrivateKey[:])
 	if len(sealed) < NonceSize+boxOverhead {
 		return nil, fmt.Errorf(
 			"sealed message too short: %d bytes (minimum %d)",

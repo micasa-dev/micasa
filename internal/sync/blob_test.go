@@ -28,7 +28,7 @@ func newBlobTestSetup(t *testing.T) (*sync.Client, string) {
 	// Create household.
 	resp, err := sync.NewManagementClient(srv.URL, "").CreateHousehold(sync.CreateHouseholdRequest{
 		DeviceName: "test-device",
-		PublicKey:  []byte("fake-public-key-32-bytes-padding!"),
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
 	require.NoError(t, err)
 
@@ -116,7 +116,7 @@ func TestBlobWrongKeyCannotDecrypt(t *testing.T) {
 
 	resp, err := sync.NewManagementClient(srv.URL, "").CreateHousehold(sync.CreateHouseholdRequest{
 		DeviceName: "test-device",
-		PublicKey:  []byte("fake-public-key-32-bytes-padding!"),
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
 	require.NoError(t, err)
 
@@ -148,7 +148,7 @@ func TestBlobURLHandlesTrailingSlash(t *testing.T) {
 
 	resp, err := sync.NewManagementClient(srv.URL, "").CreateHousehold(sync.CreateHouseholdRequest{
 		DeviceName: "test-device",
-		PublicKey:  []byte("fake-public-key-32-bytes-padding!"),
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
 	require.NoError(t, err)
 
@@ -172,29 +172,15 @@ func TestBlobURLHandlesTrailingSlash(t *testing.T) {
 	assert.True(t, exists)
 }
 
-func TestBlobIntegrityCheckFailsOnTamperedHash(t *testing.T) {
+func TestBlobUploadRejectsHashMismatch(t *testing.T) {
 	t.Parallel()
 	client, hhID := newBlobTestSetup(t)
 
 	plaintext := []byte("integrity test content")
-	realHash := sha256Hex(plaintext)
-	// Use a different valid hash that doesn't match the plaintext.
 	fakeHash := sha256Hex([]byte("different content"))
 
-	// Upload with the real hash (relay doesn't validate plaintext hash).
-	require.NoError(t, client.UploadBlob(hhID, realHash, plaintext))
-
-	// Download using fakeHash -- blob won't be found since it's stored
-	// under the real hash, so this tests the not-found path rather than
-	// the integrity path. Instead, we upload under fakeHash too.
-	require.NoError(t, client.UploadBlob(hhID, fakeHash, plaintext))
-
-	// Download with fakeHash -- decryption succeeds but SHA-256 of
-	// plaintext won't match fakeHash.
-	_, err := client.DownloadBlob(hhID, fakeHash)
+	// Upload with a hash that doesn't match the plaintext.
+	err := client.UploadBlob(hhID, fakeHash, plaintext)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "integrity")
-	// Error should include expected and actual hashes for debugging.
-	assert.Contains(t, err.Error(), fakeHash)
-	assert.Contains(t, err.Error(), realHash)
+	assert.Contains(t, err.Error(), "hash mismatch")
 }

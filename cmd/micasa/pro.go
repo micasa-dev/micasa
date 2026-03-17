@@ -142,6 +142,19 @@ func openAndMigrate(dbPath string) (*data.Store, error) {
 	return store, nil
 }
 
+// openExisting opens a database that must already exist. Returns a clear
+// error if the file is missing instead of silently creating one.
+func openExisting(dbPath string) (*data.Store, error) {
+	resolved, err := resolveDBPathArg(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(resolved); err != nil {
+		return nil, fmt.Errorf("database not found: %s", resolved)
+	}
+	return openAndMigrate(resolved)
+}
+
 func resolveDBPathArg(dbPath string) (string, error) {
 	if dbPath != "" {
 		return data.ExpandHome(dbPath), nil
@@ -987,7 +1000,7 @@ func newProConflictsCmd() *cobra.Command {
 }
 
 func runProConflicts(w io.Writer, dbPath string) error {
-	store, err := openAndMigrate(dbPath)
+	store, err := openExisting(dbPath)
 	if err != nil {
 		return err
 	}

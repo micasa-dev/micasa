@@ -81,6 +81,7 @@ func LoadHouseholdKey(dir string) (HouseholdKey, error) {
 	if err != nil {
 		return key, fmt.Errorf("load household key: %w", err)
 	}
+	defer zeroize(data)
 	if len(data) != KeySize {
 		return key, fmt.Errorf("household key: expected %d bytes, got %d", KeySize, len(data))
 	}
@@ -140,6 +141,7 @@ func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 	if err != nil {
 		return DeviceKeyPair{}, fmt.Errorf("load device private key: %w", err)
 	}
+	defer zeroize(priv)
 	if len(priv) != KeySize {
 		return DeviceKeyPair{}, fmt.Errorf(
 			"device private key: expected %d bytes, got %d",

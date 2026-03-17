@@ -15,7 +15,11 @@ import (
 	"github.com/cpcloud/micasa/internal/sync"
 )
 
-const maxRequestBody = 1 << 20 // 1 MB
+const (
+	maxRequestBody   = 1 << 20 // 1 MB
+	maxDeviceNameLen = 255
+	publicKeySize    = 32 // Curve25519
+)
 
 // Handler serves the relay HTTP API.
 type Handler struct {
@@ -33,6 +37,9 @@ func NewHandler(store Store, log *slog.Logger, opts ...HandlerOption) *Handler {
 	for _, opt := range opts {
 		opt(h)
 	}
+	if h.webhookSecret == "" {
+		log.Warn("Stripe webhook secret is empty -- webhook signature verification disabled")
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.handleHealth)
 	mux.HandleFunc("POST /households", h.handleCreateHousehold)
@@ -45,6 +52,10 @@ func NewHandler(store Store, log *slog.Logger, opts ...HandlerOption) *Handler {
 		h.requireAuth(h.handleGetPendingExchanges),
 	)
 	mux.HandleFunc("POST /key-exchange/{id}/complete", h.requireAuth(h.handleCompleteKeyExchange))
+	// Intentionally unauthenticated: the joiner polls this before receiving
+	// a device token. The exchange ID is a 256-bit crypto-random hex string,
+	// making brute-force infeasible. Credentials are single-use (cleared
+	// after first retrieval).
 	mux.HandleFunc("GET /key-exchange/{id}", h.handleGetKeyExchangeResult)
 	mux.HandleFunc("GET /households/{id}/devices", h.requireAuth(h.handleListDevices))
 	mux.HandleFunc(
@@ -95,8 +106,12 @@ func (h *Handler) handleCreateHousehold(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "device_name is required")
 		return
 	}
-	if len(req.PublicKey) == 0 {
-		writeError(w, http.StatusBadRequest, "public_key is required")
+	if len(req.DeviceName) > maxDeviceNameLen {
+		writeError(w, http.StatusBadRequest, "device_name exceeds maximum length")
+		return
+	}
+	if len(req.PublicKey) != publicKeySize {
+		writeError(w, http.StatusBadRequest, "public_key must be exactly 32 bytes")
 		return
 	}
 
@@ -243,8 +258,12 @@ func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "device_name is required")
 		return
 	}
-	if len(req.PublicKey) == 0 {
-		writeError(w, http.StatusBadRequest, "public_key is required")
+	if len(req.DeviceName) > maxDeviceNameLen {
+		writeError(w, http.StatusBadRequest, "device_name exceeds maximum length")
+		return
+	}
+	if len(req.PublicKey) != publicKeySize {
+		writeError(w, http.StatusBadRequest, "public_key must be exactly 32 bytes")
 		return
 	}
 
