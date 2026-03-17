@@ -403,6 +403,8 @@
             '';
             CGO_ENABLED = "0";
             GOFLAGS = "-trimpath";
+            # lipgloss v2 does not detect tmux-256color as truecolor-capable (#789)
+            TERM = "xterm-256color";
             packages = [
               go
               pkgs.osv-scanner
