@@ -104,7 +104,9 @@ func runTUI(w io.Writer, opts *runOpts) error {
 }
 
 // seedOpts controls optional demo-data seeding passed from the demo
-// subcommand. A nil value means no seeding.
+// subcommand. A nil value means no seeding. A non-nil value always
+// triggers demo seeding: years==0 seeds the small fixed demo, years>0
+// seeds N years of scaled data.
 type seedOpts struct {
 	years int
 }
@@ -258,15 +260,22 @@ func newDemoCmd() *cobra.Command {
 	return cmd
 }
 
-func runDemo(opts *demoOpts) error {
-	dbPath := ":memory:"
+// resolveDBPath returns the database path for demo mode. Defaults to
+// ":memory:" when no explicit path is given.
+func (opts *demoOpts) resolveDBPath() string {
 	if opts.dbPath != "" {
-		dbPath = data.ExpandHome(opts.dbPath)
+		return data.ExpandHome(opts.dbPath)
 	}
+	return ":memory:"
+}
+
+func runDemo(opts *demoOpts) error {
 	if opts.years < 0 {
 		return fmt.Errorf("--years must be non-negative")
 	}
-	return launchTUI(dbPath, &seedOpts{years: opts.years})
+	// Non-nil seedOpts always triggers demo seeding; years==0 seeds the
+	// small fixed demo, years>0 seeds N years of scaled data.
+	return launchTUI(opts.resolveDBPath(), &seedOpts{years: opts.years})
 }
 
 func newBackupCmd() *cobra.Command {

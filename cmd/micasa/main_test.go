@@ -84,24 +84,16 @@ func TestResolveDBPath_ExplicitPath(t *testing.T) {
 	assert.Equal(t, "/custom/path.db", got)
 }
 
-func TestRunDemo_ExplicitPath(t *testing.T) {
+func TestDemoResolveDBPath_ExplicitPath(t *testing.T) {
 	t.Parallel()
 	opts := demoOpts{dbPath: "/tmp/demo.db"}
-	dbPath := ":memory:"
-	if opts.dbPath != "" {
-		dbPath = opts.dbPath
-	}
-	assert.Equal(t, "/tmp/demo.db", dbPath)
+	assert.Equal(t, "/tmp/demo.db", opts.resolveDBPath())
 }
 
-func TestRunDemo_NoPath(t *testing.T) {
+func TestDemoResolveDBPath_NoPath(t *testing.T) {
 	t.Parallel()
 	opts := demoOpts{}
-	dbPath := ":memory:"
-	if opts.dbPath != "" {
-		dbPath = opts.dbPath
-	}
-	assert.Equal(t, ":memory:", dbPath)
+	assert.Equal(t, ":memory:", opts.resolveDBPath())
 }
 
 func TestResolveDBPath_Default(t *testing.T) {
