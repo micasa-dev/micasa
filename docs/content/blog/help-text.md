@@ -57,9 +57,16 @@ know what model read your invoice six months from now, it's there.
 
 ## Other things since last week
 
+- **Charm v2** -- bubbletea, lipgloss, huh, bubblezone, and glamour all
+  migrated to their v2 releases. Go 1.26 required. The `bubbletea-overlay`
+  dependency got inlined. Nothing should look different, but if something
+  does, [open an issue](https://github.com/cpcloud/micasa/issues)
+  ([#788](https://github.com/cpcloud/micasa/pull/788)).
+- **`micasa demo`** -- `--demo` is now a subcommand. `micasa demo --years 10`
+  instead of `micasa --demo --years 10`
+  ([#787](https://github.com/cpcloud/micasa/pull/787)).
 - **Keybinding hints** -- two-tier keycap rendering: pill keycaps for inline
-  hints in status bars and overlay footers, bold accent for reference panels
-  like the help overlay and calendar legend
+  hints, bold accent for reference panels like the help overlay
   ([#783](https://github.com/cpcloud/micasa/pull/783)).
 - **Document restore** -- accepting an extraction on a soft-deleted document
   now restores it instead of silently writing to a hidden row
@@ -80,7 +87,7 @@ know what model read your invoice six months from now, it's there.
 ## Try it
 
 ```sh
-go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
+go run github.com/cpcloud/micasa/cmd/micasa@latest demo
 ```
 
 Set up tab completions:
