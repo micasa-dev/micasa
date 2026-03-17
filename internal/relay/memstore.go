@@ -424,6 +424,71 @@ func (m *MemStore) RevokeDevice(
 	return nil
 }
 
+func (m *MemStore) GetHousehold(
+	_ context.Context,
+	householdID string,
+) (sync.Household, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	hh, ok := m.households[householdID]
+	if !ok {
+		return sync.Household{}, fmt.Errorf("household %s not found", householdID)
+	}
+	return hh, nil
+}
+
+func (m *MemStore) UpdateSubscription(
+	_ context.Context,
+	householdID, subscriptionID, status string,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	hh, ok := m.households[householdID]
+	if !ok {
+		return fmt.Errorf("household %s not found", householdID)
+	}
+	hh.StripeSubscriptionID = subscriptionID
+	hh.StripeStatus = status
+	m.households[householdID] = hh
+	return nil
+}
+
+func (m *MemStore) HouseholdBySubscription(
+	_ context.Context,
+	subscriptionID string,
+) (sync.Household, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, hh := range m.households {
+		if hh.StripeSubscriptionID == subscriptionID {
+			return hh, nil
+		}
+	}
+	return sync.Household{}, fmt.Errorf(
+		"no household with subscription %s",
+		subscriptionID,
+	)
+}
+
+func (m *MemStore) OpsCount(
+	_ context.Context,
+	householdID string,
+) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var count int64
+	for _, op := range m.ops {
+		if op.HouseholdID == householdID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (m *MemStore) Close() error { return nil }
 
 func generateInviteCode() string {

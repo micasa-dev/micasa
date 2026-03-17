@@ -77,6 +77,26 @@ type Store interface {
 	// further authentication.
 	RevokeDevice(ctx context.Context, householdID, deviceID string) error
 
+	// GetHousehold returns the household with its subscription status.
+	GetHousehold(ctx context.Context, householdID string) (sync.Household, error)
+
+	// UpdateSubscription sets the Stripe subscription ID and status
+	// on a household.
+	UpdateSubscription(
+		ctx context.Context,
+		householdID, subscriptionID, status string,
+	) error
+
+	// HouseholdBySubscription finds a household by its Stripe
+	// subscription ID. Used by webhook processing.
+	HouseholdBySubscription(
+		ctx context.Context,
+		subscriptionID string,
+	) (sync.Household, error)
+
+	// OpsCount returns the total number of ops stored for a household.
+	OpsCount(ctx context.Context, householdID string) (int64, error)
+
 	// Close releases any resources held by the store.
 	Close() error
 }

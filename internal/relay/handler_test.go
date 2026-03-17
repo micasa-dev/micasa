@@ -827,3 +827,296 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 	require.Len(t, pullResp.Ops, 1)
 	assert.Equal(t, op.ID, pullResp.Ops[0].ID)
 }
+
+// --- Subscription gating ---
+
+func TestPushReturns402WhenSubscriptionCanceled(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Set subscription to canceled.
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_123", sync.SubscriptionCanceled,
+	))
+
+	op := sync.Envelope{
+		ID:         uid.New(),
+		Nonce:      []byte("nonce-24-bytes-padding!!"),
+		Ciphertext: []byte("data"),
+		CreatedAt:  time.Now(),
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
+	assert.Contains(t, rec.Body.String(), "subscription inactive")
+}
+
+func TestPullReturns402WhenSubscriptionCanceled(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_456", sync.SubscriptionCanceled,
+	))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
+}
+
+func TestPushSucceedsWhenSubscriptionActive(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_789", sync.SubscriptionActive,
+	))
+
+	op := sync.Envelope{
+		ID:         uid.New(),
+		Nonce:      []byte("nonce-24-bytes-padding!!"),
+		Ciphertext: []byte("data"),
+		CreatedAt:  time.Now(),
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestPushSucceedsWhenNoSubscription(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// No subscription set (empty status) -- should pass (dev/free mode).
+	op := sync.Envelope{
+		ID:         uid.New(),
+		Nonce:      []byte("nonce-24-bytes-padding!!"),
+		Ciphertext: []byte("data"),
+		CreatedAt:  time.Now(),
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestPushReturns402WhenSubscriptionPastDue(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_pd", sync.SubscriptionPastDue,
+	))
+
+	op := sync.Envelope{
+		ID:         uid.New(),
+		Nonce:      []byte("nonce-24-bytes-padding!!"),
+		Ciphertext: []byte("data"),
+		CreatedAt:  time.Now(),
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
+}
+
+// --- Stripe webhook ---
+
+func newTestHandlerWithWebhook(secret string) (*Handler, *MemStore) {
+	store := NewMemStore()
+	log := slog.Default()
+	return NewHandler(store, log, WithWebhookSecret(secret)), store
+}
+
+func TestStripeWebhookUpdatesSubscription(t *testing.T) {
+	t.Parallel()
+	secret := "whsec_test_secret"
+	h, store := newTestHandlerWithWebhook(secret)
+
+	// Create household and set an initial subscription.
+	hh := createTestHousehold(t, h)
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_webhook_1", sync.SubscriptionActive,
+	))
+
+	// Send a subscription.deleted webhook event.
+	event := StripeEvent{
+		ID:   "evt_test_1",
+		Type: "customer.subscription.deleted",
+		Data: json.RawMessage(`{"object":{"id":"sub_webhook_1","status":"canceled"}}`),
+	}
+	body, _ := json.Marshal(event)
+	sigHeader := makeSignatureHeader(body, secret, time.Now())
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req.Header.Set("Stripe-Signature", sigHeader)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Verify household subscription status updated.
+	household, err := store.GetHousehold(nil, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Equal(t, sync.SubscriptionCanceled, household.StripeStatus)
+}
+
+func TestStripeWebhookRejectsInvalidSignature(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandlerWithWebhook("whsec_real_secret")
+
+	event := StripeEvent{
+		ID:   "evt_bad",
+		Type: "customer.subscription.created",
+		Data: json.RawMessage(`{"object":{"id":"sub_1","status":"active"}}`),
+	}
+	body, _ := json.Marshal(event)
+	// Sign with wrong secret.
+	sigHeader := makeSignatureHeader(body, "wrong_secret", time.Now())
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req.Header.Set("Stripe-Signature", sigHeader)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid signature")
+}
+
+func TestStripeWebhookIgnoresNonSubscriptionEvents(t *testing.T) {
+	t.Parallel()
+	secret := "whsec_ignore_test"
+	h, _ := newTestHandlerWithWebhook(secret)
+
+	event := StripeEvent{
+		ID:   "evt_charge",
+		Type: "charge.succeeded",
+		Data: json.RawMessage(`{"object":{"id":"ch_123"}}`),
+	}
+	body, _ := json.Marshal(event)
+	sigHeader := makeSignatureHeader(body, secret, time.Now())
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req.Header.Set("Stripe-Signature", sigHeader)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "ignored")
+}
+
+func TestStripeWebhookNoSecretSkipsVerification(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler() // No webhook secret.
+
+	hh := createTestHousehold(t, h)
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_nosec", sync.SubscriptionActive,
+	))
+
+	event := StripeEvent{
+		ID:   "evt_nosec",
+		Type: "customer.subscription.updated",
+		Data: json.RawMessage(`{"object":{"id":"sub_nosec","status":"past_due"}}`),
+	}
+	body, _ := json.Marshal(event)
+
+	// No Stripe-Signature header -- should still work when secret is empty.
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	household, err := store.GetHousehold(nil, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Equal(t, sync.SubscriptionPastDue, household.StripeStatus)
+}
+
+// --- Status endpoint ---
+
+func TestStatusEndpoint(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Set subscription status.
+	require.NoError(t, store.UpdateSubscription(
+		nil, hh.HouseholdID, "sub_status", sync.SubscriptionActive,
+	))
+
+	// Push an op to increment ops count.
+	op := sync.Envelope{
+		ID:         uid.New(),
+		Nonce:      []byte("nonce-24-bytes-padding!!"),
+		Ciphertext: []byte("data"),
+		CreatedAt:  time.Now(),
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Get status.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var status sync.StatusResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
+	assert.Equal(t, hh.HouseholdID, status.HouseholdID)
+	assert.Len(t, status.Devices, 1)
+	assert.Equal(t, int64(1), status.OpsCount)
+	assert.Equal(t, sync.SubscriptionActive, status.StripeStatus)
+}
+
+func TestStatusRequiresAuth(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+
+	req := httptest.NewRequest("GET", "/status", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}

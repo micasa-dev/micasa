@@ -39,10 +39,27 @@ type PullResponse struct {
 	HasMore bool       `json:"has_more"`
 }
 
+// Subscription status constants.
+const (
+	SubscriptionActive   = "active"
+	SubscriptionPastDue  = "past_due"
+	SubscriptionCanceled = "canceled"
+)
+
 // Household represents a sync household on the relay.
 type Household struct {
-	ID        string    `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                   string    `json:"id"`
+	CreatedAt            time.Time `json:"created_at"`
+	StripeSubscriptionID string    `json:"stripe_subscription_id,omitempty"`
+	StripeStatus         string    `json:"stripe_status,omitempty"`
+}
+
+// StatusResponse is the response of GET /status.
+type StatusResponse struct {
+	HouseholdID  string   `json:"household_id"`
+	Devices      []Device `json:"devices"`
+	OpsCount     int64    `json:"ops_count"`
+	StripeStatus string   `json:"stripe_status"`
 }
 
 // Device represents a registered device on the relay.

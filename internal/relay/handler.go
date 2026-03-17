@@ -5,6 +5,7 @@ package relay
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -15,19 +16,25 @@ import (
 
 // Handler serves the relay HTTP API.
 type Handler struct {
-	store Store
-	mux   *http.ServeMux
-	log   *slog.Logger
+	store         Store
+	mux           *http.ServeMux
+	log           *slog.Logger
+	webhookSecret string
 }
 
-// NewHandler creates a relay HTTP handler.
-func NewHandler(store Store, log *slog.Logger) *Handler {
+// NewHandler creates a relay HTTP handler. The webhookSecret is used to
+// verify Stripe webhook signatures; pass empty string to disable webhook
+// verification (useful for testing).
+func NewHandler(store Store, log *slog.Logger, opts ...HandlerOption) *Handler {
 	h := &Handler{store: store, log: log}
+	for _, opt := range opts {
+		opt(h)
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.handleHealth)
 	mux.HandleFunc("POST /households", h.handleCreateHousehold)
-	mux.HandleFunc("POST /sync/push", h.requireAuth(h.handlePush))
-	mux.HandleFunc("GET /sync/pull", h.requireAuth(h.handlePull))
+	mux.HandleFunc("POST /sync/push", h.requireAuth(h.requireSubscription(h.handlePush)))
+	mux.HandleFunc("GET /sync/pull", h.requireAuth(h.requireSubscription(h.handlePull)))
 	mux.HandleFunc("POST /households/{id}/invite", h.requireAuth(h.handleCreateInvite))
 	mux.HandleFunc("POST /households/{id}/join", h.handleJoin)
 	mux.HandleFunc(
@@ -41,8 +48,18 @@ func NewHandler(store Store, log *slog.Logger) *Handler {
 		"DELETE /households/{id}/devices/{device_id}",
 		h.requireAuth(h.handleRevokeDevice),
 	)
+	mux.HandleFunc("GET /status", h.requireAuth(h.handleStatus))
+	mux.HandleFunc("POST /webhooks/stripe", h.handleStripeWebhook)
 	h.mux = mux
 	return h
+}
+
+// HandlerOption configures the relay handler.
+type HandlerOption func(*Handler)
+
+// WithWebhookSecret sets the Stripe webhook signing secret.
+func WithWebhookSecret(secret string) HandlerOption {
+	return func(h *Handler) { h.webhookSecret = secret }
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +91,26 @@ func (h *Handler) handleCreateHousehold(w http.ResponseWriter, r *http.Request) 
 }
 
 type authenticatedHandler func(w http.ResponseWriter, r *http.Request, dev sync.Device)
+
+// requireSubscription wraps an authenticated handler and checks that the
+// device's household has an active Stripe subscription. Returns 402 if
+// the subscription is explicitly non-active. Empty status (no subscription
+// configured) is allowed (dev/free mode).
+func (h *Handler) requireSubscription(next authenticatedHandler) authenticatedHandler {
+	return func(w http.ResponseWriter, r *http.Request, dev sync.Device) {
+		hh, err := h.store.GetHousehold(r.Context(), dev.HouseholdID)
+		if err != nil {
+			h.log.Error("get household for subscription check", "error", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if hh.StripeStatus != "" && hh.StripeStatus != sync.SubscriptionActive {
+			writeError(w, http.StatusPaymentRequired, "subscription inactive")
+			return
+		}
+		next(w, r, dev)
+	}
+}
 
 func (h *Handler) requireAuth(next authenticatedHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -313,6 +350,87 @@ func (h *Handler) handleRevokeDevice(
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleStatus(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	devices, err := h.store.ListDevices(r.Context(), dev.HouseholdID)
+	if err != nil {
+		h.log.Error("status: list devices", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	hh, err := h.store.GetHousehold(r.Context(), dev.HouseholdID)
+	if err != nil {
+		h.log.Error("status: get household", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	opsCount, err := h.store.OpsCount(r.Context(), dev.HouseholdID)
+	if err != nil {
+		h.log.Error("status: ops count", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, sync.StatusResponse{
+		HouseholdID:  dev.HouseholdID,
+		Devices:      devices,
+		OpsCount:     opsCount,
+		StripeStatus: hh.StripeStatus,
+	})
+}
+
+func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1 MB max
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "read body failed")
+		return
+	}
+
+	if h.webhookSecret != "" {
+		sigHeader := r.Header.Get("Stripe-Signature")
+		if err := VerifyWebhookSignature(body, sigHeader, h.webhookSecret, 0); err != nil {
+			h.log.Error("webhook signature verification failed", "error", err)
+			writeError(w, http.StatusBadRequest, "invalid signature")
+			return
+		}
+	}
+
+	var event StripeEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid event JSON")
+		return
+	}
+
+	subID, status, err := ParseSubscriptionEvent(event)
+	if err != nil {
+		// Not a subscription event we handle -- acknowledge silently.
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
+		return
+	}
+
+	hh, err := h.store.HouseholdBySubscription(r.Context(), subID)
+	if err != nil {
+		h.log.Error("webhook: find household", "error", err, "subscription_id", subID)
+		writeError(w, http.StatusNotFound, "household not found for subscription")
+		return
+	}
+
+	if err := h.store.UpdateSubscription(r.Context(), hh.ID, subID, status); err != nil {
+		h.log.Error("webhook: update subscription", "error", err)
+		writeError(w, http.StatusInternalServerError, "update failed")
+		return
+	}
+
+	h.log.Info("subscription updated",
+		"household_id", hh.ID,
+		"subscription_id", subID,
+		"status", status,
+	)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
