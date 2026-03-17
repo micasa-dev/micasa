@@ -307,7 +307,7 @@ func TestFormatStorageUsage(t *testing.T) {
 			name:  "ZeroQuota",
 			used:  0,
 			quota: 0,
-			want:  "0 B / 0 B (0.0%)",
+			want:  "0 B",
 		},
 	}
 
@@ -317,6 +317,14 @@ func TestFormatStorageUsage(t *testing.T) {
 			assert.Equal(t, tt.want, formatStorageUsage(tt.used, tt.quota))
 		})
 	}
+}
+
+func TestFormatStorageUsageUnlimited(t *testing.T) {
+	t.Parallel()
+	result := formatStorageUsage(52428800, 0) // 50 MiB, unlimited
+	assert.NotContains(t, result, "/")
+	assert.NotContains(t, result, "%")
+	assert.Contains(t, result, "50 MiB")
 }
 
 func TestProStorageCmdWiring(t *testing.T) {

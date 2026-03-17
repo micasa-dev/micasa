@@ -323,10 +323,16 @@ func runProStatus(dbPath string) error {
 	fmt.Printf("devices:   %d\n", len(status.Devices))
 	fmt.Printf("ops:       %d\n", status.OpsCount)
 	fmt.Printf("last seq:  %d\n", deps.device.LastSeq)
-	fmt.Printf("storage:   %s / %s\n",
-		humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
-		humanize.IBytes(uint64(status.BlobStorage.QuotaBytes)),
-	)
+	if status.BlobStorage.QuotaBytes > 0 {
+		fmt.Printf("storage:   %s / %s\n",
+			humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
+			humanize.IBytes(uint64(status.BlobStorage.QuotaBytes)),
+		)
+	} else {
+		fmt.Printf("storage:   %s\n",
+			humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
+		)
+	}
 	if status.StripeStatus != "" {
 		fmt.Printf("plan:      %s\n", status.StripeStatus)
 	}
@@ -386,12 +392,13 @@ func formatBytes(b int64) string {
 	return humanize.IBytes(uint64(b))
 }
 
-// formatStorageUsage formats used/quota bytes as "X / Y (Z%)".
+// formatStorageUsage formats used/quota bytes. When quota is 0
+// (unlimited), returns just the used amount.
 func formatStorageUsage(used, quota int64) string {
-	var pct float64
-	if quota > 0 {
-		pct = float64(used) / float64(quota) * 100
+	if quota <= 0 {
+		return formatBytes(used)
 	}
+	pct := float64(used) / float64(quota) * 100
 	return fmt.Sprintf("%s / %s (%.1f%%)", formatBytes(used), formatBytes(quota), pct)
 }
 
