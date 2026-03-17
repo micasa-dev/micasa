@@ -5,7 +5,10 @@ package relay
 
 import (
 	"bytes"
+	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
@@ -1420,11 +1423,9 @@ func TestBlobInvalidHash(t *testing.T) {
 
 func TestBlobQuotaExceeded(t *testing.T) {
 	t.Parallel()
-	h, store := newTestHandler()
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default(), WithBlobQuota(100))
 	hh := createTestHousehold(t, h)
-
-	// Override quota to something tiny (100 bytes).
-	store.SetBlobQuota(100)
 
 	// Upload a blob larger than quota.
 	bigPayload := make([]byte, 200)
@@ -1702,4 +1703,88 @@ func TestMalformedJSONBodies(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
+}
+
+func TestSelfHostedSubscriptionBypass(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default(), WithSelfHosted())
+	hh := createTestHousehold(t, h)
+
+	// Set subscription to canceled — cloud mode would return 402.
+	require.NoError(t, store.UpdateSubscription(
+		context.Background(),
+		hh.HouseholdID,
+		"sub_test",
+		"canceled",
+	))
+
+	// In self-hosted mode, push should succeed despite canceled subscription.
+	// Empty ops returns 400, not 402 — proves subscription check was bypassed.
+	rec := httptest.NewRecorder()
+	req := authRequest("POST", "/sync/push", sync.PushRequest{}, hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestSelfHostedUnlimitedQuota(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default(), WithSelfHosted())
+	hh := createTestHousehold(t, h)
+
+	// Status should report quota=0 (unlimited) in self-hosted mode.
+	rec := httptest.NewRecorder()
+	req := authRequest("GET", "/status", nil, hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var status sync.StatusResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
+	assert.Equal(t, int64(0), status.BlobStorage.QuotaBytes)
+}
+
+func TestCloudModeDefaultQuota(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default())
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	req := authRequest("GET", "/status", nil, hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var status sync.StatusResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
+	assert.Equal(t, DefaultBlobQuota, status.BlobStorage.QuotaBytes)
+}
+
+func TestCustomBlobQuota(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default(), WithBlobQuota(500))
+	hh := createTestHousehold(t, h)
+
+	// Upload a 200-byte blob — should succeed (200 < 500).
+	payload := make([]byte, 200)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+
+	// Upload another 400-byte blob — would exceed 500 quota.
+	payload2 := make([]byte, 400)
+	hash2 := fmt.Sprintf("%x", sha256.Sum256(payload2))
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, hash2), bytes.NewReader(payload2))
+	req2.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec2, req2)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec2.Code)
+
+	// Verify the 413 response reports the custom quota, not DefaultBlobQuota.
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(rec2.Body).Decode(&body))
+	assert.Equal(t, float64(500), body["quota_bytes"])
 }

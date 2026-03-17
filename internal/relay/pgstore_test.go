@@ -265,7 +265,7 @@ func TestPgStoreBlobOperations(t *testing.T) {
 	data := []byte("encrypted-blob-data")
 
 	// Put blob.
-	err = store.PutBlob(ctx, resp.HouseholdID, hash, data)
+	err = store.PutBlob(ctx, resp.HouseholdID, hash, data, DefaultBlobQuota)
 	require.NoError(t, err)
 
 	// Has blob.
@@ -279,7 +279,7 @@ func TestPgStoreBlobOperations(t *testing.T) {
 	assert.Equal(t, data, got)
 
 	// Dedup: same hash returns errBlobExists.
-	err = store.PutBlob(ctx, resp.HouseholdID, hash, data)
+	err = store.PutBlob(ctx, resp.HouseholdID, hash, data, DefaultBlobQuota)
 	require.ErrorIs(t, err, errBlobExists)
 
 	// Usage.

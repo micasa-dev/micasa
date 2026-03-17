@@ -121,8 +121,9 @@ type Store interface {
 
 	// PutBlob stores an encrypted blob for a household, keyed by SHA-256
 	// hash. Returns errBlobExists if the hash already exists (dedup),
-	// errQuotaExceeded if the household's blob storage quota is exceeded.
-	PutBlob(ctx context.Context, householdID, hash string, data []byte) error
+	// errQuotaExceeded if the household's blob storage would exceed quota.
+	// A quota of 0 disables quota enforcement.
+	PutBlob(ctx context.Context, householdID, hash string, data []byte, quota int64) error
 
 	// GetBlob retrieves an encrypted blob by household and hash.
 	// Returns errBlobNotFound if the blob does not exist.

@@ -39,7 +39,6 @@ type MemStore struct {
 	invites    map[string]*inviteRecord
 	exchanges  map[string]*keyExchangeRecord
 	blobs      map[string]map[string][]byte // household_id -> hash -> data
-	blobQuota  int64                        // per-household quota; 0 = default
 }
 
 type deviceRecord struct {
@@ -82,20 +81,6 @@ func NewMemStore() *MemStore {
 		exchanges:  make(map[string]*keyExchangeRecord),
 		blobs:      make(map[string]map[string][]byte),
 	}
-}
-
-// SetBlobQuota overrides the default per-household blob quota (for testing).
-func (m *MemStore) SetBlobQuota(n int64) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.blobQuota = n
-}
-
-func (m *MemStore) blobQuotaBytes() int64 {
-	if m.blobQuota > 0 {
-		return m.blobQuota
-	}
-	return defaultBlobQuota
 }
 
 func (m *MemStore) Push(_ context.Context, ops []sync.Envelope) ([]sync.PushConfirmation, error) {
@@ -542,7 +527,12 @@ func (m *MemStore) OpsCount(
 	return count, nil
 }
 
-func (m *MemStore) PutBlob(_ context.Context, householdID, hash string, data []byte) error {
+func (m *MemStore) PutBlob(
+	_ context.Context,
+	householdID, hash string,
+	data []byte,
+	quota int64,
+) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -556,15 +546,18 @@ func (m *MemStore) PutBlob(_ context.Context, householdID, hash string, data []b
 		return errBlobExists
 	}
 
-	// Check quota. Written as used > quota-len to avoid overflow on
-	// the left side (used+len could wrap). Safe with signed int64:
-	// if len(data) > quota the RHS goes negative and the check holds.
-	var used int64
-	for _, b := range hhBlobs {
-		used += int64(len(b))
-	}
-	if used > m.blobQuotaBytes()-int64(len(data)) {
-		return errQuotaExceeded
+	// When quota is 0, skip enforcement (unlimited).
+	if quota > 0 {
+		// Check quota. Written as used > quota-len to avoid overflow on
+		// the left side (used+len could wrap). Safe with signed int64:
+		// if len(data) > quota the RHS goes negative and the check holds.
+		var used int64
+		for _, b := range hhBlobs {
+			used += int64(len(b))
+		}
+		if used > quota-int64(len(data)) {
+			return errQuotaExceeded
+		}
 	}
 
 	// Store a copy of the data.

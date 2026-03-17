@@ -663,7 +663,12 @@ func (s *PgStore) OpsCount(ctx context.Context, householdID string) (int64, erro
 	return count, nil
 }
 
-func (s *PgStore) PutBlob(ctx context.Context, householdID, hash string, data []byte) error {
+func (s *PgStore) PutBlob(
+	ctx context.Context,
+	householdID, hash string,
+	data []byte,
+	quota int64,
+) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Check if blob already exists.
 		var count int64
@@ -676,18 +681,21 @@ func (s *PgStore) PutBlob(ctx context.Context, householdID, hash string, data []
 			return errBlobExists
 		}
 
-		// Check quota. Written as used > quota-len to avoid overflow on
-		// the left side (used+len could wrap). Safe with signed int64:
-		// if len(data) > quota the RHS goes negative and the check holds.
-		var used int64
-		if err := tx.Model(&pgBlob{}).
-			Where("household_id = ?", householdID).
-			Select("COALESCE(SUM(size_bytes), 0)").
-			Scan(&used).Error; err != nil {
-			return fmt.Errorf("check quota: %w", err)
-		}
-		if used > defaultBlobQuota-int64(len(data)) {
-			return errQuotaExceeded
+		// When quota is 0, skip enforcement (unlimited).
+		if quota > 0 {
+			// Check quota. Written as used > quota-len to avoid overflow on
+			// the left side (used+len could wrap). Safe with signed int64:
+			// if len(data) > quota the RHS goes negative and the check holds.
+			var used int64
+			if err := tx.Model(&pgBlob{}).
+				Where("household_id = ?", householdID).
+				Select("COALESCE(SUM(size_bytes), 0)").
+				Scan(&used).Error; err != nil {
+				return fmt.Errorf("check quota: %w", err)
+			}
+			if used > quota-int64(len(data)) {
+				return errQuotaExceeded
+			}
 		}
 
 		blob := pgBlob{

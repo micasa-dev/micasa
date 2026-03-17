@@ -27,6 +27,9 @@ type Handler struct {
 	mux           *http.ServeMux
 	log           *slog.Logger
 	webhookSecret string
+	selfHosted    bool
+	blobQuota     int64
+	blobQuotaSet  bool
 }
 
 // NewHandler creates a relay HTTP handler. The webhookSecret is used to
@@ -36,6 +39,11 @@ func NewHandler(store Store, log *slog.Logger, opts ...HandlerOption) *Handler {
 	h := &Handler{store: store, log: log}
 	for _, opt := range opts {
 		opt(h)
+	}
+	// Default blob quota when not explicitly set:
+	// unlimited (0) in self-hosted mode, 1 GB in cloud mode.
+	if !h.blobQuotaSet && !h.selfHosted {
+		h.blobQuota = DefaultBlobQuota
 	}
 	if h.webhookSecret == "" {
 		log.Warn("Stripe webhook secret is empty -- webhook signature verification disabled")
@@ -88,6 +96,21 @@ func WithWebhookSecret(secret string) HandlerOption {
 	return func(h *Handler) { h.webhookSecret = secret }
 }
 
+// WithSelfHosted enables self-hosted mode: subscription checks are
+// bypassed and the default blob quota is unlimited (0).
+func WithSelfHosted() HandlerOption {
+	return func(h *Handler) { h.selfHosted = true }
+}
+
+// WithBlobQuota sets the per-household blob storage quota in bytes.
+// A value of 0 disables quota enforcement (unlimited).
+func WithBlobQuota(n int64) HandlerOption {
+	return func(h *Handler) {
+		h.blobQuota = n
+		h.blobQuotaSet = true
+	}
+}
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
@@ -132,6 +155,10 @@ type authenticatedHandler func(w http.ResponseWriter, r *http.Request, dev sync.
 // configured) is allowed (dev/free mode).
 func (h *Handler) requireSubscription(next authenticatedHandler) authenticatedHandler {
 	return func(w http.ResponseWriter, r *http.Request, dev sync.Device) {
+		if h.selfHosted {
+			next(w, r, dev)
+			return
+		}
 		hh, err := h.store.GetHousehold(r.Context(), dev.HouseholdID)
 		if err != nil {
 			h.log.Error("get household for subscription check", "error", err)
@@ -427,7 +454,7 @@ func (h *Handler) handlePutBlob(
 		return
 	}
 
-	if err := h.store.PutBlob(r.Context(), hhID, hash, data); err != nil {
+	if err := h.store.PutBlob(r.Context(), hhID, hash, data, h.blobQuota); err != nil {
 		switch {
 		case errors.Is(err, errBlobExists):
 			writeJSON(w, http.StatusConflict, map[string]string{"status": "exists"})
@@ -439,7 +466,7 @@ func (h *Handler) handlePutBlob(
 			writeJSON(w, http.StatusRequestEntityTooLarge, map[string]any{
 				"error":       "blob storage quota exceeded",
 				"used_bytes":  usage,
-				"quota_bytes": defaultBlobQuota,
+				"quota_bytes": h.blobQuota,
 			})
 		default:
 			h.log.Error("put blob", "error", err)
@@ -549,7 +576,7 @@ func (h *Handler) handleStatus(
 		StripeStatus: hh.StripeStatus,
 		BlobStorage: sync.BlobStorage{
 			UsedBytes:  blobUsed,
-			QuotaBytes: defaultBlobQuota,
+			QuotaBytes: h.blobQuota,
 		},
 	})
 }

@@ -15,8 +15,9 @@ var (
 	errQuotaExceeded = errors.New("blob storage quota exceeded")
 )
 
-// defaultBlobQuota is the included blob storage per household (1 GB).
-const defaultBlobQuota int64 = 1 << 30
+// DefaultBlobQuota is the included blob storage per household (1 GB).
+// Used as the cloud-mode default when no WithBlobQuota option is set.
+const DefaultBlobQuota int64 = 1 << 30
 
 // maxBlobSize is the maximum size of a single blob upload (50 MB).
 const maxBlobSize int64 = 50 << 20

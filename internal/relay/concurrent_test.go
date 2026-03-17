@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	gosync "sync"
@@ -86,20 +87,20 @@ func TestConcurrentCreateInviteRespectsCap(t *testing.T) {
 func TestConcurrentPutBlobRespectsQuota(t *testing.T) {
 	t.Parallel()
 
-	h, store := newTestHandler()
+	const (
+		quota      int64 = 1000
+		blobSize   int64 = 400 // bytes; two blobs fit (800 < 1000), third does not
+		goroutines int   = 5
+	)
+
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default(), WithBlobQuota(quota))
 	hh := createTestHousehold(t, h)
 
 	// Activate subscription so the blob endpoint accepts requests.
 	require.NoError(t, store.UpdateSubscription(
 		context.Background(), hh.HouseholdID, "sub_concurrent_test", "active",
 	))
-
-	const (
-		quota      int64 = 1000
-		blobSize   int64 = 400 // bytes; two blobs fit (800 < 1000), third does not
-		goroutines int   = 5
-	)
-	store.SetBlobQuota(quota)
 
 	// Build goroutines distinct blobs and their real SHA-256 hashes.
 	type blobEntry struct {
