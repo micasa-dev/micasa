@@ -96,7 +96,7 @@ func runTUI(w io.Writer, opts *runOpts) error {
 		return fmt.Errorf("resolve db path: %w", err)
 	}
 	if opts.printPath {
-		fmt.Fprintln(w, dbPath)
+		_, _ = fmt.Fprintln(w, dbPath)
 		return nil
 	}
 	if opts.years > 0 && !opts.demo {
@@ -320,7 +320,7 @@ func runBackup(w io.Writer, opts *backupOpts) error {
 	if err != nil {
 		return fmt.Errorf("resolve absolute path: %w", err)
 	}
-	fmt.Fprintln(w, absPath)
+	_, _ = fmt.Fprintln(w, absPath)
 	return nil
 }
 
@@ -378,7 +378,7 @@ func newConfigEditCmd() *cobra.Command {
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runConfigEdit(config.Path())
 		},
 	}

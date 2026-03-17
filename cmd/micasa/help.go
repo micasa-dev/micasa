@@ -107,5 +107,5 @@ func styledHelp(cmd *cobra.Command, _ []string) {
 		fmt.Fprintln(&b)
 	}
 
-	fmt.Fprint(cmd.OutOrStdout(), b.String())
+	fmt.Fprint(cmd.OutOrStdout(), b.String()) //nolint:errcheck // writing to stdout
 }

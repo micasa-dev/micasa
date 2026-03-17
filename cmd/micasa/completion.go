@@ -22,7 +22,7 @@ func newCompletionCmd(root *cobra.Command) *cobra.Command {
 			SilenceErrors: true,
 			SilenceUsage:  true,
 			Args:          cobra.NoArgs,
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				return root.GenBashCompletionV2(cmd.OutOrStdout(), true)
 			},
 		},
@@ -32,7 +32,7 @@ func newCompletionCmd(root *cobra.Command) *cobra.Command {
 			SilenceErrors: true,
 			SilenceUsage:  true,
 			Args:          cobra.NoArgs,
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				return root.GenZshCompletion(cmd.OutOrStdout())
 			},
 		},
@@ -42,7 +42,7 @@ func newCompletionCmd(root *cobra.Command) *cobra.Command {
 			SilenceErrors: true,
 			SilenceUsage:  true,
 			Args:          cobra.NoArgs,
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				return root.GenFishCompletion(cmd.OutOrStdout(), true)
 			},
 		},

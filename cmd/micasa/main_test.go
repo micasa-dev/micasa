@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -53,7 +54,7 @@ func getTestBin(t *testing.T) string {
 		// Register cleanup at process exit is not possible with sync.Once,
 		// but the OS temp dir is cleaned up eventually. The binary is small.
 		bin := filepath.Join(dir, "micasa"+ext)
-		cmd := exec.Command("go", "build", "-o", bin, ".")
+		cmd := exec.CommandContext(context.Background(), "go", "build", "-o", bin, ".")
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -375,25 +376,4 @@ func noopEditor() string {
 		return "cmd /c echo"
 	}
 	return "true"
-}
-
-// envWithEditor returns a copy of os.Environ() with EDITOR and VISUAL
-// replaced, and XDG_CONFIG_HOME set to configHome. This avoids the
-// first-occurrence-wins semantics that would let the parent's EDITOR
-// shadow the test's override.
-func envWithEditor(configHome, editor string) []string {
-	var env []string
-	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "EDITOR=") ||
-			strings.HasPrefix(e, "VISUAL=") ||
-			strings.HasPrefix(e, "XDG_CONFIG_HOME=") {
-			continue
-		}
-		env = append(env, e)
-	}
-	return append(env,
-		"XDG_CONFIG_HOME="+configHome,
-		"EDITOR="+editor,
-		"VISUAL="+editor,
-	)
 }
