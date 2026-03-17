@@ -230,6 +230,114 @@ func TestApplyOneRemoteWinsLWWClearsLocalAppliedAt(t *testing.T) {
 		"local op's applied_at should be cleared when remote wins")
 }
 
+func TestApplyOneRemoteWinsLWWClearsAllLocalOps(t *testing.T) {
+	t.Parallel()
+
+	// Verifies the multi-op remote-wins LWW path: when a newer remote op
+	// conflicts with multiple older local unsynced ops for the same row,
+	// ALL local ops' applied_at values are cleared — not just the latest.
+	// This covers the code comment at apply.go:116-119.
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+	now := time.Now()
+	vendorID := "vendor-multi-local-ops"
+
+	// Insert a vendor row directly so the remote delete has something to target.
+	require.NoError(t, db.Table(data.TableVendors).Create(map[string]any{
+		"id":   vendorID,
+		"name": "Original",
+	}).Error)
+
+	// Create TWO local unsynced ops for the same row.
+	// INSERT op: older, applied, not synced.
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "local-insert-op",
+		"table_name": data.TableVendors,
+		"row_id":     vendorID,
+		"op_type":    "insert",
+		"payload":    `{"id":"` + vendorID + `","name":"Original"}`,
+		"device_id":  "dev-local",
+		"created_at": now.Add(-2 * time.Minute), // oldest
+		"applied_at": now,
+		"synced_at":  nil,
+	}).Error)
+
+	// UPDATE op: newer than insert, still older than remote, applied, not synced.
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "local-update-op",
+		"table_name": data.TableVendors,
+		"row_id":     vendorID,
+		"op_type":    "update",
+		"payload":    `{"name":"Local Update"}`,
+		"device_id":  "dev-local",
+		"created_at": now.Add(-time.Minute), // newer than insert, older than remote
+		"applied_at": now,
+		"synced_at":  nil,
+	}).Error)
+
+	// Remote DELETE op is the newest, so it wins the LWW check.
+	remoteOp := DecryptedOp{
+		Envelope: Envelope{Seq: 1},
+		Payload: OpPayload{
+			ID:        "remote-delete-op",
+			TableName: data.TableVendors,
+			RowID:     vendorID,
+			OpType:    "delete",
+			Payload:   `{}`,
+			DeviceID:  "dev-remote",
+			CreatedAt: now, // newest of the three
+		},
+	}
+
+	err = applyOne(db, remoteOp)
+	require.NoError(t, err)
+
+	// The vendor row should be soft-deleted.
+	var vendor struct {
+		DeletedAt *time.Time
+	}
+	require.NoError(t, db.Table(data.TableVendors).
+		Unscoped().
+		Where("id = ?", vendorID).
+		Scan(&vendor).Error)
+	assert.NotNil(t, vendor.DeletedAt, "vendor should be soft-deleted after remote delete wins")
+
+	// BOTH local ops must have applied_at cleared.
+	var insertOp struct{ AppliedAt *time.Time }
+	require.NoError(t, db.Table("sync_oplog_entries").
+		Select("applied_at").
+		Where("id = ?", "local-insert-op").
+		Scan(&insertOp).Error)
+	assert.Nil(t, insertOp.AppliedAt,
+		"local insert op's applied_at should be cleared when remote wins")
+
+	var updateOp struct{ AppliedAt *time.Time }
+	require.NoError(t, db.Table("sync_oplog_entries").
+		Select("applied_at").
+		Where("id = ?", "local-update-op").
+		Scan(&updateOp).Error)
+	assert.Nil(t, updateOp.AppliedAt,
+		"local update op's applied_at should be cleared when remote wins")
+
+	// The remote delete op should be recorded with applied_at and synced_at set.
+	var remoteRecord struct {
+		AppliedAt *time.Time
+		SyncedAt  *time.Time
+	}
+	require.NoError(t, db.Table("sync_oplog_entries").
+		Select("applied_at, synced_at").
+		Where("id = ?", "remote-delete-op").
+		Scan(&remoteRecord).Error)
+	assert.NotNil(t, remoteRecord.AppliedAt, "remote op should have applied_at set")
+	assert.NotNil(t, remoteRecord.SyncedAt, "remote op should have synced_at set")
+}
+
 func TestRecordUnappliedOpReturnsDBError(t *testing.T) {
 	t.Parallel()
 
@@ -377,6 +485,64 @@ func TestApplyUpdateMissingRowReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "row not found")
 }
 
+func TestApplyOpsDeleteBeforeInsertSortedBySeq(t *testing.T) {
+	t.Parallel()
+
+	// Open a real SQLite DB so ApplyOps can run GORM transactions.
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	now := time.Now()
+	vendorID := "vendor-del-seq"
+	deleteTime := now.Add(time.Second)
+
+	// Build two ops for the same vendor row, deliberately in reverse seq order.
+	// Seq 20 (insert) must apply first; seq 30 (delete) must apply second.
+	// If ApplyOps doesn't sort, the delete arrives before the insert and fails
+	// because the row doesn't exist yet.
+	ops := []DecryptedOp{
+		{
+			Envelope: Envelope{Seq: 30},
+			Payload: OpPayload{
+				ID:        "op-del",
+				TableName: data.TableVendors,
+				RowID:     vendorID,
+				OpType:    "delete",
+				DeviceID:  "dev-a",
+				CreatedAt: deleteTime,
+			},
+		},
+		{
+			Envelope: Envelope{Seq: 20},
+			Payload: OpPayload{
+				ID:        "op-ins",
+				TableName: data.TableVendors,
+				RowID:     vendorID,
+				OpType:    "insert",
+				Payload:   `{"id":"` + vendorID + `","name":"Test Vendor"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now,
+			},
+		},
+	}
+
+	result := ApplyOps(db, ops)
+	require.Empty(t, result.Errors, "no errors expected")
+	assert.Equal(t, 2, result.Applied)
+
+	// The row should be soft-deleted with deleted_at equal to the delete op's
+	// CreatedAt (deterministic convergence: same op => same deleted_at).
+	var vendor data.Vendor
+	require.NoError(t, db.Unscoped().Where("id = ?", vendorID).First(&vendor).Error)
+	require.True(t, vendor.DeletedAt.Valid, "vendor should be soft-deleted")
+	assert.True(t, vendor.DeletedAt.Time.Equal(deleteTime),
+		"deleted_at should equal the delete op's CreatedAt for deterministic convergence")
+}
+
 func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {
 	t.Parallel()
 
@@ -388,4 +554,41 @@ func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {
 	}
 	stripNonColumnKeys("vendors", row)
 	assert.Contains(t, row, "name")
+}
+
+func TestStripNonColumnKeysAlwaysStripsDeletedAt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("non-document table strips deleted_at", func(t *testing.T) {
+		t.Parallel()
+
+		row := map[string]any{
+			"id":         "v-1",
+			"name":       "Acme",
+			"deleted_at": "2026-01-01T00:00:00Z",
+		}
+		stripNonColumnKeys(data.TableVendors, row)
+		assert.NotContains(t, row, "deleted_at", "deleted_at should always be stripped")
+		assert.Contains(t, row, "id", "id should be preserved")
+		assert.Contains(t, row, "name", "name should be preserved")
+	})
+
+	t.Run("documents table strips both blob_ref and deleted_at", func(t *testing.T) {
+		t.Parallel()
+
+		row := map[string]any{
+			"id":         "doc-1",
+			"title":      "Invoice",
+			"file_name":  "invoice.pdf",
+			"sha256":     "abc123",
+			"blob_ref":   "abc123",
+			"deleted_at": "2026-01-01T00:00:00Z",
+		}
+		stripNonColumnKeys(data.TableDocuments, row)
+		assert.NotContains(t, row, "deleted_at", "deleted_at should always be stripped")
+		assert.NotContains(t, row, "blob_ref", "blob_ref should be stripped from documents")
+		assert.Contains(t, row, "id", "id should be preserved")
+		assert.Contains(t, row, "title", "title should be preserved")
+		assert.Contains(t, row, "sha256", "sha256 should be preserved")
+	})
 }
