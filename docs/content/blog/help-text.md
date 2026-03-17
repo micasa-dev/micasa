@@ -74,8 +74,8 @@ know what model read your invoice six months from now, it's there.
 - **Hide-deleted** -- soft-deleting a row now respects your explicit
   hide-deleted toggle instead of overriding it
   ([#774](https://github.com/cpcloud/micasa/pull/774)).
-- **Sort viewport** -- toggling sort no longer left the viewport pointing
-  at the wrong rows
+- **Sort** -- toggling sort didn't visually activate until you pressed a
+  navigation key; the cached viewport wasn't being invalidated
   ([#773](https://github.com/cpcloud/micasa/pull/773)).
 - **Service log sync** -- closing the service log overlay auto-syncs and
   highlights the Last column so you see the update immediately
