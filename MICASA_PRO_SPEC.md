@@ -664,6 +664,14 @@ micasa pro join <invite-code>
 **Important:** The relay never sees the household key. It only facilitates
 the exchange of public keys and encrypted messages between devices.
 
+**Single-use credential retrieval:** When the joiner polls
+`GET /key-exchange/{id}`, the response includes the encrypted household
+key and the device bearer token. These credentials are cleared from the
+relay after the first successful retrieval — a second GET returns
+`ready: true` but with empty credentials. This prevents a leaked
+exchange ID from being exploited after the joiner has already retrieved
+their credentials.
+
 ### Joining with existing data
 
 If the joining device already has a micasa database (they've been using

@@ -68,6 +68,8 @@ type Store interface {
 
 	// GetKeyExchangeResult returns the key exchange status. When
 	// complete, includes the encrypted key and device credentials.
+	// Credentials are single-use: the token and encrypted key are
+	// cleared after the first successful retrieval.
 	GetKeyExchangeResult(ctx context.Context, exchangeID string) (sync.KeyExchangeResult, error)
 
 	// ListDevices returns all active devices in a household.

@@ -587,6 +587,74 @@ func TestKeyExchangeResultBeforeCompletion(t *testing.T) {
 	assert.Empty(t, result.DeviceToken)
 }
 
+func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Full exchange: invite → join → complete.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	joinBody, _ := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
+		DeviceName: "phone",
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var joinResp sync.JoinResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/key-exchange/"+joinResp.ExchangeID+"/complete",
+			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("key-data")},
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// First retrieval -- should return credentials.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var result sync.KeyExchangeResult
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&result))
+	require.True(t, result.Ready)
+	assert.NotEmpty(t, result.DeviceToken)
+	assert.NotEmpty(t, result.EncryptedHouseholdKey)
+
+	// Second retrieval -- credentials must be gone.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var result2 sync.KeyExchangeResult
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&result2))
+	assert.True(t, result2.Ready)
+	assert.Empty(t, result2.DeviceToken, "token must not be returned twice")
+	assert.Empty(t, result2.EncryptedHouseholdKey, "encrypted key must not be returned twice")
+}
+
 func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()

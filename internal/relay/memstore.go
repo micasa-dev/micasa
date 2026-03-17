@@ -378,12 +378,20 @@ func (m *MemStore) GetKeyExchangeResult(
 		return sync.KeyExchangeResult{Ready: false}, nil
 	}
 
-	return sync.KeyExchangeResult{
+	result := sync.KeyExchangeResult{
 		Ready:                 true,
 		EncryptedHouseholdKey: ex.encryptedKey,
 		DeviceID:              ex.deviceID,
 		DeviceToken:           ex.deviceToken,
-	}, nil
+	}
+
+	// Single-use: clear credentials after first retrieval so they
+	// cannot be obtained by a second caller. The device ID remains
+	// (it's not a secret) but the token and encrypted key are gone.
+	ex.encryptedKey = nil
+	ex.deviceToken = ""
+
+	return result, nil
 }
 
 func (m *MemStore) ListDevices(
