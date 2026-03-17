@@ -4,9 +4,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -70,32 +72,38 @@ func resolveProDeps(dbPath string) (*proDeps, error) {
 
 	dev, err := store.GetSyncDevice()
 	if err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf(
 			"no sync device found -- run `micasa pro init` first: %w",
 			err,
 		)
 	}
 	if dev.HouseholdID == "" {
+		_ = store.Close()
 		return nil, fmt.Errorf("device not initialized -- run `micasa pro init` first")
 	}
 
 	secretDir, err := crypto.SecretsDir()
 	if err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf("resolve secrets directory: %w", err)
 	}
 
 	token, err := crypto.LoadDeviceToken(secretDir)
 	if err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf("load device token: %w", err)
 	}
 
 	key, err := crypto.LoadHouseholdKey(secretDir)
 	if err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf("load household key: %w", err)
 	}
 
 	kp, err := crypto.LoadDeviceKeyPair(secretDir)
 	if err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf("load device keypair: %w", err)
 	}
 
@@ -119,6 +127,7 @@ func openAndMigrate(dbPath string) (*data.Store, error) {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 	if err := store.AutoMigrate(); err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 	return store, nil
@@ -140,6 +149,18 @@ func dbPathFromEnvOrArg(args []string) string {
 	return os.Getenv("MICASA_DB_PATH")
 }
 
+// resolveRelayURL returns the relay URL respecting flag > env > default
+// precedence. flagChanged is true when the user explicitly passed --relay-url.
+func resolveRelayURL(flagValue string, flagChanged bool) string {
+	if flagChanged {
+		return flagValue
+	}
+	if envURL := os.Getenv("MICASA_RELAY_URL"); envURL != "" {
+		return envURL
+	}
+	return flagValue // still holds the default
+}
+
 // --- pro init ---
 
 func newProInitCmd() *cobra.Command {
@@ -151,17 +172,15 @@ func newProInitCmd() *cobra.Command {
 		Args:          cobra.MaximumNArgs(1),
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return runProInit(dbPathFromEnvOrArg(args), relayURL)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			url := resolveRelayURL(relayURL, cmd.Flags().Changed("relay-url"))
+			return runProInit(dbPathFromEnvOrArg(args), url)
 		},
 	}
 	cmd.Flags().StringVar(
 		&relayURL, "relay-url", defaultRelayURL,
 		"Relay server URL (honors MICASA_RELAY_URL)",
 	)
-	if envURL := os.Getenv("MICASA_RELAY_URL"); envURL != "" {
-		relayURL = envURL
-	}
 	return cmd
 }
 
@@ -170,6 +189,7 @@ func runProInit(dbPath, relayURL string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = store.Close() }()
 
 	// Guard: error if already initialized.
 	dev, err := store.GetSyncDevice()
@@ -266,6 +286,7 @@ func runProStatus(dbPath string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
 	status, err := client.Status()
@@ -312,6 +333,7 @@ func runProSync(dbPath string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewClient(deps.device.RelayURL, deps.token, deps.key)
 
@@ -352,6 +374,8 @@ func pullAll(
 		total += ar.Applied + ar.Conflicts
 
 		// Update last seq from the highest envelope seq.
+		// The relay returns ops ordered by seq (ascending), so the max
+		// is always the last element, but we scan defensively.
 		for _, dop := range result.Ops {
 			if dop.Envelope.Seq > seq {
 				seq = dop.Envelope.Seq
@@ -428,6 +452,7 @@ func runProInvite(dbPath string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
 
@@ -446,24 +471,33 @@ func runProInvite(dbPath string) error {
 	)
 	fmt.Fprintf(os.Stderr, "waiting for joiner...\n")
 
-	// Poll for pending key exchanges.
-	deadline := time.Now().Add(pollTimeout)
+	// Poll for pending key exchanges, cancellable via Ctrl+C.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	deadline := time.After(pollTimeout)
 	var exchange sync.PendingKeyExchange
 	for {
-		if time.Now().After(deadline) {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("interrupted")
+		case <-deadline:
 			return fmt.Errorf("timed out waiting for joiner (5 minutes)")
+		case <-ticker.C:
+			exchanges, err := client.GetPendingExchanges(deps.device.HouseholdID)
+			if err != nil {
+				return fmt.Errorf("poll pending exchanges: %w", err)
+			}
+			if len(exchanges) > 0 {
+				exchange = exchanges[0]
+				goto found
+			}
 		}
-
-		exchanges, err := client.GetPendingExchanges(deps.device.HouseholdID)
-		if err != nil {
-			return fmt.Errorf("poll pending exchanges: %w", err)
-		}
-		if len(exchanges) > 0 {
-			exchange = exchanges[0]
-			break
-		}
-		time.Sleep(pollInterval)
 	}
+found:
 
 	// Encrypt household key for the joiner.
 	var joinerPubKey [crypto.KeySize]byte
@@ -489,29 +523,38 @@ func runProInvite(dbPath string) error {
 // --- pro join ---
 
 func newProJoinCmd() *cobra.Command {
-	return &cobra.Command{
+	var relayURL string
+
+	cmd := &cobra.Command{
 		Use:           "join <code> [database-path]",
 		Short:         "Join household with invite code",
 		Args:          cobra.RangeArgs(1, 2),
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var dbPath string
 			if len(args) > 1 {
 				dbPath = args[1]
 			} else {
 				dbPath = os.Getenv("MICASA_DB_PATH")
 			}
-			return runProJoin(args[0], dbPath)
+			url := resolveRelayURL(relayURL, cmd.Flags().Changed("relay-url"))
+			return runProJoin(args[0], dbPath, url)
 		},
 	}
+	cmd.Flags().StringVar(
+		&relayURL, "relay-url", defaultRelayURL,
+		"Relay server URL (honors MICASA_RELAY_URL)",
+	)
+	return cmd
 }
 
-func runProJoin(code, dbPath string) error {
+func runProJoin(code, dbPath, relayURL string) error {
 	store, err := openAndMigrate(dbPath)
 	if err != nil {
 		return err
 	}
+	defer func() { _ = store.Close() }()
 
 	// Guard: not already joined.
 	dev, err := store.GetSyncDevice()
@@ -537,12 +580,6 @@ func runProJoin(code, dbPath string) error {
 			"invalid invite code format -- " +
 				"both household ID and code must be non-empty",
 		)
-	}
-
-	// Resolve relay URL from env or default.
-	relayURL := os.Getenv("MICASA_RELAY_URL")
-	if relayURL == "" {
-		relayURL = defaultRelayURL
 	}
 
 	secretDir, err := crypto.SecretsDir()
@@ -574,26 +611,35 @@ func runProJoin(code, dbPath string) error {
 
 	fmt.Fprintf(os.Stderr, "waiting for inviter to approve...\n")
 
-	// Poll for key exchange result.
-	deadline := time.Now().Add(pollTimeout)
+	// Poll for key exchange result, cancellable via Ctrl+C.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	timeoutCh := time.After(pollTimeout)
 	var result *sync.KeyExchangeResult
 	for {
-		if time.Now().After(deadline) {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("interrupted")
+		case <-timeoutCh:
 			return fmt.Errorf(
 				"timed out waiting for inviter approval (5 minutes)",
 			)
+		case <-ticker.C:
+			r, err := client.GetKeyExchangeResult(joinResp.ExchangeID)
+			if err != nil {
+				return fmt.Errorf("poll key exchange: %w", err)
+			}
+			if r.Ready {
+				result = r
+				goto exchangeDone
+			}
 		}
-
-		r, err := client.GetKeyExchangeResult(joinResp.ExchangeID)
-		if err != nil {
-			return fmt.Errorf("poll key exchange: %w", err)
-		}
-		if r.Ready {
-			result = r
-			break
-		}
-		time.Sleep(pollInterval)
 	}
+exchangeDone:
 
 	// Decrypt household key.
 	var inviterPubKey [crypto.KeySize]byte
@@ -687,6 +733,7 @@ func runProDevicesList(dbPath string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
 	devices, err := client.ListDevices(deps.device.HouseholdID)
@@ -723,6 +770,7 @@ func runProDevicesRevoke(deviceID, dbPath string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = deps.store.Close() }()
 
 	if deviceID == deps.device.ID {
 		return fmt.Errorf("cannot revoke your own device")

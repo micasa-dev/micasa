@@ -925,7 +925,7 @@ func (m *Model) acceptExistingExtraction() error {
 	}
 
 	// Persist async extraction results and the model that produced them.
-	if ex.pendingText != "" || len(ex.pendingData) > 0 || ex.hasLLM {
+	if ex.DocID != "" && (ex.pendingText != "" || len(ex.pendingData) > 0 || ex.hasLLM) {
 		if m.store != nil {
 			model := m.extractionModelUsed(ex)
 			ops, err := marshalOps(ex.operations)
