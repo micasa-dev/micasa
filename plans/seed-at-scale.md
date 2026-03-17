@@ -5,20 +5,20 @@
 
 ## Problem
 
-The existing `--demo` flag seeds ~40 entities -- too small to surface real
+The `demo` subcommand seeds ~40 entities -- too small to surface real
 performance characteristics. Service log entries (the primary growth table)
 have only 4-12 rows. Benchmarks and profiling need production-like scale.
 
 ## Solution
 
-Add `--years N` flag to the CLI. When combined with `--demo`, it generates N
-years of simulated home ownership instead of the small fixed demo. `--demo`
-alone keeps current behavior. A summary prints to stderr.
+Add `--years N` flag to the `demo` subcommand. It generates N years of
+simulated home ownership instead of the small fixed demo. `demo` alone
+keeps current behavior. A summary prints to stderr.
 
 ```
-micasa --demo --years 10 /tmp/perf.db   # persistent, 10 years of data
-micasa --demo --years 20                 # in-memory, 20 years
-micasa --demo                            # existing small demo (unchanged)
+micasa demo --years 10 /tmp/perf.db   # persistent, 10 years of data
+micasa demo --years 20                 # in-memory, 20 years
+micasa demo                            # existing small demo (unchanged)
 ```
 
 ## Entity growth model

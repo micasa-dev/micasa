@@ -64,7 +64,7 @@ go install github.com/cpcloud/micasa/cmd/micasa@latest
 Or grab a binary from the [latest release](https://github.com/cpcloud/micasa/releases/latest). Linux, macOS, and Windows binaries are available for amd64 and arm64.
 
 ```sh
-micasa --demo         # poke around with sample data
+micasa demo           # poke around with sample data
 micasa                # start fresh with your own house
 micasa --print-path   # show where the database lives
 ```

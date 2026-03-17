@@ -36,16 +36,27 @@ micasa [<db-path>] [flags]
 | Flag | Description |
 |------|-------------|
 | `<db-path>` | SQLite database path. Overrides `MICASA_DB_PATH`. |
-| `--demo` | Launch with fictitious sample data in an in-memory database. |
-| `--years=N` | Generate N years of simulated data. Requires `--demo`. |
 | `--print-path` | Print the resolved database path and exit. |
 
-When `--demo` is combined with a path, the demo data is written to that
-file so you can restart with the same state:
+### `demo`
+
+```
+micasa demo [<db-path>] [flags]
+```
+
+Launch with fictitious sample data. Without a path argument, uses an
+in-memory database.
+
+| Flag | Description |
+|------|-------------|
+| `<db-path>` | SQLite database path. Demo data is written to this file. |
+| `--years=N` | Generate N years of simulated data. |
+
+To persist demo data for later:
 
 ```sh
-micasa --demo /tmp/my-demo.db   # creates and populates
-micasa /tmp/my-demo.db          # reopens with the demo data
+micasa demo /tmp/my-demo.db   # creates and populates
+micasa /tmp/my-demo.db        # reopens with the demo data
 ```
 
 ### `config get`
@@ -214,8 +225,8 @@ The database path is resolved in this order:
 2. `MICASA_DB_PATH` environment variable, if set
 3. Platform data directory (see table above)
 
-In `--demo` mode without a path argument, an in-memory database (`:memory:`)
-is used.
+The `demo` subcommand uses an in-memory database (`:memory:`) when no path
+argument is given.
 
 ## Config file
 

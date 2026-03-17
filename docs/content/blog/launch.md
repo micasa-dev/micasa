@@ -139,7 +139,7 @@ only to servers [you configure](/docs/reference/configuration/#llm-section).
 
 ```sh
 go install github.com/cpcloud/micasa/cmd/micasa@latest
-micasa --demo   # sample data to poke around with
+micasa demo   # sample data to poke around with
 micasa          # start fresh with your own house
 ```
 

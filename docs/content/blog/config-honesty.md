@@ -135,7 +135,7 @@ documents.
 ## Try it
 
 ```sh
-go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
+go run github.com/cpcloud/micasa/cmd/micasa@latest demo
 ```
 
 If you're upgrading from 1.x, check the

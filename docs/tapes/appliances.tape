@@ -18,7 +18,7 @@ Env COLORFGBG "15;0"
 Env PS1 ""
 
 Hide
-Type "micasa --demo"
+Type "micasa demo"
 Enter
 Sleep 4s
 Type "D"

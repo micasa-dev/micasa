@@ -177,11 +177,11 @@ section of the LLM chat guide for details on exactly what is sent.
 
 ## Demo mode
 
-`micasa --demo` creates an in-memory database populated with fictitious sample
+`micasa demo` creates an in-memory database populated with fictitious sample
 data. To persist demo data, pass a file path:
 
 ```sh
-micasa --demo /tmp/demo.db
+micasa demo /tmp/demo.db
 ```
 
 Demo data includes sample addresses, phone numbers (all `555-xxxx`), and

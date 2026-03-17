@@ -130,7 +130,7 @@ its dumber tendencies, so let's load up on it.
 ## Try it
 
 ```sh
-go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
+go run github.com/cpcloud/micasa/cmd/micasa@latest demo
 ```
 
 Or with a cloud provider:
@@ -139,7 +139,7 @@ Or with a cloud provider:
 export MICASA_CHAT_LLM_PROVIDER=anthropic
 export MICASA_CHAT_LLM_MODEL=claude-haiku-4-5-latest
 export MICASA_CHAT_LLM_API_KEY=sk-...
-go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
+go run github.com/cpcloud/micasa/cmd/micasa@latest demo
 ```
 
 Binaries on the

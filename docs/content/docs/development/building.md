@@ -16,7 +16,7 @@ linkTitle = "Building"
 git clone https://github.com/cpcloud/micasa.git
 cd micasa
 CGO_ENABLED=0 go build ./cmd/micasa
-./micasa --demo
+./micasa demo
 ```
 
 micasa uses a pure-Go SQLite driver, so `CGO_ENABLED=0` works and produces a
@@ -52,7 +52,7 @@ From within the dev shell (or with Go installed):
 go build ./cmd/micasa
 
 # Run directly
-go run ./cmd/micasa -- --demo
+go run ./cmd/micasa -- demo
 
 # Run tests
 go test -shuffle=on -v ./...
@@ -64,7 +64,7 @@ To build the binary via Nix (reproducible, hermetic):
 
 ```sh
 nix build
-./result/bin/micasa --demo
+./result/bin/micasa demo
 ```
 
 ## Nix flake apps
@@ -91,5 +91,5 @@ Multi-arch container images (`linux/amd64` and `linux/arm64`) are published to
 GHCR on every release:
 
 ```sh
-docker run -it --rm ghcr.io/cpcloud/micasa:latest --demo
+docker run -it --rm ghcr.io/cpcloud/micasa:latest demo
 ```

@@ -45,7 +45,7 @@ the dishwasher still under warranty?"
 
 ```sh
 go install github.com/cpcloud/micasa/cmd/micasa@latest
-micasa --demo   # poke around with sample data
+micasa demo   # poke around with sample data
 micasa          # start fresh with your own house
 ```
 

@@ -18,7 +18,7 @@ body:
       label: Steps to reproduce
       description: Numbered steps to reliably trigger the bug.
       placeholder: |
-        1. Run `micasa --demo`
+        1. Run `micasa demo`
         2. Navigate to Maintenance tab
         3. Press `a` to add a new record
         4. ...

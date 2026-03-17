@@ -31,7 +31,7 @@ Sleep 0.3s
 Type "stty -ixon"
 Enter
 Sleep 0.5s
-Type "exec micasa --demo"
+Type "exec micasa demo"
 Enter
 Sleep 5s
 # Dismiss dashboard.

@@ -60,7 +60,7 @@ A container image is published to GitHub Container Registry on each release:
 
 ```sh
 docker pull ghcr.io/cpcloud/micasa:latest
-docker run -it --rm ghcr.io/cpcloud/micasa:latest --demo
+docker run -it --rm ghcr.io/cpcloud/micasa:latest demo
 ```
 
 > **Note:** micasa is a terminal UI, so you need `-it` (interactive + TTY) for

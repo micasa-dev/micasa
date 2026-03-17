@@ -20,7 +20,7 @@ Env MICASA_CHAT_LLM_MODEL "mistral-small3.2:24b"
 Env PS1 ""
 
 Hide
-Type "exec micasa --demo"
+Type "exec micasa demo"
 Enter
 Sleep 5s
 # Dismiss dashboard.

@@ -102,7 +102,7 @@ Some other things that landed since the [launch post](/blog/launch/):
 ## Try it
 
 ```sh
-go run github.com/cpcloud/micasa/cmd/micasa@latest --demo
+go run github.com/cpcloud/micasa/cmd/micasa@latest demo
 ```
 
 Switch to the Docs tab, press <kbd>i</kbd> to enter Edit mode, then <kbd>A</kbd> to drop

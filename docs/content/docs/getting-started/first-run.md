@@ -12,7 +12,7 @@ linkTitle = "First Run"
 The fastest way to explore micasa is demo mode:
 
 ```sh
-micasa --demo
+micasa demo
 ```
 
 This launches with sample data in an in-memory database -- projects,
@@ -23,7 +23,7 @@ is gone.
 To persist demo data for later, pass a path:
 
 ```sh
-micasa --demo /tmp/demo.db
+micasa demo /tmp/demo.db
 ```
 
 ## Starting fresh
