@@ -14,11 +14,20 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if testBin != "" {
+		_ = os.RemoveAll(filepath.Dir(testBin))
+	}
+	os.Exit(code)
+}
 
 // executeCLI runs the CLI in-process with the given args and returns
 // captured stdout and any error.
@@ -51,10 +60,10 @@ func getTestBin(t *testing.T) string {
 			testBinErr = fmt.Errorf("create temp dir: %w", err)
 			return
 		}
-		// Register cleanup at process exit is not possible with sync.Once,
-		// but the OS temp dir is cleaned up eventually. The binary is small.
 		bin := filepath.Join(dir, "micasa"+ext)
-		cmd := exec.CommandContext(context.Background(), "go", "build", "-o", bin, ".")
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "go", "build", "-o", bin, ".")
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -148,9 +157,7 @@ func TestVersion_DevShowsCommitHash(t *testing.T) {
 }
 
 func TestVersion_Injected(t *testing.T) {
-	t.Parallel()
-	// Test the versionString logic directly: when version is set (as
-	// -ldflags would do at build time), it is returned as-is.
+	// Not parallel: mutates the package-level version variable.
 	old := version
 	t.Cleanup(func() { version = old })
 	version = "1.2.3"
