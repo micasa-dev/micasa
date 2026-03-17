@@ -126,10 +126,10 @@ type HouseProfile struct {
 	BasementType     string     `                          json:"basement_type"`
 	InsuranceCarrier string     `                          json:"insurance_carrier"`
 	InsurancePolicy  string     `                          json:"insurance_policy"`
-	InsuranceRenewal *time.Time `                          json:"insurance_renewal,omitempty"`
-	PropertyTaxCents *int64     `                          json:"property_tax_cents,omitempty"`
+	InsuranceRenewal *time.Time `                          json:"insurance_renewal"`
+	PropertyTaxCents *int64     `                          json:"property_tax_cents"`
 	HOAName          string     `                          json:"hoa_name"`
-	HOAFeeCents      *int64     `                          json:"hoa_fee_cents,omitempty"`
+	HOAFeeCents      *int64     `                          json:"hoa_fee_cents"`
 	CreatedAt        time.Time  `                          json:"created_at"`
 	UpdatedAt        time.Time  `                          json:"updated_at"`
 }
@@ -160,12 +160,12 @@ type Project struct {
 	Title         string         `                                                                              json:"title"`
 	ProjectTypeID string         `                                                                              json:"project_type_id"`
 	ProjectType   ProjectType    `gorm:"constraint:OnDelete:RESTRICT;"                                          json:"-"`
-	Status        string         `                                                                              json:"status"                 default:"planned"`
+	Status        string         `                                                                              json:"status"          default:"planned"`
 	Description   string         `                                                                              json:"description"`
-	StartDate     *time.Time     `                                                                              json:"start_date,omitempty"                     extract:"-"`
-	EndDate       *time.Time     `                                                                              json:"end_date,omitempty"                       extract:"-"`
-	BudgetCents   *int64         `                                                                              json:"budget_cents,omitempty"`
-	ActualCents   *int64         `                                                                              json:"actual_cents,omitempty"                   extract:"-"`
+	StartDate     *time.Time     `                                                                              json:"start_date"                        extract:"-"`
+	EndDate       *time.Time     `                                                                              json:"end_date"                          extract:"-"`
+	BudgetCents   *int64         `                                                                              json:"budget_cents"`
+	ActualCents   *int64         `                                                                              json:"actual_cents"                      extract:"-"`
 	Documents     []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:project" json:"-"`
 	CreatedAt     time.Time      `                                                                              json:"created_at"`
 	UpdatedAt     time.Time      `                                                                              json:"updated_at"`
@@ -179,10 +179,10 @@ type Quote struct {
 	VendorID       string         `gorm:"index"                                                                json:"vendor_id"`
 	Vendor         Vendor         `gorm:"constraint:OnDelete:RESTRICT;"                                        json:"-"`
 	TotalCents     int64          `                                                                            json:"total_cents"`
-	LaborCents     *int64         `                                                                            json:"labor_cents,omitempty"`
-	MaterialsCents *int64         `                                                                            json:"materials_cents,omitempty"`
-	OtherCents     *int64         `                                                                            json:"other_cents,omitempty"     extract:"-"`
-	ReceivedDate   *time.Time     `                                                                            json:"received_date,omitempty"   extract:"-"`
+	LaborCents     *int64         `                                                                            json:"labor_cents"`
+	MaterialsCents *int64         `                                                                            json:"materials_cents"`
+	OtherCents     *int64         `                                                                            json:"other_cents"     extract:"-"`
+	ReceivedDate   *time.Time     `                                                                            json:"received_date"   extract:"-"`
 	Notes          string         `                                                                            json:"notes"`
 	Documents      []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:quote" json:"-"`
 	CreatedAt      time.Time      `                                                                            json:"created_at"`
@@ -203,10 +203,10 @@ type Appliance struct {
 	Brand          string         `                                                                                json:"brand"`
 	ModelNumber    string         `                                                                                json:"model_number"`
 	SerialNumber   string         `                                                                                json:"serial_number"`
-	PurchaseDate   *time.Time     `                                                                                json:"purchase_date,omitempty"   extract:"-"`
-	WarrantyExpiry *time.Time     `gorm:"index"                                                                    json:"warranty_expiry,omitempty" extract:"-"`
+	PurchaseDate   *time.Time     `                                                                                json:"purchase_date"   extract:"-"`
+	WarrantyExpiry *time.Time     `gorm:"index"                                                                    json:"warranty_expiry" extract:"-"`
 	Location       string         `                                                                                json:"location"`
-	CostCents      *int64         `                                                                                json:"cost_cents,omitempty"`
+	CostCents      *int64         `                                                                                json:"cost_cents"`
 	Notes          string         `                                                                                json:"notes"`
 	Documents      []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:appliance" json:"-"`
 	CreatedAt      time.Time      `                                                                                json:"created_at"`
@@ -219,16 +219,16 @@ type MaintenanceItem struct {
 	Name           string              `                                                                                  json:"name"`
 	CategoryID     string              `gorm:"index"                                                                      json:"category_id"`
 	Category       MaintenanceCategory `gorm:"constraint:OnDelete:RESTRICT;"                                              json:"-"`
-	ApplianceID    *string             `gorm:"index"                                                                      json:"appliance_id,omitempty"`
+	ApplianceID    *string             `gorm:"index"                                                                      json:"appliance_id"`
 	Appliance      Appliance           `gorm:"constraint:OnDelete:SET NULL;"                                              json:"-"`
 	Season         string              `                                                                                  json:"season"`
-	LastServicedAt *time.Time          `                                                                                  json:"last_serviced_at,omitempty" extract:"-"`
+	LastServicedAt *time.Time          `                                                                                  json:"last_serviced_at" extract:"-"`
 	IntervalMonths int                 `                                                                                  json:"interval_months"`
-	DueDate        *time.Time          `                                                                                  json:"due_date,omitempty"         extract:"-"`
-	ManualURL      string              `                                                                                  json:"manual_url"                 extract:"-"`
-	ManualText     string              `                                                                                  json:"manual_text"                extract:"-"`
+	DueDate        *time.Time          `                                                                                  json:"due_date"         extract:"-"`
+	ManualURL      string              `                                                                                  json:"manual_url"       extract:"-"`
+	ManualText     string              `                                                                                  json:"manual_text"      extract:"-"`
 	Notes          string              `                                                                                  json:"notes"`
-	CostCents      *int64              `                                                                                  json:"cost_cents,omitempty"`
+	CostCents      *int64              `                                                                                  json:"cost_cents"`
 	Documents      []Document          `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:maintenance" json:"-"`
 	CreatedAt      time.Time           `                                                                                  json:"created_at"`
 	UpdatedAt      time.Time           `                                                                                  json:"updated_at"`
@@ -239,16 +239,16 @@ type Incident struct {
 	ID             string         `gorm:"primaryKey;size:26"                                                      json:"id"`
 	Title          string         `                                                                               json:"title"`
 	Description    string         `                                                                               json:"description"`
-	Status         string         `                                                                               json:"status"                  default:"open"`
-	PreviousStatus string         `                                                                               json:"previous_status"                        extract:"-"`
-	Severity       string         `                                                                               json:"severity"                default:"soon"`
-	DateNoticed    time.Time      `                                                                               json:"date_noticed"            default:"now"`
-	DateResolved   *time.Time     `                                                                               json:"date_resolved,omitempty"                extract:"-"`
+	Status         string         `                                                                               json:"status"          default:"open"`
+	PreviousStatus string         `                                                                               json:"previous_status"                extract:"-"`
+	Severity       string         `                                                                               json:"severity"        default:"soon"`
+	DateNoticed    time.Time      `                                                                               json:"date_noticed"    default:"now"`
+	DateResolved   *time.Time     `                                                                               json:"date_resolved"                  extract:"-"`
 	Location       string         `                                                                               json:"location"`
-	CostCents      *int64         `                                                                               json:"cost_cents,omitempty"`
-	ApplianceID    *string        `gorm:"index"                                                                   json:"appliance_id,omitempty"`
+	CostCents      *int64         `                                                                               json:"cost_cents"`
+	ApplianceID    *string        `gorm:"index"                                                                   json:"appliance_id"`
 	Appliance      Appliance      `gorm:"constraint:OnDelete:SET NULL;"                                           json:"-"`
-	VendorID       *string        `gorm:"index"                                                                   json:"vendor_id,omitempty"`
+	VendorID       *string        `gorm:"index"                                                                   json:"vendor_id"`
 	Vendor         Vendor         `gorm:"constraint:OnDelete:SET NULL;"                                           json:"-"`
 	Notes          string         `                                                                               json:"notes"`
 	Documents      []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:incident" json:"-"`
@@ -262,9 +262,9 @@ type ServiceLogEntry struct {
 	MaintenanceItemID string          `gorm:"index"                                                                      json:"maintenance_item_id"`
 	MaintenanceItem   MaintenanceItem `gorm:"constraint:OnDelete:CASCADE;"                                               json:"-"`
 	ServicedAt        time.Time       `                                                                                  json:"serviced_at"`
-	VendorID          *string         `gorm:"index"                                                                      json:"vendor_id,omitempty"`
+	VendorID          *string         `gorm:"index"                                                                      json:"vendor_id"`
 	Vendor            Vendor          `gorm:"constraint:OnDelete:SET NULL;"                                              json:"-"`
-	CostCents         *int64          `                                                                                  json:"cost_cents,omitempty"`
+	CostCents         *int64          `                                                                                  json:"cost_cents"`
 	Notes             string          `                                                                                  json:"notes"`
 	Documents         []Document      `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:service_log" json:"-"`
 	CreatedAt         time.Time       `                                                                                  json:"created_at"`

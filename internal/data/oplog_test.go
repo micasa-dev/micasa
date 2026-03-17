@@ -7,12 +7,14 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 func lastOplogEntry(t *testing.T, store *Store, table, rowID string) SyncOplogEntry {
@@ -832,6 +834,7 @@ func TestAllSyncableModelsHaveJSONTags(t *testing.T) {
 		Document{},
 	}
 
+	namer := schema.NamingStrategy{}
 	for _, m := range models {
 		rt := reflect.TypeOf(m)
 		for i := range rt.NumField() {
@@ -840,8 +843,36 @@ func TestAllSyncableModelsHaveJSONTags(t *testing.T) {
 				continue
 			}
 			tag := f.Tag.Get("json")
-			assert.NotEmpty(t, tag,
+			require.NotEmpty(t, tag,
 				"%s.%s is missing a json struct tag", rt.Name(), f.Name)
+
+			jsonName, _, _ := strings.Cut(tag, ",")
+			if jsonName == "-" {
+				continue
+			}
+
+			// omitempty breaks null propagation in sync: nil pointers
+			// are omitted from the payload, so remote devices never
+			// clear the field.
+			assert.False(t, strings.Contains(tag, "omitempty"),
+				"%s.%s must not use omitempty (breaks sync null propagation)",
+				rt.Name(), f.Name)
+
+			// Verify json tag matches the GORM column name.
+			gormTag := f.Tag.Get("gorm")
+			var wantCol string
+			for _, part := range strings.Split(gormTag, ";") {
+				if strings.HasPrefix(part, "column:") {
+					wantCol = strings.TrimPrefix(part, "column:")
+					break
+				}
+			}
+			if wantCol == "" {
+				wantCol = namer.ColumnName("", f.Name)
+			}
+			assert.Equal(t, wantCol, jsonName,
+				"%s.%s json tag %q does not match GORM column %q",
+				rt.Name(), f.Name, jsonName, wantCol)
 		}
 	}
 }
