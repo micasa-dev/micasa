@@ -1788,3 +1788,44 @@ func TestCustomBlobQuota(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec2.Body).Decode(&body))
 	assert.Equal(t, float64(500), body["quota_bytes"])
 }
+
+func TestSelfHostedIntegration(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default(), WithSelfHosted())
+	hh := createTestHousehold(t, h)
+
+	// Cancel subscription — self-hosted should still work.
+	require.NoError(t, store.UpdateSubscription(
+		context.Background(),
+		hh.HouseholdID,
+		"sub_test",
+		"canceled",
+	))
+
+	// Upload blob despite canceled subscription.
+	payload := []byte("self-hosted-integration-test-blob")
+	hash := fmt.Sprintf("%x", sha256.Sum256(payload))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, hash), bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+
+	// Download it back.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", blobURL(hh.HouseholdID, hash), nil)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, payload, rec.Body.Bytes())
+
+	// Status reports quota=0.
+	rec = httptest.NewRecorder()
+	req = authRequest("GET", "/status", nil, hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	var status sync.StatusResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
+	assert.Equal(t, int64(0), status.BlobStorage.QuotaBytes)
+	assert.Equal(t, int64(len(payload)), status.BlobStorage.UsedBytes)
+}
