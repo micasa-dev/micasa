@@ -53,7 +53,7 @@ type DeviceKeyPair struct {
 
 ### Step 3: Key persistence
 
-- `KeysDir() string` -- `xdg.DataFile("micasa/keys/")`
+- `SecretsDir() string` -- `xdg.DataFile("micasa/secrets/")`
 - `SaveHouseholdKey(key HouseholdKey) error`
 - `LoadHouseholdKey() (HouseholdKey, error)`
 - `SaveDeviceKeyPair(kp DeviceKeyPair) error`

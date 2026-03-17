@@ -436,15 +436,15 @@ Device Key (DK)
 Keys are stored following the application's XDG convention:
 
 ```
-$XDG_DATA_HOME/micasa/keys/
+$XDG_DATA_HOME/micasa/secrets/
   household.key      # 256-bit household symmetric key
   device.pub         # Curve25519 public key
   device.key         # Curve25519 private key (0600 permissions)
   device.token       # bearer token for relay API auth (0600 permissions)
 ```
 
-On Linux this defaults to `~/.local/share/micasa/keys/`. On macOS,
-`~/Library/Application Support/micasa/keys/`. This matches the existing
+On Linux this defaults to `~/.local/share/micasa/secrets/`. On macOS,
+`~/Library/Application Support/micasa/secrets/`. This matches the existing
 DB path convention (`xdg.DataFile`).
 
 Keys and credentials are NOT stored in the SQLite database. Rationale:
@@ -619,7 +619,7 @@ micasa pro init
 
 1. Generates device keypair (Curve25519)
 2. Generates household key (256-bit random)
-3. Stores both locally in `$XDG_DATA_HOME/micasa/keys/` (see Section 6)
+3. Stores both locally in `$XDG_DATA_HOME/micasa/secrets/` (see Section 6)
 4. Registers device with the relay server
 5. Creates household on the relay
 6. Performs initial full push (all existing data → oplog → encrypted → relay)

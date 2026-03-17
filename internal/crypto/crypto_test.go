@@ -228,12 +228,12 @@ func TestHouseholdKeyFileTruncated(t *testing.T) {
 	assert.Error(t, err, "loading truncated key file should fail")
 }
 
-// --- KeysDir ---
+// --- SecretsDir ---
 
-func TestKeysDirDefault(t *testing.T) {
+func TestSecretsDirDefault(t *testing.T) {
 	t.Parallel()
-	dir, err := KeysDir()
+	dir, err := SecretsDir()
 	require.NoError(t, err)
 	assert.Contains(t, dir, "micasa")
-	assert.Contains(t, dir, "keys")
+	assert.Contains(t, dir, "secrets")
 }

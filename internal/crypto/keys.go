@@ -52,9 +52,12 @@ func GenerateDeviceKeyPair() (DeviceKeyPair, error) {
 	return kp, nil
 }
 
-// KeysDir returns the platform-appropriate directory for key storage.
-func KeysDir() (string, error) {
-	return xdg.DataFile(filepath.Join("micasa", "keys", "."))
+// SecretsDir returns the platform-appropriate directory for key and
+// credential storage. All files in this directory are sensitive and
+// must never be committed, backed up to the cloud, or included in
+// SQLite backups.
+func SecretsDir() (string, error) {
+	return xdg.DataFile(filepath.Join("micasa", "secrets", "."))
 }
 
 // SaveHouseholdKey writes the household key to dir/household.key with
