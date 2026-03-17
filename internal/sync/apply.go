@@ -195,6 +195,8 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 	// Remove ID from updates to prevent primary key modification.
 	delete(updates, "id")
 	delete(updates, "ID")
+	// Remote updates must not overwrite the original creation timestamp.
+	delete(updates, "created_at")
 	stripNonColumnKeys(op.TableName, updates)
 	return tx.Table(op.TableName).Where("id = ?", op.RowID).Updates(updates).Error
 }
@@ -215,13 +217,27 @@ func stripNonColumnKeys(tableName string, row map[string]any) {
 
 func applyDelete(tx *gorm.DB, op OpPayload) error {
 	now := time.Now()
-	return tx.Table(op.TableName).Where("id = ?", op.RowID).
-		Update("deleted_at", now).Error
+	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
+		Update("deleted_at", now)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("delete %s/%s: row not found", op.TableName, op.RowID)
+	}
+	return nil
 }
 
 func applyRestore(tx *gorm.DB, op OpPayload) error {
-	return tx.Table(op.TableName).Where("id = ?", op.RowID).
-		Update("deleted_at", nil).Error
+	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
+		Update("deleted_at", nil)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("restore %s/%s: row not found", op.TableName, op.RowID)
+	}
+	return nil
 }
 
 func recordAppliedOp(tx *gorm.DB, op OpPayload) error {

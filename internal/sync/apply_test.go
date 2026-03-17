@@ -267,6 +267,93 @@ func TestRecordUnappliedOpReturnsDBError(t *testing.T) {
 		"DB error from duplicate insert should not be masked as errConflictLoss")
 }
 
+func TestApplyDeleteMissingRowReturnsError(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "nonexistent-vendor",
+		OpType:    "delete",
+	}
+	err = applyDelete(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "row not found")
+}
+
+func TestApplyRestoreMissingRowReturnsError(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "nonexistent-vendor",
+		OpType:    "restore",
+	}
+	err = applyRestore(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "row not found")
+}
+
+func TestApplyUpdateStripsCreatedAt(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	vendorID := "vendor-created-at"
+	originalTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Insert a vendor with a known created_at.
+	require.NoError(t, db.Table(data.TableVendors).Create(map[string]any{
+		"id":         vendorID,
+		"name":       "Original",
+		"created_at": originalTime,
+	}).Error)
+
+	// Remote update tries to overwrite created_at.
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     vendorID,
+		OpType:    "update",
+		Payload:   `{"name":"Updated","created_at":"2099-12-31T00:00:00Z"}`,
+	}
+	require.NoError(t, applyUpdate(db, op))
+
+	// Verify name was updated but created_at was preserved.
+	var vendor struct {
+		Name      string
+		CreatedAt time.Time
+	}
+	require.NoError(t, db.Table(data.TableVendors).
+		Where("id = ?", vendorID).Scan(&vendor).Error)
+	assert.Equal(t, "Updated", vendor.Name)
+	assert.True(t, vendor.CreatedAt.Equal(originalTime),
+		"created_at should not be overwritten by remote update")
+}
+
 func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {
 	t.Parallel()
 
