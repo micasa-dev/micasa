@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/cpcloud/micasa/internal/crypto"
@@ -51,6 +53,7 @@ Typical workflow:
 		newProInviteCmd(),
 		newProJoinCmd(),
 		newProDevicesCmd(),
+		newProConflictsCmd(),
 	)
 	return cmd
 }
@@ -911,4 +914,49 @@ func runProDevicesRevoke(deviceID, dbPath string) error {
 
 	fmt.Fprintf(os.Stderr, "revoked device %s\n", deviceID)
 	return nil
+}
+
+// --- pro conflicts ---
+
+func newProConflictsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "conflicts [database-path]",
+		Short:         "List unresolved sync conflict losers",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runProConflicts(cmd.OutOrStdout(), dbPathFromEnvOrArg(args))
+		},
+	}
+}
+
+func runProConflicts(w io.Writer, dbPath string) error {
+	store, err := openAndMigrate(dbPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = store.Close() }()
+
+	losers, err := store.ConflictLosers()
+	if err != nil {
+		return fmt.Errorf("query conflict losers: %w", err)
+	}
+	if len(losers) == 0 {
+		return nil
+	}
+
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(tw, "ID\tTABLE\tROW ID\tOP\tDEVICE\tCREATED\n")
+	for _, op := range losers {
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			op.ID,
+			op.TableName,
+			op.RowID,
+			op.OpType,
+			op.DeviceID,
+			op.CreatedAt.Format(time.RFC3339),
+		)
+	}
+	return tw.Flush()
 }

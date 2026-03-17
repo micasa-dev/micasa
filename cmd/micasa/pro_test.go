@@ -4,8 +4,10 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -161,6 +163,7 @@ func TestProCommandTree(t *testing.T) {
 	assert.Contains(t, subNames, "invite")
 	assert.Contains(t, subNames, "join")
 	assert.Contains(t, subNames, "devices")
+	assert.Contains(t, subNames, "conflicts")
 
 	// Verify devices has a revoke subcommand.
 	var devicesCmd *cobra.Command
@@ -189,4 +192,54 @@ func TestProHelpText(t *testing.T) {
 	assert.Contains(t, cmd.Long, "Encrypted multi-device sync")
 	assert.Contains(t, cmd.Long, "micasa pro init")
 	assert.NotEmpty(t, cmd.Example)
+}
+
+func TestRunProConflictsEmpty(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := openAndMigrate(dbPath)
+	require.NoError(t, err)
+	require.NoError(t, store.Close())
+
+	var buf bytes.Buffer
+	err = runProConflicts(&buf, dbPath)
+	require.NoError(t, err)
+	assert.Empty(t, buf.String(), "no conflicts should produce no output")
+}
+
+func TestRunProConflictsWithLosers(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := openAndMigrate(dbPath)
+	require.NoError(t, err)
+
+	// Insert a conflict loser directly: synced but not applied.
+	now := time.Now()
+	db := store.GormDB()
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "conflict-1",
+		"table_name": "vendors",
+		"row_id":     "vendor-abc",
+		"op_type":    "update",
+		"payload":    `{"name":"Remote Vendor"}`,
+		"device_id":  "dev-remote-1",
+		"created_at": now,
+		"applied_at": nil,
+		"synced_at":  now,
+	}).Error)
+
+	require.NoError(t, store.Close())
+
+	var buf bytes.Buffer
+	err = runProConflicts(&buf, dbPath)
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "conflict-1")
+	assert.Contains(t, out, "vendors")
+	assert.Contains(t, out, "vendor-abc")
+	assert.Contains(t, out, "update")
+	assert.Contains(t, out, "dev-remote-1")
 }

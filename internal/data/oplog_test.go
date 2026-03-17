@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -701,4 +702,113 @@ func TestOplogInsertProjectType(t *testing.T) {
 
 	op := lastOplogEntry(t, store, TableProjectTypes, types[0].ID)
 	assert.Equal(t, OpInsert, op.OpType)
+}
+
+// --- ConflictLosers ---
+
+func TestConflictLosersEmpty(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	losers, err := store.ConflictLosers()
+	require.NoError(t, err)
+	assert.Empty(t, losers)
+}
+
+func TestConflictLosersReturnsUnappliedSyncedOps(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	db := store.GormDB()
+
+	// Insert a conflict loser: synced (synced_at set) but not applied (applied_at NULL).
+	now := time.Now()
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "conflict-loser-1",
+		"table_name": TableVendors,
+		"row_id":     "vendor-1",
+		"op_type":    OpUpdate,
+		"payload":    `{"name":"Remote Vendor"}`,
+		"device_id":  "dev-remote",
+		"created_at": now,
+		"applied_at": nil,
+		"synced_at":  now,
+	}).Error)
+
+	// Insert a normal applied+synced op (should NOT appear).
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "applied-op-1",
+		"table_name": TableVendors,
+		"row_id":     "vendor-2",
+		"op_type":    OpInsert,
+		"payload":    `{"id":"vendor-2","name":"Applied Vendor"}`,
+		"device_id":  "dev-local",
+		"created_at": now.Add(-time.Minute),
+		"applied_at": now,
+		"synced_at":  now,
+	}).Error)
+
+	// Insert a local unsynced op (should NOT appear).
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "unsynced-op-1",
+		"table_name": TableVendors,
+		"row_id":     "vendor-3",
+		"op_type":    OpInsert,
+		"payload":    `{"id":"vendor-3","name":"Unsynced Vendor"}`,
+		"device_id":  "dev-local",
+		"created_at": now.Add(-2 * time.Minute),
+		"applied_at": now,
+		"synced_at":  nil,
+	}).Error)
+
+	losers, err := store.ConflictLosers()
+	require.NoError(t, err)
+	require.Len(t, losers, 1)
+	assert.Equal(t, "conflict-loser-1", losers[0].ID)
+	assert.Equal(t, TableVendors, losers[0].TableName)
+	assert.Equal(t, "vendor-1", losers[0].RowID)
+	assert.Equal(t, OpUpdate, losers[0].OpType)
+	assert.Equal(t, "dev-remote", losers[0].DeviceID)
+	assert.Nil(t, losers[0].AppliedAt)
+	assert.NotNil(t, losers[0].SyncedAt)
+}
+
+func TestConflictLosersOrderedByCreatedAtDescThenIDDesc(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	db := store.GormDB()
+	now := time.Now()
+
+	// Insert two conflict losers with different created_at.
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "older-loser",
+		"table_name": TableVendors,
+		"row_id":     "vendor-1",
+		"op_type":    OpUpdate,
+		"payload":    `{"name":"Older"}`,
+		"device_id":  "dev-remote",
+		"created_at": now.Add(-time.Hour),
+		"applied_at": nil,
+		"synced_at":  now,
+	}).Error)
+
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "newer-loser",
+		"table_name": TableVendors,
+		"row_id":     "vendor-2",
+		"op_type":    OpUpdate,
+		"payload":    `{"name":"Newer"}`,
+		"device_id":  "dev-remote",
+		"created_at": now,
+		"applied_at": nil,
+		"synced_at":  now,
+	}).Error)
+
+	losers, err := store.ConflictLosers()
+	require.NoError(t, err)
+	require.Len(t, losers, 2)
+	// Newest first (DESC).
+	assert.Equal(t, "newer-loser", losers[0].ID)
+	assert.Equal(t, "older-loser", losers[1].ID)
 }

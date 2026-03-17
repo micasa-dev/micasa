@@ -100,6 +100,7 @@ const (
 	ColPropertyTaxCents  = "property_tax_cents"
 	ColPurchaseDate      = "purchase_date"
 	ColReceivedDate      = "received_date"
+	ColRelayURL          = "relay_url"
 	ColRestoredAt        = "restored_at"
 	ColRoofType          = "roof_type"
 	ColRowID             = "row_id"
@@ -271,6 +272,7 @@ var TableExtractColumns = map[string][]metaColumn{
 	TableSyncDevices: {
 		{Name: "name", JSONType: "string"},
 		{Name: "household_id", JSONType: "string"},
+		{Name: "relay_url", JSONType: "string"},
 		{Name: "last_seq", JSONType: "integer"},
 	},
 	TableSyncOplogEntries: {

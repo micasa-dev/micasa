@@ -307,6 +307,17 @@ func (s *Store) UpdateSyncDevice(updates map[string]any) error {
 	return s.db.Model(&SyncDevice{}).Where("1 = 1").Updates(updates).Error
 }
 
+// ConflictLosers returns oplog entries that lost LWW conflict resolution:
+// synced from the relay (synced_at IS NOT NULL) but not applied locally
+// (applied_at IS NULL). Ordered newest first with deterministic tiebreaker.
+func (s *Store) ConflictLosers() ([]SyncOplogEntry, error) {
+	var ops []SyncOplogEntry
+	err := s.db.Where("applied_at IS NULL AND synced_at IS NOT NULL").
+		Order("created_at DESC, id DESC").
+		Find(&ops).Error
+	return ops, err
+}
+
 // UpdateOplogDeviceIDs rewrites all oplog entries that reference oldID
 // to use newID. Called during pro init when the relay assigns a new
 // device ID that replaces the auto-generated local one.
