@@ -192,10 +192,9 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 	if err := json.Unmarshal([]byte(op.Payload), &updates); err != nil {
 		return fmt.Errorf("unmarshal update payload: %w", err)
 	}
-	// Remove ID from updates to prevent primary key modification.
+	// All model structs use json:"snake_case" tags, so payload keys are
+	// always snake_case. Strip keys that must not be modified by remote ops.
 	delete(updates, "id")
-	delete(updates, "ID")
-	// Remote updates must not overwrite the original creation timestamp.
 	delete(updates, "created_at")
 	stripNonColumnKeys(op.TableName, updates)
 	return tx.Table(op.TableName).Where("id = ?", op.RowID).Updates(updates).Error
@@ -215,6 +214,9 @@ func stripNonColumnKeys(tableName string, row map[string]any) {
 	delete(row, "deleted_at")
 }
 
+// applyDelete soft-deletes a row. Returns an error if the row doesn't exist.
+// ApplyOps sorts by relay seq before calling applyOne, so the corresponding
+// insert op will always have been applied before a delete for the same row.
 func applyDelete(tx *gorm.DB, op OpPayload) error {
 	now := time.Now()
 	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
@@ -228,6 +230,8 @@ func applyDelete(tx *gorm.DB, op OpPayload) error {
 	return nil
 }
 
+// applyRestore clears a row's soft-delete. Returns an error if the row
+// doesn't exist (see applyDelete comment on causal ordering).
 func applyRestore(tx *gorm.DB, op OpPayload) error {
 	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
 		Update("deleted_at", nil)

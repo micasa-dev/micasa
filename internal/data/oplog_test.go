@@ -6,6 +6,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
@@ -44,8 +45,7 @@ func TestOplogInsertVendor(t *testing.T) {
 	assert.Equal(t, v.ID, op.RowID)
 	assert.NotEmpty(t, op.DeviceID)
 	assert.NotNil(t, op.AppliedAt)
-	// Model structs use PascalCase JSON keys (no json tags).
-	assert.Contains(t, op.Payload, `"Name":"Acme Plumbing"`)
+	assert.Contains(t, op.Payload, `"name":"Acme Plumbing"`)
 }
 
 func TestOplogInsertProject(t *testing.T) {
@@ -58,7 +58,7 @@ func TestOplogInsertProject(t *testing.T) {
 
 	op := lastOplogEntry(t, store, TableProjects, p.ID)
 	assert.Equal(t, OpInsert, op.OpType)
-	assert.Contains(t, op.Payload, `"Title":"Kitchen Reno"`)
+	assert.Contains(t, op.Payload, `"title":"Kitchen Reno"`)
 }
 
 func TestOplogInsertAppliance(t *testing.T) {
@@ -70,7 +70,7 @@ func TestOplogInsertAppliance(t *testing.T) {
 
 	op := lastOplogEntry(t, store, TableAppliances, a.ID)
 	assert.Equal(t, OpInsert, op.OpType)
-	assert.Contains(t, op.Payload, `"Name":"Dishwasher"`)
+	assert.Contains(t, op.Payload, `"name":"Dishwasher"`)
 }
 
 func TestOplogInsertIncident(t *testing.T) {
@@ -82,7 +82,7 @@ func TestOplogInsertIncident(t *testing.T) {
 
 	op := lastOplogEntry(t, store, TableIncidents, inc.ID)
 	assert.Equal(t, OpInsert, op.OpType)
-	assert.Contains(t, op.Payload, `"Title":"Roof Leak"`)
+	assert.Contains(t, op.Payload, `"title":"Roof Leak"`)
 }
 
 func TestOplogInsertQuote(t *testing.T) {
@@ -116,7 +116,7 @@ func TestOplogInsertHouseProfile(t *testing.T) {
 
 	op := lastOplogEntry(t, store, TableHouseProfiles, profile.ID)
 	assert.Equal(t, OpInsert, op.OpType)
-	assert.Contains(t, op.Payload, `"Nickname":"Home"`)
+	assert.Contains(t, op.Payload, `"nickname":"Home"`)
 }
 
 // --- Update oplog entries (explicit in Store methods) ---
@@ -277,7 +277,7 @@ func TestOplogDocumentExcludesBLOB(t *testing.T) {
 	// Payload should NOT contain the raw data.
 	assert.NotContains(t, op.Payload, "fake PDF content")
 
-	// documentOplogPayload uses explicit json tags (lowercase keys).
+	// documentOplogPayload mirrors Document's json tags (snake_case keys).
 	var payload documentOplogPayload
 	require.NoError(t, json.Unmarshal([]byte(op.Payload), &payload))
 	assert.Equal(t, "Invoice", payload.Title)
@@ -811,4 +811,37 @@ func TestConflictLosersOrderedByCreatedAtDescThenIDDesc(t *testing.T) {
 	// Newest first (DESC).
 	assert.Equal(t, "newer-loser", losers[0].ID)
 	assert.Equal(t, "older-loser", losers[1].ID)
+}
+
+// --- JSON tag enforcement ---
+
+func TestAllSyncableModelsHaveJSONTags(t *testing.T) {
+	t.Parallel()
+
+	models := []any{
+		HouseProfile{},
+		ProjectType{},
+		Vendor{},
+		Project{},
+		Quote{},
+		MaintenanceCategory{},
+		Appliance{},
+		MaintenanceItem{},
+		Incident{},
+		ServiceLogEntry{},
+		Document{},
+	}
+
+	for _, m := range models {
+		rt := reflect.TypeOf(m)
+		for i := range rt.NumField() {
+			f := rt.Field(i)
+			if !f.IsExported() {
+				continue
+			}
+			tag := f.Tag.Get("json")
+			assert.NotEmpty(t, tag,
+				"%s.%s is missing a json struct tag", rt.Name(), f.Name)
+		}
+	}
 }

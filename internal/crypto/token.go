@@ -30,6 +30,8 @@ func LoadDeviceToken(dir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("load device token: %w", err)
 	}
+	// Best-effort: clears the []byte copy; the returned string is immutable
+	// and cannot be zeroized by the caller.
 	defer zeroize(data)
 	if len(data) == 0 {
 		return "", fmt.Errorf("device token file is empty")

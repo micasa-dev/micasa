@@ -102,194 +102,194 @@ func BuildEntityKindToTable(models []any) map[string]string {
 }
 
 type HouseProfile struct {
-	ID               string `gorm:"primaryKey;size:26"`
-	Nickname         string
-	AddressLine1     string
-	AddressLine2     string
-	City             string
-	State            string
-	PostalCode       string
-	YearBuilt        int
-	SquareFeet       int
-	LotSquareFeet    int
-	Bedrooms         int
-	Bathrooms        float64
-	FoundationType   string
-	WiringType       string
-	RoofType         string
-	ExteriorType     string
-	HeatingType      string
-	CoolingType      string
-	WaterSource      string
-	SewerType        string
-	ParkingType      string
-	BasementType     string
-	InsuranceCarrier string
-	InsurancePolicy  string
-	InsuranceRenewal *time.Time
-	PropertyTaxCents *int64
-	HOAName          string
-	HOAFeeCents      *int64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID               string     `gorm:"primaryKey;size:26" json:"id"`
+	Nickname         string     `                          json:"nickname"`
+	AddressLine1     string     `                          json:"address_line1"`
+	AddressLine2     string     `                          json:"address_line2"`
+	City             string     `                          json:"city"`
+	State            string     `                          json:"state"`
+	PostalCode       string     `                          json:"postal_code"`
+	YearBuilt        int        `                          json:"year_built"`
+	SquareFeet       int        `                          json:"square_feet"`
+	LotSquareFeet    int        `                          json:"lot_square_feet"`
+	Bedrooms         int        `                          json:"bedrooms"`
+	Bathrooms        float64    `                          json:"bathrooms"`
+	FoundationType   string     `                          json:"foundation_type"`
+	WiringType       string     `                          json:"wiring_type"`
+	RoofType         string     `                          json:"roof_type"`
+	ExteriorType     string     `                          json:"exterior_type"`
+	HeatingType      string     `                          json:"heating_type"`
+	CoolingType      string     `                          json:"cooling_type"`
+	WaterSource      string     `                          json:"water_source"`
+	SewerType        string     `                          json:"sewer_type"`
+	ParkingType      string     `                          json:"parking_type"`
+	BasementType     string     `                          json:"basement_type"`
+	InsuranceCarrier string     `                          json:"insurance_carrier"`
+	InsurancePolicy  string     `                          json:"insurance_policy"`
+	InsuranceRenewal *time.Time `                          json:"insurance_renewal,omitempty"`
+	PropertyTaxCents *int64     `                          json:"property_tax_cents,omitempty"`
+	HOAName          string     `                          json:"hoa_name"`
+	HOAFeeCents      *int64     `                          json:"hoa_fee_cents,omitempty"`
+	CreatedAt        time.Time  `                          json:"created_at"`
+	UpdatedAt        time.Time  `                          json:"updated_at"`
 }
 
 type ProjectType struct {
-	ID        string `gorm:"primaryKey;size:26"`
-	Name      string `gorm:"uniqueIndex"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `gorm:"primaryKey;size:26" json:"id"`
+	Name      string    `gorm:"uniqueIndex"        json:"name"`
+	CreatedAt time.Time `                          json:"created_at"`
+	UpdatedAt time.Time `                          json:"updated_at"`
 }
 
 type Vendor struct {
-	ID          string `gorm:"primaryKey;size:26"`
-	Name        string `gorm:"uniqueIndex"`
-	ContactName string
-	Email       string
-	Phone       string
-	Website     string
-	Notes       string
-	Documents   []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:vendor"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	ID          string         `gorm:"primaryKey;size:26"                                                    json:"id"`
+	Name        string         `gorm:"uniqueIndex"                                                           json:"name"`
+	ContactName string         `                                                                             json:"contact_name"`
+	Email       string         `                                                                             json:"email"`
+	Phone       string         `                                                                             json:"phone"`
+	Website     string         `                                                                             json:"website"`
+	Notes       string         `                                                                             json:"notes"`
+	Documents   []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:vendor" json:"-"`
+	CreatedAt   time.Time      `                                                                             json:"created_at"`
+	UpdatedAt   time.Time      `                                                                             json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index"                                                                 json:"-"`
 }
 
 type Project struct {
-	ID            string `gorm:"primaryKey;size:26"`
-	Title         string
-	ProjectTypeID string
-	ProjectType   ProjectType `gorm:"constraint:OnDelete:RESTRICT;"`
-	Status        string      `                                                                              default:"planned"`
-	Description   string
-	StartDate     *time.Time `                                                                                                extract:"-"`
-	EndDate       *time.Time `                                                                                                extract:"-"`
-	BudgetCents   *int64
-	ActualCents   *int64     `                                                                                                extract:"-"`
-	Documents     []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:project"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	ID            string         `gorm:"primaryKey;size:26"                                                     json:"id"`
+	Title         string         `                                                                              json:"title"`
+	ProjectTypeID string         `                                                                              json:"project_type_id"`
+	ProjectType   ProjectType    `gorm:"constraint:OnDelete:RESTRICT;"                                          json:"-"`
+	Status        string         `                                                                              json:"status"                 default:"planned"`
+	Description   string         `                                                                              json:"description"`
+	StartDate     *time.Time     `                                                                              json:"start_date,omitempty"                     extract:"-"`
+	EndDate       *time.Time     `                                                                              json:"end_date,omitempty"                       extract:"-"`
+	BudgetCents   *int64         `                                                                              json:"budget_cents,omitempty"`
+	ActualCents   *int64         `                                                                              json:"actual_cents,omitempty"                   extract:"-"`
+	Documents     []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:project" json:"-"`
+	CreatedAt     time.Time      `                                                                              json:"created_at"`
+	UpdatedAt     time.Time      `                                                                              json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index"                                                                  json:"-"`
 }
 
 type Quote struct {
-	ID             string  `gorm:"primaryKey;size:26"`
-	ProjectID      string  `gorm:"index"`
-	Project        Project `gorm:"constraint:OnDelete:RESTRICT;"`
-	VendorID       string  `gorm:"index"`
-	Vendor         Vendor  `gorm:"constraint:OnDelete:RESTRICT;"`
-	TotalCents     int64
-	LaborCents     *int64
-	MaterialsCents *int64
-	OtherCents     *int64     `                                                                            extract:"-"`
-	ReceivedDate   *time.Time `                                                                            extract:"-"`
-	Notes          string
-	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:quote"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      gorm.DeletedAt `gorm:"index"`
+	ID             string         `gorm:"primaryKey;size:26"                                                   json:"id"`
+	ProjectID      string         `gorm:"index"                                                                json:"project_id"`
+	Project        Project        `gorm:"constraint:OnDelete:RESTRICT;"                                        json:"-"`
+	VendorID       string         `gorm:"index"                                                                json:"vendor_id"`
+	Vendor         Vendor         `gorm:"constraint:OnDelete:RESTRICT;"                                        json:"-"`
+	TotalCents     int64          `                                                                            json:"total_cents"`
+	LaborCents     *int64         `                                                                            json:"labor_cents,omitempty"`
+	MaterialsCents *int64         `                                                                            json:"materials_cents,omitempty"`
+	OtherCents     *int64         `                                                                            json:"other_cents,omitempty"     extract:"-"`
+	ReceivedDate   *time.Time     `                                                                            json:"received_date,omitempty"   extract:"-"`
+	Notes          string         `                                                                            json:"notes"`
+	Documents      []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:quote" json:"-"`
+	CreatedAt      time.Time      `                                                                            json:"created_at"`
+	UpdatedAt      time.Time      `                                                                            json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index"                                                                json:"-"`
 }
 
 type MaintenanceCategory struct {
-	ID        string `gorm:"primaryKey;size:26"`
-	Name      string `gorm:"uniqueIndex"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `gorm:"primaryKey;size:26" json:"id"`
+	Name      string    `gorm:"uniqueIndex"        json:"name"`
+	CreatedAt time.Time `                          json:"created_at"`
+	UpdatedAt time.Time `                          json:"updated_at"`
 }
 
 type Appliance struct {
-	ID             string `gorm:"primaryKey;size:26"`
-	Name           string
-	Brand          string
-	ModelNumber    string
-	SerialNumber   string
-	PurchaseDate   *time.Time `                                                                                extract:"-"`
-	WarrantyExpiry *time.Time `gorm:"index"                                                                    extract:"-"`
-	Location       string
-	CostCents      *int64
-	Notes          string
-	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:appliance"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      gorm.DeletedAt `gorm:"index"`
+	ID             string         `gorm:"primaryKey;size:26"                                                       json:"id"`
+	Name           string         `                                                                                json:"name"`
+	Brand          string         `                                                                                json:"brand"`
+	ModelNumber    string         `                                                                                json:"model_number"`
+	SerialNumber   string         `                                                                                json:"serial_number"`
+	PurchaseDate   *time.Time     `                                                                                json:"purchase_date,omitempty"   extract:"-"`
+	WarrantyExpiry *time.Time     `gorm:"index"                                                                    json:"warranty_expiry,omitempty" extract:"-"`
+	Location       string         `                                                                                json:"location"`
+	CostCents      *int64         `                                                                                json:"cost_cents,omitempty"`
+	Notes          string         `                                                                                json:"notes"`
+	Documents      []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:appliance" json:"-"`
+	CreatedAt      time.Time      `                                                                                json:"created_at"`
+	UpdatedAt      time.Time      `                                                                                json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index"                                                                    json:"-"`
 }
 
 type MaintenanceItem struct {
-	ID             string `gorm:"primaryKey;size:26"`
-	Name           string
-	CategoryID     string              `gorm:"index"`
-	Category       MaintenanceCategory `gorm:"constraint:OnDelete:RESTRICT;"`
-	ApplianceID    *string             `gorm:"index"`
-	Appliance      Appliance           `gorm:"constraint:OnDelete:SET NULL;"`
-	Season         string
-	LastServicedAt *time.Time `                                                                                  extract:"-"`
-	IntervalMonths int
-	DueDate        *time.Time `                                                                                  extract:"-"`
-	ManualURL      string     `                                                                                  extract:"-"`
-	ManualText     string     `                                                                                  extract:"-"`
-	Notes          string
-	CostCents      *int64
-	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:maintenance"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      gorm.DeletedAt `gorm:"index"`
+	ID             string              `gorm:"primaryKey;size:26"                                                         json:"id"`
+	Name           string              `                                                                                  json:"name"`
+	CategoryID     string              `gorm:"index"                                                                      json:"category_id"`
+	Category       MaintenanceCategory `gorm:"constraint:OnDelete:RESTRICT;"                                              json:"-"`
+	ApplianceID    *string             `gorm:"index"                                                                      json:"appliance_id,omitempty"`
+	Appliance      Appliance           `gorm:"constraint:OnDelete:SET NULL;"                                              json:"-"`
+	Season         string              `                                                                                  json:"season"`
+	LastServicedAt *time.Time          `                                                                                  json:"last_serviced_at,omitempty" extract:"-"`
+	IntervalMonths int                 `                                                                                  json:"interval_months"`
+	DueDate        *time.Time          `                                                                                  json:"due_date,omitempty"         extract:"-"`
+	ManualURL      string              `                                                                                  json:"manual_url"                 extract:"-"`
+	ManualText     string              `                                                                                  json:"manual_text"                extract:"-"`
+	Notes          string              `                                                                                  json:"notes"`
+	CostCents      *int64              `                                                                                  json:"cost_cents,omitempty"`
+	Documents      []Document          `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:maintenance" json:"-"`
+	CreatedAt      time.Time           `                                                                                  json:"created_at"`
+	UpdatedAt      time.Time           `                                                                                  json:"updated_at"`
+	DeletedAt      gorm.DeletedAt      `gorm:"index"                                                                      json:"-"`
 }
 
 type Incident struct {
-	ID             string `gorm:"primaryKey;size:26"`
-	Title          string
-	Description    string
-	Status         string     `                                                                               default:"open"`
-	PreviousStatus string     `                                                                                              extract:"-"`
-	Severity       string     `                                                                               default:"soon"`
-	DateNoticed    time.Time  `                                                                               default:"now"`
-	DateResolved   *time.Time `                                                                                              extract:"-"`
-	Location       string
-	CostCents      *int64
-	ApplianceID    *string   `gorm:"index"`
-	Appliance      Appliance `gorm:"constraint:OnDelete:SET NULL;"`
-	VendorID       *string   `gorm:"index"`
-	Vendor         Vendor    `gorm:"constraint:OnDelete:SET NULL;"`
-	Notes          string
-	Documents      []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:incident"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      gorm.DeletedAt `gorm:"index"`
+	ID             string         `gorm:"primaryKey;size:26"                                                      json:"id"`
+	Title          string         `                                                                               json:"title"`
+	Description    string         `                                                                               json:"description"`
+	Status         string         `                                                                               json:"status"                  default:"open"`
+	PreviousStatus string         `                                                                               json:"previous_status"                        extract:"-"`
+	Severity       string         `                                                                               json:"severity"                default:"soon"`
+	DateNoticed    time.Time      `                                                                               json:"date_noticed"            default:"now"`
+	DateResolved   *time.Time     `                                                                               json:"date_resolved,omitempty"                extract:"-"`
+	Location       string         `                                                                               json:"location"`
+	CostCents      *int64         `                                                                               json:"cost_cents,omitempty"`
+	ApplianceID    *string        `gorm:"index"                                                                   json:"appliance_id,omitempty"`
+	Appliance      Appliance      `gorm:"constraint:OnDelete:SET NULL;"                                           json:"-"`
+	VendorID       *string        `gorm:"index"                                                                   json:"vendor_id,omitempty"`
+	Vendor         Vendor         `gorm:"constraint:OnDelete:SET NULL;"                                           json:"-"`
+	Notes          string         `                                                                               json:"notes"`
+	Documents      []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:incident" json:"-"`
+	CreatedAt      time.Time      `                                                                               json:"created_at"`
+	UpdatedAt      time.Time      `                                                                               json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index"                                                                   json:"-"`
 }
 
 type ServiceLogEntry struct {
-	ID                string          `gorm:"primaryKey;size:26"`
-	MaintenanceItemID string          `gorm:"index"`
-	MaintenanceItem   MaintenanceItem `gorm:"constraint:OnDelete:CASCADE;"`
-	ServicedAt        time.Time
-	VendorID          *string `gorm:"index"`
-	Vendor            Vendor  `gorm:"constraint:OnDelete:SET NULL;"`
-	CostCents         *int64
-	Notes             string
-	Documents         []Document `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:service_log"`
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	DeletedAt         gorm.DeletedAt `gorm:"index"`
+	ID                string          `gorm:"primaryKey;size:26"                                                         json:"id"`
+	MaintenanceItemID string          `gorm:"index"                                                                      json:"maintenance_item_id"`
+	MaintenanceItem   MaintenanceItem `gorm:"constraint:OnDelete:CASCADE;"                                               json:"-"`
+	ServicedAt        time.Time       `                                                                                  json:"serviced_at"`
+	VendorID          *string         `gorm:"index"                                                                      json:"vendor_id,omitempty"`
+	Vendor            Vendor          `gorm:"constraint:OnDelete:SET NULL;"                                              json:"-"`
+	CostCents         *int64          `                                                                                  json:"cost_cents,omitempty"`
+	Notes             string          `                                                                                  json:"notes"`
+	Documents         []Document      `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:service_log" json:"-"`
+	CreatedAt         time.Time       `                                                                                  json:"created_at"`
+	UpdatedAt         time.Time       `                                                                                  json:"updated_at"`
+	DeletedAt         gorm.DeletedAt  `gorm:"index"                                                                      json:"-"`
 }
 
 type Document struct {
-	ID              string `gorm:"primaryKey;size:26"`
-	Title           string
-	FileName        string `gorm:"column:file_name"`
-	EntityKind      string `gorm:"index:idx_doc_entity"`
-	EntityID        string `gorm:"index:idx_doc_entity"`
-	MIMEType        string `                             extract:"-"`
-	SizeBytes       int64  `                             extract:"-"`
-	ChecksumSHA256  string `gorm:"column:sha256"         extract:"-"`
-	Data            []byte
-	ExtractedText   string `                             extract:"-"`
-	ExtractData     []byte `gorm:"column:ocr_data"`
-	ExtractionModel string `                             extract:"-"`
-	ExtractionOps   []byte `gorm:"column:extraction_ops" extract:"-"`
-	Notes           string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       gorm.DeletedAt `gorm:"index"`
+	ID              string         `gorm:"primaryKey;size:26"    json:"id"`
+	Title           string         `                             json:"title"`
+	FileName        string         `gorm:"column:file_name"      json:"file_name"`
+	EntityKind      string         `gorm:"index:idx_doc_entity"  json:"entity_kind"`
+	EntityID        string         `gorm:"index:idx_doc_entity"  json:"entity_id"`
+	MIMEType        string         `                             json:"mime_type"        extract:"-"`
+	SizeBytes       int64          `                             json:"size_bytes"       extract:"-"`
+	ChecksumSHA256  string         `gorm:"column:sha256"         json:"sha256"           extract:"-"`
+	Data            []byte         `                             json:"-"`
+	ExtractedText   string         `                             json:"extracted_text"   extract:"-"`
+	ExtractData     []byte         `gorm:"column:ocr_data"       json:"-"`
+	ExtractionModel string         `                             json:"extraction_model" extract:"-"`
+	ExtractionOps   []byte         `gorm:"column:extraction_ops" json:"-"`
+	Notes           string         `                             json:"notes"`
+	CreatedAt       time.Time      `                             json:"created_at"`
+	UpdatedAt       time.Time      `                             json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `gorm:"index"                 json:"-"`
 }
 
 type DeletionRecord struct {

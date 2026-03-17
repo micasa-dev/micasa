@@ -288,6 +288,13 @@ details; do not duplicate that detail here.
   cascading defaults across sections, no "this overrides that unless the
   other thing is set." If two pipelines need the same setting, they each
   get their own independent copy.
+- **No defensive casing variants**: We control the serialization protocol.
+  Every struct that can appear in a JSON payload (oplog entries, API
+  requests/responses) MUST have explicit `json:"snake_case"` tags on every
+  field. Never write code that handles multiple casings of the same key
+  (e.g. `delete(m, "id"); delete(m, "ID")`) -- that papers over an
+  inconsistency instead of fixing it. If you see ambiguity, fix the
+  source struct's tags.
 - **Deterministic ordering requires tiebreakers**: Every `ORDER BY` that
   could tie MUST include a tiebreaker (typically `id DESC`).
 - **Audit new deps before adding**: Review source for security issues
