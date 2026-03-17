@@ -133,7 +133,7 @@ func incidentRows(
 			ID:      inc.ID,
 			Deleted: inc.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: inc.ID, Kind: cellReadonly},
+				{Value: shortID(inc.ID), Kind: cellReadonly},
 				{Value: inc.Title, Kind: cellText},
 				{Value: inc.Status, Kind: cellStatus},
 				{Value: inc.Severity, Kind: cellStatus},
@@ -176,7 +176,7 @@ func applianceMaintenanceRows(
 			ID:      item.ID,
 			Deleted: item.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: item.ID, Kind: cellReadonly},
+				{Value: shortID(item.ID), Kind: cellReadonly},
 				{Value: item.Name, Kind: cellText},
 				{Value: item.Category.Name, Kind: cellText},
 				maintenanceSeasonCell(item.Season),
@@ -206,7 +206,7 @@ func serviceLogRows(
 			ID:      e.ID,
 			Deleted: e.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: e.ID, Kind: cellReadonly},
+				{Value: shortID(e.ID), Kind: cellReadonly},
 				{Value: e.ServicedAt.Format(data.DateLayout), Kind: cellDate},
 				{Value: performedBy, Kind: cellText, LinkID: vendorLinkID},
 				centsCell(e.CostCents, cur),
@@ -233,7 +233,7 @@ func applianceRows(
 			ID:      a.ID,
 			Deleted: a.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: a.ID, Kind: cellReadonly},
+				{Value: shortID(a.ID), Kind: cellReadonly},
 				{Value: a.Name, Kind: cellText},
 				{Value: a.Brand, Kind: cellText},
 				{Value: a.ModelNumber, Kind: cellText},
@@ -317,7 +317,7 @@ func vendorRows(
 			ID:      v.ID,
 			Deleted: v.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: v.ID, Kind: cellReadonly},
+				{Value: shortID(v.ID), Kind: cellReadonly},
 				{Value: v.Name, Kind: cellText},
 				{Value: v.ContactName, Kind: cellText},
 				{Value: v.Email, Kind: cellText},
@@ -340,9 +340,18 @@ func countStr(counts map[string]int, id string) string {
 	return "0"
 }
 
+// shortID returns a truncated ULID for display (last 7 chars).
+// The full ID is preserved in rowMeta.ID for lookups.
+func shortID(id string) string {
+	if len(id) <= 7 {
+		return id
+	}
+	return id[len(id)-7:]
+}
+
 // idColumnSpec returns the standard ID column spec shared by all tables.
 func idColumnSpec() columnSpec {
-	return columnSpec{Title: "ID", Min: 7, Max: 26, Align: alignRight, Kind: cellReadonly}
+	return columnSpec{Title: "ID", Min: 7, Max: 7, Align: alignRight, Kind: cellReadonly}
 }
 
 func specsToColumns(specs []columnSpec) []table.Column {
@@ -380,7 +389,7 @@ func projectRows(
 			ID:      p.ID,
 			Deleted: p.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: p.ID, Kind: cellReadonly},
+				{Value: shortID(p.ID), Kind: cellReadonly},
 				{Value: p.ProjectType.Name, Kind: cellText},
 				{Value: p.Title, Kind: cellText},
 				{Value: p.Status, Kind: cellStatus},
@@ -405,7 +414,7 @@ func quoteRowSpec(
 	includeProject, includeVendor bool,
 ) rowSpec {
 	cells := make([]cell, 0, 9)
-	cells = append(cells, cell{Value: q.ID, Kind: cellReadonly})
+	cells = append(cells, cell{Value: shortID(q.ID), Kind: cellReadonly})
 	if includeProject {
 		projectName := q.Project.Title
 		if projectName == "" {
@@ -462,7 +471,7 @@ func maintenanceRows(
 			ID:      item.ID,
 			Deleted: item.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: item.ID, Kind: cellReadonly},
+				{Value: shortID(item.ID), Kind: cellReadonly},
 				{Value: item.Name, Kind: cellText},
 				{Value: item.Category.Name, Kind: cellText},
 				maintenanceSeasonCell(item.Season),
@@ -557,7 +566,7 @@ func vendorJobsRows(
 			ID:      e.ID,
 			Deleted: e.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: e.ID, Kind: cellReadonly},
+				{Value: shortID(e.ID), Kind: cellReadonly},
 				{Value: itemName, Kind: cellText, LinkID: e.MaintenanceItemID},
 				{Value: e.ServicedAt.Format(data.DateLayout), Kind: cellDate},
 				centsCell(e.CostCents, cur),
@@ -668,7 +677,7 @@ func documentRows(docs []data.Document, names entityNameMap) ([]table.Row, []row
 			ID:      d.ID,
 			Deleted: d.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: d.ID, Kind: cellReadonly},
+				{Value: shortID(d.ID), Kind: cellReadonly},
 				{Value: d.Title, Kind: cellText},
 				{
 					Value:  documentEntityLabel(d.EntityKind, d.EntityID, names),
@@ -692,7 +701,7 @@ func entityDocumentRows(docs []data.Document) ([]table.Row, []rowMeta, [][]cell)
 			ID:      d.ID,
 			Deleted: d.DeletedAt.Valid,
 			Cells: []cell{
-				{Value: d.ID, Kind: cellReadonly},
+				{Value: shortID(d.ID), Kind: cellReadonly},
 				{Value: d.Title, Kind: cellText},
 				{Value: d.MIMEType, Kind: cellText},
 				{Value: formatFileSize(docSizeBytes(d)), Kind: cellReadonly},
