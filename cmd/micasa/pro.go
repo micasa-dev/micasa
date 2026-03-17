@@ -49,6 +49,7 @@ Typical workflow:
 	cmd.AddCommand(
 		newProInitCmd(),
 		newProStatusCmd(),
+		newProStorageCmd(),
 		newProSyncCmd(),
 		newProInviteCmd(),
 		newProJoinCmd(),
@@ -325,6 +326,56 @@ func runProStatus(dbPath string) error {
 		fmt.Printf("unsynced:  %d local ops pending push\n", len(unsynced))
 	}
 	return nil
+}
+
+// --- pro storage ---
+
+func newProStorageCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:           "storage [database-path]",
+		Short:         "Show blob storage usage",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runProStorage(dbPathFromEnvOrArg(args))
+		},
+	}
+}
+
+func runProStorage(dbPath string) error {
+	deps, err := resolveProDeps(dbPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = deps.store.Close() }()
+
+	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
+	status, err := client.Status()
+	if err != nil {
+		return fmt.Errorf("fetch status: %w", err)
+	}
+
+	fmt.Println(formatStorageUsage(
+		status.BlobStorage.UsedBytes,
+		status.BlobStorage.QuotaBytes,
+	))
+	return nil
+}
+
+// formatBytes formats a byte count as a human-readable string using
+// binary units (KiB, MiB, GiB).
+func formatBytes(b int64) string {
+	return humanize.IBytes(uint64(b))
+}
+
+// formatStorageUsage formats used/quota bytes as "X / Y (Z%)".
+func formatStorageUsage(used, quota int64) string {
+	var pct float64
+	if quota > 0 {
+		pct = float64(used) / float64(quota) * 100
+	}
+	return fmt.Sprintf("%s / %s (%.1f%%)", formatBytes(used), formatBytes(quota), pct)
 }
 
 // --- pro sync ---

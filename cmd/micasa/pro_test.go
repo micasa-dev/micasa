@@ -159,6 +159,7 @@ func TestProCommandTree(t *testing.T) {
 
 	assert.Contains(t, subNames, "init")
 	assert.Contains(t, subNames, "status")
+	assert.Contains(t, subNames, "storage")
 	assert.Contains(t, subNames, "sync")
 	assert.Contains(t, subNames, "invite")
 	assert.Contains(t, subNames, "join")
@@ -242,4 +243,92 @@ func TestRunProConflictsWithLosers(t *testing.T) {
 	assert.Contains(t, out, "vendor-abc")
 	assert.Contains(t, out, "update")
 	assert.Contains(t, out, "dev-remote-1")
+}
+
+func TestFormatBytes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		bytes int64
+		want  string
+	}{
+		{name: "Zero", bytes: 0, want: "0 B"},
+		{name: "SmallBytes", bytes: 512, want: "512 B"},
+		{name: "OneKiB", bytes: 1024, want: "1.0 KiB"},
+		{name: "OneMiB", bytes: 1024 * 1024, want: "1.0 MiB"},
+		{name: "OneGiB", bytes: 1024 * 1024 * 1024, want: "1.0 GiB"},
+		{name: "FractionalMiB", bytes: 54 * 1024 * 1024, want: "54 MiB"},
+		{name: "LargeGiB", bytes: 10 * 1024 * 1024 * 1024, want: "10 GiB"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, formatBytes(tt.bytes))
+		})
+	}
+}
+
+func TestFormatStorageUsage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		used  int64
+		quota int64
+		want  string
+	}{
+		{
+			name:  "ZeroUsed",
+			used:  0,
+			quota: 1024 * 1024 * 1024,
+			want:  "0 B / 1.0 GiB (0.0%)",
+		},
+		{
+			name:  "HalfUsed",
+			used:  512 * 1024 * 1024,
+			quota: 1024 * 1024 * 1024,
+			want:  "512 MiB / 1.0 GiB (50.0%)",
+		},
+		{
+			name:  "FullUsed",
+			used:  1024 * 1024 * 1024,
+			quota: 1024 * 1024 * 1024,
+			want:  "1.0 GiB / 1.0 GiB (100.0%)",
+		},
+		{
+			name:  "SmallFraction",
+			used:  54 * 1024 * 1024,
+			quota: 1024 * 1024 * 1024,
+			want:  "54 MiB / 1.0 GiB (5.3%)",
+		},
+		{
+			name:  "ZeroQuota",
+			used:  0,
+			quota: 0,
+			want:  "0 B / 0 B (0.0%)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, formatStorageUsage(tt.used, tt.quota))
+		})
+	}
+}
+
+func TestProStorageCmdWiring(t *testing.T) {
+	t.Parallel()
+
+	root := newRootCmd()
+	proCmd, _, err := root.Find([]string{"pro"})
+	assert.NoError(t, err)
+	assert.NotNil(t, proCmd)
+
+	storageCmd, _, err := root.Find([]string{"pro", "storage"})
+	assert.NoError(t, err)
+	assert.NotNil(t, storageCmd)
+	assert.Equal(t, "storage [database-path]", storageCmd.Use)
 }
