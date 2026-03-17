@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	// MaxInviteAttempts is the maximum number of join attempts per invite code.
-	MaxInviteAttempts = 5
+	// maxInviteAttempts is the maximum number of join attempts per invite code.
+	maxInviteAttempts = 5
 
-	// MaxActiveInvites is the maximum number of active invites per household.
-	MaxActiveInvites = 3
+	// maxActiveInvites is the maximum number of active invites per household.
+	maxActiveInvites = 3
 )
 
 // Store defines the persistence interface for the relay server.

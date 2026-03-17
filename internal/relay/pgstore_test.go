@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"slices"
 	"testing"
 
 	"github.com/cpcloud/micasa/internal/sync"
@@ -36,15 +35,11 @@ func openTestPgStore(t *testing.T) *PgStore {
 	store := NewPgStore(db)
 	require.NoError(t, store.AutoMigrate())
 
-	// Derive table names from pgModels and truncate in reverse order
-	// (child tables first) so FK constraints are satisfied.
-	tables := make([]string, 0, len(pgModels))
+	// Derive table names from pgModels and truncate with CASCADE.
 	for _, m := range pgModels {
-		tables = append(tables, m.(schema.Tabler).TableName())
-	}
-	slices.Reverse(tables)
-	for _, table := range tables {
-		require.NoError(t, db.Exec("TRUNCATE "+table+" CASCADE").Error)
+		tabler, ok := m.(schema.Tabler)
+		require.True(t, ok, "model %T must implement schema.Tabler", m)
+		require.NoError(t, db.Exec("TRUNCATE "+tabler.TableName()+" CASCADE").Error)
 	}
 
 	t.Cleanup(func() { _ = store.Close() })

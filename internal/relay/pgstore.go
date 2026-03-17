@@ -330,8 +330,8 @@ func (s *PgStore) CreateInvite(
 	if err != nil {
 		return sync.InviteCode{}, fmt.Errorf("count invites: %w", err)
 	}
-	if active >= MaxActiveInvites {
-		return sync.InviteCode{}, fmt.Errorf("max active invites reached (%d)", MaxActiveInvites)
+	if active >= maxActiveInvites {
+		return sync.InviteCode{}, fmt.Errorf("max active invites reached (%d)", maxActiveInvites)
 	}
 
 	code, err := generateInviteCode()
@@ -379,7 +379,7 @@ func (s *PgStore) StartJoin(
 		}
 
 		inv.Attempts++
-		if inv.Attempts >= MaxInviteAttempts {
+		if inv.Attempts >= maxInviteAttempts {
 			inv.Consumed = true
 			if err := tx.Save(&inv).Error; err != nil {
 				return fmt.Errorf("update invite: %w", err)
