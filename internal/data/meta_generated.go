@@ -20,6 +20,8 @@ const (
 	TableQuotes                = "quotes"
 	TableServiceLogEntries     = "service_log_entries"
 	TableSettings              = "settings"
+	TableSyncDevices           = "sync_devices"
+	TableSyncOplogEntries      = "sync_oplog_entries"
 	TableVendors               = "vendors"
 )
 
@@ -29,6 +31,7 @@ const (
 	ColAddressLine1      = "address_line1"
 	ColAddressLine2      = "address_line2"
 	ColApplianceID       = "appliance_id"
+	ColAppliedAt         = "applied_at"
 	ColBasementType      = "basement_type"
 	ColBathrooms         = "bathrooms"
 	ColBedrooms          = "bedrooms"
@@ -46,6 +49,7 @@ const (
 	ColDateResolved      = "date_resolved"
 	ColDeletedAt         = "deleted_at"
 	ColDescription       = "description"
+	ColDeviceID          = "device_id"
 	ColDueDate           = "due_date"
 	ColEmail             = "email"
 	ColEndDate           = "end_date"
@@ -62,6 +66,7 @@ const (
 	ColHOAFeeCents       = "hoa_fee_cents"
 	ColHOAName           = "hoa_name"
 	ColHeatingType       = "heating_type"
+	ColHouseholdID       = "household_id"
 	ColID                = "id"
 	ColInput             = "input"
 	ColInsuranceCarrier  = "insurance_carrier"
@@ -70,6 +75,7 @@ const (
 	ColIntervalMonths    = "interval_months"
 	ColKey               = "key"
 	ColLaborCents        = "labor_cents"
+	ColLastSeq           = "last_seq"
 	ColLastServicedAt    = "last_serviced_at"
 	ColLocation          = "location"
 	ColLotSquareFeet     = "lot_square_feet"
@@ -82,8 +88,10 @@ const (
 	ColName              = "name"
 	ColNickname          = "nickname"
 	ColNotes             = "notes"
+	ColOpType            = "op_type"
 	ColOtherCents        = "other_cents"
 	ColParkingType       = "parking_type"
+	ColPayload           = "payload"
 	ColPhone             = "phone"
 	ColPostalCode        = "postal_code"
 	ColPreviousStatus    = "previous_status"
@@ -94,6 +102,7 @@ const (
 	ColReceivedDate      = "received_date"
 	ColRestoredAt        = "restored_at"
 	ColRoofType          = "roof_type"
+	ColRowID             = "row_id"
 	ColSeason            = "season"
 	ColSerialNumber      = "serial_number"
 	ColServicedAt        = "serviced_at"
@@ -104,6 +113,8 @@ const (
 	ColStartDate         = "start_date"
 	ColState             = "state"
 	ColStatus            = "status"
+	ColSyncedAt          = "synced_at"
+	ColTableName         = "table_name"
 	ColTargetID          = "target_id"
 	ColTitle             = "title"
 	ColTotalCents        = "total_cents"
@@ -135,6 +146,8 @@ func Models() []any {
 		&DeletionRecord{},
 		&Setting{},
 		&ChatInput{},
+		&SyncOplogEntry{},
+		&SyncDevice{},
 	}
 }
 
@@ -254,6 +267,20 @@ var TableExtractColumns = map[string][]metaColumn{
 	TableSettings: {
 		{Name: "key", JSONType: "string"},
 		{Name: "value", JSONType: "string"},
+	},
+	TableSyncDevices: {
+		{Name: "name", JSONType: "string"},
+		{Name: "household_id", JSONType: "string"},
+		{Name: "last_seq", JSONType: "integer"},
+	},
+	TableSyncOplogEntries: {
+		{Name: "table_name", JSONType: "string"},
+		{Name: "row_id", JSONType: "string"},
+		{Name: "op_type", JSONType: "string"},
+		{Name: "payload", JSONType: "string"},
+		{Name: "device_id", JSONType: "string"},
+		{Name: "applied_at", JSONType: "string"},
+		{Name: "synced_at", JSONType: "string"},
 	},
 	TableVendors: {
 		{Name: "name", JSONType: "string"},

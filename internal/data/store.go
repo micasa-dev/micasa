@@ -650,7 +650,13 @@ func (s *Store) UpdateHouseProfile(profile HouseProfile) error {
 	}
 	profile.ID = existing.ID
 	profile.CreatedAt = existing.CreatedAt
-	return s.db.Model(&existing).Select("*").Updates(profile).Error
+	if err := s.db.Model(&existing).Select("*").Updates(profile).Error; err != nil {
+		return err
+	}
+	if !isSyncApplying(s.db) {
+		return writeOplogEntry(s.db, TableHouseProfiles, profile.ID, OpUpdate, profile)
+	}
+	return nil
 }
 
 func (s *Store) ProjectTypes() ([]ProjectType, error) {
@@ -721,7 +727,7 @@ func (s *Store) RowCounts(tables ...string) (map[string]int, error) {
 }
 
 func (s *Store) UpdateVendor(vendor Vendor) error {
-	return s.updateByID(&Vendor{}, vendor.ID, vendor)
+	return s.updateByID(TableVendors, &Vendor{}, vendor.ID, vendor)
 }
 
 // CountQuotesByVendor returns the number of non-deleted quotes per vendor ID.
@@ -818,7 +824,7 @@ func (s *Store) CreateProject(project *Project) error {
 }
 
 func (s *Store) UpdateProject(project Project) error {
-	return s.updateByID(&Project{}, project.ID, project)
+	return s.updateByID(TableProjects, &Project{}, project.ID, project)
 }
 
 func (s *Store) GetQuote(id string) (Quote, error) {
@@ -848,7 +854,7 @@ func (s *Store) UpdateQuote(quote Quote, vendor Vendor) error {
 			return err
 		}
 		quote.VendorID = foundVendor.ID
-		return updateByIDWith(tx, &Quote{}, quote.ID, quote)
+		return updateByIDWith(tx, TableQuotes, &Quote{}, quote.ID, quote)
 	})
 }
 
@@ -877,7 +883,7 @@ func (s *Store) FindOrCreateMaintenance(item MaintenanceItem) (MaintenanceItem, 
 }
 
 func (s *Store) UpdateMaintenance(item MaintenanceItem) error {
-	return s.updateByID(&MaintenanceItem{}, item.ID, item)
+	return s.updateByID(TableMaintenanceItems, &MaintenanceItem{}, item.ID, item)
 }
 
 func (s *Store) ListAppliances(includeDeleted bool) ([]Appliance, error) {
@@ -909,7 +915,7 @@ func (s *Store) FindOrCreateAppliance(item Appliance) (Appliance, error) {
 }
 
 func (s *Store) UpdateAppliance(item Appliance) error {
-	return s.updateByID(&Appliance{}, item.ID, item)
+	return s.updateByID(TableAppliances, &Appliance{}, item.ID, item)
 }
 
 // ---------------------------------------------------------------------------
@@ -984,7 +990,7 @@ func (s *Store) UpdateServiceLog(entry ServiceLogEntry, vendor Vendor) error {
 		} else {
 			entry.VendorID = nil
 		}
-		if err := updateByIDWith(tx, &ServiceLogEntry{}, entry.ID, entry); err != nil {
+		if err := updateByIDWith(tx, TableServiceLogEntries, &ServiceLogEntry{}, entry.ID, entry); err != nil {
 			return err
 		}
 		// If the entry moved to a different parent, sync both.
@@ -1064,14 +1070,14 @@ func (s *Store) CreateIncident(item *Incident) error {
 }
 
 func (s *Store) UpdateIncident(item Incident) error {
-	return s.updateByID(&Incident{}, item.ID, item)
+	return s.updateByID(TableIncidents, &Incident{}, item.ID, item)
 }
 
 func (s *Store) DeleteIncident(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		// Read the current status so we can restore it later.
+		// Read the full incident so we can log it and restore status later.
 		var current Incident
-		if err := tx.Select(ColStatus).First(&current, "id = ?", id).Error; err != nil {
+		if err := tx.First(&current, "id = ?", id).Error; err != nil {
 			return err
 		}
 		if err := tx.Model(&Incident{}).
@@ -1082,12 +1088,19 @@ func (s *Store) DeleteIncident(id string) error {
 			}).Error; err != nil {
 			return err
 		}
-		result := tx.Where("id = ?", id).Delete(&Incident{})
+		current.Status = IncidentStatusResolved
+		current.PreviousStatus = current.Status
+		result := tx.Delete(&current)
 		if result.Error != nil {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
+		}
+		if !isSyncApplying(tx) {
+			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpDelete, "{}"); err != nil {
+				return err
+			}
 		}
 		return tx.Create(&DeletionRecord{
 			Entity:    DeletionEntityIncident,
@@ -1126,6 +1139,15 @@ func (s *Store) RestoreIncident(id string) error {
 			}).Error; err != nil {
 			return err
 		}
+
+		// Write oplog "restore" entry explicitly (Unscoped().Updates()
+		// does not fire model-level AfterUpdate hooks).
+		if !isSyncApplying(tx) {
+			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpRestore, "{}"); err != nil {
+				return err
+			}
+		}
+
 		restoredAt := time.Now()
 		return tx.Model(&DeletionRecord{}).
 			Where(
@@ -1138,6 +1160,24 @@ func (s *Store) RestoreIncident(id string) error {
 
 func (s *Store) HardDeleteIncident(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Log oplog entries for detached documents before modifying them.
+		if !isSyncApplying(tx) {
+			var docs []Document
+			if err := tx.Unscoped().
+				Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?", DocumentEntityIncident, id).
+				Find(&docs).Error; err != nil {
+				return err
+			}
+			for i := range docs {
+				docs[i].EntityKind = DocumentEntityNone
+				docs[i].EntityID = ""
+				if err := writeOplogEntry(tx, TableDocuments, docs[i].ID, OpUpdate,
+					newDocumentOplogPayload(docs[i])); err != nil {
+					return err
+				}
+			}
+		}
+
 		// Detach linked documents (including soft-deleted ones) so they
 		// survive the incident removal. Documents have intrinsic value
 		// independent of the entity they were filed under.
@@ -1155,6 +1195,15 @@ func (s *Store) HardDeleteIncident(id string) error {
 			Delete(&DeletionRecord{}).Error; err != nil {
 			return err
 		}
+
+		// Write oplog "delete" entry before the hard-delete (which uses
+		// an empty model instance that won't trigger hooks properly).
+		if !isSyncApplying(tx) {
+			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpDelete, "{}"); err != nil {
+				return err
+			}
+		}
+
 		// Permanently remove the incident row.
 		result := tx.Unscoped().Where("id = ?", id).Delete(&Incident{})
 		if result.Error != nil {
@@ -1285,10 +1334,16 @@ func (s *Store) UpdateDocument(doc Document) error {
 			ColChecksumSHA256, ColData,
 		)
 	}
-	return s.db.Model(&Document{}).Where(ColID+" = ?", doc.ID).
+	if err := s.db.Model(&Document{}).Where(ColID+" = ?", doc.ID).
 		Select("*").
 		Omit(omit...).
-		Updates(doc).Error
+		Updates(doc).Error; err != nil {
+		return err
+	}
+	if !isSyncApplying(s.db) {
+		return writeOplogEntry(s.db, TableDocuments, doc.ID, OpUpdate, newDocumentOplogPayload(doc))
+	}
+	return nil
 }
 
 // UpdateDocumentExtraction persists async extraction results on a document
@@ -1317,7 +1372,17 @@ func (s *Store) UpdateDocumentExtraction(
 	if len(updates) == 0 {
 		return nil
 	}
-	return s.db.Unscoped().Model(&Document{}).Where(ColID+" = ?", id).Updates(updates).Error
+	if err := s.db.Unscoped().Model(&Document{}).Where(ColID+" = ?", id).Updates(updates).Error; err != nil {
+		return err
+	}
+	// Extraction updates are logged so they sync to other devices.
+	if !isSyncApplying(s.db) {
+		var doc Document
+		if err := s.db.Unscoped().First(&doc, "id = ?", id).Error; err == nil {
+			return writeOplogEntry(s.db, TableDocuments, id, OpUpdate, newDocumentOplogPayload(doc))
+		}
+	}
+	return nil
 }
 
 // EnsureDocumentAlive restores a soft-deleted document if necessary.
@@ -1581,6 +1646,14 @@ func softDeleteWith(tx *gorm.DB, model any, entity string, id string) error {
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
+
+	// Write oplog "delete" entry for the soft-deleted entity.
+	if table := deletionEntityToTable[entity]; table != "" && !isSyncApplying(tx) {
+		if err := writeOplogEntryRaw(tx, table, id, OpDelete, "{}"); err != nil {
+			return err
+		}
+	}
+
 	record := DeletionRecord{
 		Entity:    entity,
 		TargetID:  id,
@@ -1595,15 +1668,25 @@ func (s *Store) softDelete(model any, entity string, id string) error {
 	})
 }
 
-// restoreSoftDeleted clears a record's soft-delete timestamp and marks the
-// corresponding DeletionRecord as restored. Callers that need transactional
-// guarantees should pass a *gorm.DB obtained from db.Transaction.
+// restoreSoftDeleted clears a record's soft-delete timestamp, marks the
+// corresponding DeletionRecord as restored, and writes a "restore" oplog
+// entry. Callers that need transactional guarantees should pass a *gorm.DB
+// obtained from db.Transaction.
 func restoreSoftDeleted(tx *gorm.DB, model any, entity string, id string) error {
 	if err := tx.Unscoped().Model(model).
 		Where(ColID+" = ?", id).
 		Update(ColDeletedAt, nil).Error; err != nil {
 		return err
 	}
+
+	// Write oplog "restore" entry. GORM's Unscoped().Update() does not
+	// trigger model-level AfterUpdate hooks, so we must do this explicitly.
+	if table := deletionEntityToTable[entity]; table != "" && !isSyncApplying(tx) {
+		if err := writeOplogEntryRaw(tx, table, id, OpRestore, "{}"); err != nil {
+			return err
+		}
+	}
+
 	restoredAt := time.Now()
 	return tx.Model(&DeletionRecord{}).
 		Where(
@@ -1704,15 +1787,22 @@ func (s *Store) countByFK(model any, fkColumn string, ids []string) (map[string]
 
 // updateByIDWith updates a record by ID, preserving id, created_at, and
 // deleted_at. Works with both Store.db and transaction handles.
-func updateByIDWith(db *gorm.DB, model any, id string, values any) error {
-	return db.Model(model).Where(ColID+" = ?", id).
+// Writes an "update" oplog entry with the new values as payload.
+func updateByIDWith(db *gorm.DB, table string, model any, id string, values any) error {
+	if err := db.Model(model).Where(ColID+" = ?", id).
 		Select("*").
 		Omit(ColID, ColCreatedAt, ColDeletedAt).
-		Updates(values).Error
+		Updates(values).Error; err != nil {
+		return err
+	}
+	if !isSyncApplying(db) {
+		return writeOplogEntry(db, table, id, OpUpdate, values)
+	}
+	return nil
 }
 
-func (s *Store) updateByID(model any, id string, values any) error {
-	return updateByIDWith(s.db, model, id, values)
+func (s *Store) updateByID(table string, model any, id string, values any) error {
+	return updateByIDWith(s.db, table, model, id, values)
 }
 
 func findOrCreateVendor(tx *gorm.DB, vendor Vendor) (Vendor, error) {

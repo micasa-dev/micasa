@@ -317,6 +317,65 @@ type ChatInput struct {
 	CreatedAt time.Time
 }
 
+// deletionEntityToTable maps DeletionEntity constants to table names.
+// Used by the oplog to write "restore" entries from restoreSoftDeleted.
+var deletionEntityToTable = map[string]string{
+	DeletionEntityProject:     TableProjects,
+	DeletionEntityQuote:       TableQuotes,
+	DeletionEntityMaintenance: TableMaintenanceItems,
+	DeletionEntityAppliance:   TableAppliances,
+	DeletionEntityServiceLog:  TableServiceLogEntries,
+	DeletionEntityVendor:      TableVendors,
+	DeletionEntityDocument:    TableDocuments,
+	DeletionEntityIncident:    TableIncidents,
+}
+
+// Oplog operation types.
+const (
+	OpInsert  = "insert"
+	OpUpdate  = "update"
+	OpDelete  = "delete"
+	OpRestore = "restore"
+)
+
+// SyncOplogEntry records a single mutation to a syncable entity.
+// Local mutations have applied_at set immediately; synced_at is set after
+// successful push to the relay. Remote ops have both set on receipt.
+type SyncOplogEntry struct {
+	ID        string `gorm:"primaryKey;size:26"`
+	TableName string `gorm:"not null;index:idx_oplog_table_row"`
+	RowID     string `gorm:"not null;index:idx_oplog_table_row"`
+	OpType    string `gorm:"not null"`
+	Payload   string `gorm:"type:text;not null"`
+	DeviceID  string `gorm:"not null"`
+	CreatedAt time.Time
+	AppliedAt *time.Time
+	SyncedAt  *time.Time `gorm:"index"`
+}
+
+// SyncDevice stores this device's identity. Only one row exists locally.
+type SyncDevice struct {
+	ID          string `gorm:"primaryKey;size:26"`
+	Name        string `gorm:"not null"`
+	HouseholdID string
+	LastSeq     int64 `gorm:"default:0"`
+	CreatedAt   time.Time
+}
+
+func (x *SyncOplogEntry) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
+func (x *SyncDevice) BeforeCreate(tx *gorm.DB) error {
+	if x.ID == "" {
+		x.ID = uid.New()
+	}
+	return nil
+}
+
 func (x *HouseProfile) BeforeCreate(tx *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
@@ -399,4 +458,87 @@ func (x *DeletionRecord) BeforeCreate(tx *gorm.DB) error {
 		x.ID = uid.New()
 	}
 	return nil
+}
+
+// --- Oplog hooks: AfterCreate only ---
+// AfterCreate hooks work reliably because tx.Create(&item) always passes a
+// populated model. Updates and deletes use explicit oplog writes in Store
+// methods because GORM's Model().Updates() and Where().Delete() pass empty
+// models to hooks, preventing correct payload capture.
+
+func (x *HouseProfile) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableHouseProfiles, x.ID, OpInsert, x)
+}
+
+func (x *ProjectType) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableProjectTypes, x.ID, OpInsert, x)
+}
+
+func (x *Vendor) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableVendors, x.ID, OpInsert, x)
+}
+
+func (x *Project) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableProjects, x.ID, OpInsert, x)
+}
+
+func (x *Quote) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableQuotes, x.ID, OpInsert, x)
+}
+
+func (x *MaintenanceCategory) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableMaintenanceCategories, x.ID, OpInsert, x)
+}
+
+func (x *Appliance) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableAppliances, x.ID, OpInsert, x)
+}
+
+func (x *MaintenanceItem) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableMaintenanceItems, x.ID, OpInsert, x)
+}
+
+func (x *Incident) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableIncidents, x.ID, OpInsert, x)
+}
+
+func (x *ServiceLogEntry) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableServiceLogEntries, x.ID, OpInsert, x)
+}
+
+func (x *Document) AfterCreate(tx *gorm.DB) error {
+	if isSyncApplying(tx) {
+		return nil
+	}
+	return writeOplogEntry(tx, TableDocuments, x.ID, OpInsert, newDocumentOplogPayload(*x))
 }

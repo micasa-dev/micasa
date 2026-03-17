@@ -271,6 +271,10 @@ func (s *Store) DataDump() string {
 
 	var b strings.Builder
 	for _, name := range names {
+		// Skip sync infrastructure tables from LLM context dumps.
+		if name == TableSyncOplogEntries || name == TableSyncDevices {
+			continue
+		}
 		//nolint:gosec // table name comes from sqlite_master, not user input
 		sqlRows, err := s.db.Raw(fmt.Sprintf("SELECT * FROM %s", name)).Rows()
 		if err != nil {
