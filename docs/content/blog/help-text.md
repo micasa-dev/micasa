@@ -46,10 +46,9 @@ You can point at the exact field the LLM got wrong before you accept.
 ## Faster the second time
 
 Re-extracting a document used to redo the full pipeline -- OCR, text
-extraction, everything. Now it skips the expensive layers and feeds cached
-text straight to the LLM
-([#763](https://github.com/cpcloud/micasa/pull/763)). If OCR was the
-bottleneck, re-extraction is nearly instant.
+extraction, everything. Now it skips straight to the LLM with the cached
+text from the first run
+([#763](https://github.com/cpcloud/micasa/pull/763)).
 
 Same PR: <kbd>r</kbd> in edit mode triggers extraction without opening a
 form. A **Model** column shows which LLM produced the extraction. The model
