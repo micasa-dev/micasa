@@ -656,7 +656,9 @@ func (s *PgStore) PutBlob(ctx context.Context, householdID, hash string, data []
 			return errBlobExists
 		}
 
-		// Check quota.
+		// Check quota. Written as used > quota-len to avoid overflow on
+		// the left side (used+len could wrap). Safe with signed int64:
+		// if len(data) > quota the RHS goes negative and the check holds.
 		var used int64
 		if err := tx.Model(&pgBlob{}).
 			Where("household_id = ?", householdID).
