@@ -232,9 +232,11 @@ func stripNonColumnKeys(tableName string, row map[string]any) {
 
 // applyDelete soft-deletes a row. Uses op.CreatedAt rather than time.Now()
 // so that applying the same delete on multiple devices produces identical
-// deleted_at values (deterministic convergence). Returns an error if the
-// row doesn't exist. ApplyOps sorts by relay seq before calling applyOne,
-// so the corresponding insert op will always have been applied first.
+// deleted_at values (deterministic convergence). Note: deleted_at reflects
+// the op creation time, not the wall-clock deletion time on this device.
+// Returns an error if the row doesn't exist. ApplyOps sorts by relay seq
+// before calling applyOne, so the corresponding insert op will always have
+// been applied first.
 func applyDelete(tx *gorm.DB, op OpPayload) error {
 	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
 		Update("deleted_at", op.CreatedAt)
