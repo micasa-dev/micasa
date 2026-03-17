@@ -831,7 +831,7 @@ func ParseStringID(v any) string {
 	case []byte:
 		return strings.TrimSpace(string(val))
 	case float64:
-		if val != math.Trunc(val) {
+		if val != math.Trunc(val) || math.IsInf(val, 0) {
 			return ""
 		}
 		return strconv.FormatFloat(val, 'f', -1, 64)

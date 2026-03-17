@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	gosync "sync"
 	"time"
@@ -170,6 +171,7 @@ func cachedDeviceID(tx *gorm.DB) string {
 		return deviceIDValue
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		slog.Error("oplog: failed to query sync device", "error", err)
 		return ""
 	}
 
@@ -182,6 +184,7 @@ func cachedDeviceID(tx *gorm.DB) string {
 		Name: hostname,
 	}
 	if err := tx.Create(&dev).Error; err != nil {
+		slog.Error("oplog: failed to create sync device", "error", err)
 		return ""
 	}
 	deviceIDValue = dev.ID

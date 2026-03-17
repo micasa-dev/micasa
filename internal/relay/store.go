@@ -50,9 +50,14 @@ type Store interface {
 	// Max 3 active invites per household. Code expires in 24 hours.
 	CreateInvite(ctx context.Context, householdID, deviceID string) (sync.InviteCode, error)
 
-	// StartJoin validates an invite code and creates a pending key
-	// exchange. Returns the exchange ID and the inviter's public key.
-	StartJoin(ctx context.Context, code string, req sync.JoinRequest) (sync.JoinResponse, error)
+	// StartJoin validates an invite code against the given household
+	// and creates a pending key exchange. The household ID is checked
+	// before consuming an attempt to prevent attempt-burning attacks.
+	StartJoin(
+		ctx context.Context,
+		householdID, code string,
+		req sync.JoinRequest,
+	) (sync.JoinResponse, error)
 
 	// GetPendingExchanges returns incomplete key exchanges for a household.
 	GetPendingExchanges(ctx context.Context, householdID string) ([]sync.PendingKeyExchange, error)

@@ -251,7 +251,7 @@ func (m *MemStore) CreateInvite(
 
 func (m *MemStore) StartJoin(
 	_ context.Context,
-	code string,
+	householdID, code string,
 	req sync.JoinRequest,
 ) (sync.JoinResponse, error) {
 	m.mu.Lock()
@@ -259,6 +259,9 @@ func (m *MemStore) StartJoin(
 
 	inv, ok := m.invites[code]
 	if !ok {
+		return sync.JoinResponse{}, fmt.Errorf("invite code not found")
+	}
+	if inv.householdID != householdID {
 		return sync.JoinResponse{}, fmt.Errorf("invite code not found")
 	}
 	if inv.consumed {

@@ -237,13 +237,9 @@ func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 
 	hhID := r.PathValue("id")
 
-	resp, err := h.store.StartJoin(r.Context(), req.InviteCode, req)
+	resp, err := h.store.StartJoin(r.Context(), hhID, req.InviteCode, req)
 	if err != nil {
 		h.log.Error("start join", "error", err)
-		writeError(w, http.StatusBadRequest, "invalid or expired invite code")
-		return
-	}
-	if resp.HouseholdID != hhID {
 		writeError(w, http.StatusBadRequest, "invalid or expired invite code")
 		return
 	}
