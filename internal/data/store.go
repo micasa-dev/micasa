@@ -28,6 +28,7 @@ type Store struct {
 	db              *gorm.DB
 	maxDocumentSize uint64
 	currency        locale.Currency
+	deviceCell      *deviceIDCell
 }
 
 func unscopedPreload(q *gorm.DB) *gorm.DB { return q.Unscoped() }
@@ -132,7 +133,9 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	return &Store{db: db}, nil
+	cell := &deviceIDCell{}
+	db = db.WithContext(withDeviceIDCell(db.Statement.Context, cell))
+	return &Store{db: db, deviceCell: cell}, nil
 }
 
 // GormDB returns the underlying *gorm.DB for use by sync.ApplyOps,

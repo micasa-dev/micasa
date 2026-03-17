@@ -33,7 +33,6 @@ func oplogCount(t *testing.T, store *Store, table, rowID string) int {
 func TestOplogInsertVendor(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Acme Plumbing"}
 	require.NoError(t, store.CreateVendor(v))
@@ -51,7 +50,6 @@ func TestOplogInsertVendor(t *testing.T) {
 func TestOplogInsertProject(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	types, _ := store.ProjectTypes()
 	p := &Project{Title: "Kitchen Reno", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned}
@@ -65,7 +63,6 @@ func TestOplogInsertProject(t *testing.T) {
 func TestOplogInsertAppliance(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	a := &Appliance{Name: "Dishwasher", Brand: "Bosch"}
 	require.NoError(t, store.CreateAppliance(a))
@@ -78,7 +75,6 @@ func TestOplogInsertAppliance(t *testing.T) {
 func TestOplogInsertIncident(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	inc := &Incident{Title: "Roof Leak", Status: IncidentStatusOpen}
 	require.NoError(t, store.CreateIncident(inc))
@@ -91,7 +87,6 @@ func TestOplogInsertIncident(t *testing.T) {
 func TestOplogInsertQuote(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	types, _ := store.ProjectTypes()
 	p := &Project{Title: "Bath Remodel", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned}
@@ -111,7 +106,6 @@ func TestOplogInsertQuote(t *testing.T) {
 func TestOplogInsertHouseProfile(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	hp := HouseProfile{Nickname: "Home"}
 	require.NoError(t, store.CreateHouseProfile(hp))
@@ -129,7 +123,6 @@ func TestOplogInsertHouseProfile(t *testing.T) {
 func TestOplogUpdateVendor(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Old Name"}
 	require.NoError(t, store.CreateVendor(v))
@@ -150,7 +143,6 @@ func TestOplogUpdateVendor(t *testing.T) {
 func TestOplogUpdateProject(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	types, _ := store.ProjectTypes()
 	p := &Project{Title: "Before", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned}
@@ -168,7 +160,6 @@ func TestOplogUpdateProject(t *testing.T) {
 func TestOplogUpdateIncident(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	inc := &Incident{Title: "Leak", Status: IncidentStatusOpen}
 	require.NoError(t, store.CreateIncident(inc))
@@ -187,7 +178,6 @@ func TestOplogUpdateIncident(t *testing.T) {
 func TestOplogDeleteVendor(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "To Delete"}
 	require.NoError(t, store.CreateVendor(v))
@@ -203,7 +193,6 @@ func TestOplogDeleteVendor(t *testing.T) {
 func TestOplogDeleteProject(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	types, _ := store.ProjectTypes()
 	p := &Project{Title: "Doomed", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned}
@@ -220,7 +209,6 @@ func TestOplogDeleteProject(t *testing.T) {
 func TestOplogDeleteIncident(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	inc := &Incident{Title: "Temporary", Status: IncidentStatusOpen}
 	require.NoError(t, store.CreateIncident(inc))
@@ -238,7 +226,6 @@ func TestOplogDeleteIncident(t *testing.T) {
 func TestOplogRestoreVendor(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Restorable"}
 	require.NoError(t, store.CreateVendor(v))
@@ -256,7 +243,6 @@ func TestOplogRestoreVendor(t *testing.T) {
 func TestOplogRestoreProject(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	types, _ := store.ProjectTypes()
 	p := &Project{Title: "Phoenix", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned}
@@ -275,7 +261,6 @@ func TestOplogRestoreProject(t *testing.T) {
 func TestOplogDocumentExcludesBLOB(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	doc := &Document{
 		Title:    "Invoice",
@@ -304,7 +289,6 @@ func TestOplogDocumentExcludesBLOB(t *testing.T) {
 func TestOplogSyncApplyingSuppressesWrites(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	ctx := WithSyncApplying(context.Background())
 	v := &Vendor{Name: "Remote Vendor"}
@@ -318,7 +302,6 @@ func TestOplogSyncApplyingSuppressesWrites(t *testing.T) {
 func TestOplogSyncApplyingSuppressesSoftDelete(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Local Then Remote Delete"}
 	require.NoError(t, store.CreateVendor(v))
@@ -338,7 +321,6 @@ func TestOplogSyncApplyingSuppressesSoftDelete(t *testing.T) {
 func TestOplogSyncApplyingSuppressesUpdate(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Original"}
 	require.NoError(t, store.CreateVendor(v))
@@ -362,7 +344,6 @@ func TestOplogSyncApplyingSuppressesUpdate(t *testing.T) {
 func TestDeviceIDLazyInit(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	id := store.DeviceID()
 	assert.Len(t, id, 26, "device ID should be a 26-char ULID")
@@ -373,14 +354,99 @@ func TestDeviceIDLazyInit(t *testing.T) {
 
 func TestDeviceIDPersistedAcrossStoreInstances(t *testing.T) {
 	t.Parallel()
-	store := newTestStore(t)
-	ResetCachedDeviceID()
+	dbPath := t.TempDir() + "/persist.db"
 
-	id1 := store.DeviceID()
-	ResetCachedDeviceID()
-	id2 := store.DeviceID()
+	store1, err := Open(dbPath)
+	require.NoError(t, err)
+	require.NoError(t, store1.AutoMigrate())
+	id1 := store1.DeviceID()
+	require.NoError(t, store1.Close())
+
+	store2, err := Open(dbPath)
+	require.NoError(t, err)
+	id2 := store2.DeviceID()
+	require.NoError(t, store2.Close())
 
 	assert.Equal(t, id1, id2, "device ID should persist in the DB")
+}
+
+func TestDeviceIDIsolationBetweenStores(t *testing.T) {
+	t.Parallel()
+
+	// Use fresh DBs (not template copies) so each gets a unique device row.
+	open := func() *Store {
+		t.Helper()
+		path := t.TempDir() + "/test.db"
+		s, err := Open(path)
+		require.NoError(t, err)
+		require.NoError(t, s.AutoMigrate())
+		t.Cleanup(func() { _ = s.Close() })
+		return s
+	}
+	store1 := open()
+	store2 := open()
+
+	id1 := store1.DeviceID()
+	id2 := store2.DeviceID()
+
+	assert.NotEmpty(t, id1)
+	assert.NotEmpty(t, id2)
+	assert.NotEqual(t, id1, id2, "separate stores should have independent device IDs")
+}
+
+func TestOplogUsesStoreDeviceID(t *testing.T) {
+	t.Parallel()
+
+	// Use fresh DBs to ensure distinct device IDs.
+	open := func() *Store {
+		t.Helper()
+		path := t.TempDir() + "/test.db"
+		s, err := Open(path)
+		require.NoError(t, err)
+		require.NoError(t, s.AutoMigrate())
+		require.NoError(t, s.SeedDefaults())
+		require.NoError(t, s.SetMaxDocumentSize(50<<20))
+		t.Cleanup(func() { _ = s.Close() })
+		return s
+	}
+	store1 := open()
+	store2 := open()
+
+	v1 := &Vendor{Name: "Store1 Vendor"}
+	require.NoError(t, store1.CreateVendor(v1))
+
+	v2 := &Vendor{Name: "Store2 Vendor"}
+	require.NoError(t, store2.CreateVendor(v2))
+
+	op1 := lastOplogEntry(t, store1, TableVendors, v1.ID)
+	op2 := lastOplogEntry(t, store2, TableVendors, v2.ID)
+
+	assert.Equal(t, store1.DeviceID(), op1.DeviceID, "oplog should use store1's device ID")
+	assert.Equal(t, store2.DeviceID(), op2.DeviceID, "oplog should use store2's device ID")
+	assert.NotEqual(
+		t,
+		op1.DeviceID,
+		op2.DeviceID,
+		"different stores should produce different device IDs",
+	)
+}
+
+func TestSetDeviceID(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	original := store.DeviceID()
+	assert.NotEmpty(t, original)
+
+	store.SetDeviceID("new-device-id")
+	assert.Equal(t, "new-device-id", store.DeviceID())
+
+	// Oplog entries written after SetDeviceID should use the new ID.
+	v := &Vendor{Name: "After SetDeviceID"}
+	require.NoError(t, store.CreateVendor(v))
+
+	op := lastOplogEntry(t, store, TableVendors, v.ID)
+	assert.Equal(t, "new-device-id", op.DeviceID)
 }
 
 // --- UnsyncedOps / MarkSynced ---
@@ -388,7 +454,6 @@ func TestDeviceIDPersistedAcrossStoreInstances(t *testing.T) {
 func TestUnsyncedOpsAndMarkSynced(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Sync Me"}
 	require.NoError(t, store.CreateVendor(v))
@@ -461,7 +526,6 @@ func TestOplogExcludesNonSyncableTables(t *testing.T) {
 func TestOplogFindOrCreateVendorNew(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v, err := store.FindOrCreateVendor(Vendor{Name: "Brand New Vendor"})
 	require.NoError(t, err)
@@ -473,7 +537,6 @@ func TestOplogFindOrCreateVendorNew(t *testing.T) {
 func TestOplogFindOrCreateVendorExisting(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Existing Co"}
 	require.NoError(t, store.CreateVendor(v))
@@ -492,7 +555,6 @@ func TestOplogFindOrCreateVendorExisting(t *testing.T) {
 func TestOplogFindOrCreateVendorRestore(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "Deleted Then Found"}
 	require.NoError(t, store.CreateVendor(v))
@@ -525,7 +587,6 @@ func TestOplogFindOrCreateVendorRestore(t *testing.T) {
 func TestAllOplogEntries(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	v := &Vendor{Name: "V1"}
 	require.NoError(t, store.CreateVendor(v))
@@ -543,7 +604,6 @@ func TestAllOplogEntries(t *testing.T) {
 func TestOplogDocumentUpdate(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	doc := &Document{
 		Title:    "Original Title",
@@ -573,7 +633,6 @@ func TestOplogDocumentUpdate(t *testing.T) {
 func TestOplogInsertServiceLogEntry(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	cats, _ := store.MaintenanceCategories()
 	mi := &MaintenanceItem{Name: "Filter Change", CategoryID: cats[0].ID}
@@ -594,7 +653,6 @@ func TestOplogInsertServiceLogEntry(t *testing.T) {
 func TestOplogInsertMaintenanceCategory(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	cats, _ := store.MaintenanceCategories()
 	require.NotEmpty(t, cats)
@@ -608,7 +666,6 @@ func TestOplogInsertMaintenanceCategory(t *testing.T) {
 func TestOplogInsertProjectType(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ResetCachedDeviceID()
 
 	types, _ := store.ProjectTypes()
 	require.NotEmpty(t, types)

@@ -253,7 +253,6 @@ func runProInit(dbPath, relayURL string) error {
 			return fmt.Errorf("update oplog device IDs: %w", err)
 		}
 	}
-	data.ResetCachedDeviceID()
 
 	// Update SyncDevice record.
 	if err := store.UpdateSyncDevice(map[string]any{
@@ -263,6 +262,7 @@ func runProInit(dbPath, relayURL string) error {
 	}); err != nil {
 		return fmt.Errorf("update sync device: %w", err)
 	}
+	store.SetDeviceID(resp.DeviceID)
 
 	fmt.Fprintf(os.Stderr, "household: %s\n", resp.HouseholdID)
 	fmt.Fprintf(os.Stderr, "device:    %s\n", resp.DeviceID)
@@ -804,7 +804,6 @@ exchangeDone:
 			return fmt.Errorf("update oplog device IDs: %w", err)
 		}
 	}
-	data.ResetCachedDeviceID()
 
 	// Update SyncDevice record.
 	if err := store.UpdateSyncDevice(map[string]any{
@@ -814,6 +813,7 @@ exchangeDone:
 	}); err != nil {
 		return fmt.Errorf("update sync device: %w", err)
 	}
+	store.SetDeviceID(result.DeviceID)
 
 	// Initial pull.
 	syncClient := sync.NewClient(relayURL, result.DeviceToken, key)

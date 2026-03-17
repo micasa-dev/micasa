@@ -49,6 +49,18 @@ func syncableTable(table string) bool {
 	}
 }
 
+// resolveDeviceID extracts the device ID from the GORM transaction's
+// context (set per-Store at Open time). Returns empty string if the
+// cell is missing (should not happen in normal operation).
+func resolveDeviceID(tx *gorm.DB) string {
+	cell := deviceIDCellFromContext(tx.Statement.Context)
+	if cell == nil {
+		slog.Error("oplog: device ID cell not in context")
+		return ""
+	}
+	return cell.resolve(tx)
+}
+
 // writeOplogEntry appends an operation to the sync oplog within the given
 // GORM transaction. The payload is JSON-serialized from the provided value.
 // For documents, callers should use documentOplogPayload to exclude BLOBs.
@@ -69,7 +81,7 @@ func writeOplogEntry(tx *gorm.DB, tableName, rowID, opType string, payload any) 
 		RowID:     rowID,
 		OpType:    opType,
 		Payload:   string(jsonBytes),
-		DeviceID:  cachedDeviceID(tx),
+		DeviceID:  resolveDeviceID(tx),
 		CreatedAt: now,
 		AppliedAt: &now,
 	}
@@ -89,7 +101,7 @@ func writeOplogEntryRaw(tx *gorm.DB, tableName, rowID, opType, payload string) e
 		RowID:     rowID,
 		OpType:    opType,
 		Payload:   payload,
-		DeviceID:  cachedDeviceID(tx),
+		DeviceID:  resolveDeviceID(tx),
 		CreatedAt: now,
 		AppliedAt: &now,
 	}
@@ -149,26 +161,45 @@ func newDocumentOplogPayload(doc Document) documentOplogPayload {
 	return p
 }
 
-// cachedDeviceID returns this device's ID, lazily initializing it on first
-// call. The device ID is stored in the sync_devices table (single row).
-var (
-	deviceIDMu    gosync.Mutex
-	deviceIDValue string
-)
+// deviceIDCtxKey is a context key for the per-Store device ID cell.
+// GORM hooks read the cell from tx.Statement.Context to resolve the
+// device ID without a package-level global.
+type deviceIDCtxKey struct{}
 
-func cachedDeviceID(tx *gorm.DB) string {
-	deviceIDMu.Lock()
-	defer deviceIDMu.Unlock()
+// withDeviceIDCell returns a context carrying the given cell.
+func withDeviceIDCell(ctx context.Context, cell *deviceIDCell) context.Context {
+	return context.WithValue(ctx, deviceIDCtxKey{}, cell)
+}
 
-	if deviceIDValue != "" {
-		return deviceIDValue
+// deviceIDCellFromContext retrieves the device ID cell from a context.
+func deviceIDCellFromContext(ctx context.Context) *deviceIDCell {
+	v, _ := ctx.Value(deviceIDCtxKey{}).(*deviceIDCell)
+	return v
+}
+
+// deviceIDCell is a per-Store lazy cache for the local device ID.
+// Each Store instance gets its own cell, eliminating the previous
+// package-level global that leaked state across parallel tests.
+type deviceIDCell struct {
+	mu    gosync.Mutex
+	value string
+}
+
+// resolve returns the cached device ID, lazily initializing it by
+// querying or creating the sync_devices row via tx.
+func (c *deviceIDCell) resolve(tx *gorm.DB) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.value != "" {
+		return c.value
 	}
 
 	var dev SyncDevice
 	err := tx.First(&dev).Error
 	if err == nil {
-		deviceIDValue = dev.ID
-		return deviceIDValue
+		c.value = dev.ID
+		return c.value
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		slog.Error("oplog: failed to query sync device", "error", err)
@@ -187,20 +218,25 @@ func cachedDeviceID(tx *gorm.DB) string {
 		slog.Error("oplog: failed to create sync device", "error", err)
 		return ""
 	}
-	deviceIDValue = dev.ID
-	return deviceIDValue
+	c.value = dev.ID
+	return c.value
 }
 
-// ResetCachedDeviceID clears the cached device ID. Used in tests.
-func ResetCachedDeviceID() {
-	deviceIDMu.Lock()
-	defer deviceIDMu.Unlock()
-	deviceIDValue = ""
+func (c *deviceIDCell) set(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.value = id
 }
 
 // DeviceID returns this device's sync device ID, initializing if needed.
 func (s *Store) DeviceID() string {
-	return cachedDeviceID(s.db)
+	return s.deviceCell.resolve(s.db)
+}
+
+// SetDeviceID updates the cached device ID. Used by pro init/join
+// after the relay assigns a new device ID.
+func (s *Store) SetDeviceID(id string) {
+	s.deviceCell.set(id)
 }
 
 // UnsyncedOps returns all oplog entries that haven't been pushed to the relay.
