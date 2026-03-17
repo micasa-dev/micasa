@@ -6,6 +6,7 @@ package relay
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base32"
 	"encoding/hex"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/cpcloud/micasa/internal/sync"
 	"github.com/cpcloud/micasa/internal/uid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // newCryptoToken returns a 256-bit (32-byte) crypto-random hex string.
@@ -34,7 +34,7 @@ type MemStore struct {
 	ops        []sync.Envelope
 	households map[string]sync.Household
 	devices    map[string]deviceRecord
-	tokenIndex map[string]string // token_hash -> device_id
+	tokenIndex map[string]string // sha256(raw_token) hex -> device_id
 	seqs       map[string]int64  // household_id -> last_seq
 	invites    map[string]*inviteRecord
 	exchanges  map[string]*keyExchangeRecord
@@ -43,8 +43,8 @@ type MemStore struct {
 }
 
 type deviceRecord struct {
-	device    sync.Device
-	tokenHash string
+	device   sync.Device
+	tokenSHA string // sha256(raw_token) hex — used as tokenIndex key
 }
 
 type inviteRecord struct {
@@ -181,7 +181,7 @@ func (m *MemStore) CreateHousehold(
 		PublicKey:   req.PublicKey,
 		CreatedAt:   time.Now(),
 	}
-	m.devices[devID] = deviceRecord{device: dev, tokenHash: tokenHash}
+	m.devices[devID] = deviceRecord{device: dev, tokenSHA: tokenHash}
 	m.tokenIndex[tokenHash] = devID
 
 	return sync.CreateHouseholdResponse{
@@ -215,7 +215,7 @@ func (m *MemStore) RegisterDevice(
 		PublicKey:   req.PublicKey,
 		CreatedAt:   time.Now(),
 	}
-	m.devices[devID] = deviceRecord{device: dev, tokenHash: tokenHash}
+	m.devices[devID] = deviceRecord{device: dev, tokenSHA: tokenHash}
 	m.tokenIndex[tokenHash] = devID
 
 	return sync.RegisterDeviceResponse{
@@ -228,13 +228,12 @@ func (m *MemStore) AuthenticateDevice(_ context.Context, token string) (sync.Dev
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	for hash, devID := range m.tokenIndex {
-		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(token)) == nil {
-			rec := m.devices[devID]
-			return rec.device, nil
-		}
+	sha := tokenSHA256(token)
+	devID, ok := m.tokenIndex[sha]
+	if !ok {
+		return sync.Device{}, fmt.Errorf("invalid token")
 	}
-	return sync.Device{}, fmt.Errorf("invalid token")
+	return m.devices[devID].device, nil
 }
 
 func (m *MemStore) CreateInvite(
@@ -381,7 +380,7 @@ func (m *MemStore) CompleteKeyExchange(
 		PublicKey:   ex.joinerPublicKey,
 		CreatedAt:   time.Now(),
 	}
-	m.devices[devID] = deviceRecord{device: dev, tokenHash: tokenHash}
+	m.devices[devID] = deviceRecord{device: dev, tokenSHA: tokenHash}
 	m.tokenIndex[tokenHash] = devID
 
 	ex.encryptedKey = encryptedKey
@@ -461,7 +460,7 @@ func (m *MemStore) RevokeDevice(
 	}
 
 	// Remove token from index.
-	delete(m.tokenIndex, rec.tokenHash)
+	delete(m.tokenIndex, rec.tokenSHA)
 	// Remove device.
 	delete(m.devices, deviceID)
 	return nil
@@ -610,15 +609,19 @@ func generateInviteCode() (string, error) {
 	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b), nil
 }
 
-func generateToken() (raw string, hash string, err error) {
+// tokenSHA256 returns the hex-encoded SHA-256 of a raw token string.
+// Used as the O(1) lookup key in tokenIndex. Tokens are 256-bit
+// crypto-random so a fast hash is safe (no brute-force risk).
+func tokenSHA256(raw string) string {
+	h := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(h[:])
+}
+
+func generateToken() (raw string, sha string, err error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", "", fmt.Errorf("generate token: %w", err)
 	}
 	raw = hex.EncodeToString(b)
-	hashed, err := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.DefaultCost)
-	if err != nil {
-		return "", "", fmt.Errorf("hash token: %w", err)
-	}
-	return raw, string(hashed), nil
+	return raw, tokenSHA256(raw), nil
 }

@@ -91,6 +91,30 @@ func TestCreateHouseholdMissingName(t *testing.T) {
 
 // --- Auth middleware ---
 
+func TestAuthenticateDeviceMultipleDevices(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+
+	// Create several households, each with a device token.
+	tokens := make([]string, 5)
+	for i := range tokens {
+		hh := createTestHousehold(t, h)
+		tokens[i] = hh.DeviceToken
+	}
+
+	// Each token should authenticate to the correct device.
+	for _, token := range tokens {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, authRequest("GET", "/status", nil, token))
+		assert.Equal(t, http.StatusOK, rec.Code, "token should authenticate")
+	}
+
+	// Invalid token should fail.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/status", nil, "bogus-token"))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestPushRequiresAuth(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
