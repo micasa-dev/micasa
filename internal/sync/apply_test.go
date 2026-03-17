@@ -57,36 +57,52 @@ func TestStripNonColumnKeysRemovesBlobRef(t *testing.T) {
 	assert.Contains(t, row, "title", "other fields should be preserved")
 }
 
-func TestApplyInsertRejectsMismatchedRowID(t *testing.T) {
+func TestValidateInsertPayloadID(t *testing.T) {
 	t.Parallel()
 
-	// The payload ID doesn't match op.RowID -- applyInsert should reject it.
-	op := OpPayload{
-		ID:        "op-1",
-		TableName: "vendors",
-		RowID:     "vendor-1",
-		OpType:    "insert",
-		Payload:   `{"id":"vendor-WRONG","name":"Spoofed"}`,
+	tests := []struct {
+		name    string
+		row     map[string]any
+		rowID   string
+		wantErr string
+	}{
+		{
+			name:    "matching ID passes",
+			row:     map[string]any{"id": "vendor-1", "name": "Legit"},
+			rowID:   "vendor-1",
+			wantErr: "",
+		},
+		{
+			name:    "mismatched ID rejected",
+			row:     map[string]any{"id": "vendor-WRONG", "name": "Spoofed"},
+			rowID:   "vendor-1",
+			wantErr: "does not match",
+		},
+		{
+			name:    "missing ID rejected",
+			row:     map[string]any{"name": "NoID"},
+			rowID:   "vendor-1",
+			wantErr: "missing string id",
+		},
+		{
+			name:    "non-string ID rejected",
+			row:     map[string]any{"id": 42, "name": "NumericID"},
+			rowID:   "vendor-1",
+			wantErr: "missing string id",
+		},
 	}
-	err := applyInsert(nil, op) // tx is nil; we expect an error before DB access
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "payload id")
-}
-
-func TestApplyInsertAcceptsMatchingRowID(t *testing.T) {
-	t.Parallel()
-
-	// Matching IDs should not trigger the validation error.
-	// We pass nil tx so it panics at the DB call (past validation).
-	op := OpPayload{
-		ID:        "op-1",
-		TableName: "vendors",
-		RowID:     "vendor-1",
-		OpType:    "insert",
-		Payload:   `{"id":"vendor-1","name":"Legit"}`,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateInsertPayloadID(tt.row, tt.rowID)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+			}
+		})
 	}
-	assert.Panics(t, func() { _ = applyInsert(nil, op) },
-		"should pass ID validation and panic on nil tx")
 }
 
 func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {

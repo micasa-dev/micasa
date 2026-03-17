@@ -148,16 +148,33 @@ func applyOpToTable(tx *gorm.DB, op OpPayload) error {
 	}
 }
 
+// validateInsertPayloadID checks that the payload contains a string "id"
+// field matching the op's RowID.
+func validateInsertPayloadID(row map[string]any, rowID string) error {
+	raw, ok := row["id"]
+	if !ok {
+		return fmt.Errorf("insert payload missing string id field")
+	}
+	payloadID, ok := raw.(string)
+	if !ok {
+		return fmt.Errorf("insert payload missing string id field (got %T)", raw)
+	}
+	if payloadID != rowID {
+		return fmt.Errorf(
+			"payload id %q does not match op row_id %q",
+			payloadID, rowID,
+		)
+	}
+	return nil
+}
+
 func applyInsert(tx *gorm.DB, op OpPayload) error {
 	var row map[string]any
 	if err := json.Unmarshal([]byte(op.Payload), &row); err != nil {
 		return fmt.Errorf("unmarshal insert payload: %w", err)
 	}
-	if payloadID, _ := row["id"].(string); payloadID != op.RowID {
-		return fmt.Errorf(
-			"payload id %q does not match op row_id %q",
-			payloadID, op.RowID,
-		)
+	if err := validateInsertPayloadID(row, op.RowID); err != nil {
+		return err
 	}
 	stripNonColumnKeys(op.TableName, row)
 	return tx.Table(op.TableName).Create(row).Error
