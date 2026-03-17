@@ -394,7 +394,12 @@ func (h *Handler) handlePutBlob(
 	r.Body = http.MaxBytesReader(w, r.Body, maxBlobSize)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeError(w, http.StatusRequestEntityTooLarge, "blob exceeds maximum size (50 MB)")
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "blob exceeds maximum size (50 MB)")
+		} else {
+			writeError(w, http.StatusBadRequest, "read body failed")
+		}
 		return
 	}
 

@@ -160,4 +160,7 @@ func TestBlobIntegrityCheckFailsOnTamperedHash(t *testing.T) {
 	_, err := client.DownloadBlob(hhID, fakeHash)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "integrity")
+	// Error should include expected and actual hashes for debugging.
+	assert.Contains(t, err.Error(), fakeHash)
+	assert.Contains(t, err.Error(), realHash)
 }

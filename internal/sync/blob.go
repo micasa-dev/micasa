@@ -80,7 +80,10 @@ func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 	// so validation happens client-side after decryption.
 	got := sha256.Sum256(plaintext)
 	if hex.EncodeToString(got[:]) != hash {
-		return nil, fmt.Errorf("blob integrity check failed: sha256 mismatch")
+		return nil, fmt.Errorf(
+			"blob integrity check failed: expected sha256 %s, got %s",
+			hash, hex.EncodeToString(got[:]),
+		)
 	}
 	return plaintext, nil
 }
