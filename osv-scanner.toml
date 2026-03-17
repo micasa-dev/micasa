@@ -1,34 +1,6 @@
 # Copyright 2026 Phillip Cloud
 # Licensed under the Apache License, Version 2.0
 
-[[IgnoredVulns]]
-id = "GO-2026-4341"
-reason = "net/url.ParseQuery only reached via gorm DSN parsing with a local file path we control"
-
-[[IgnoredVulns]]
-id = "GO-2026-4337"
-reason = "requires mutating ClientCAs/RootCAs between TLS handshakes; micasa uses a plain http.Client and never touches TLS config"
-
-[[IgnoredVulns]]
-id = "GO-2026-4340"
-reason = "minor TLS 1.3 info disclosure requiring network-local attacker; default config is plaintext HTTP to localhost; even over HTTPS a compromised server already sees all prompts and controls all responses, strictly dominating this vuln"
-
-[[IgnoredVulns]]
-id = "GO-2026-4342"
-reason = "archive/zip DoS via crafted ZIP filenames; micasa never opens or processes ZIP archives"
-
-[[IgnoredVulns]]
-id = "GO-2026-4601"
-reason = "url.Parse IPv6 host parsing flaw; only caller is isLoopbackURL which parses the user's own base_url config value, not attacker-supplied input"
-
-[[IgnoredVulns]]
-id = "GO-2026-4602"
-reason = "os.ReadDir directory traversal via Root-constrained File; micasa uses plain os.ReadDir on a local cache dir, never uses os.OpenRoot"
-
-[[IgnoredVulns]]
-id = "GO-2026-4603"
-reason = "html/template XSS in meta content URL escaping; micasa is a TUI app that never uses html/template; awaiting nixpkgs Go 1.25.8"
-
 # ollama server-side vulnerabilities: micasa is a client that makes HTTP
 # requests to an Ollama server; it does not embed, host, or run the Ollama
 # server, GGUF parser, or model-serving endpoints. These code paths are

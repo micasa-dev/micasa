@@ -29,12 +29,14 @@
         go = pkgs.go_1_26;
         version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ./VERSION);
 
-        micasa = pkgs.buildGoModule {
+        buildGoModule = pkgs.buildGoModule.override { inherit go; };
+
+        micasa = buildGoModule {
           pname = "micasa";
-          inherit version go;
+          inherit version;
           src = ./.;
           subPackages = [ "cmd/micasa" ];
-          vendorHash = "sha256-QNM5befb9GmsF6XYORg259Q/x7f/DP9ukgKhwujb+uc=";
+          vendorHash = "sha256-my1oClaNceVd8nhBmaa6hIEF/7Vw8CcxKw9jED/bSNI=";
           env.CGO_ENABLED = 0;
           preCheck = ''
             export HOME="$(mktemp -d)"
@@ -215,7 +217,7 @@
           fontDirectories = [ "${pkgs.nerd-fonts.hack}/share/fonts/truetype" ];
         };
 
-        deadcode = pkgs.buildGoModule {
+        deadcode = buildGoModule {
           pname = "deadcode";
           version = "0.43.0";
           src = pkgs.fetchFromGitHub {
@@ -289,7 +291,7 @@
           name = "run-osv-scanner";
           runtimeInputs = [ pkgs.osv-scanner ];
           text = ''
-            osv-scanner scan --config osv-scanner.toml --no-ignore --recursive .
+            osv-scanner scan --config osv-scanner.toml --no-ignore --no-call-analysis=go --recursive .
           '';
         };
 
@@ -392,6 +394,9 @@
             shellHook = ''
               ${preCommit.shellHook}
 
+              # lipgloss v2 does not detect tmux-256color as truecolor-capable (#789)
+              export TERM=xterm-256color
+
               # Generate test document fixtures if missing.
               if [[ ! -f internal/extract/testdata/mixed-inspection.pdf ]]; then
                 bash internal/extract/gen-sample-pdf.bash
@@ -403,8 +408,6 @@
             '';
             CGO_ENABLED = "0";
             GOFLAGS = "-trimpath";
-            # lipgloss v2 does not detect tmux-256color as truecolor-capable (#789)
-            TERM = "xterm-256color";
             packages = [
               go
               pkgs.osv-scanner
