@@ -1064,7 +1064,8 @@ CREATE TABLE devices (
     id           TEXT PRIMARY KEY,
     household_id TEXT NOT NULL REFERENCES households(id),
     name         TEXT NOT NULL,
-    token_sha    TEXT NOT NULL,  -- SHA-256 hex of bearer token
+    public_key   BYTEA,          -- NaCl box public key for key exchange
+    token_sha    TEXT NOT NULL,   -- SHA-256 hex of bearer token
     last_seen    TIMESTAMPTZ,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     revoked      BOOLEAN NOT NULL DEFAULT false
@@ -1097,7 +1098,8 @@ CREATE TABLE invites (
 CREATE TABLE key_exchanges (
     id                      TEXT PRIMARY KEY,
     household_id            TEXT NOT NULL REFERENCES households(id),
-    joiner_device_id        TEXT,
+    invite_code             TEXT,
+    joiner_name             TEXT,           -- device name before device is created
     joiner_public_key       BYTEA,
     encrypted_household_key BYTEA,
     device_token            TEXT,
