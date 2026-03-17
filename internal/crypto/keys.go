@@ -50,11 +50,11 @@ func GenerateHouseholdKey() (HouseholdKey, error) {
 func GenerateDeviceKeyPair() (DeviceKeyPair, error) {
 	var kp DeviceKeyPair
 	if _, err := rand.Read(kp.PrivateKey[:]); err != nil {
-		return kp, fmt.Errorf("generate device key: %w", err)
+		return DeviceKeyPair{}, fmt.Errorf("generate device key: %w", err)
 	}
 	pub, err := curve25519.X25519(kp.PrivateKey[:], curve25519.Basepoint)
 	if err != nil {
-		return kp, fmt.Errorf("derive public key: %w", err)
+		return DeviceKeyPair{}, fmt.Errorf("derive public key: %w", err)
 	}
 	copy(kp.PublicKey[:], pub)
 	return kp, nil
@@ -138,19 +138,27 @@ func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 
 	priv, err := os.ReadFile(filepath.Join(dir, DevicePrivateKeyFile))
 	if err != nil {
-		return kp, fmt.Errorf("load device private key: %w", err)
+		return DeviceKeyPair{}, fmt.Errorf("load device private key: %w", err)
 	}
 	if len(priv) != KeySize {
-		return kp, fmt.Errorf("device private key: expected %d bytes, got %d", KeySize, len(priv))
+		return DeviceKeyPair{}, fmt.Errorf(
+			"device private key: expected %d bytes, got %d",
+			KeySize,
+			len(priv),
+		)
 	}
 	copy(kp.PrivateKey[:], priv)
 
 	pub, err := os.ReadFile(filepath.Join(dir, DevicePublicKeyFile))
 	if err != nil {
-		return kp, fmt.Errorf("load device public key: %w", err)
+		return DeviceKeyPair{}, fmt.Errorf("load device public key: %w", err)
 	}
 	if len(pub) != KeySize {
-		return kp, fmt.Errorf("device public key: expected %d bytes, got %d", KeySize, len(pub))
+		return DeviceKeyPair{}, fmt.Errorf(
+			"device public key: expected %d bytes, got %d",
+			KeySize,
+			len(pub),
+		)
 	}
 	copy(kp.PublicKey[:], pub)
 
