@@ -196,6 +196,11 @@ func TestKeyFilePermissions(t *testing.T) {
 		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
 			"%s should have 0600 permissions", name)
 	}
+
+	pubInfo, err := os.Stat(filepath.Join(dir, DevicePublicKeyFile))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), pubInfo.Mode().Perm(),
+		"%s should have 0644 permissions", DevicePublicKeyFile)
 }
 
 func TestLoadHouseholdKeyNotFound(t *testing.T) {

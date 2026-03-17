@@ -7,9 +7,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -1544,4 +1546,160 @@ func TestKeyExchangeExpiredReturnsError(t *testing.T) {
 	}
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&pendingResp))
 	assert.Empty(t, pendingResp.Exchanges, "expired exchange should not appear in pending list")
+}
+
+// --- Bearer token edge cases ---
+
+func TestAuthEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// authEndpoint is a representative authenticated endpoint used across subtests.
+	const authEndpoint = "/status"
+
+	t.Run("empty bearer token", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+
+		req := httptest.NewRequest("GET", authEndpoint, nil)
+		req.Header.Set("Authorization", "Bearer ")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("whitespace-only bearer token", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+
+		req := httptest.NewRequest("GET", authEndpoint, nil)
+		req.Header.Set("Authorization", "Bearer    ")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("extremely long bearer token", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+
+		const tokenLen = 10 * 1024
+		const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+		b := make([]byte, tokenLen)
+		for i := range b {
+			b[i] = charset[rand.IntN(len(charset))]
+		}
+		longToken := string(b)
+
+		req := httptest.NewRequest("GET", authEndpoint, nil)
+		req.Header.Set("Authorization", "Bearer "+longToken)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("missing Authorization header", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+
+		req := httptest.NewRequest("GET", authEndpoint, nil)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+}
+
+// --- Malformed JSON in request bodies ---
+
+func TestMalformedJSONBodies(t *testing.T) {
+	t.Parallel()
+
+	const badJSON = `{invalid json`
+
+	t.Run("POST /households", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+
+		req := httptest.NewRequest("POST", "/households", strings.NewReader(badJSON))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("POST /households/{id}/join", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+		hh := createTestHousehold(t, h)
+
+		req := httptest.NewRequest(
+			"POST",
+			"/households/"+hh.HouseholdID+"/join",
+			strings.NewReader(badJSON),
+		)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("POST /sync/push", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+		hh := createTestHousehold(t, h)
+
+		req := httptest.NewRequest("POST", "/sync/push", strings.NewReader(badJSON))
+		req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("POST /key-exchange/{id}/complete", func(t *testing.T) {
+		t.Parallel()
+		h, _ := newTestHandler()
+		hh := createTestHousehold(t, h)
+
+		// Set up a pending key exchange so the route resolves to an existing exchange.
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(
+			rec,
+			authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		)
+		require.Equal(t, http.StatusCreated, rec.Code)
+		var invite sync.InviteCode
+		require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+		joinBody, _ := json.Marshal(sync.JoinRequest{
+			InviteCode: invite.Code,
+			DeviceName: "joiner",
+			PublicKey:  []byte("joiner-key-32-bytes-padding!!!!!"),
+		})
+		rec = httptest.NewRecorder()
+		req := httptest.NewRequest(
+			"POST",
+			"/households/"+hh.HouseholdID+"/join",
+			bytes.NewReader(joinBody),
+		)
+		h.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		var joinResp sync.JoinResponse
+		require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+
+		// Now send malformed JSON to the complete endpoint.
+		req = httptest.NewRequest(
+			"POST",
+			"/key-exchange/"+joinResp.ExchangeID+"/complete",
+			strings.NewReader(badJSON),
+		)
+		req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+		rec = httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
 }
