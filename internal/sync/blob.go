@@ -5,6 +5,8 @@ package sync
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,7 +45,8 @@ func (c *Client) UploadBlob(householdID, hash string, plaintext []byte) error {
 }
 
 // DownloadBlob fetches an encrypted blob from the relay and decrypts it
-// with the household key.
+// with the household key. The hash parameter is the SHA-256 of the
+// plaintext; after decryption the hash is verified client-side.
 func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 	url := c.baseURL + "/blobs/" + householdID + "/" + hash
 	req, err := http.NewRequest("GET", url, nil)
@@ -71,6 +74,13 @@ func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 	plaintext, err := crypto.Decrypt(c.key, sealed)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt blob: %w", err)
+	}
+
+	// Verify plaintext integrity: the hash is of the original plaintext,
+	// so validation happens client-side after decryption.
+	got := sha256.Sum256(plaintext)
+	if hex.EncodeToString(got[:]) != hash {
+		return nil, fmt.Errorf("blob integrity check failed: sha256 mismatch")
 	}
 	return plaintext, nil
 }

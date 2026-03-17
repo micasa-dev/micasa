@@ -62,11 +62,11 @@ type BlobStorage struct {
 
 // StatusResponse is the response of GET /status.
 type StatusResponse struct {
-	HouseholdID  string       `json:"household_id"`
-	Devices      []Device     `json:"devices"`
-	OpsCount     int64        `json:"ops_count"`
-	StripeStatus string       `json:"stripe_status"`
-	BlobStorage  *BlobStorage `json:"blob_storage,omitempty"`
+	HouseholdID  string      `json:"household_id"`
+	Devices      []Device    `json:"devices"`
+	OpsCount     int64       `json:"ops_count"`
+	StripeStatus string      `json:"stripe_status"`
+	BlobStorage  BlobStorage `json:"blob_storage"`
 }
 
 // Device represents a registered device on the relay.

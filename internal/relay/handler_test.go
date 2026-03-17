@@ -1440,7 +1440,6 @@ func TestStatusIncludesBlobStorage(t *testing.T) {
 
 	var status sync.StatusResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
-	require.NotNil(t, status.BlobStorage)
 	assert.Equal(t, int64(len(payload)), status.BlobStorage.UsedBytes)
 	assert.True(t, status.BlobStorage.QuotaBytes > 0)
 }

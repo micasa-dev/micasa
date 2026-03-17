@@ -391,12 +391,9 @@ func (h *Handler) handlePutBlob(
 		return
 	}
 
-	data, err := io.ReadAll(io.LimitReader(r.Body, maxBlobSize+1))
+	r.Body = http.MaxBytesReader(w, r.Body, maxBlobSize)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "read body failed")
-		return
-	}
-	if int64(len(data)) > maxBlobSize {
 		writeError(w, http.StatusRequestEntityTooLarge, "blob exceeds maximum size (50 MB)")
 		return
 	}
@@ -510,7 +507,7 @@ func (h *Handler) handleStatus(
 		Devices:      devices,
 		OpsCount:     opsCount,
 		StripeStatus: hh.StripeStatus,
-		BlobStorage: &sync.BlobStorage{
+		BlobStorage: sync.BlobStorage{
 			UsedBytes:  blobUsed,
 			QuotaBytes: defaultBlobQuota,
 		},

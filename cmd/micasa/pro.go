@@ -302,12 +302,10 @@ func runProStatus(dbPath string) error {
 	fmt.Printf("devices:   %d\n", len(status.Devices))
 	fmt.Printf("ops:       %d\n", status.OpsCount)
 	fmt.Printf("last seq:  %d\n", deps.device.LastSeq)
-	if status.BlobStorage != nil {
-		fmt.Printf("storage:   %s / %s\n",
-			humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
-			humanize.IBytes(uint64(status.BlobStorage.QuotaBytes)),
-		)
-	}
+	fmt.Printf("storage:   %s / %s\n",
+		humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
+		humanize.IBytes(uint64(status.BlobStorage.QuotaBytes)),
+	)
 	if status.StripeStatus != "" {
 		fmt.Printf("plan:      %s\n", status.StripeStatus)
 	}
@@ -358,10 +356,15 @@ func runProSync(dbPath string) error {
 	}
 
 	// Upload blobs for pushed document ops.
-	uploaded := uploadPendingBlobs(deps.store, client, deps.device.HouseholdID, pushedOps)
+	uploaded, uploadErrs := uploadPendingBlobs(
+		deps.store,
+		client,
+		deps.device.HouseholdID,
+		pushedOps,
+	)
 
 	// Fetch blobs for documents that arrived without data.
-	fetched := fetchPendingBlobs(deps.store, client, deps.device.HouseholdID)
+	fetched, fetchErrs := fetchPendingBlobs(deps.store, client, deps.device.HouseholdID)
 
 	fmt.Fprintf(os.Stderr, "pulled %d ops, pushed %d ops\n", pulled, pushed)
 	if uploaded > 0 {
@@ -369,6 +372,9 @@ func runProSync(dbPath string) error {
 	}
 	if fetched > 0 {
 		fmt.Fprintf(os.Stderr, "fetched %d blobs\n", fetched)
+	}
+	if blobErrs := uploadErrs + fetchErrs; blobErrs > 0 {
+		fmt.Fprintf(os.Stderr, "warning: %d blob operation(s) failed\n", blobErrs)
 	}
 	return nil
 }
@@ -457,13 +463,14 @@ func pushAll(store *data.Store, client *sync.Client) (int, []sync.OpPayload, err
 // --- blob sync helpers ---
 
 // uploadPendingBlobs uploads blobs for document ops that were just pushed.
+// Returns the number of successful uploads and the number of errors.
 func uploadPendingBlobs(
 	store *data.Store,
 	client *sync.Client,
 	householdID string,
 	ops []sync.OpPayload,
-) int {
-	uploaded := 0
+) (int, int) {
+	uploaded, errCount := 0, 0
 	for _, op := range ops {
 		if op.TableName != data.TableDocuments {
 			continue
@@ -482,6 +489,7 @@ func uploadPendingBlobs(
 		exists, err := client.HasBlob(householdID, blobRef)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: check blob %s: %v\n", blobRef, err)
+			errCount++
 			continue
 		}
 		if exists {
@@ -492,6 +500,7 @@ func uploadPendingBlobs(
 		doc, err := store.GetDocument(op.RowID)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: load document %s: %v\n", op.RowID, err)
+			errCount++
 			continue
 		}
 		if doc.Data == nil {
@@ -500,40 +509,44 @@ func uploadPendingBlobs(
 
 		if err := client.UploadBlob(householdID, blobRef, doc.Data); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: upload blob %s: %v\n", blobRef, err)
+			errCount++
 			continue
 		}
 		uploaded++
 	}
-	return uploaded
+	return uploaded, errCount
 }
 
 // fetchPendingBlobs downloads blobs for documents that have a checksum
 // but no local data (arrived via sync without the blob).
+// Returns the number of successful fetches and the number of errors.
 func fetchPendingBlobs(
 	store *data.Store,
 	client *sync.Client,
 	householdID string,
-) int {
+) (int, int) {
 	pending, err := store.PendingBlobDocuments()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: query pending blobs: %v\n", err)
-		return 0
+		return 0, 1
 	}
 
-	fetched := 0
+	fetched, errCount := 0, 0
 	for _, doc := range pending {
 		plaintext, err := client.DownloadBlob(householdID, doc.ChecksumSHA256)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: download blob %s: %v\n", doc.ChecksumSHA256, err)
+			errCount++
 			continue
 		}
 		if err := store.UpdateDocumentData(doc.ID, plaintext); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: save blob %s: %v\n", doc.ID, err)
+			errCount++
 			continue
 		}
 		fetched++
 	}
-	return fetched
+	return fetched, errCount
 }
 
 // --- pro invite ---

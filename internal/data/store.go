@@ -1314,7 +1314,8 @@ func (s *Store) GetDocumentMetadata(id string) (Document, error) {
 // PendingBlobDocuments returns documents that have a SHA-256 checksum
 // (meaning they had file data at some point) but currently have no Data
 // (blob not yet fetched from the relay). These are candidates for blob
-// download during sync pull.
+// download during sync pull. Soft-deleted documents are automatically
+// excluded by GORM's DeletedAt scoping (Document uses gorm.DeletedAt).
 func (s *Store) PendingBlobDocuments() ([]Document, error) {
 	var docs []Document
 	err := s.db.Select(listDocumentColumns).
