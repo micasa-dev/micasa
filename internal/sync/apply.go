@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/cpcloud/micasa/internal/data"
@@ -48,6 +49,13 @@ func allowedSyncTable(tableName string) bool {
 func ApplyOps(db *gorm.DB, ops []DecryptedOp) ApplyResult {
 	// Ensure oplog hooks are suppressed for remote op application.
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	// Sort by relay seq so ops apply in causal order regardless of
+	// how the relay/store returns them (defense against unordered
+	// queries in future store implementations).
+	sort.Slice(ops, func(i, j int) bool {
+		return ops[i].Envelope.Seq < ops[j].Envelope.Seq
+	})
 
 	var result ApplyResult
 	for _, dop := range ops {

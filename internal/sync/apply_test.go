@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cpcloud/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,6 +104,60 @@ func TestValidateInsertPayloadID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestApplyOpsSortsBySeqBeforeApplying(t *testing.T) {
+	t.Parallel()
+
+	// Open a real SQLite DB so ApplyOps can run GORM transactions.
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	now := time.Now()
+	vendorID := "vendor-sort-test"
+
+	// Build two ops for the same vendor row, deliberately out of seq order.
+	// Seq 20 (insert) should apply first, then seq 30 (update).
+	// If ApplyOps doesn't sort, the update arrives before the insert and fails.
+	ops := []DecryptedOp{
+		{
+			Envelope: Envelope{Seq: 30},
+			Payload: OpPayload{
+				ID:        "op-2",
+				TableName: data.TableVendors,
+				RowID:     vendorID,
+				OpType:    "update",
+				Payload:   `{"name":"Updated Name"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now.Add(time.Second),
+			},
+		},
+		{
+			Envelope: Envelope{Seq: 20},
+			Payload: OpPayload{
+				ID:        "op-1",
+				TableName: data.TableVendors,
+				RowID:     vendorID,
+				OpType:    "insert",
+				Payload:   `{"id":"` + vendorID + `","name":"Original Name"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now,
+			},
+		},
+	}
+
+	result := ApplyOps(db, ops)
+	require.Empty(t, result.Errors, "no errors expected")
+	assert.Equal(t, 2, result.Applied)
+
+	// The final state should reflect the update (seq 30), not the insert.
+	var vendor data.Vendor
+	require.NoError(t, db.Where("id = ?", vendorID).First(&vendor).Error)
+	assert.Equal(t, "Updated Name", vendor.Name)
 }
 
 func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {
