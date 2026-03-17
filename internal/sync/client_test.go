@@ -151,6 +151,43 @@ func TestClientWrongKeyCannotDecrypt(t *testing.T) {
 	assert.Error(t, err, "decryption with wrong key should fail")
 }
 
+func TestClientHandlesTrailingSlashInBaseURL(t *testing.T) {
+	t.Parallel()
+	srv, store, tokenA := setupTestRelay(t)
+
+	key, err := crypto.GenerateHouseholdKey()
+	require.NoError(t, err)
+
+	// Use base URL with trailing slash -- should still work after JoinPath.
+	clientA := sync.NewClient(srv.URL+"/", tokenA, key)
+
+	ops := []sync.OpPayload{{
+		ID:        uid.New(),
+		TableName: "vendors",
+		RowID:     uid.New(),
+		OpType:    "insert",
+		Payload:   `{"Name":"Trailing Slash Test"}`,
+		DeviceID:  "dev-a",
+		CreatedAt: time.Now(),
+	}}
+	pushResp, err := clientA.Push(ops)
+	require.NoError(t, err)
+	require.Len(t, pushResp.Confirmed, 1)
+
+	// Pull should also work.
+	devAResp, _ := store.AuthenticateDevice(nil, tokenA)
+	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+		HouseholdID: devAResp.HouseholdID,
+		Name:        "device-b",
+	})
+	require.NoError(t, err)
+
+	clientB := sync.NewClient(srv.URL+"/", regResp.DeviceToken, key)
+	pullResult, err := clientB.Pull(0, 100)
+	require.NoError(t, err)
+	require.Len(t, pullResult.Ops, 1)
+}
+
 func TestClientPushPayloadPreservesJSON(t *testing.T) {
 	t.Parallel()
 

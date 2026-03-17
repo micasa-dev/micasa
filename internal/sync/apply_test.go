@@ -160,6 +160,113 @@ func TestApplyOpsSortsBySeqBeforeApplying(t *testing.T) {
 	assert.Equal(t, "Updated Name", vendor.Name)
 }
 
+func TestApplyOneConflictCheckInsideTransaction(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies that the conflict-check query runs inside the
+	// transaction (not before it), preventing a TOCTOU race where a
+	// local op could be created between the check and the apply.
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+	now := time.Now()
+	vendorID := "vendor-toctou"
+
+	// Insert a vendor row so the remote update has something to target.
+	require.NoError(t, db.Table(data.TableVendors).Create(map[string]any{
+		"id":   vendorID,
+		"name": "Original",
+	}).Error)
+
+	// Create a local unsynced op for the same row.
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "local-op-1",
+		"table_name": data.TableVendors,
+		"row_id":     vendorID,
+		"op_type":    "update",
+		"payload":    `{"name":"Local Update"}`,
+		"device_id":  "dev-local",
+		"created_at": now.Add(-time.Minute), // older than remote
+		"applied_at": now,
+		"synced_at":  nil,
+	}).Error)
+
+	// Remote op is newer, so it should win the LWW check.
+	remoteOp := DecryptedOp{
+		Envelope: Envelope{Seq: 1},
+		Payload: OpPayload{
+			ID:        "remote-op-1",
+			TableName: data.TableVendors,
+			RowID:     vendorID,
+			OpType:    "update",
+			Payload:   `{"name":"Remote Update"}`,
+			DeviceID:  "dev-remote",
+			CreatedAt: now,
+		},
+	}
+
+	// applyOne should succeed: remote wins, local op's applied_at is cleared.
+	err = applyOne(db, remoteOp)
+	require.NoError(t, err)
+
+	// Verify the remote update was applied.
+	var vendor struct{ Name string }
+	require.NoError(t, db.Table(data.TableVendors).
+		Where("id = ?", vendorID).Scan(&vendor).Error)
+	assert.Equal(t, "Remote Update", vendor.Name)
+
+	// Verify the local op's applied_at was cleared (inside the same tx).
+	var localOp struct{ AppliedAt *time.Time }
+	require.NoError(t, db.Table("sync_oplog_entries").
+		Select("applied_at").
+		Where("id = ?", "local-op-1").
+		Scan(&localOp).Error)
+	assert.Nil(t, localOp.AppliedAt,
+		"local op's applied_at should be cleared when remote wins")
+}
+
+func TestRecordUnappliedOpReturnsDBError(t *testing.T) {
+	t.Parallel()
+
+	// Open a real SQLite DB so we can operate on sync_oplog_entries.
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	now := time.Now()
+
+	// Insert a valid op first, so we can trigger a duplicate ID error.
+	op := OpPayload{
+		ID:        "dup-op-id",
+		TableName: data.TableVendors,
+		RowID:     "vendor-1",
+		OpType:    "insert",
+		Payload:   `{"id":"vendor-1","name":"Test"}`,
+		DeviceID:  "dev-a",
+		CreatedAt: now,
+	}
+
+	// First call succeeds (returns errConflictLoss).
+	err = recordUnappliedOp(db, op)
+	require.Error(t, err)
+	assert.True(t, isConflictLoss(err), "first call should return errConflictLoss")
+
+	// Second call with same ID should fail with a real DB error (duplicate PK),
+	// not errConflictLoss.
+	err = recordUnappliedOp(db, op)
+	require.Error(t, err)
+	assert.False(t, isConflictLoss(err),
+		"DB error from duplicate insert should not be masked as errConflictLoss")
+}
+
 func TestStripNonColumnKeysIgnoresNonDocuments(t *testing.T) {
 	t.Parallel()
 

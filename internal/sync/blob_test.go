@@ -138,6 +138,40 @@ func TestBlobWrongKeyCannotDecrypt(t *testing.T) {
 	assert.Contains(t, err.Error(), "decrypt")
 }
 
+func TestBlobURLHandlesTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	store := relay.NewMemStore()
+	handler := relay.NewHandler(store, slog.Default())
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+
+	resp, err := sync.NewManagementClient(srv.URL, "").CreateHousehold(sync.CreateHouseholdRequest{
+		DeviceName: "test-device",
+		PublicKey:  []byte("fake-public-key-32-bytes-padding!"),
+	})
+	require.NoError(t, err)
+
+	key, err := crypto.GenerateHouseholdKey()
+	require.NoError(t, err)
+
+	// Use trailing slash in base URL.
+	client := sync.NewClient(srv.URL+"/", resp.DeviceToken, key)
+	plaintext := []byte("trailing slash blob test")
+	hash := sha256Hex(plaintext)
+
+	err = client.UploadBlob(resp.HouseholdID, hash, plaintext)
+	require.NoError(t, err)
+
+	got, err := client.DownloadBlob(resp.HouseholdID, hash)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, got)
+
+	exists, err := client.HasBlob(resp.HouseholdID, hash)
+	require.NoError(t, err)
+	assert.True(t, exists)
+}
+
 func TestBlobIntegrityCheckFailsOnTamperedHash(t *testing.T) {
 	t.Parallel()
 	client, hhID := newBlobTestSetup(t)

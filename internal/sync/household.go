@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // CreateHousehold registers a new household and the founding device.
@@ -19,7 +20,11 @@ func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdRe
 		return nil, fmt.Errorf("marshal create household request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/households", bytes.NewReader(body))
+	hhURL, err := url.JoinPath(c.baseURL, "households")
+	if err != nil {
+		return nil, fmt.Errorf("construct create household URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("POST", hhURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +50,11 @@ func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdRe
 
 // Invite creates a one-time invite code for the household.
 func (c *Client) Invite(householdID string) (*InviteCode, error) {
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/households/"+householdID+"/invite", nil)
+	inviteURL, err := url.JoinPath(c.baseURL, "households", householdID, "invite")
+	if err != nil {
+		return nil, fmt.Errorf("construct invite URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("POST", inviteURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +85,11 @@ func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error
 		return nil, fmt.Errorf("marshal join request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest(
-		"POST",
-		c.baseURL+"/households/"+householdID+"/join",
-		bytes.NewReader(body),
-	)
+	joinURL, err := url.JoinPath(c.baseURL, "households", householdID, "join")
+	if err != nil {
+		return nil, fmt.Errorf("construct join URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("POST", joinURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +115,11 @@ func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error
 
 // Status returns the sync status for the authenticated device's household.
 func (c *Client) Status() (*StatusResponse, error) {
-	httpReq, err := http.NewRequest("GET", c.baseURL+"/status", nil)
+	statusURL, err := url.JoinPath(c.baseURL, "status")
+	if err != nil {
+		return nil, fmt.Errorf("construct status URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("GET", statusURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +145,11 @@ func (c *Client) Status() (*StatusResponse, error) {
 
 // ListDevices returns all devices in the household.
 func (c *Client) ListDevices(householdID string) ([]Device, error) {
-	httpReq, err := http.NewRequest("GET", c.baseURL+"/households/"+householdID+"/devices", nil)
+	devicesURL, err := url.JoinPath(c.baseURL, "households", householdID, "devices")
+	if err != nil {
+		return nil, fmt.Errorf("construct list devices URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("GET", devicesURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -160,11 +177,11 @@ func (c *Client) ListDevices(householdID string) ([]Device, error) {
 
 // RevokeDevice removes a device from the household.
 func (c *Client) RevokeDevice(householdID, deviceID string) error {
-	httpReq, err := http.NewRequest(
-		"DELETE",
-		c.baseURL+"/households/"+householdID+"/devices/"+deviceID,
-		nil,
-	)
+	revokeURL, err := url.JoinPath(c.baseURL, "households", householdID, "devices", deviceID)
+	if err != nil {
+		return fmt.Errorf("construct revoke device URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("DELETE", revokeURL, nil)
 	if err != nil {
 		return err
 	}
@@ -185,11 +202,11 @@ func (c *Client) RevokeDevice(householdID, deviceID string) error {
 
 // GetPendingExchanges returns incomplete key exchanges for the household.
 func (c *Client) GetPendingExchanges(householdID string) ([]PendingKeyExchange, error) {
-	httpReq, err := http.NewRequest(
-		"GET",
-		c.baseURL+"/households/"+householdID+"/pending-exchanges",
-		nil,
-	)
+	exchURL, err := url.JoinPath(c.baseURL, "households", householdID, "pending-exchanges")
+	if err != nil {
+		return nil, fmt.Errorf("construct pending exchanges URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("GET", exchURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -228,11 +245,11 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 		return fmt.Errorf("marshal complete key exchange request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest(
-		"POST",
-		c.baseURL+"/key-exchange/"+exchangeID+"/complete",
-		bytes.NewReader(body),
-	)
+	completeURL, err := url.JoinPath(c.baseURL, "key-exchange", exchangeID, "complete")
+	if err != nil {
+		return fmt.Errorf("construct complete key exchange URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("POST", completeURL, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -257,7 +274,11 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 // yet have a device token. The exchange ID (a high-entropy ULID) serves
 // as a bearer credential -- it is only known to the inviter and joiner.
 func (c *Client) GetKeyExchangeResult(exchangeID string) (*KeyExchangeResult, error) {
-	httpReq, err := http.NewRequest("GET", c.baseURL+"/key-exchange/"+exchangeID, nil)
+	resultURL, err := url.JoinPath(c.baseURL, "key-exchange", exchangeID)
+	if err != nil {
+		return nil, fmt.Errorf("construct key exchange result URL: %w", err)
+	}
+	httpReq, err := http.NewRequest("GET", resultURL, nil)
 	if err != nil {
 		return nil, err
 	}

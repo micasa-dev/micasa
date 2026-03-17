@@ -62,7 +62,7 @@ func resolveDeviceID(tx *gorm.DB) (string, error) {
 	if cell == nil {
 		return "", errNoDeviceIDCell
 	}
-	return cell.resolve(tx), nil
+	return cell.resolve(tx)
 }
 
 // writeOplogEntry appends an operation to the sync oplog within the given
@@ -201,23 +201,22 @@ type deviceIDCell struct {
 
 // resolve returns the cached device ID, lazily initializing it by
 // querying or creating the sync_devices row via tx.
-func (c *deviceIDCell) resolve(tx *gorm.DB) string {
+func (c *deviceIDCell) resolve(tx *gorm.DB) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if c.value != "" {
-		return c.value
+		return c.value, nil
 	}
 
 	var dev SyncDevice
 	err := tx.First(&dev).Error
 	if err == nil {
 		c.value = dev.ID
-		return c.value
+		return c.value, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		slog.Error("oplog: failed to query sync device", "error", err)
-		return ""
+		return "", fmt.Errorf("query sync device: %w", err)
 	}
 
 	hostname, _ := os.Hostname()
@@ -229,11 +228,10 @@ func (c *deviceIDCell) resolve(tx *gorm.DB) string {
 		Name: hostname,
 	}
 	if err := tx.Create(&dev).Error; err != nil {
-		slog.Error("oplog: failed to create sync device", "error", err)
-		return ""
+		return "", fmt.Errorf("create sync device: %w", err)
 	}
 	c.value = dev.ID
-	return c.value
+	return c.value, nil
 }
 
 func (c *deviceIDCell) set(id string) {
@@ -244,7 +242,12 @@ func (c *deviceIDCell) set(id string) {
 
 // DeviceID returns this device's sync device ID, initializing if needed.
 func (s *Store) DeviceID() string {
-	return s.deviceCell.resolve(s.db)
+	id, err := s.deviceCell.resolve(s.db)
+	if err != nil {
+		slog.Error("oplog: failed to resolve device ID", "error", err)
+		return ""
+	}
+	return id
 }
 
 // SetDeviceID updates the cached device ID. Used by pro init/join

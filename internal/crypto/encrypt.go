@@ -21,9 +21,10 @@ func Encrypt(key HouseholdKey, plaintext []byte) ([]byte, error) {
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return nil, fmt.Errorf("generate nonce: %w", err)
 	}
-	k := [KeySize]byte(key)
-	defer zeroize(k[:])
-	sealed := secretbox.Seal(nonce[:], plaintext, &nonce, &k)
+	// key is already a by-value copy (Go passes arrays by value),
+	// so we zeroize it directly without an intermediate variable.
+	defer zeroize(key[:])
+	sealed := secretbox.Seal(nonce[:], plaintext, &nonce, (*[KeySize]byte)(&key))
 	return sealed, nil
 }
 
@@ -41,9 +42,8 @@ func Decrypt(key HouseholdKey, sealed []byte) ([]byte, error) {
 	var nonce [NonceSize]byte
 	copy(nonce[:], sealed[:NonceSize])
 
-	k := [KeySize]byte(key)
-	defer zeroize(k[:])
-	plaintext, ok := secretbox.Open(nil, sealed[NonceSize:], &nonce, &k)
+	defer zeroize(key[:])
+	plaintext, ok := secretbox.Open(nil, sealed[NonceSize:], &nonce, (*[KeySize]byte)(&key))
 	if !ok {
 		return nil, fmt.Errorf("decryption failed: invalid key or tampered ciphertext")
 	}

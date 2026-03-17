@@ -1206,6 +1206,26 @@ func TestStripeWebhookNoSecretSkipsVerification(t *testing.T) {
 	assert.Equal(t, sync.SubscriptionPastDue, household.StripeStatus)
 }
 
+func TestStripeWebhookRejectsOversizedBody(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+
+	// Create a body larger than 1 MB.
+	oversized := make([]byte, maxRequestBody+1)
+	for i := range oversized {
+		oversized[i] = 'A'
+	}
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(oversized))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	// With MaxBytesReader, reading beyond the limit produces an error.
+	// The handler should return 400, not silently truncate.
+	assert.NotEqual(t, http.StatusOK, rec.Code,
+		"oversized webhook body should be rejected, not silently truncated")
+}
+
 // --- Status endpoint ---
 
 func TestStatusEndpoint(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/cpcloud/micasa/internal/crypto"
 )
@@ -22,8 +23,11 @@ func (c *Client) UploadBlob(householdID, hash string, plaintext []byte) error {
 		return fmt.Errorf("encrypt blob: %w", err)
 	}
 
-	url := c.baseURL + "/blobs/" + householdID + "/" + hash
-	req, err := http.NewRequest("PUT", url, bytes.NewReader(sealed))
+	blobURL, err := url.JoinPath(c.baseURL, "blobs", householdID, hash)
+	if err != nil {
+		return fmt.Errorf("construct blob upload URL: %w", err)
+	}
+	req, err := http.NewRequest("PUT", blobURL, bytes.NewReader(sealed))
 	if err != nil {
 		return err
 	}
@@ -48,8 +52,11 @@ func (c *Client) UploadBlob(householdID, hash string, plaintext []byte) error {
 // with the household key. The hash parameter is the SHA-256 of the
 // plaintext; after decryption the hash is verified client-side.
 func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
-	url := c.baseURL + "/blobs/" + householdID + "/" + hash
-	req, err := http.NewRequest("GET", url, nil)
+	blobURL, err := url.JoinPath(c.baseURL, "blobs", householdID, hash)
+	if err != nil {
+		return nil, fmt.Errorf("construct blob download URL: %w", err)
+	}
+	req, err := http.NewRequest("GET", blobURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +97,11 @@ func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 
 // HasBlob checks whether a blob exists on the relay without downloading it.
 func (c *Client) HasBlob(householdID, hash string) (bool, error) {
-	url := c.baseURL + "/blobs/" + householdID + "/" + hash
-	req, err := http.NewRequest("HEAD", url, nil)
+	blobURL, err := url.JoinPath(c.baseURL, "blobs", householdID, hash)
+	if err != nil {
+		return false, fmt.Errorf("construct blob check URL: %w", err)
+	}
+	req, err := http.NewRequest("HEAD", blobURL, nil)
 	if err != nil {
 		return false, err
 	}

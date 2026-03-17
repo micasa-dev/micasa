@@ -85,41 +85,40 @@ func applyOne(db *gorm.DB, dop DecryptedOp) error {
 		return fmt.Errorf("table %q is not a valid sync target", op.TableName)
 	}
 
-	// Check for LWW conflict: does a local unsynced op exist for this row?
-	var localOp struct {
-		ID        string
-		CreatedAt time.Time
-		DeviceID  string
-	}
-	err := db.Table("sync_oplog_entries").
-		Select("id, created_at, device_id").
-		Where("table_name = ? AND row_id = ? AND synced_at IS NULL", op.TableName, op.RowID).
-		Order("created_at DESC, id DESC").
-		Limit(1).
-		Scan(&localOp).Error
-	if err != nil {
-		return fmt.Errorf("check conflict for %s/%s: %w", op.TableName, op.RowID, err)
-	}
-
-	// If a local unsynced op exists, apply LWW.
-	if localOp.ID != "" {
-		if lwwLocalWins(localOp.CreatedAt, localOp.DeviceID, op.CreatedAt, op.DeviceID) {
-			// Local wins -- record remote op with applied_at = NULL.
-			return recordUnappliedOp(db, op)
-		}
-	}
-
-	// Apply the remote op (atomically with conflict resolution).
+	// Run the entire conflict-check + apply inside a single transaction
+	// to avoid a TOCTOU race where a local op could be created between
+	// the conflict check and the apply.
 	return db.Transaction(func(tx *gorm.DB) error {
-		// If remote won the conflict, clear local op's applied_at
-		// inside the same transaction for atomicity.
+		// Check for LWW conflict: does a local unsynced op exist for this row?
+		var localOp struct {
+			ID        string
+			CreatedAt time.Time
+			DeviceID  string
+		}
+		err := tx.Table("sync_oplog_entries").
+			Select("id, created_at, device_id").
+			Where("table_name = ? AND row_id = ? AND synced_at IS NULL", op.TableName, op.RowID).
+			Order("created_at DESC, id DESC").
+			Limit(1).
+			Scan(&localOp).Error
+		if err != nil {
+			return fmt.Errorf("check conflict for %s/%s: %w", op.TableName, op.RowID, err)
+		}
+
+		// If a local unsynced op exists, apply LWW.
 		if localOp.ID != "" {
+			if lwwLocalWins(localOp.CreatedAt, localOp.DeviceID, op.CreatedAt, op.DeviceID) {
+				// Local wins -- record remote op with applied_at = NULL.
+				return recordUnappliedOp(tx, op)
+			}
+			// Remote won the conflict -- clear local op's applied_at.
 			if err := tx.Table("sync_oplog_entries").
 				Where("id = ?", localOp.ID).
 				Update("applied_at", nil).Error; err != nil {
 				return fmt.Errorf("clear local applied_at: %w", err)
 			}
 		}
+
 		if err := applyOpToTable(tx, op); err != nil {
 			return err
 		}

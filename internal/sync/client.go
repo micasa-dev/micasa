@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -68,7 +69,11 @@ func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 		return nil, fmt.Errorf("marshal push request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.baseURL+"/sync/push", bytes.NewReader(body))
+	pushURL, err := url.JoinPath(c.baseURL, "sync", "push")
+	if err != nil {
+		return nil, fmt.Errorf("construct push URL: %w", err)
+	}
+	req, err := http.NewRequest("POST", pushURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +100,16 @@ func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 
 // Pull fetches and decrypts remote ops from the relay.
 func (c *Client) Pull(afterSeq int64, limit int) (*PullResult, error) {
-	url := c.baseURL + "/sync/pull?after=" + strconv.FormatInt(afterSeq, 10)
+	pullURL, err := url.JoinPath(c.baseURL, "sync", "pull")
+	if err != nil {
+		return nil, fmt.Errorf("construct pull URL: %w", err)
+	}
+	pullURL += "?after=" + strconv.FormatInt(afterSeq, 10)
 	if limit > 0 {
-		url += "&limit=" + strconv.Itoa(limit)
+		pullURL += "&limit=" + strconv.Itoa(limit)
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", pullURL, nil)
 	if err != nil {
 		return nil, err
 	}

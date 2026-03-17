@@ -525,9 +525,15 @@ func (h *Handler) handleStatus(
 }
 
 func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1 MB max
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "read body failed")
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "webhook body exceeds maximum size")
+		} else {
+			writeError(w, http.StatusBadRequest, "read body failed")
+		}
 		return
 	}
 

@@ -464,6 +464,20 @@ func TestSetDeviceID(t *testing.T) {
 	assert.Equal(t, "new-device-id", op.DeviceID)
 }
 
+// --- resolve returns error on failure ---
+
+func TestResolveDeviceIDReturnsErrorOnDBFailure(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	// Close the store to make DB queries fail.
+	require.NoError(t, store.Close())
+
+	// resolveDeviceID should propagate the error, not silently return "".
+	_, err := resolveDeviceID(store.db)
+	require.Error(t, err, "resolveDeviceID should return error when DB is closed")
+}
+
 // --- UnsyncedOps / MarkSynced ---
 
 func TestUnsyncedOpsAndMarkSynced(t *testing.T) {

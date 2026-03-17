@@ -167,6 +167,27 @@ func TestClientRevokeDevice(t *testing.T) {
 	assert.Len(t, devices, 1)
 }
 
+func TestHouseholdURLHandlesTrailingSlash(t *testing.T) {
+	t.Parallel()
+	srv, _, tokenA := setupTestRelay(t)
+
+	// Use trailing slash in base URL.
+	clientA := sync.NewManagementClient(srv.URL+"/", tokenA)
+	status, err := clientA.Status()
+	require.NoError(t, err)
+	assert.NotEmpty(t, status.HouseholdID)
+
+	// Invite should also work with trailing slash.
+	invite, err := clientA.Invite(status.HouseholdID)
+	require.NoError(t, err)
+	assert.NotEmpty(t, invite.Code)
+
+	// ListDevices too.
+	devices, err := clientA.ListDevices(status.HouseholdID)
+	require.NoError(t, err)
+	assert.NotEmpty(t, devices)
+}
+
 func TestClientStatusUnauthorized(t *testing.T) {
 	t.Parallel()
 	srv, _, _ := setupTestRelay(t)

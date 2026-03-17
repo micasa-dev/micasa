@@ -16,7 +16,7 @@ func TestDeviceTokenSaveLoad(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 
-	token := "abc123hextoken"
+	token := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 	require.NoError(t, SaveDeviceToken(dir, token))
 
 	loaded, err := LoadDeviceToken(dir)
@@ -28,7 +28,10 @@ func TestDeviceTokenFilePermissions(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 
-	require.NoError(t, SaveDeviceToken(dir, "secret-token"))
+	require.NoError(
+		t,
+		SaveDeviceToken(dir, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+	)
 
 	info, err := os.Stat(filepath.Join(dir, DeviceTokenFile))
 	require.NoError(t, err)
@@ -70,10 +73,60 @@ func TestDeviceTokenOverwrite(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 
-	require.NoError(t, SaveDeviceToken(dir, "first-token"))
-	require.NoError(t, SaveDeviceToken(dir, "second-token"))
+	first := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	second := "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	require.NoError(t, SaveDeviceToken(dir, first))
+	require.NoError(t, SaveDeviceToken(dir, second))
 
 	loaded, err := LoadDeviceToken(dir)
 	require.NoError(t, err)
-	assert.Equal(t, "second-token", loaded)
+	assert.Equal(t, second, loaded)
+}
+
+func TestLoadDeviceTokenRejectsNonHex(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	// Write a token that is not a valid 64-char hex string.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, DeviceTokenFile),
+		[]byte("not-a-hex-token"),
+		0o600,
+	))
+
+	_, err := LoadDeviceToken(dir)
+	require.Error(t, err, "non-hex token should be rejected")
+	assert.Contains(t, err.Error(), "invalid device token format")
+}
+
+func TestLoadDeviceTokenRejectsWrongLength(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	// Write a valid hex string but wrong length (32 chars instead of 64).
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, DeviceTokenFile),
+		[]byte("abcdef0123456789abcdef0123456789"),
+		0o600,
+	))
+
+	_, err := LoadDeviceToken(dir)
+	require.Error(t, err, "wrong-length hex token should be rejected")
+	assert.Contains(t, err.Error(), "invalid device token format")
+}
+
+func TestLoadDeviceTokenAcceptsValid64CharHex(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	validToken := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, DeviceTokenFile),
+		[]byte(validToken),
+		0o600,
+	))
+
+	loaded, err := LoadDeviceToken(dir)
+	require.NoError(t, err)
+	assert.Equal(t, validToken, loaded)
 }
