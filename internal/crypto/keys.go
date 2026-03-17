@@ -5,6 +5,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,11 +24,18 @@ const (
 // HouseholdKey is a 256-bit symmetric key for NaCl secretbox encryption.
 type HouseholdKey [KeySize]byte
 
+// String returns a redacted placeholder. Prevents accidental key leakage
+// through fmt, slog, or any other Stringer consumer.
+func (HouseholdKey) String() string { return "[REDACTED]" }
+
 // DeviceKeyPair is a Curve25519 keypair for asymmetric key exchange.
 type DeviceKeyPair struct {
 	PublicKey  [KeySize]byte
 	PrivateKey [KeySize]byte
 }
+
+// String returns a redacted placeholder.
+func (DeviceKeyPair) String() string { return "[REDACTED]" }
 
 // GenerateHouseholdKey creates a new random 256-bit household key.
 func GenerateHouseholdKey() (HouseholdKey, error) {
@@ -81,14 +89,15 @@ func LoadHouseholdKey(dir string) (HouseholdKey, error) {
 }
 
 // SaveDeviceKeyPair writes the device keypair to dir/ with restrictive
-// permissions on the private key (0600).
+// permissions on the private key (0600). Uses write-then-rename to
+// avoid leaving partial files on failure.
 func SaveDeviceKeyPair(dir string, kp DeviceKeyPair) error {
-	if err := os.WriteFile(
+	if err := atomicWriteFile(
 		filepath.Join(dir, DevicePrivateKeyFile), kp.PrivateKey[:], 0o600,
 	); err != nil {
 		return fmt.Errorf("save device private key: %w", err)
 	}
-	if err := os.WriteFile(
+	if err := atomicWriteFile(
 		filepath.Join(dir, DevicePublicKeyFile), kp.PublicKey[:], 0o644,
 	); err != nil {
 		return fmt.Errorf("save device public key: %w", err)
@@ -96,7 +105,19 @@ func SaveDeviceKeyPair(dir string, kp DeviceKeyPair) error {
 	return nil
 }
 
-// LoadDeviceKeyPair reads the device keypair from dir/.
+// atomicWriteFile writes data to a temporary file then renames it to
+// the target path. This prevents partial writes from corrupting the
+// destination file.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, perm); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// LoadDeviceKeyPair reads the device keypair from dir/ and validates
+// that the public key matches the private key.
 func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 	var kp DeviceKeyPair
 
@@ -117,6 +138,15 @@ func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 		return kp, fmt.Errorf("device public key: expected %d bytes, got %d", KeySize, len(pub))
 	}
 	copy(kp.PublicKey[:], pub)
+
+	// Verify public key is consistent with private key.
+	derived, err := curve25519.X25519(kp.PrivateKey[:], curve25519.Basepoint)
+	if err != nil {
+		return kp, fmt.Errorf("validate device keypair: %w", err)
+	}
+	if subtle.ConstantTimeCompare(derived, kp.PublicKey[:]) != 1 {
+		return kp, fmt.Errorf("device public key does not match private key")
+	}
 
 	return kp, nil
 }

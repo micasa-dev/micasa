@@ -19,6 +19,7 @@ import (
 	"github.com/cpcloud/micasa/internal/data/sqlite"
 	"github.com/cpcloud/micasa/internal/fake"
 	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/cpcloud/micasa/internal/safeconv"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -721,7 +722,11 @@ func (s *Store) RowCounts(tables ...string) (map[string]int, error) {
 		if err := s.db.Table(table).Count(&count).Error; err != nil {
 			return nil, fmt.Errorf("row count for %s: %w", table, err)
 		}
-		result[table] = int(count)
+		n, err := safeconv.Int(count)
+		if err != nil {
+			return nil, fmt.Errorf("row count for %s: %w", table, err)
+		}
+		result[table] = n
 	}
 	return result, nil
 }

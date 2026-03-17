@@ -5,6 +5,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"fmt"
 
 	"golang.org/x/crypto/nacl/secretbox"
@@ -21,6 +22,7 @@ func Encrypt(key HouseholdKey, plaintext []byte) ([]byte, error) {
 		return nil, fmt.Errorf("generate nonce: %w", err)
 	}
 	k := [KeySize]byte(key)
+	defer zeroize(k[:])
 	sealed := secretbox.Seal(nonce[:], plaintext, &nonce, &k)
 	return sealed, nil
 }
@@ -29,16 +31,26 @@ func Encrypt(key HouseholdKey, plaintext []byte) ([]byte, error) {
 // household key. Returns the plaintext or an error if decryption fails
 // (wrong key, tampered data, or malformed input).
 func Decrypt(key HouseholdKey, sealed []byte) ([]byte, error) {
-	if len(sealed) <= NonceSize {
-		return nil, fmt.Errorf("ciphertext too short: %d bytes", len(sealed))
+	if len(sealed) < NonceSize+secretbox.Overhead {
+		return nil, fmt.Errorf(
+			"ciphertext too short: %d bytes (minimum %d)",
+			len(sealed),
+			NonceSize+secretbox.Overhead,
+		)
 	}
 	var nonce [NonceSize]byte
 	copy(nonce[:], sealed[:NonceSize])
 
 	k := [KeySize]byte(key)
+	defer zeroize(k[:])
 	plaintext, ok := secretbox.Open(nil, sealed[NonceSize:], &nonce, &k)
 	if !ok {
 		return nil, fmt.Errorf("decryption failed: invalid key or tampered ciphertext")
 	}
 	return plaintext, nil
+}
+
+// zeroize overwrites a byte slice with zeros.
+func zeroize(b []byte) {
+	subtle.ConstantTimeCopy(1, b, make([]byte, len(b)))
 }

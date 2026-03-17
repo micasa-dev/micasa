@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	gosync "sync"
 	"time"
 
 	"github.com/cpcloud/micasa/internal/uid"
@@ -148,17 +149,23 @@ func newDocumentOplogPayload(doc Document) documentOplogPayload {
 
 // cachedDeviceID returns this device's ID, lazily initializing it on first
 // call. The device ID is stored in the sync_devices table (single row).
-var deviceID string
+var (
+	deviceIDMu    gosync.Mutex
+	deviceIDValue string
+)
 
 func cachedDeviceID(tx *gorm.DB) string {
-	if deviceID != "" {
-		return deviceID
+	deviceIDMu.Lock()
+	defer deviceIDMu.Unlock()
+
+	if deviceIDValue != "" {
+		return deviceIDValue
 	}
 
 	var dev SyncDevice
 	if err := tx.First(&dev).Error; err == nil {
-		deviceID = dev.ID
-		return deviceID
+		deviceIDValue = dev.ID
+		return deviceIDValue
 	}
 
 	hostname, _ := os.Hostname()
@@ -172,13 +179,15 @@ func cachedDeviceID(tx *gorm.DB) string {
 	if err := tx.Create(&dev).Error; err != nil {
 		return dev.ID
 	}
-	deviceID = dev.ID
-	return deviceID
+	deviceIDValue = dev.ID
+	return deviceIDValue
 }
 
 // ResetCachedDeviceID clears the cached device ID. Used in tests.
 func ResetCachedDeviceID() {
-	deviceID = ""
+	deviceIDMu.Lock()
+	defer deviceIDMu.Unlock()
+	deviceIDValue = ""
 }
 
 // DeviceID returns this device's sync device ID, initializing if needed.
@@ -189,7 +198,7 @@ func (s *Store) DeviceID() string {
 // UnsyncedOps returns all oplog entries that haven't been pushed to the relay.
 func (s *Store) UnsyncedOps() ([]SyncOplogEntry, error) {
 	var ops []SyncOplogEntry
-	err := s.db.Where("synced_at IS NULL").Order("created_at ASC").Find(&ops).Error
+	err := s.db.Where("synced_at IS NULL").Order("created_at ASC, id ASC").Find(&ops).Error
 	return ops, err
 }
 
@@ -208,13 +217,13 @@ func (s *Store) MarkSynced(ids []string) error {
 func (s *Store) OplogEntries(tableName, rowID string) ([]SyncOplogEntry, error) {
 	var ops []SyncOplogEntry
 	err := s.db.Where("table_name = ? AND row_id = ?", tableName, rowID).
-		Order("created_at ASC").Find(&ops).Error
+		Order("created_at ASC, id ASC").Find(&ops).Error
 	return ops, err
 }
 
 // AllOplogEntries returns all oplog entries ordered by creation time.
 func (s *Store) AllOplogEntries() ([]SyncOplogEntry, error) {
 	var ops []SyncOplogEntry
-	err := s.db.Order("created_at ASC").Find(&ops).Error
+	err := s.db.Order("created_at ASC, id ASC").Find(&ops).Error
 	return ops, err
 }

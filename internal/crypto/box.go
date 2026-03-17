@@ -10,6 +10,8 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
+const boxOverhead = box.Overhead
+
 // BoxSeal encrypts plaintext using NaCl box (Curve25519 + XSalsa20-Poly1305).
 // The sender's private key and recipient's public key are used.
 // Returns nonce || ciphertext.
@@ -31,8 +33,12 @@ func BoxOpen(
 	recipientPrivateKey, senderPublicKey [KeySize]byte,
 	sealed []byte,
 ) ([]byte, error) {
-	if len(sealed) <= NonceSize {
-		return nil, fmt.Errorf("sealed message too short: %d bytes", len(sealed))
+	if len(sealed) < NonceSize+boxOverhead {
+		return nil, fmt.Errorf(
+			"sealed message too short: %d bytes (minimum %d)",
+			len(sealed),
+			NonceSize+boxOverhead,
+		)
 	}
 	var nonce [NonceSize]byte
 	copy(nonce[:], sealed[:NonceSize])

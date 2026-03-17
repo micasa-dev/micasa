@@ -14,6 +14,8 @@ import (
 	"github.com/cpcloud/micasa/internal/sync"
 )
 
+const maxRequestBody = 1 << 20 // 1 MB
+
 // Handler serves the relay HTTP API.
 type Handler struct {
 	store         Store
@@ -72,12 +74,16 @@ func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 
 func (h *Handler) handleCreateHousehold(w http.ResponseWriter, r *http.Request) {
 	var req sync.CreateHouseholdRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, maxRequestBody)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.DeviceName == "" {
 		writeError(w, http.StatusBadRequest, "device_name is required")
+		return
+	}
+	if len(req.PublicKey) == 0 {
+		writeError(w, http.StatusBadRequest, "public_key is required")
 		return
 	}
 
@@ -130,7 +136,7 @@ func (h *Handler) requireAuth(next authenticatedHandler) http.HandlerFunc {
 
 func (h *Handler) handlePush(w http.ResponseWriter, r *http.Request, dev sync.Device) {
 	var req sync.PushRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, maxRequestBody)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -204,7 +210,7 @@ func (h *Handler) handleCreateInvite(
 	invite, err := h.store.CreateInvite(r.Context(), hhID, dev.ID)
 	if err != nil {
 		h.log.Error("create invite", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "failed to create invite")
 		return
 	}
 	writeJSON(w, http.StatusCreated, invite)
@@ -212,7 +218,7 @@ func (h *Handler) handleCreateInvite(
 
 func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 	var req sync.JoinRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, maxRequestBody)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -232,7 +238,7 @@ func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.store.StartJoin(r.Context(), req.InviteCode, req)
 	if err != nil {
 		h.log.Error("start join", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid or expired invite code")
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -269,7 +275,7 @@ func (h *Handler) handleCompleteKeyExchange(
 	exchangeID := r.PathValue("id")
 
 	var req sync.CompleteKeyExchangeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, maxRequestBody)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -286,7 +292,7 @@ func (h *Handler) handleCompleteKeyExchange(
 	)
 	if err != nil {
 		h.log.Error("complete key exchange", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "key exchange failed")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -298,7 +304,7 @@ func (h *Handler) handleGetKeyExchangeResult(w http.ResponseWriter, r *http.Requ
 	result, err := h.store.GetKeyExchangeResult(r.Context(), exchangeID)
 	if err != nil {
 		h.log.Error("get key exchange result", "error", err)
-		writeError(w, http.StatusNotFound, err.Error())
+		writeError(w, http.StatusNotFound, "key exchange not found")
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -347,7 +353,7 @@ func (h *Handler) handleRevokeDevice(
 	err := h.store.RevokeDevice(r.Context(), hhID, deviceID)
 	if err != nil {
 		h.log.Error("revoke device", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "device revocation failed")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -415,8 +421,9 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 	hh, err := h.store.HouseholdBySubscription(r.Context(), subID)
 	if err != nil {
-		h.log.Error("webhook: find household", "error", err, "subscription_id", subID)
-		writeError(w, http.StatusNotFound, "household not found for subscription")
+		h.log.Warn("webhook: no household for subscription, ignoring",
+			"subscription_id", subID)
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
 		return
 	}
 
@@ -445,7 +452,9 @@ func extractBearerToken(r *http.Request) string {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		slog.Error("failed to write JSON response", "error", err)
+	}
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {

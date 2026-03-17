@@ -5,9 +5,11 @@ package sync
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/cpcloud/micasa/internal/data"
 	"gorm.io/gorm"
 )
 
@@ -18,11 +20,30 @@ type ApplyResult struct {
 	Errors    []error
 }
 
+// allowedSyncTable validates that a table name is one of the known syncable
+// tables. Prevents remote ops from targeting metadata or internal tables.
+var allowedSyncTables = map[string]bool{
+	data.TableAppliances:            true,
+	data.TableDocuments:             true,
+	data.TableHouseProfiles:         true,
+	data.TableIncidents:             true,
+	data.TableMaintenanceCategories: true,
+	data.TableMaintenanceItems:      true,
+	data.TableProjectTypes:          true,
+	data.TableProjects:              true,
+	data.TableQuotes:                true,
+	data.TableServiceLogEntries:     true,
+	data.TableVendors:               true,
+}
+
 // ApplyOps applies decrypted remote operations to the local database.
 // Uses LWW conflict resolution when a local unsynced op exists for the
-// same (table, row_id). The ctx on db should have syncApplyingKey set
-// to suppress local oplog writes.
+// same (table, row_id). Sets the syncApplying context flag to suppress
+// oplog hooks from re-logging applied remote ops.
 func ApplyOps(db *gorm.DB, ops []DecryptedOp) ApplyResult {
+	// Ensure oplog hooks are suppressed for remote op application.
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
 	var result ApplyResult
 	for _, dop := range ops {
 		if err := applyOne(db, dop); err != nil {
@@ -41,11 +62,15 @@ func ApplyOps(db *gorm.DB, ops []DecryptedOp) ApplyResult {
 var errConflictLoss = fmt.Errorf("conflict: remote op lost to local op")
 
 func isConflictLoss(err error) bool {
-	return err == errConflictLoss
+	return errors.Is(err, errConflictLoss)
 }
 
 func applyOne(db *gorm.DB, dop DecryptedOp) error {
 	op := dop.Payload
+
+	if !allowedSyncTables[op.TableName] {
+		return fmt.Errorf("table %q is not a valid sync target", op.TableName)
+	}
 
 	// Check for LWW conflict: does a local unsynced op exist for this row?
 	var localOp struct {
@@ -56,7 +81,7 @@ func applyOne(db *gorm.DB, dop DecryptedOp) error {
 	err := db.Table("sync_oplog_entries").
 		Select("id, created_at, device_id").
 		Where("table_name = ? AND row_id = ? AND synced_at IS NULL", op.TableName, op.RowID).
-		Order("created_at DESC").
+		Order("created_at DESC, id DESC").
 		Limit(1).
 		Scan(&localOp).Error
 	if err != nil {

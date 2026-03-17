@@ -103,3 +103,14 @@ func TestParseSubscriptionEventUnsupportedType(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported")
 }
+
+func TestVerifyWebhookSignatureFutureTimestamp(t *testing.T) {
+	t.Parallel()
+	secret := "whsec_test"
+	payload := []byte(`{"type":"test"}`)
+	header := makeSignatureHeader(payload, secret, time.Now().Add(10*time.Minute))
+
+	err := VerifyWebhookSignature(payload, header, secret, 5*time.Minute)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "future")
+}

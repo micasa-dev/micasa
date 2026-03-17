@@ -38,8 +38,12 @@ func VerifyWebhookSignature(
 		return fmt.Errorf("invalid timestamp: %w", err)
 	}
 
-	if time.Since(time.Unix(ts, 0)) > tolerance {
+	sigTime := time.Unix(ts, 0)
+	if time.Since(sigTime) > tolerance {
 		return fmt.Errorf("signature timestamp too old")
+	}
+	if time.Until(sigTime) > tolerance {
+		return fmt.Errorf("signature timestamp too far in the future")
 	}
 
 	// Compute expected signature: HMAC-SHA256(timestamp + "." + payload, secret)

@@ -362,7 +362,7 @@ func TestCreateInvite(t *testing.T) {
 
 	var invite sync.InviteCode
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
-	assert.Len(t, invite.Code, 8)
+	assert.NotEmpty(t, invite.Code)
 	assert.True(t, invite.ExpiresAt.After(time.Now()))
 }
 

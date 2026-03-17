@@ -228,6 +228,57 @@ func TestHouseholdKeyFileTruncated(t *testing.T) {
 	assert.Error(t, err, "loading truncated key file should fail")
 }
 
+func TestLoadDeviceKeyPairRejectsMismatchedKeys(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	// Generate two keypairs and cross-pollinate them.
+	kp1, err := GenerateDeviceKeyPair()
+	require.NoError(t, err)
+	kp2, err := GenerateDeviceKeyPair()
+	require.NoError(t, err)
+
+	// Write kp1's private key but kp2's public key.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, DevicePrivateKeyFile), kp1.PrivateKey[:], 0o600,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, DevicePublicKeyFile), kp2.PublicKey[:], 0o644,
+	))
+
+	_, err = LoadDeviceKeyPair(dir)
+	assert.Error(t, err, "mismatched pub/priv keys should fail validation")
+	assert.Contains(t, err.Error(), "does not match")
+}
+
+func TestHouseholdKeyStringer(t *testing.T) {
+	t.Parallel()
+	key, err := GenerateHouseholdKey()
+	require.NoError(t, err)
+	assert.Equal(t, "[REDACTED]", key.String())
+}
+
+func TestDeviceKeyPairStringer(t *testing.T) {
+	t.Parallel()
+	kp, err := GenerateDeviceKeyPair()
+	require.NoError(t, err)
+	assert.Equal(t, "[REDACTED]", kp.String())
+}
+
+func TestHouseholdKeyFileOversized(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, HouseholdKeyFile),
+		make([]byte, 64),
+		0o600,
+	))
+
+	_, err := LoadHouseholdKey(dir)
+	assert.Error(t, err, "oversized key file should fail")
+}
+
 // --- SecretsDir ---
 
 func TestSecretsDirDefault(t *testing.T) {

@@ -231,7 +231,10 @@ func (m *MemStore) CreateInvite(
 		return sync.InviteCode{}, fmt.Errorf("max active invites reached (3)")
 	}
 
-	code := generateInviteCode()
+	code, err := generateInviteCode()
+	if err != nil {
+		return sync.InviteCode{}, err
+	}
 	m.invites[code] = &inviteRecord{
 		code:         code,
 		householdID:  householdID,
@@ -499,10 +502,12 @@ func (m *MemStore) OpsCount(
 
 func (m *MemStore) Close() error { return nil }
 
-func generateInviteCode() string {
-	b := make([]byte, 5) // 5 bytes = 8 base32 chars = ~40 bits entropy
-	_, _ = rand.Read(b)
-	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
+func generateInviteCode() (string, error) {
+	b := make([]byte, 8) // 8 bytes = ~64 bits entropy
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate invite code: %w", err)
+	}
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b), nil
 }
 
 func generateToken() (raw string, hash string, err error) {
