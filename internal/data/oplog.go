@@ -235,3 +235,27 @@ func (s *Store) AllOplogEntries() ([]SyncOplogEntry, error) {
 	err := s.db.Order("created_at ASC, id ASC").Find(&ops).Error
 	return ops, err
 }
+
+// GetSyncDevice returns the single local sync device record.
+func (s *Store) GetSyncDevice() (SyncDevice, error) {
+	var dev SyncDevice
+	if err := s.db.First(&dev).Error; err != nil {
+		return SyncDevice{}, fmt.Errorf("get sync device: %w", err)
+	}
+	return dev, nil
+}
+
+// UpdateSyncDevice updates the sync device record. Only non-zero fields
+// in the updates map are written.
+func (s *Store) UpdateSyncDevice(updates map[string]any) error {
+	return s.db.Model(&SyncDevice{}).Where("1 = 1").Updates(updates).Error
+}
+
+// UpdateOplogDeviceIDs rewrites all oplog entries that reference oldID
+// to use newID. Called during pro init when the relay assigns a new
+// device ID that replaces the auto-generated local one.
+func (s *Store) UpdateOplogDeviceIDs(oldID, newID string) error {
+	return s.db.Model(&SyncOplogEntry{}).
+		Where("device_id = ?", oldID).
+		Update("device_id", newID).Error
+}

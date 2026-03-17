@@ -359,6 +359,7 @@ type SyncDevice struct {
 	ID          string `gorm:"primaryKey;size:26"`
 	Name        string `gorm:"not null"`
 	HouseholdID string
+	RelayURL    string
 	LastSeq     int64 `gorm:"default:0"`
 	CreatedAt   time.Time
 }

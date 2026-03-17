@@ -135,6 +135,11 @@ func Open(path string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
+// GormDB returns the underlying *gorm.DB for use by the sync layer.
+func (s *Store) GormDB() *gorm.DB {
+	return s.db
+}
+
 // MaxDocumentSize returns the configured maximum file size for document imports.
 func (s *Store) MaxDocumentSize() uint64 {
 	return s.maxDocumentSize

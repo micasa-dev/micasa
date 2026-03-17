@@ -35,6 +35,13 @@ func NewClient(baseURL, token string, key crypto.HouseholdKey) *Client {
 	}
 }
 
+// NewManagementClient creates a client for management-only calls (status,
+// invite, devices) that don't need the household encryption key. Push/Pull
+// will fail if called on this client since the key is zero-valued.
+func NewManagementClient(baseURL, token string) *Client {
+	return NewClient(baseURL, token, crypto.HouseholdKey{})
+}
+
 // Push encrypts and sends local oplog entries to the relay.
 func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 	envelopes := make([]Envelope, 0, len(ops))
