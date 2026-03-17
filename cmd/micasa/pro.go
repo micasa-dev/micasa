@@ -70,43 +70,46 @@ func resolveProDeps(dbPath string) (*proDeps, error) {
 		return nil, err
 	}
 
+	// Close the store on any error path; disable on successful return.
+	closeOnErr := true
+	defer func() {
+		if closeOnErr {
+			_ = store.Close()
+		}
+	}()
+
 	dev, err := store.GetSyncDevice()
 	if err != nil {
-		_ = store.Close()
 		return nil, fmt.Errorf(
 			"no sync device found -- run `micasa pro init` first: %w",
 			err,
 		)
 	}
 	if dev.HouseholdID == "" {
-		_ = store.Close()
 		return nil, fmt.Errorf("device not initialized -- run `micasa pro init` first")
 	}
 
 	secretDir, err := crypto.SecretsDir()
 	if err != nil {
-		_ = store.Close()
 		return nil, fmt.Errorf("resolve secrets directory: %w", err)
 	}
 
 	token, err := crypto.LoadDeviceToken(secretDir)
 	if err != nil {
-		_ = store.Close()
 		return nil, fmt.Errorf("load device token: %w", err)
 	}
 
 	key, err := crypto.LoadHouseholdKey(secretDir)
 	if err != nil {
-		_ = store.Close()
 		return nil, fmt.Errorf("load household key: %w", err)
 	}
 
 	kp, err := crypto.LoadDeviceKeyPair(secretDir)
 	if err != nil {
-		_ = store.Close()
 		return nil, fmt.Errorf("load device keypair: %w", err)
 	}
 
+	closeOnErr = false
 	return &proDeps{
 		store:     store,
 		device:    dev,

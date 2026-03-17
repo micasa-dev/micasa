@@ -100,6 +100,8 @@ func TestRunProInitAlreadyInitialized(t *testing.T) {
 	require.NoError(t, store.UpdateSyncDevice(map[string]any{
 		"household_id": "01HOUSEHOLD",
 	}))
+	// Close setup store before runProInit opens its own connection.
+	require.NoError(t, store.Close())
 	// Reset again so runProInit's store doesn't use stale cache.
 	data.ResetCachedDeviceID()
 
@@ -121,6 +123,8 @@ func TestRunProJoinAlreadyInHousehold(t *testing.T) {
 	require.NoError(t, store.UpdateSyncDevice(map[string]any{
 		"household_id": "01EXISTING",
 	}))
+	// Close setup store before runProJoin opens its own connection.
+	require.NoError(t, store.Close())
 	data.ResetCachedDeviceID()
 
 	err = runProJoin("01OTHER.invitecode", dbPath, defaultRelayURL)
