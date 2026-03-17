@@ -46,6 +46,37 @@ type Store interface {
 	// associated device. Returns an error if auth fails.
 	AuthenticateDevice(ctx context.Context, token string) (sync.Device, error)
 
+	// CreateInvite generates a one-time invite code for a household.
+	// Max 3 active invites per household. Code expires in 24 hours.
+	CreateInvite(ctx context.Context, householdID, deviceID string) (sync.InviteCode, error)
+
+	// StartJoin validates an invite code and creates a pending key
+	// exchange. Returns the exchange ID and the inviter's public key.
+	StartJoin(ctx context.Context, code string, req sync.JoinRequest) (sync.JoinResponse, error)
+
+	// GetPendingExchanges returns incomplete key exchanges for a household.
+	GetPendingExchanges(ctx context.Context, householdID string) ([]sync.PendingKeyExchange, error)
+
+	// CompleteKeyExchange stores the encrypted household key and
+	// registers the joiner as a device. Only the inviting device
+	// (same household) may complete an exchange.
+	CompleteKeyExchange(
+		ctx context.Context,
+		householdID, exchangeID string,
+		encryptedKey []byte,
+	) error
+
+	// GetKeyExchangeResult returns the key exchange status. When
+	// complete, includes the encrypted key and device credentials.
+	GetKeyExchangeResult(ctx context.Context, exchangeID string) (sync.KeyExchangeResult, error)
+
+	// ListDevices returns all active devices in a household.
+	ListDevices(ctx context.Context, householdID string) ([]sync.Device, error)
+
+	// RevokeDevice removes a device from a household, preventing
+	// further authentication.
+	RevokeDevice(ctx context.Context, householdID, deviceID string) error
+
 	// Close releases any resources held by the store.
 	Close() error
 }

@@ -79,3 +79,42 @@ type RegisterDeviceResponse struct {
 	DeviceID    string `json:"device_id"`
 	DeviceToken string `json:"device_token"`
 }
+
+// InviteCode represents a one-time invite code for joining a household.
+type InviteCode struct {
+	Code      string    `json:"code"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// JoinRequest is the body of POST /invite/{code}/join.
+type JoinRequest struct {
+	DeviceName string `json:"device_name"`
+	PublicKey  []byte `json:"public_key"`
+}
+
+// JoinResponse is returned when a joiner initiates a key exchange.
+type JoinResponse struct {
+	ExchangeID       string `json:"exchange_id"`
+	InviterPublicKey []byte `json:"inviter_public_key"`
+}
+
+// PendingKeyExchange represents a key exchange awaiting inviter completion.
+type PendingKeyExchange struct {
+	ID              string    `json:"id"`
+	JoinerPublicKey []byte    `json:"joiner_public_key"`
+	JoinerName      string    `json:"joiner_name"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+// CompleteKeyExchangeRequest is the body of POST /key-exchange/{id}/complete.
+type CompleteKeyExchangeRequest struct {
+	EncryptedHouseholdKey []byte `json:"encrypted_household_key"`
+}
+
+// KeyExchangeResult is returned when a joiner polls for their key exchange.
+type KeyExchangeResult struct {
+	Ready                 bool   `json:"ready"`
+	EncryptedHouseholdKey []byte `json:"encrypted_household_key,omitempty"`
+	DeviceID              string `json:"device_id,omitempty"`
+	DeviceToken           string `json:"device_token,omitempty"`
+}

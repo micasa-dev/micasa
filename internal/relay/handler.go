@@ -28,6 +28,19 @@ func NewHandler(store Store, log *slog.Logger) *Handler {
 	mux.HandleFunc("POST /households", h.handleCreateHousehold)
 	mux.HandleFunc("POST /sync/push", h.requireAuth(h.handlePush))
 	mux.HandleFunc("GET /sync/pull", h.requireAuth(h.handlePull))
+	mux.HandleFunc("POST /households/{id}/invite", h.requireAuth(h.handleCreateInvite))
+	mux.HandleFunc("POST /invite/{code}/join", h.handleJoin)
+	mux.HandleFunc(
+		"GET /households/{id}/pending-exchanges",
+		h.requireAuth(h.handleGetPendingExchanges),
+	)
+	mux.HandleFunc("POST /key-exchange/{id}/complete", h.requireAuth(h.handleCompleteKeyExchange))
+	mux.HandleFunc("GET /key-exchange/{id}", h.handleGetKeyExchangeResult)
+	mux.HandleFunc("GET /households/{id}/devices", h.requireAuth(h.handleListDevices))
+	mux.HandleFunc(
+		"DELETE /households/{id}/devices/{device_id}",
+		h.requireAuth(h.handleRevokeDevice),
+	)
 	h.mux = mux
 	return h
 }
@@ -138,6 +151,167 @@ func (h *Handler) handlePull(w http.ResponseWriter, r *http.Request, dev sync.De
 		ops = []sync.Envelope{}
 	}
 	writeJSON(w, http.StatusOK, sync.PullResponse{Ops: ops, HasMore: hasMore})
+}
+
+func (h *Handler) handleCreateInvite(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	hhID := r.PathValue("id")
+	if dev.HouseholdID != hhID {
+		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+
+	invite, err := h.store.CreateInvite(r.Context(), hhID, dev.ID)
+	if err != nil {
+		h.log.Error("create invite", "error", err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, invite)
+}
+
+func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+
+	var req sync.JoinRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.DeviceName == "" {
+		writeError(w, http.StatusBadRequest, "device_name is required")
+		return
+	}
+	if len(req.PublicKey) == 0 {
+		writeError(w, http.StatusBadRequest, "public_key is required")
+		return
+	}
+
+	resp, err := h.store.StartJoin(r.Context(), code, req)
+	if err != nil {
+		h.log.Error("start join", "error", err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) handleGetPendingExchanges(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	hhID := r.PathValue("id")
+	if dev.HouseholdID != hhID {
+		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+
+	exchanges, err := h.store.GetPendingExchanges(r.Context(), hhID)
+	if err != nil {
+		h.log.Error("get pending exchanges", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if exchanges == nil {
+		exchanges = []sync.PendingKeyExchange{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"exchanges": exchanges})
+}
+
+func (h *Handler) handleCompleteKeyExchange(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	exchangeID := r.PathValue("id")
+
+	var req sync.CompleteKeyExchangeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if len(req.EncryptedHouseholdKey) == 0 {
+		writeError(w, http.StatusBadRequest, "encrypted_household_key is required")
+		return
+	}
+
+	err := h.store.CompleteKeyExchange(
+		r.Context(),
+		dev.HouseholdID,
+		exchangeID,
+		req.EncryptedHouseholdKey,
+	)
+	if err != nil {
+		h.log.Error("complete key exchange", "error", err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleGetKeyExchangeResult(w http.ResponseWriter, r *http.Request) {
+	exchangeID := r.PathValue("id")
+
+	result, err := h.store.GetKeyExchangeResult(r.Context(), exchangeID)
+	if err != nil {
+		h.log.Error("get key exchange result", "error", err)
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) handleListDevices(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	hhID := r.PathValue("id")
+	if dev.HouseholdID != hhID {
+		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+
+	devices, err := h.store.ListDevices(r.Context(), hhID)
+	if err != nil {
+		h.log.Error("list devices", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if devices == nil {
+		devices = []sync.Device{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"devices": devices})
+}
+
+func (h *Handler) handleRevokeDevice(
+	w http.ResponseWriter,
+	r *http.Request,
+	dev sync.Device,
+) {
+	hhID := r.PathValue("id")
+	deviceID := r.PathValue("device_id")
+
+	if dev.HouseholdID != hhID {
+		writeError(w, http.StatusForbidden, "device does not belong to this household")
+		return
+	}
+	if deviceID == dev.ID {
+		writeError(w, http.StatusBadRequest, "cannot revoke your own device")
+		return
+	}
+
+	err := h.store.RevokeDevice(r.Context(), hhID, deviceID)
+	if err != nil {
+		h.log.Error("revoke device", "error", err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func extractBearerToken(r *http.Request) string {

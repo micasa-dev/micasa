@@ -6,6 +6,7 @@ package relay
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base32"
 	"encoding/hex"
 	"fmt"
 	gosync "sync"
@@ -24,11 +25,36 @@ type MemStore struct {
 	devices    map[string]deviceRecord
 	tokenIndex map[string]string // token_hash -> device_id
 	seqs       map[string]int64  // household_id -> last_seq
+	invites    map[string]*inviteRecord
+	exchanges  map[string]*keyExchangeRecord
 }
 
 type deviceRecord struct {
 	device    sync.Device
 	tokenHash string
+}
+
+type inviteRecord struct {
+	code         string
+	householdID  string
+	inviterDevID string
+	expiresAt    time.Time
+	maxAttempts  int
+	usedAttempts int
+	consumed     bool
+}
+
+type keyExchangeRecord struct {
+	id              string
+	householdID     string
+	inviteCode      string
+	joinerName      string
+	joinerPublicKey []byte
+	encryptedKey    []byte
+	deviceID        string
+	deviceToken     string
+	createdAt       time.Time
+	completed       bool
 }
 
 // NewMemStore creates a new in-memory relay store.
@@ -38,6 +64,8 @@ func NewMemStore() *MemStore {
 		devices:    make(map[string]deviceRecord),
 		tokenIndex: make(map[string]string),
 		seqs:       make(map[string]int64),
+		invites:    make(map[string]*inviteRecord),
+		exchanges:  make(map[string]*keyExchangeRecord),
 	}
 }
 
@@ -181,7 +209,228 @@ func (m *MemStore) AuthenticateDevice(_ context.Context, token string) (sync.Dev
 	return sync.Device{}, fmt.Errorf("invalid token")
 }
 
+func (m *MemStore) CreateInvite(
+	_ context.Context,
+	householdID, deviceID string,
+) (sync.InviteCode, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.households[householdID]; !ok {
+		return sync.InviteCode{}, fmt.Errorf("household %s not found", householdID)
+	}
+
+	// Max 3 active invites per household.
+	active := 0
+	for _, inv := range m.invites {
+		if inv.householdID == householdID && !inv.consumed && time.Now().Before(inv.expiresAt) {
+			active++
+		}
+	}
+	if active >= 3 {
+		return sync.InviteCode{}, fmt.Errorf("max active invites reached (3)")
+	}
+
+	code := generateInviteCode()
+	m.invites[code] = &inviteRecord{
+		code:         code,
+		householdID:  householdID,
+		inviterDevID: deviceID,
+		expiresAt:    time.Now().Add(24 * time.Hour),
+		maxAttempts:  5,
+	}
+
+	return sync.InviteCode{
+		Code:      code,
+		ExpiresAt: m.invites[code].expiresAt,
+	}, nil
+}
+
+func (m *MemStore) StartJoin(
+	_ context.Context,
+	code string,
+	req sync.JoinRequest,
+) (sync.JoinResponse, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	inv, ok := m.invites[code]
+	if !ok {
+		return sync.JoinResponse{}, fmt.Errorf("invite code not found")
+	}
+	if inv.consumed {
+		return sync.JoinResponse{}, fmt.Errorf("invite code already consumed")
+	}
+	if time.Now().After(inv.expiresAt) {
+		return sync.JoinResponse{}, fmt.Errorf("invite code expired")
+	}
+	inv.usedAttempts++
+	if inv.usedAttempts > inv.maxAttempts {
+		inv.consumed = true
+		return sync.JoinResponse{}, fmt.Errorf("invite code max attempts exceeded")
+	}
+
+	// Find inviter's public key.
+	inviterDev, ok := m.devices[inv.inviterDevID]
+	if !ok {
+		return sync.JoinResponse{}, fmt.Errorf("inviter device not found")
+	}
+
+	exchangeID := uid.New()
+	m.exchanges[exchangeID] = &keyExchangeRecord{
+		id:              exchangeID,
+		householdID:     inv.householdID,
+		inviteCode:      code,
+		joinerName:      req.DeviceName,
+		joinerPublicKey: req.PublicKey,
+		createdAt:       time.Now(),
+	}
+
+	return sync.JoinResponse{
+		ExchangeID:       exchangeID,
+		InviterPublicKey: inviterDev.device.PublicKey,
+	}, nil
+}
+
+func (m *MemStore) GetPendingExchanges(
+	_ context.Context,
+	householdID string,
+) ([]sync.PendingKeyExchange, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var result []sync.PendingKeyExchange
+	for _, ex := range m.exchanges {
+		if ex.householdID == householdID && !ex.completed {
+			result = append(result, sync.PendingKeyExchange{
+				ID:              ex.id,
+				JoinerPublicKey: ex.joinerPublicKey,
+				JoinerName:      ex.joinerName,
+				CreatedAt:       ex.createdAt,
+			})
+		}
+	}
+	return result, nil
+}
+
+func (m *MemStore) CompleteKeyExchange(
+	_ context.Context,
+	householdID, exchangeID string,
+	encryptedKey []byte,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ex, ok := m.exchanges[exchangeID]
+	if !ok {
+		return fmt.Errorf("key exchange %s not found", exchangeID)
+	}
+	if ex.householdID != householdID {
+		return fmt.Errorf("key exchange does not belong to this household")
+	}
+	if ex.completed {
+		return fmt.Errorf("key exchange already completed")
+	}
+
+	// Register the joiner as a device.
+	devID := uid.New()
+	token, tokenHash, err := generateToken()
+	if err != nil {
+		return err
+	}
+
+	dev := sync.Device{
+		ID:          devID,
+		HouseholdID: householdID,
+		Name:        ex.joinerName,
+		PublicKey:   ex.joinerPublicKey,
+		CreatedAt:   time.Now(),
+	}
+	m.devices[devID] = deviceRecord{device: dev, tokenHash: tokenHash}
+	m.tokenIndex[tokenHash] = devID
+
+	ex.encryptedKey = encryptedKey
+	ex.deviceID = devID
+	ex.deviceToken = token
+	ex.completed = true
+
+	// Consume the invite code.
+	if inv, ok := m.invites[ex.inviteCode]; ok {
+		inv.consumed = true
+	}
+
+	return nil
+}
+
+func (m *MemStore) GetKeyExchangeResult(
+	_ context.Context,
+	exchangeID string,
+) (sync.KeyExchangeResult, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ex, ok := m.exchanges[exchangeID]
+	if !ok {
+		return sync.KeyExchangeResult{}, fmt.Errorf("key exchange %s not found", exchangeID)
+	}
+
+	if !ex.completed {
+		return sync.KeyExchangeResult{Ready: false}, nil
+	}
+
+	return sync.KeyExchangeResult{
+		Ready:                 true,
+		EncryptedHouseholdKey: ex.encryptedKey,
+		DeviceID:              ex.deviceID,
+		DeviceToken:           ex.deviceToken,
+	}, nil
+}
+
+func (m *MemStore) ListDevices(
+	_ context.Context,
+	householdID string,
+) ([]sync.Device, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var result []sync.Device
+	for _, rec := range m.devices {
+		if rec.device.HouseholdID == householdID {
+			result = append(result, rec.device)
+		}
+	}
+	return result, nil
+}
+
+func (m *MemStore) RevokeDevice(
+	_ context.Context,
+	householdID, deviceID string,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	rec, ok := m.devices[deviceID]
+	if !ok {
+		return fmt.Errorf("device %s not found", deviceID)
+	}
+	if rec.device.HouseholdID != householdID {
+		return fmt.Errorf("device does not belong to this household")
+	}
+
+	// Remove token from index.
+	delete(m.tokenIndex, rec.tokenHash)
+	// Remove device.
+	delete(m.devices, deviceID)
+	return nil
+}
+
 func (m *MemStore) Close() error { return nil }
+
+func generateInviteCode() string {
+	b := make([]byte, 5) // 5 bytes = 8 base32 chars = ~40 bits entropy
+	_, _ = rand.Read(b)
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
+}
 
 func generateToken() (raw string, hash string, err error) {
 	b := make([]byte, 32)

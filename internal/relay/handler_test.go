@@ -345,3 +345,444 @@ func TestPushAssignsMonotonicSequences(t *testing.T) {
 	assert.Equal(t, int64(2), resp.Confirmed[1].Seq)
 	assert.Equal(t, int64(3), resp.Confirmed[2].Seq)
 }
+
+// --- Invite and Join ---
+
+func TestCreateInvite(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+	assert.Len(t, invite.Code, 8)
+	assert.True(t, invite.ExpiresAt.After(time.Now()))
+}
+
+func TestCreateInviteRequiresHouseholdMembership(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Try to create invite for a different household.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/wrong-id/invite", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestCreateInviteMaxActiveLimit(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create 3 invites (max).
+	for i := 0; i < 3; i++ {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(
+			rec,
+			authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		)
+		require.Equal(t, http.StatusCreated, rec.Code)
+	}
+
+	// Fourth should fail.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestFullKeyExchangeFlow(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Step 1: Inviter creates invite.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	// Step 2: Joiner initiates join (no auth needed).
+	joinerPubKey := []byte("joiner-public-key-32-byte-pad!!!")
+	joinReq := sync.JoinRequest{
+		DeviceName: "joiner-phone",
+		PublicKey:  joinerPubKey,
+	}
+	joinBody, _ := json.Marshal(joinReq)
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var joinResp sync.JoinResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+	assert.NotEmpty(t, joinResp.ExchangeID)
+	assert.NotEmpty(t, joinResp.InviterPublicKey)
+
+	// Step 3: Inviter checks pending exchanges.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"GET",
+			"/households/"+hh.HouseholdID+"/pending-exchanges",
+			nil,
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var pendingResp struct {
+		Exchanges []sync.PendingKeyExchange `json:"exchanges"`
+	}
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&pendingResp))
+	require.Len(t, pendingResp.Exchanges, 1)
+	assert.Equal(t, joinResp.ExchangeID, pendingResp.Exchanges[0].ID)
+	assert.Equal(t, "joiner-phone", pendingResp.Exchanges[0].JoinerName)
+
+	// Step 4: Inviter completes key exchange.
+	encryptedKey := []byte("encrypted-household-key-data")
+	completeReq := sync.CompleteKeyExchangeRequest{
+		EncryptedHouseholdKey: encryptedKey,
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/key-exchange/"+joinResp.ExchangeID+"/complete",
+			completeReq,
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Step 5: Joiner polls for result (no auth).
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var result sync.KeyExchangeResult
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&result))
+	assert.True(t, result.Ready)
+	assert.Equal(t, encryptedKey, result.EncryptedHouseholdKey)
+	assert.NotEmpty(t, result.DeviceID)
+	assert.NotEmpty(t, result.DeviceToken)
+}
+
+func TestJoinInvalidInviteCode(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+
+	joinReq := sync.JoinRequest{DeviceName: "phone", PublicKey: []byte("key")}
+	joinBody, _ := json.Marshal(joinReq)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/invite/INVALID1/join", bytes.NewReader(joinBody))
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestJoinMissingFields(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create invite.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	// Missing device_name.
+	joinBody, _ := json.Marshal(sync.JoinRequest{PublicKey: []byte("key")})
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestKeyExchangeResultBeforeCompletion(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create invite and join.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	joinBody, _ := json.Marshal(sync.JoinRequest{
+		DeviceName: "phone",
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var joinResp sync.JoinResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+
+	// Poll before inviter completes -- not ready.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var result sync.KeyExchangeResult
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&result))
+	assert.False(t, result.Ready)
+	assert.Empty(t, result.DeviceToken)
+}
+
+func TestInviteConsumedAfterKeyExchange(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create invite.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	// Join and complete exchange.
+	joinBody, _ := json.Marshal(sync.JoinRequest{
+		DeviceName: "phone",
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var joinResp sync.JoinResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+
+	// Complete exchange.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/key-exchange/"+joinResp.ExchangeID+"/complete",
+			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("key-data")},
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Try to use invite code again -- should fail.
+	joinBody, _ = json.Marshal(sync.JoinRequest{
+		DeviceName: "tablet",
+		PublicKey:  []byte("another-key-32-bytes-padding!!!!"),
+	})
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+// --- Device management ---
+
+func TestListDevices(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Devices []sync.Device `json:"devices"`
+	}
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	require.Len(t, resp.Devices, 1)
+	assert.Equal(t, "test-desktop", resp.Devices[0].Name)
+}
+
+func TestRevokeDevice(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Register a second device.
+	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+		HouseholdID: hh.HouseholdID,
+		Name:        "device-b",
+	})
+	require.NoError(t, err)
+
+	// Revoke device B.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"DELETE",
+			"/households/"+hh.HouseholdID+"/devices/"+regResp.DeviceID,
+			nil,
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Device B can no longer authenticate.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, regResp.DeviceToken))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+	// Only 1 device remains.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Devices []sync.Device `json:"devices"`
+	}
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Len(t, resp.Devices, 1)
+}
+
+func TestCannotRevokeSelf(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"DELETE",
+			"/households/"+hh.HouseholdID+"/devices/"+hh.DeviceID,
+			nil,
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestListDevicesWrongHousehold(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/households/wrong-id/devices", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestJoinedDeviceCanPushAndPull(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Full key exchange flow.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	joinBody, _ := json.Marshal(sync.JoinRequest{
+		DeviceName: "phone",
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/invite/"+invite.Code+"/join", bytes.NewReader(joinBody))
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var joinResp sync.JoinResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/key-exchange/"+joinResp.ExchangeID+"/complete",
+			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("key-data")},
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Get joiner's token.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var result sync.KeyExchangeResult
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&result))
+	require.True(t, result.Ready)
+
+	// Device A pushes an op.
+	op := sync.Envelope{
+		ID:         uid.New(),
+		Nonce:      []byte("nonce-for-op-24bytes!!!!"),
+		Ciphertext: []byte("from-device-A"),
+		CreatedAt:  time.Now(),
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			hh.DeviceToken,
+		),
+	)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Joined device pulls -- should see device A's op.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, result.DeviceToken))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var pullResp sync.PullResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&pullResp))
+	require.Len(t, pullResp.Ops, 1)
+	assert.Equal(t, op.ID, pullResp.Ops[0].ID)
+}
