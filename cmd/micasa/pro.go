@@ -88,12 +88,12 @@ func resolveProDeps(dbPath string) (*proDeps, error) {
 	dev, err := store.GetSyncDevice()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("no sync device found -- run `micasa pro init` first")
+			return nil, fmt.Errorf("sync not set up -- run `micasa pro init` first")
 		}
-		return nil, fmt.Errorf("read sync device: %w", err)
+		return nil, fmt.Errorf("read sync state: %w", err)
 	}
 	if dev.HouseholdID == "" {
-		return nil, fmt.Errorf("device not initialized -- run `micasa pro init` first")
+		return nil, fmt.Errorf("sync not set up -- run `micasa pro init` first")
 	}
 
 	secretDir, err := crypto.SecretsDir()
