@@ -90,12 +90,12 @@ know what model read your invoice six months from now, it's there.
 go run github.com/cpcloud/micasa/cmd/micasa@latest demo
 ```
 
-Set up tab completions:
+Tab completions:
 
 ```sh
-micasa completion bash > /etc/bash_completion.d/micasa
-micasa completion zsh > "${fpath[1]}/_micasa"
-micasa completion fish > ~/.config/fish/completions/micasa.fish
+source <(micasa completion bash)
+source <(micasa completion zsh)
+micasa completion fish | source
 ```
 
 Binaries on the
