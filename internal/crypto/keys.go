@@ -109,8 +109,23 @@ func SaveDeviceKeyPair(dir string, kp DeviceKeyPair) error {
 // the target path. This prevents partial writes from corrupting the
 // destination file.
 func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, perm); err != nil {
+	dir := filepath.Dir(path)
+	f, err := os.CreateTemp(dir, ".tmp-*")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	defer os.Remove(tmp) // clean up on any failure path
+
+	if err := f.Chmod(perm); err != nil {
+		f.Close()
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)
@@ -142,10 +157,10 @@ func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 	// Verify public key is consistent with private key.
 	derived, err := curve25519.X25519(kp.PrivateKey[:], curve25519.Basepoint)
 	if err != nil {
-		return kp, fmt.Errorf("validate device keypair: %w", err)
+		return DeviceKeyPair{}, fmt.Errorf("validate device keypair: %w", err)
 	}
 	if subtle.ConstantTimeCompare(derived, kp.PublicKey[:]) != 1 {
-		return kp, fmt.Errorf("device public key does not match private key")
+		return DeviceKeyPair{}, fmt.Errorf("device public key does not match private key")
 	}
 
 	return kp, nil

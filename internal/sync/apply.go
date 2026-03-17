@@ -20,20 +20,25 @@ type ApplyResult struct {
 	Errors    []error
 }
 
-// allowedSyncTable validates that a table name is one of the known syncable
-// tables. Prevents remote ops from targeting metadata or internal tables.
-var allowedSyncTables = map[string]bool{
-	data.TableAppliances:            true,
-	data.TableDocuments:             true,
-	data.TableHouseProfiles:         true,
-	data.TableIncidents:             true,
-	data.TableMaintenanceCategories: true,
-	data.TableMaintenanceItems:      true,
-	data.TableProjectTypes:          true,
-	data.TableProjects:              true,
-	data.TableQuotes:                true,
-	data.TableServiceLogEntries:     true,
-	data.TableVendors:               true,
+// allowedSyncTable returns true if tableName is a known syncable table.
+// Prevents remote ops from targeting metadata or internal tables.
+func allowedSyncTable(tableName string) bool {
+	switch tableName {
+	case data.TableAppliances,
+		data.TableDocuments,
+		data.TableHouseProfiles,
+		data.TableIncidents,
+		data.TableMaintenanceCategories,
+		data.TableMaintenanceItems,
+		data.TableProjectTypes,
+		data.TableProjects,
+		data.TableQuotes,
+		data.TableServiceLogEntries,
+		data.TableVendors:
+		return true
+	default:
+		return false
+	}
 }
 
 // ApplyOps applies decrypted remote operations to the local database.
@@ -68,7 +73,7 @@ func isConflictLoss(err error) bool {
 func applyOne(db *gorm.DB, dop DecryptedOp) error {
 	op := dop.Payload
 
-	if !allowedSyncTables[op.TableName] {
+	if !allowedSyncTable(op.TableName) {
 		return fmt.Errorf("table %q is not a valid sync target", op.TableName)
 	}
 

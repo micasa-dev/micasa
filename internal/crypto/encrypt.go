@@ -5,7 +5,6 @@ package crypto
 
 import (
 	"crypto/rand"
-	"crypto/subtle"
 	"fmt"
 
 	"golang.org/x/crypto/nacl/secretbox"
@@ -52,5 +51,5 @@ func Decrypt(key HouseholdKey, sealed []byte) ([]byte, error) {
 
 // zeroize overwrites a byte slice with zeros.
 func zeroize(b []byte) {
-	subtle.ConstantTimeCopy(1, b, make([]byte, len(b)))
+	clear(b)
 }
