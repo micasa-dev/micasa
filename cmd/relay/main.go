@@ -38,6 +38,7 @@ func main() {
 		}
 		if err := pg.AutoMigrate(); err != nil {
 			log.Error("auto migrate", "error", err)
+			_ = pg.Close()
 			os.Exit(1)
 		}
 		store = pg
@@ -110,7 +111,16 @@ func main() {
 // resolveRelayMode determines whether the relay runs in self-hosted mode.
 // Returns an error if SELF_HOSTED and STRIPE_WEBHOOK_SECRET are both set.
 func resolveRelayMode(selfHostedEnv, webhookSecret string) (bool, error) {
-	selfHosted := selfHostedEnv == "true"
+	var selfHosted bool
+	if selfHostedEnv != "" {
+		var err error
+		selfHosted, err = strconv.ParseBool(selfHostedEnv)
+		if err != nil {
+			return false, fmt.Errorf(
+				"invalid SELF_HOSTED value %q: must be a boolean (true/false/1/0)", selfHostedEnv,
+			)
+		}
+	}
 	if selfHosted && webhookSecret != "" {
 		return false, fmt.Errorf(
 			"SELF_HOSTED=true and STRIPE_WEBHOOK_SECRET are mutually exclusive -- " +

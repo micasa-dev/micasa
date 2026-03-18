@@ -1810,14 +1810,14 @@ func TestSelfHostedIntegration(t *testing.T) {
 	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, hash), bytes.NewReader(payload))
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusCreated, rec.Code)
+	require.Equal(t, http.StatusCreated, rec.Code)
 
 	// Download it back.
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest("GET", blobURL(hh.HouseholdID, hash), nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, payload, rec.Body.Bytes())
 
 	// Status reports quota=0.
@@ -1828,4 +1828,34 @@ func TestSelfHostedIntegration(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
 	assert.Equal(t, int64(0), status.BlobStorage.QuotaBytes)
 	assert.Equal(t, int64(len(payload)), status.BlobStorage.UsedBytes)
+}
+
+func TestSelfHostedCustomQuota(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	h := NewHandler(store, slog.Default(), WithSelfHosted(), WithBlobQuota(100))
+	hh := createTestHousehold(t, h)
+
+	// Upload a blob within quota.
+	small := []byte("small")
+	hash := fmt.Sprintf("%x", sha256.Sum256(small))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, hash), bytes.NewReader(small))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	// Upload a blob that exceeds the custom quota.
+	big := make([]byte, 100)
+	bigHash := fmt.Sprintf("%x", sha256.Sum256(big))
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest("PUT", blobURL(hh.HouseholdID, bigHash), bytes.NewReader(big))
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+}
+
+func TestWithBlobQuotaNegativePanics(t *testing.T) {
+	t.Parallel()
+	assert.Panics(t, func() { WithBlobQuota(-1) })
 }

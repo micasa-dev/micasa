@@ -13,8 +13,8 @@ import (
 )
 
 // Engine performs full pull+push sync cycles against the relay.
-// It is safe to call Sync concurrently, though the caller is responsible
-// for preventing overlapping cycles if that is undesirable.
+// Sync is not safe for concurrent use; the caller must serialize
+// calls to prevent overlapping cycles.
 type Engine struct {
 	store       *data.Store
 	client      *Client
@@ -73,14 +73,18 @@ func (e *Engine) Sync(ctx context.Context) (SyncResult, error) {
 	blobsUp, blobErrs := e.uploadPendingBlobs(ctx, pushedOps)
 	blobsDown, fetchErrs := e.fetchPendingBlobs(ctx)
 
-	return SyncResult{
+	result := SyncResult{
 		Pulled:    pulled,
 		Pushed:    pushed,
 		Conflicts: conflicts,
 		BlobsUp:   blobsUp,
 		BlobsDown: blobsDown,
 		BlobErrs:  blobErrs + fetchErrs,
-	}, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	return result, nil
 }
 
 func (e *Engine) pullAll(ctx context.Context, lastSeq int64) (int, int, error) {

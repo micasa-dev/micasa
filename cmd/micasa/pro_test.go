@@ -327,6 +327,14 @@ func TestFormatStorageUsageUnlimited(t *testing.T) {
 	assert.Contains(t, result, "50 MiB")
 }
 
+func TestFormatStorageUsageNegativeQuota(t *testing.T) {
+	t.Parallel()
+	result := formatStorageUsage(1024, -1)
+	assert.NotContains(t, result, "/")
+	assert.NotContains(t, result, "%")
+	assert.Equal(t, "1.0 KiB", result)
+}
+
 func TestProStorageCmdWiring(t *testing.T) {
 	t.Parallel()
 

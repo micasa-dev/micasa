@@ -323,16 +323,10 @@ func runProStatus(dbPath string) error {
 	fmt.Printf("devices:   %d\n", len(status.Devices))
 	fmt.Printf("ops:       %d\n", status.OpsCount)
 	fmt.Printf("last seq:  %d\n", deps.device.LastSeq)
-	if status.BlobStorage.QuotaBytes > 0 {
-		fmt.Printf("storage:   %s / %s\n",
-			humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
-			humanize.IBytes(uint64(status.BlobStorage.QuotaBytes)),
-		)
-	} else {
-		fmt.Printf("storage:   %s\n",
-			humanize.IBytes(uint64(status.BlobStorage.UsedBytes)),
-		)
-	}
+	fmt.Printf(
+		"storage:   %s\n",
+		formatStorageUsage(status.BlobStorage.UsedBytes, status.BlobStorage.QuotaBytes),
+	)
 	if status.StripeStatus != "" {
 		fmt.Printf("plan:      %s\n", status.StripeStatus)
 	}

@@ -39,6 +39,7 @@ type syncDoneMsg struct {
 	Pulled    int
 	Pushed    int
 	Conflicts int
+	BlobErrs  int
 }
 
 type syncErrorMsg struct{ Err error }
@@ -53,20 +54,18 @@ type syncDebounceMsg struct{ gen int }
 // --- tea.Cmd constructors ---
 
 func doSync(engine *sync.Engine, ctx context.Context) tea.Cmd {
-	return tea.Batch(
-		func() tea.Msg { return syncStartedMsg{} },
-		func() tea.Msg {
-			result, err := engine.Sync(ctx)
-			if err != nil {
-				return syncErrorMsg{Err: err}
-			}
-			return syncDoneMsg{
-				Pulled:    result.Pulled,
-				Pushed:    result.Pushed,
-				Conflicts: result.Conflicts,
-			}
-		},
-	)
+	return func() tea.Msg {
+		result, err := engine.Sync(ctx)
+		if err != nil {
+			return syncErrorMsg{Err: err}
+		}
+		return syncDoneMsg{
+			Pulled:    result.Pulled,
+			Pushed:    result.Pushed,
+			Conflicts: result.Conflicts,
+			BlobErrs:  result.BlobErrs,
+		}
+	}
 }
 
 func syncTick() tea.Cmd {

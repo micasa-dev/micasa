@@ -336,6 +336,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 func (m *Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.formInitCmd(), tea.RequestBackgroundColor}
 	if m.syncEngine != nil {
+		m.syncStatus = syncSyncing
 		cmds = append(cmds, doSync(m.syncEngine, m.syncCtx), syncTick())
 	}
 	return tea.Batch(cmds...)
@@ -472,6 +473,9 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncStatus = syncSyncing
 		return m, nil
 	case syncDoneMsg:
+		if typed.BlobErrs > 0 {
+			m.setStatusError(fmt.Sprintf("sync: %d blob error(s)", typed.BlobErrs))
+		}
 		if typed.Conflicts > 0 {
 			m.syncStatus = syncConflict
 		} else {
@@ -487,16 +491,19 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case syncErrorMsg:
 		m.syncStatus = syncOffline
+		m.setStatusError(fmt.Sprintf("sync: %s", typed.Err))
 		return m, nil
 	case syncTickMsg:
 		if m.syncEngine == nil || m.syncStatus == syncSyncing {
 			return m, syncTick()
 		}
+		m.syncStatus = syncSyncing
 		return m, tea.Batch(doSync(m.syncEngine, m.syncCtx), syncTick())
 	case syncDebounceMsg:
 		if typed.gen != m.syncDebounceGen || m.syncEngine == nil || m.syncStatus == syncSyncing {
 			return m, nil
 		}
+		m.syncStatus = syncSyncing
 		return m, doSync(m.syncEngine, m.syncCtx)
 	case editorFinishedMsg:
 		return m, m.handleEditorFinished(typed)

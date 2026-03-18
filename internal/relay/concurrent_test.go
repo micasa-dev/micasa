@@ -22,7 +22,7 @@ import (
 // TestConcurrentCreateInviteRespectsCap verifies that concurrent invite
 // creation for the same household never exceeds maxActiveInvites (3).
 // Ten goroutines race to create invites; exactly 3 must receive 201 and
-// the rest must receive 409 (conflict / quota full).
+// the rest must receive 400 (bad request / quota full).
 func TestConcurrentCreateInviteRespectsCap(t *testing.T) {
 	t.Parallel()
 

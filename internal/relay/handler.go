@@ -106,7 +106,11 @@ func WithSelfHosted() HandlerOption {
 
 // WithBlobQuota sets the per-household blob storage quota in bytes.
 // A value of 0 disables quota enforcement (unlimited).
+// Panics on negative values (use 0 for unlimited).
 func WithBlobQuota(n int64) HandlerOption {
+	if n < 0 {
+		panic("blob quota must be non-negative")
+	}
 	return func(h *Handler) {
 		h.blobQuota = n
 		h.blobQuotaSet = true

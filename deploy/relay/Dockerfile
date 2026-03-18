@@ -11,6 +11,8 @@ RUN CGO_ENABLED=0 go build -ldflags='-s -w' -o /relay ./cmd/relay
 
 # Runtime stage — alpine (not scratch) for wget health checks
 FROM alpine:3
+RUN adduser -D -u 10001 relay
 COPY --from=build /relay /relay
+USER relay
 EXPOSE 8080
 ENTRYPOINT ["/relay"]

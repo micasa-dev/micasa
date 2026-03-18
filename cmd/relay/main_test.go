@@ -36,6 +36,26 @@ func TestResolveRelayMode(t *testing.T) {
 			wantSelfHosted: true,
 		},
 		{
+			name:           "self-hosted TRUE (uppercase)",
+			selfHosted:     "TRUE",
+			wantSelfHosted: true,
+		},
+		{
+			name:           "self-hosted 1",
+			selfHosted:     "1",
+			wantSelfHosted: true,
+		},
+		{
+			name:           "explicit false",
+			selfHosted:     "false",
+			wantSelfHosted: false,
+		},
+		{
+			name:       "invalid value",
+			selfHosted: "maybe",
+			wantErr:    true,
+		},
+		{
 			name:          "conflict: both set",
 			selfHosted:    "true",
 			webhookSecret: "whsec_test",

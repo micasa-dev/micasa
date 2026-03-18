@@ -137,15 +137,20 @@ func TestSyncDonePulledDefersReloadDuringForm(t *testing.T) {
 
 func TestSyncPendingReloadClearedOnExitForm(t *testing.T) {
 	t.Parallel()
-	m := newTestModel(t)
+	m := newTestModelWithStore(t)
 	m.syncCfg = &syncConfig{}
+
+	// Enter form mode via user interaction.
+	openAddForm(m)
+	require.Equal(t, modeForm, m.mode, "should be in form mode")
+
+	// Simulate pending reload from a sync while form is open.
 	m.syncPendingReload = true
-	m.mode = modeForm
-	m.prevMode = modeNormal
 
-	m.exitForm()
+	// Exit form via esc (form is clean so no confirm dialog).
+	sendKey(m, keyEsc)
 
-	assert.False(t, m.syncPendingReload, "exitForm should clear pending reload")
+	assert.False(t, m.syncPendingReload, "esc should clear pending reload")
 }
 
 func TestMutationBumpsSyncDebounceGen(t *testing.T) {
