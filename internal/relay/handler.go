@@ -513,9 +513,7 @@ func (h *Handler) handleGetBlob(
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(
-		data,
-	) //nolint:gosec // binary blob served as application/octet-stream, not user-rendered HTML
+	_, _ = w.Write(data) //nolint:gosec // binary blob, not user-rendered HTML
 }
 
 func (h *Handler) handleHeadBlob(

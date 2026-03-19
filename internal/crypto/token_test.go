@@ -6,6 +6,7 @@ package crypto
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,10 +34,12 @@ func TestDeviceTokenFilePermissions(t *testing.T) {
 		SaveDeviceToken(dir, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
 	)
 
-	info, err := os.Stat(filepath.Join(dir, DeviceTokenFile))
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
-		"device token file should have 0600 permissions")
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(filepath.Join(dir, DeviceTokenFile))
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
+			"device token file should have 0600 permissions")
+	}
 }
 
 func TestLoadDeviceTokenNotFound(t *testing.T) {

@@ -26,9 +26,9 @@ const deviceTokenLen = 64
 // LoadDeviceToken reads the device bearer token from dir/device.token.
 // Validates that the token is a 64-character lowercase hex string.
 func LoadDeviceToken(dir string) (string, error) {
-	data, err := os.ReadFile(
+	data, err := os.ReadFile( //nolint:gosec // path is caller-controlled
 		filepath.Join(dir, DeviceTokenFile),
-	) //nolint:gosec // path is caller-controlled (secrets directory)
+	)
 	if err != nil {
 		return "", fmt.Errorf("load device token: %w", err)
 	}
