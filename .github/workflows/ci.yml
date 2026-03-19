@@ -157,6 +157,50 @@ jobs:
           files: coverage.txt
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  pgtest:
+    name: Postgres Integration
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-pgtest-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: micasa
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: micasa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U micasa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26"
+
+      - name: Test PgStore
+        env:
+          CGO_ENABLED: "1"
+          RELAY_POSTGRES_DSN: "postgres://micasa:testpass@localhost:5432/micasa_test?sslmode=disable"
+        run: go test -race -shuffle on -timeout 5m -coverprofile coverage-pg.txt ./internal/relay/ -run "TestPgStore"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          files: coverage-pg.txt
+          flags: postgres
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   benchmarks:
     name: Benchmarks (smoke)
     needs: changes
@@ -249,7 +293,7 @@ jobs:
   result:
     name: CI Result
     if: always()
-    needs: [changes, test, benchmarks, nix-build, docs, semantic-release-dry-run]
+    needs: [changes, test, pgtest, benchmarks, nix-build, docs, semantic-release-dry-run]
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
