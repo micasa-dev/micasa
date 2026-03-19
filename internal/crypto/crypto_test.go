@@ -191,19 +191,20 @@ func TestKeyFilePermissions(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, SaveDeviceKeyPair(dir, kp))
 
-	if runtime.GOOS != "windows" {
-		for _, name := range []string{HouseholdKeyFile, DevicePrivateKeyFile} {
-			info, err := os.Stat(filepath.Join(dir, name))
-			require.NoError(t, err)
-			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
-				"%s should have 0600 permissions", name)
-		}
-
-		pubInfo, err := os.Stat(filepath.Join(dir, DevicePublicKeyFile))
-		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0o644), pubInfo.Mode().Perm(),
-			"%s should have 0644 permissions", DevicePublicKeyFile)
+	if runtime.GOOS == "windows" {
+		t.Skip("NTFS does not support Unix file permissions")
 	}
+	for _, name := range []string{HouseholdKeyFile, DevicePrivateKeyFile} {
+		info, err := os.Stat(filepath.Join(dir, name))
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
+			"%s should have 0600 permissions", name)
+	}
+
+	pubInfo, err := os.Stat(filepath.Join(dir, DevicePublicKeyFile))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), pubInfo.Mode().Perm(),
+		"%s should have 0644 permissions", DevicePublicKeyFile)
 }
 
 func TestLoadHouseholdKeyNotFound(t *testing.T) {

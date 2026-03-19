@@ -34,12 +34,13 @@ func TestDeviceTokenFilePermissions(t *testing.T) {
 		SaveDeviceToken(dir, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
 	)
 
-	if runtime.GOOS != "windows" {
-		info, err := os.Stat(filepath.Join(dir, DeviceTokenFile))
-		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
-			"device token file should have 0600 permissions")
+	if runtime.GOOS == "windows" {
+		t.Skip("NTFS does not support Unix file permissions")
 	}
+	info, err := os.Stat(filepath.Join(dir, DeviceTokenFile))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
+		"device token file should have 0600 permissions")
 }
 
 func TestLoadDeviceTokenNotFound(t *testing.T) {

@@ -172,13 +172,15 @@ func (e *Engine) pushAll(ctx context.Context) (int, []OpPayload, error) {
 	for _, c := range pushResp.Confirmed {
 		if _, ok := pushedIDs[c.ID]; ok {
 			ids = append(ids, c.ID)
+		} else {
+			slog.Warn("relay confirmed unknown op ID", "id", c.ID)
 		}
 	}
 	if err := e.store.MarkSynced(ids); err != nil {
 		return 0, nil, fmt.Errorf("mark synced: %w", err)
 	}
 
-	return len(pushResp.Confirmed), ops, nil
+	return len(ids), ops, nil
 }
 
 // uploadPendingBlobs uploads blobs for document ops that were just pushed.

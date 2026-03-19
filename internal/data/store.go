@@ -1971,7 +1971,11 @@ func findOrCreateVendor(tx *gorm.DB, vendor Vendor) (Vendor, error) {
 	// Check if the vendor already exists before findOrCreate, so we know
 	// whether to write an oplog update for contact-field changes.
 	var preExisting Vendor
-	wasExisting := tx.Unscoped().Where(ColName+" = ?", vendor.Name).First(&preExisting).Error == nil
+	wasExisting := tx.Unscoped().
+		Where(ColName+" = ?", vendor.Name).
+		First(&preExisting).
+		Error == nil &&
+		!preExisting.DeletedAt.Valid
 
 	existing, err := findOrCreate(tx, vendor, vendor.Name, "vendor name",
 		func(db *gorm.DB) *gorm.DB { return db.Where(ColName+" = ?", vendor.Name) },
