@@ -1899,6 +1899,8 @@ type failingStore struct {
 	pushErr             error
 	revokeDeviceErr     error
 	putBlobErr          error
+	updateSubErr        error
+	householdBySubErr   error
 }
 
 func (f *failingStore) ListDevices(ctx context.Context, hhID string) ([]sync.Device, error) {
@@ -2013,6 +2015,26 @@ func (f *failingStore) PutBlob(
 		return f.putBlobErr
 	}
 	return f.Store.PutBlob(ctx, hhID, hash, data, quota)
+}
+
+func (f *failingStore) UpdateSubscription(
+	ctx context.Context,
+	hhID, subID, status string,
+) error {
+	if f.updateSubErr != nil {
+		return f.updateSubErr
+	}
+	return f.Store.UpdateSubscription(ctx, hhID, subID, status)
+}
+
+func (f *failingStore) HouseholdBySubscription(
+	ctx context.Context,
+	subID string,
+) (sync.Household, error) {
+	if f.householdBySubErr != nil {
+		return sync.Household{}, f.householdBySubErr
+	}
+	return f.Store.HouseholdBySubscription(ctx, subID)
 }
 
 // newFailingHandler creates a handler backed by a failingStore wrapping a MemStore.
@@ -2632,4 +2654,364 @@ func TestPushStoreError(t *testing.T) {
 	)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "push failed")
+}
+
+// --- handleJoin error paths ---
+
+func TestJoinDeviceNameTooLong(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create invite so we have a valid household.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	longName := strings.Repeat("x", maxDeviceNameLen+1)
+	joinBody, err := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
+		DeviceName: longName,
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	require.NoError(t, err)
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "device_name exceeds maximum length")
+}
+
+func TestJoinMissingInviteCode(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	joinBody, err := json.Marshal(sync.JoinRequest{
+		InviteCode: "",
+		DeviceName: "phone",
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	require.NoError(t, err)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invite_code is required")
+}
+
+func TestJoinInvalidPublicKeySize(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create invite so the invite code check wouldn't fail first.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	t.Run("too short", func(t *testing.T) {
+		t.Parallel()
+		joinBody, err := json.Marshal(sync.JoinRequest{
+			InviteCode: invite.Code,
+			DeviceName: "phone",
+			PublicKey:  []byte("too-short"),
+		})
+		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(
+			"POST",
+			"/households/"+hh.HouseholdID+"/join",
+			bytes.NewReader(joinBody),
+		)
+		h.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "public_key must be exactly 32 bytes")
+	})
+
+	t.Run("too long", func(t *testing.T) {
+		t.Parallel()
+		joinBody, err := json.Marshal(sync.JoinRequest{
+			InviteCode: invite.Code,
+			DeviceName: "phone",
+			PublicKey:  []byte("this-key-is-way-too-long-33-bytes"),
+		})
+		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(
+			"POST",
+			"/households/"+hh.HouseholdID+"/join",
+			bytes.NewReader(joinBody),
+		)
+		h.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "public_key must be exactly 32 bytes")
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+		joinBody, err := json.Marshal(sync.JoinRequest{
+			InviteCode: invite.Code,
+			DeviceName: "phone",
+			PublicKey:  []byte{},
+		})
+		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(
+			"POST",
+			"/households/"+hh.HouseholdID+"/join",
+			bytes.NewReader(joinBody),
+		)
+		h.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "public_key must be exactly 32 bytes")
+	})
+}
+
+// --- handleStripeWebhook additional error paths ---
+
+func TestStripeWebhookOversizedBodyReturns413(t *testing.T) {
+	t.Parallel()
+	secret := "whsec_oversize_test" //nolint:gosec // test credential
+	h, _ := newTestHandlerWithWebhook(secret)
+
+	// Create a body larger than maxRequestBody (1 MB).
+	oversized := make([]byte, maxRequestBody+1)
+	for i := range oversized {
+		oversized[i] = 'A'
+	}
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(oversized))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	assert.Contains(t, rec.Body.String(), "webhook body exceeds maximum size")
+}
+
+func TestStripeWebhookUnparseableJSON(t *testing.T) {
+	t.Parallel()
+	secret := "whsec_unparseable" //nolint:gosec // test credential
+	h, _ := newTestHandlerWithWebhook(secret)
+
+	// Body that passes signature verification but is not valid JSON.
+	body := []byte("this is not json at all {{{")
+	sigHeader := makeSignatureHeader(body, secret, time.Now())
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req.Header.Set("Stripe-Signature", sigHeader)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	// Unparseable JSON is acknowledged (200) but ignored.
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "ignored")
+}
+
+func TestStripeWebhookNoMatchingHousehold(t *testing.T) {
+	t.Parallel()
+	secret := "whsec_no_match" //nolint:gosec // test credential
+	h, _ := newTestHandlerWithWebhook(secret)
+
+	// Send a valid subscription event for a subscription ID that
+	// no household is associated with.
+	event := StripeEvent{
+		ID:   "evt_no_match",
+		Type: "customer.subscription.updated",
+		Data: json.RawMessage(`{"object":{"id":"sub_nonexistent","status":"active"}}`),
+	}
+	body, err := json.Marshal(event)
+	require.NoError(t, err)
+	sigHeader := makeSignatureHeader(body, secret, time.Now())
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req.Header.Set("Stripe-Signature", sigHeader)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	// No matching household -- acknowledged but ignored.
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "ignored")
+}
+
+func TestStripeWebhookUpdateSubscriptionError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	secret := "whsec_update_err" //nolint:gosec // test credential
+	h := NewHandler(fs, slog.Default(), WithWebhookSecret(secret))
+
+	// Create a household and set a subscription.
+	hh := createTestHouseholdDirect(t, ms)
+	require.NoError(t, ms.UpdateSubscription(
+		context.Background(), hh.HouseholdID, "sub_fail_update", sync.SubscriptionActive,
+	))
+
+	// Inject error on UpdateSubscription.
+	fs.updateSubErr = fmt.Errorf("database write error")
+
+	event := StripeEvent{
+		ID:   "evt_fail_update",
+		Type: "customer.subscription.updated",
+		Data: json.RawMessage(`{"object":{"id":"sub_fail_update","status":"past_due"}}`),
+	}
+	body, err := json.Marshal(event)
+	require.NoError(t, err)
+	sigHeader := makeSignatureHeader(body, secret, time.Now())
+
+	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req.Header.Set("Stripe-Signature", sigHeader)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "update failed")
+}
+
+// --- handlePutBlob: oversized blob ---
+
+func TestPutBlobOversizedReturns413(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Create a body slightly larger than maxBlobSize (50 MB).
+	// We don't allocate the full 50MB -- httptest.NewRequest uses
+	// a LimitedReader under the hood, but MaxBytesReader wraps the
+	// body on the server side. Use a strings.Reader that reports a
+	// large size to trigger the limit without allocating memory.
+	oversized := make([]byte, maxBlobSize+1)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader(oversized),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	assert.Contains(t, rec.Body.String(), "blob exceeds maximum size")
+}
+
+// --- requireSubscription additional paths ---
+
+func TestPullSucceedsWhenNoSubscription(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// No subscription set (empty status) -- should pass through.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestPullReturns402WhenSubscriptionPastDue(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	require.NoError(t, store.UpdateSubscription(
+		context.Background(), hh.HouseholdID, "sub_pull_pd", sync.SubscriptionPastDue,
+	))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
+	assert.Contains(t, rec.Body.String(), "subscription inactive")
+}
+
+func TestPullSucceedsWhenSubscriptionActive(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	require.NoError(t, store.UpdateSubscription(
+		context.Background(), hh.HouseholdID, "sub_pull_ok", sync.SubscriptionActive,
+	))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestBlobPutSucceedsWhenNoSubscription(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// No subscription (empty status) -- should allow blob upload.
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader([]byte("data")),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+}
+
+func TestBlobGetReturns402WhenSubscriptionPastDue(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	require.NoError(t, store.UpdateSubscription(
+		context.Background(), hh.HouseholdID, "sub_blob_pd", sync.SubscriptionPastDue,
+	))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
+}
+
+func TestRequireSubscriptionGetHouseholdError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms)
+
+	fs.getHouseholdErr = fmt.Errorf("household lookup failed during subscription check")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
 }

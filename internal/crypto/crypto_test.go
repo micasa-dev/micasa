@@ -288,6 +288,143 @@ func TestHouseholdKeyFileOversized(t *testing.T) {
 	assert.Error(t, err, "oversized key file should fail")
 }
 
+// --- atomicWriteFile error paths ---
+
+func TestAtomicWriteFileNonExistentDirectory(t *testing.T) {
+	t.Parallel()
+	badPath := filepath.Join(t.TempDir(), "no", "such", "dir", "key.dat")
+	err := atomicWriteFile(badPath, []byte("data"), 0o600)
+	assert.Error(t, err, "writing to a non-existent directory should fail")
+	assert.Contains(t, err.Error(), "create temp file")
+}
+
+func TestSaveDeviceKeyPairBadDirectory(t *testing.T) {
+	t.Parallel()
+	kp, err := GenerateDeviceKeyPair()
+	require.NoError(t, err)
+	err = SaveDeviceKeyPair("/no/such/directory", kp)
+	assert.Error(t, err, "saving to a non-existent directory should fail")
+	assert.Contains(t, err.Error(), "save device private key")
+}
+
+func TestSaveDeviceKeyPairPublicKeyWriteFailure(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("permission-based write prevention not reliable on Windows")
+	}
+
+	dir := t.TempDir()
+	kp, err := GenerateDeviceKeyPair()
+	require.NoError(t, err)
+
+	// Write the private key first, then make the directory read-only to
+	// prevent the public key write.
+	require.NoError(t, atomicWriteFile(
+		filepath.Join(dir, DevicePrivateKeyFile), kp.PrivateKey[:], 0o600,
+	))
+	require.NoError(t, os.Chmod(dir, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+
+	err = SaveDeviceKeyPair(dir, kp)
+	assert.Error(t, err, "should fail when directory is read-only")
+}
+
+func TestSaveHouseholdKeyBadDirectory(t *testing.T) {
+	t.Parallel()
+	key, err := GenerateHouseholdKey()
+	require.NoError(t, err)
+	err = SaveHouseholdKey("/no/such/directory", key)
+	assert.Error(t, err, "saving to a non-existent directory should fail")
+}
+
+// --- GenerateHouseholdKey / GenerateDeviceKeyPair uncovered error paths ---
+//
+// The remaining uncovered lines in GenerateHouseholdKey and
+// GenerateDeviceKeyPair are crypto/rand.Read failures. These are untestable
+// in normal conditions: crypto/rand reads from the OS entropy source
+// (/dev/urandom or equivalent) and only fails if the OS itself is broken.
+// Injecting a faulty reader would require changing the global rand.Reader,
+// which is not safe in parallel tests and would not test real behavior.
+
+// --- readBoundedFile ---
+
+func TestReadBoundedFileExceedsMaxSize(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	bigFile := filepath.Join(dir, "toobig.key")
+	require.NoError(t, os.WriteFile(bigFile, make([]byte, maxKeyFileSize+1), 0o600))
+
+	_, err := readBoundedFile(bigFile)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds")
+}
+
+func TestReadBoundedFileEmptyFile(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	emptyFile := filepath.Join(dir, "empty.key")
+	require.NoError(t, os.WriteFile(emptyFile, []byte{}, 0o600))
+
+	data, err := readBoundedFile(emptyFile)
+	require.NoError(t, err, "reading an empty file should not error")
+	assert.Empty(t, data, "empty file should return empty data")
+}
+
+func TestReadBoundedFileNotFound(t *testing.T) {
+	t.Parallel()
+	_, err := readBoundedFile(filepath.Join(t.TempDir(), "missing.key"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "open key file")
+}
+
+func TestReadBoundedFileExactMaxSize(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	exactFile := filepath.Join(dir, "exact.key")
+	require.NoError(t, os.WriteFile(exactFile, make([]byte, maxKeyFileSize), 0o600))
+
+	data, err := readBoundedFile(exactFile)
+	require.NoError(t, err, "file at exactly maxKeyFileSize should succeed")
+	assert.Len(t, data, maxKeyFileSize)
+}
+
+// --- LoadDeviceKeyPair additional error paths ---
+
+func TestLoadDeviceKeyPairPublicKeyWrongSize(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	kp, err := GenerateDeviceKeyPair()
+	require.NoError(t, err)
+
+	// Write valid private key, but truncated public key.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, DevicePrivateKeyFile), kp.PrivateKey[:], 0o600,
+	))
+	require.NoError(t, os.WriteFile( //nolint:gosec // test file, 0644 is intentional for public key
+		filepath.Join(dir, DevicePublicKeyFile), []byte("short"), 0o644,
+	))
+
+	_, err = LoadDeviceKeyPair(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "device public key")
+}
+
+func TestLoadDeviceKeyPairPrivateKeyWrongSize(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, DevicePrivateKeyFile), []byte("short"), 0o600,
+	))
+	require.NoError(t, os.WriteFile( //nolint:gosec // test file, 0644 is intentional for public key
+		filepath.Join(dir, DevicePublicKeyFile), make([]byte, KeySize), 0o644,
+	))
+
+	_, err := LoadDeviceKeyPair(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "device private key")
+}
+
 // --- SecretsDir ---
 
 func TestSecretsDirDefault(t *testing.T) {

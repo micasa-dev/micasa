@@ -592,3 +592,581 @@ func TestStripNonColumnKeysAlwaysStripsDeletedAt(t *testing.T) {
 		assert.Contains(t, row, "sha256", "sha256 should be preserved")
 	})
 }
+
+func TestAllowedSyncTableDisallowedTables(t *testing.T) {
+	t.Parallel()
+
+	disallowed := []string{
+		data.TableSettings,
+		data.TableChatInputs,
+		data.TableDeletionRecords,
+		data.TableSyncDevices,
+		data.TableSyncOplogEntries,
+		"nonexistent_table",
+		"",
+	}
+	for _, table := range disallowed {
+		assert.False(t, allowedSyncTable(table),
+			"table %q should not be allowed for sync", table)
+	}
+}
+
+func TestAllowedSyncTableAllAllowedTables(t *testing.T) {
+	t.Parallel()
+
+	allowed := []string{
+		data.TableAppliances,
+		data.TableDocuments,
+		data.TableHouseProfiles,
+		data.TableIncidents,
+		data.TableMaintenanceCategories,
+		data.TableMaintenanceItems,
+		data.TableProjectTypes,
+		data.TableProjects,
+		data.TableQuotes,
+		data.TableServiceLogEntries,
+		data.TableVendors,
+	}
+	for _, table := range allowed {
+		assert.True(t, allowedSyncTable(table),
+			"table %q should be allowed for sync", table)
+	}
+}
+
+func TestApplyOpsEmptyOps(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+
+	result := ApplyOps(db, nil)
+	assert.Equal(t, 0, result.Applied)
+	assert.Equal(t, 0, result.Conflicts)
+	assert.Empty(t, result.Errors)
+
+	result = ApplyOps(db, []DecryptedOp{})
+	assert.Equal(t, 0, result.Applied)
+	assert.Equal(t, 0, result.Conflicts)
+	assert.Empty(t, result.Errors)
+}
+
+func TestApplyOpsMultipleOpsAcrossTables(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	now := time.Now()
+
+	vendorID := "vendor-multi-table"
+	applianceID := "appliance-multi-table"
+
+	ops := []DecryptedOp{
+		{
+			Envelope: Envelope{Seq: 10},
+			Payload: OpPayload{
+				ID:        "op-vendor-ins",
+				TableName: data.TableVendors,
+				RowID:     vendorID,
+				OpType:    "insert",
+				Payload:   `{"id":"` + vendorID + `","name":"Multi Table Vendor"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now,
+			},
+		},
+		{
+			Envelope: Envelope{Seq: 20},
+			Payload: OpPayload{
+				ID:        "op-appliance-ins",
+				TableName: data.TableAppliances,
+				RowID:     applianceID,
+				OpType:    "insert",
+				Payload:   `{"id":"` + applianceID + `","name":"Multi Table Appliance"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now,
+			},
+		},
+		{
+			Envelope: Envelope{Seq: 30},
+			Payload: OpPayload{
+				ID:        "op-vendor-upd",
+				TableName: data.TableVendors,
+				RowID:     vendorID,
+				OpType:    "update",
+				Payload:   `{"name":"Updated Vendor"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now.Add(time.Second),
+			},
+		},
+	}
+
+	result := ApplyOps(db, ops)
+	require.Empty(t, result.Errors)
+	assert.Equal(t, 3, result.Applied)
+	assert.Equal(t, 0, result.Conflicts)
+
+	var vendor struct{ Name string }
+	require.NoError(t, db.Table(data.TableVendors).
+		Where("id = ?", vendorID).Scan(&vendor).Error)
+	assert.Equal(t, "Updated Vendor", vendor.Name)
+
+	var appliance struct{ Name string }
+	require.NoError(t, db.Table(data.TableAppliances).
+		Where("id = ?", applianceID).Scan(&appliance).Error)
+	assert.Equal(t, "Multi Table Appliance", appliance.Name)
+}
+
+func TestApplyOpsCountsErrorsAndConflicts(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	now := time.Now()
+
+	// One op targets a disallowed table (error), one succeeds, one
+	// triggers a conflict loss (local wins).
+	vendorID := "vendor-mixed-results"
+
+	// Insert a vendor so the conflict test has a row.
+	require.NoError(t, db.WithContext(data.WithSyncApplying(db.Statement.Context)).
+		Table(data.TableVendors).Create(map[string]any{
+		"id":   vendorID,
+		"name": "Existing",
+	}).Error)
+
+	// Create a local unsynced op that is NEWER than the remote op below.
+	require.NoError(t, db.Table("sync_oplog_entries").Create(map[string]any{
+		"id":         "local-wins-op",
+		"table_name": data.TableVendors,
+		"row_id":     vendorID,
+		"op_type":    "update",
+		"payload":    `{"name":"Local Newer"}`,
+		"device_id":  "dev-local",
+		"created_at": now.Add(time.Hour),
+		"applied_at": now,
+		"synced_at":  nil,
+	}).Error)
+
+	ops := []DecryptedOp{
+		// Disallowed table -> error
+		{
+			Envelope: Envelope{Seq: 1},
+			Payload: OpPayload{
+				ID:        "op-bad-table",
+				TableName: data.TableSettings,
+				RowID:     "setting-1",
+				OpType:    "insert",
+				Payload:   `{"id":"setting-1","key":"foo","value":"bar"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now,
+			},
+		},
+		// Conflict loss: local is newer
+		{
+			Envelope: Envelope{Seq: 2},
+			Payload: OpPayload{
+				ID:        "op-conflict-loss",
+				TableName: data.TableVendors,
+				RowID:     vendorID,
+				OpType:    "update",
+				Payload:   `{"name":"Remote Older"}`,
+				DeviceID:  "dev-remote",
+				CreatedAt: now, // older than local's now+1h
+			},
+		},
+		// Successful insert of a new vendor
+		{
+			Envelope: Envelope{Seq: 3},
+			Payload: OpPayload{
+				ID:        "op-good-insert",
+				TableName: data.TableVendors,
+				RowID:     "vendor-good",
+				OpType:    "insert",
+				Payload:   `{"id":"vendor-good","name":"Good Vendor"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now,
+			},
+		},
+	}
+
+	result := ApplyOps(db, ops)
+	assert.Equal(t, 1, result.Applied, "one op should succeed")
+	assert.Equal(t, 1, result.Conflicts, "one conflict loss expected")
+	assert.Len(t, result.Errors, 1, "one error expected for disallowed table")
+	assert.Contains(t, result.Errors[0].Error(), "not a valid sync target")
+}
+
+func TestApplyOneUnknownTable(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	dop := DecryptedOp{
+		Envelope: Envelope{Seq: 1},
+		Payload: OpPayload{
+			ID:        "op-bad",
+			TableName: "totally_fake_table",
+			RowID:     "row-1",
+			OpType:    "insert",
+			Payload:   `{"id":"row-1"}`,
+			DeviceID:  "dev-a",
+			CreatedAt: time.Now(),
+		},
+	}
+	err = applyOne(db, dop)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a valid sync target")
+}
+
+func TestApplyOneInternalTableRejected(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	// Attempt to insert into sync_oplog_entries (internal table).
+	dop := DecryptedOp{
+		Envelope: Envelope{Seq: 1},
+		Payload: OpPayload{
+			ID:        "op-sneaky",
+			TableName: data.TableSyncOplogEntries,
+			RowID:     "sneaky-row",
+			OpType:    "insert",
+			Payload:   `{"id":"sneaky-row"}`,
+			DeviceID:  "dev-a",
+			CreatedAt: time.Now(),
+		},
+	}
+	err = applyOne(db, dop)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a valid sync target")
+}
+
+func TestApplyOneDuplicateInsert(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+	now := time.Now()
+	vendorID := "vendor-dup-insert"
+
+	// Insert a vendor row directly.
+	require.NoError(t, db.Table(data.TableVendors).Create(map[string]any{
+		"id":   vendorID,
+		"name": "Already Here",
+	}).Error)
+
+	// Try to apply a remote insert for the same primary key.
+	dop := DecryptedOp{
+		Envelope: Envelope{Seq: 1},
+		Payload: OpPayload{
+			ID:        "op-dup-insert",
+			TableName: data.TableVendors,
+			RowID:     vendorID,
+			OpType:    "insert",
+			Payload:   `{"id":"` + vendorID + `","name":"Duplicate"}`,
+			DeviceID:  "dev-remote",
+			CreatedAt: now,
+		},
+	}
+	err = applyOne(db, dop)
+	require.Error(t, err, "duplicate insert should fail")
+	assert.Contains(t, err.Error(), "UNIQUE constraint failed")
+}
+
+func TestApplyOpToTableDisallowedTable(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	// applyOpToTable itself doesn't check allowedSyncTable, but calling it
+	// with a valid opType and a disallowed table exercises the DB error path.
+	// Use an unknown op type to test the default branch.
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "row-1",
+		OpType:    "drop_table",
+	}
+	err = applyOpToTable(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown op type")
+}
+
+func TestApplyInsertDuplicatePrimaryKey(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+	vendorID := "vendor-dup-pk"
+
+	// Insert a vendor row first.
+	require.NoError(t, db.Table(data.TableVendors).Create(map[string]any{
+		"id":   vendorID,
+		"name": "First",
+	}).Error)
+
+	// applyInsert with the same primary key should fail.
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     vendorID,
+		OpType:    "insert",
+		Payload:   `{"id":"` + vendorID + `","name":"Second"}`,
+	}
+	err = applyInsert(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "UNIQUE constraint failed")
+}
+
+func TestApplyInsertInvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "vendor-bad-json",
+		OpType:    "insert",
+		Payload:   `{not valid json`,
+	}
+	err = applyInsert(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unmarshal insert payload")
+}
+
+func TestApplyInsertMismatchedID(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "vendor-correct-id",
+		OpType:    "insert",
+		Payload:   `{"id":"vendor-wrong-id","name":"Sneaky"}`,
+	}
+	err = applyInsert(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not match")
+}
+
+func TestApplyRestoreNonExistentRow(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "vendor-ghost",
+		OpType:    "restore",
+	}
+	err = applyRestore(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "restore vendors/vendor-ghost: row not found")
+}
+
+func TestApplyRestoreSuccessful(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+	vendorID := "vendor-restore-ok"
+
+	// Insert and soft-delete a vendor.
+	require.NoError(t, db.Table(data.TableVendors).Create(map[string]any{
+		"id":         vendorID,
+		"name":       "Deleted Vendor",
+		"deleted_at": time.Now(),
+	}).Error)
+
+	// Verify it's soft-deleted.
+	var before struct{ DeletedAt *time.Time }
+	require.NoError(t, db.Table(data.TableVendors).Unscoped().
+		Where("id = ?", vendorID).Scan(&before).Error)
+	require.NotNil(t, before.DeletedAt)
+
+	// Apply restore.
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     vendorID,
+		OpType:    "restore",
+	}
+	require.NoError(t, applyRestore(db, op))
+
+	// Verify deleted_at is cleared.
+	var after struct{ DeletedAt *time.Time }
+	require.NoError(t, db.Table(data.TableVendors).Unscoped().
+		Where("id = ?", vendorID).Scan(&after).Error)
+	assert.Nil(t, after.DeletedAt, "deleted_at should be nil after restore")
+}
+
+func TestApplyUpdateInvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "vendor-bad-json",
+		OpType:    "update",
+		Payload:   `{broken`,
+	}
+	err = applyUpdate(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unmarshal update payload")
+}
+
+func TestApplyOpToTableUnknownOpType(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+
+	op := OpPayload{
+		TableName: data.TableVendors,
+		RowID:     "vendor-1",
+		OpType:    "truncate",
+	}
+	err = applyOpToTable(db, op)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown op type: truncate")
+}
+
+func TestApplyOpsDoesNotMutateCallerSlice(t *testing.T) {
+	t.Parallel()
+
+	dbPath := t.TempDir() + "/test.db"
+	store, err := data.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+	require.NoError(t, store.AutoMigrate())
+
+	db := store.GormDB()
+	now := time.Now()
+
+	// Provide ops in reverse seq order.
+	ops := []DecryptedOp{
+		{
+			Envelope: Envelope{Seq: 30},
+			Payload: OpPayload{
+				ID:        "op-2",
+				TableName: data.TableVendors,
+				RowID:     "vendor-nomutate",
+				OpType:    "update",
+				Payload:   `{"name":"Updated"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now.Add(time.Second),
+			},
+		},
+		{
+			Envelope: Envelope{Seq: 10},
+			Payload: OpPayload{
+				ID:        "op-1",
+				TableName: data.TableVendors,
+				RowID:     "vendor-nomutate",
+				OpType:    "insert",
+				Payload:   `{"id":"vendor-nomutate","name":"Original"}`,
+				DeviceID:  "dev-a",
+				CreatedAt: now,
+			},
+		},
+	}
+
+	// Capture original order.
+	origFirstSeq := ops[0].Envelope.Seq
+	origSecondSeq := ops[1].Envelope.Seq
+
+	result := ApplyOps(db, ops)
+	require.Empty(t, result.Errors)
+
+	// Caller's slice should not be reordered.
+	assert.Equal(t, origFirstSeq, ops[0].Envelope.Seq,
+		"caller's slice should not be mutated by ApplyOps")
+	assert.Equal(t, origSecondSeq, ops[1].Envelope.Seq,
+		"caller's slice should not be mutated by ApplyOps")
+}

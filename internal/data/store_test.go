@@ -3043,3 +3043,320 @@ func TestHardDeleteMaintenanceNotFound(t *testing.T) {
 	err := store.HardDeleteMaintenance("01JNOTEXIST000000000000999")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
+
+// --- findOrCreate: "name is required" error path ---
+
+func TestFindOrCreateVendorEmptyNameFails(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	require.NoError(t, store.CreateProject(&Project{
+		Title: "Quote Project", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned,
+	}))
+	projects, _ := store.ListProjects(false)
+	projectID := projects[0].ID
+
+	err := store.CreateQuote(
+		&Quote{ProjectID: projectID, TotalCents: 1000},
+		Vendor{Name: ""},
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "vendor name is required")
+}
+
+func TestFindOrCreateVendorWhitespaceOnlyNameFails(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	require.NoError(t, store.CreateProject(&Project{
+		Title: "Quote Project 2", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned,
+	}))
+	projects, _ := store.ListProjects(false)
+	projectID := projects[0].ID
+
+	err := store.CreateQuote(
+		&Quote{ProjectID: projectID, TotalCents: 1000},
+		Vendor{Name: "   "},
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "vendor name is required")
+}
+
+// --- softDeleteWith: deleting non-existent ID (RowsAffected == 0) ---
+
+func TestSoftDeleteNonExistentVendor(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	err := store.DeleteVendor("01JNOTEXIST000000000000999")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
+
+func TestSoftDeleteNonExistentProject(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	err := store.DeleteProject("01JNOTEXIST000000000000999")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
+
+func TestSoftDeleteNonExistentAppliance(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	err := store.DeleteAppliance("01JNOTEXIST000000000000999")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
+
+func TestSoftDeleteNonExistentDocument(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	err := store.DeleteDocument("01JNOTEXIST000000000000999")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
+
+// --- restoreSoftDeleted: verify full restore flow ---
+
+func TestRestoreAppliance(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateAppliance(&Appliance{Name: "Dishwasher"}))
+	appliances, err := store.ListAppliances(false)
+	require.NoError(t, err)
+	require.Len(t, appliances, 1)
+	id := appliances[0].ID
+
+	require.NoError(t, store.DeleteAppliance(id))
+
+	// Gone from active list.
+	appliances, err = store.ListAppliances(false)
+	require.NoError(t, err)
+	assert.Empty(t, appliances)
+
+	// Visible in unscoped list.
+	appliances, err = store.ListAppliances(true)
+	require.NoError(t, err)
+	require.Len(t, appliances, 1)
+	assert.True(t, appliances[0].DeletedAt.Valid)
+
+	// Restore succeeds.
+	require.NoError(t, store.RestoreAppliance(id))
+
+	appliances, err = store.ListAppliances(false)
+	require.NoError(t, err)
+	require.Len(t, appliances, 1)
+	assert.False(t, appliances[0].DeletedAt.Valid)
+
+	// DeletionRecord is marked as restored.
+	_, err = store.LastDeletion(DeletionEntityAppliance)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound,
+		"restored deletion record should not appear as pending")
+}
+
+func TestRestoreIncident(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Restore Test", Status: IncidentStatusOpen, Severity: IncidentSeverityWhenever,
+	}))
+	items, err := store.ListIncidents(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	id := items[0].ID
+
+	require.NoError(t, store.DeleteIncident(id))
+
+	items, err = store.ListIncidents(false)
+	require.NoError(t, err)
+	assert.Empty(t, items)
+
+	require.NoError(t, store.RestoreIncident(id))
+
+	items, err = store.ListIncidents(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "Restore Test", items[0].Title)
+}
+
+// --- UpdateDocument: oplog write path for partial update ---
+
+func TestUpdateDocumentPartialUpdateWritesOplog(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	content := []byte("oplog test content")
+	checksum := fmt.Sprintf("%x", sha256.Sum256(content))
+	require.NoError(t, store.CreateDocument(&Document{
+		Title:          "Oplog Doc",
+		FileName:       "oplog.pdf",
+		MIMEType:       "application/pdf",
+		SizeBytes:      int64(len(content)),
+		ChecksumSHA256: checksum,
+		Data:           content,
+	}))
+	docs, err := store.ListDocuments(false)
+	require.NoError(t, err)
+	require.Len(t, docs, 1)
+	docID := docs[0].ID
+
+	// Clear oplog so we only see the update entry.
+	store.db.Where("1=1").Delete(&SyncOplogEntry{})
+
+	// Partial update: change only title and notes, no file data.
+	require.NoError(t, store.UpdateDocument(Document{
+		ID:    docID,
+		Title: "Updated Oplog Doc",
+		Notes: "some notes",
+	}))
+
+	// Verify oplog entry was written for the update.
+	var entries []SyncOplogEntry
+	store.db.Order("id").Find(&entries)
+
+	var foundUpdate bool
+	for _, e := range entries {
+		if e.TableName == TableDocuments && e.RowID == docID && e.OpType == OpUpdate {
+			foundUpdate = true
+			break
+		}
+	}
+	assert.True(t, foundUpdate, "UpdateDocument should write an oplog entry for partial updates")
+
+	// Verify the document was actually updated.
+	updated, err := store.GetDocument(docID)
+	require.NoError(t, err)
+	assert.Equal(t, "Updated Oplog Doc", updated.Title)
+	assert.Equal(t, "some notes", updated.Notes)
+	assert.Equal(t, "oplog.pdf", updated.FileName, "file metadata preserved on partial update")
+}
+
+// --- HardDeleteIncident: with soft-deleted documents attached ---
+
+func TestHardDeleteIncidentWithSoftDeletedAndActiveDocuments(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	// Create incident.
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Multi-doc incident", Status: IncidentStatusOpen, Severity: IncidentSeveritySoon,
+	}))
+	items, _ := store.ListIncidents(false)
+	incID := items[0].ID
+
+	// Attach two documents.
+	require.NoError(t, store.CreateDocument(&Document{
+		Title: "Active Photo", EntityKind: DocumentEntityIncident, EntityID: incID,
+	}))
+	require.NoError(t, store.CreateDocument(&Document{
+		Title: "Deleted Receipt", EntityKind: DocumentEntityIncident, EntityID: incID,
+	}))
+
+	docs, err := store.ListDocumentsByEntity(DocumentEntityIncident, incID, false)
+	require.NoError(t, err)
+	require.Len(t, docs, 2)
+
+	// Soft-delete one of the documents.
+	var receiptID string
+	for _, d := range docs {
+		if d.Title == "Deleted Receipt" {
+			receiptID = d.ID
+			break
+		}
+	}
+	require.NotEmpty(t, receiptID)
+	require.NoError(t, store.DeleteDocument(receiptID))
+
+	// Hard-delete the incident.
+	require.NoError(t, store.HardDeleteIncident(incID))
+
+	// Incident is gone.
+	var inc Incident
+	err = store.db.Unscoped().First(&inc, "id = ?", incID).Error
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+
+	// Both documents survive -- detached but not destroyed.
+	// Active document is detached and alive.
+	detachedAlive, err := store.ListDocumentsByEntity(DocumentEntityNone, "", false)
+	require.NoError(t, err)
+	require.Len(t, detachedAlive, 1)
+	assert.Equal(t, "Active Photo", detachedAlive[0].Title)
+
+	// Soft-deleted document is detached and still soft-deleted.
+	detachedAll, err := store.ListDocumentsByEntity(DocumentEntityNone, "", true)
+	require.NoError(t, err)
+	require.Len(t, detachedAll, 2)
+
+	// No documents linked to the incident any more.
+	linked, err := store.ListDocumentsByEntity(DocumentEntityIncident, incID, true)
+	require.NoError(t, err)
+	assert.Empty(t, linked)
+
+	// DeletionRecord for incident is cleaned up.
+	_, err = store.LastDeletion(DeletionEntityIncident)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound,
+		"hard-delete should remove the DeletionRecord for the incident")
+}
+
+func TestHardDeleteIncidentWritesOplogForDetachedDocuments(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Oplog detach", Status: IncidentStatusOpen, Severity: IncidentSeverityWhenever,
+	}))
+	items, _ := store.ListIncidents(false)
+	incID := items[0].ID
+
+	require.NoError(t, store.CreateDocument(&Document{
+		Title: "Photo", EntityKind: DocumentEntityIncident, EntityID: incID,
+	}))
+	docs, _ := store.ListDocumentsByEntity(DocumentEntityIncident, incID, false)
+	docID := docs[0].ID
+
+	// Clear oplog.
+	store.db.Where("1=1").Delete(&SyncOplogEntry{})
+
+	require.NoError(t, store.HardDeleteIncident(incID))
+
+	var entries []SyncOplogEntry
+	store.db.Order("id").Find(&entries)
+
+	var foundDocUpdate, foundIncDelete bool
+	for _, e := range entries {
+		if e.TableName == TableDocuments && e.RowID == docID && e.OpType == OpUpdate {
+			foundDocUpdate = true
+		}
+		if e.TableName == TableIncidents && e.RowID == incID && e.OpType == OpDelete {
+			foundIncDelete = true
+		}
+	}
+	assert.True(t, foundDocUpdate, "oplog should have update entry for detached document")
+	assert.True(t, foundIncDelete, "oplog should have delete entry for hard-deleted incident")
+}
+
+func TestHardDeleteSoftDeletedIncident(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Soft then hard", Status: IncidentStatusOpen, Severity: IncidentSeverityWhenever,
+	}))
+	items, _ := store.ListIncidents(false)
+	incID := items[0].ID
+
+	// Soft-delete first.
+	require.NoError(t, store.DeleteIncident(incID))
+
+	// Hard-delete should still work on a soft-deleted incident.
+	require.NoError(t, store.HardDeleteIncident(incID))
+
+	// Completely gone.
+	var inc Incident
+	err := store.db.Unscoped().First(&inc, "id = ?", incID).Error
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
