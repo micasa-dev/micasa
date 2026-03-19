@@ -2893,11 +2893,6 @@ func TestPutBlobOversizedReturns413(t *testing.T) {
 	h, _ := newTestHandler()
 	hh := createTestHousehold(t, h)
 
-	// Create a body slightly larger than maxBlobSize (50 MB).
-	// We don't allocate the full 50MB -- httptest.NewRequest uses
-	// a LimitedReader under the hood, but MaxBytesReader wraps the
-	// body on the server side. Use a strings.Reader that reports a
-	// large size to trigger the limit without allocating memory.
 	oversized := make([]byte, maxBlobSize+1)
 
 	rec := httptest.NewRecorder()
