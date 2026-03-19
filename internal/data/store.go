@@ -1564,6 +1564,92 @@ func (s *Store) DeleteMaintenance(id string) error {
 	return s.softDelete(&MaintenanceItem{}, DeletionEntityMaintenance, id)
 }
 
+// HardDeleteMaintenance permanently removes a maintenance item and its child
+// service log entries. Before deleting, it writes oplog entries for each child
+// and detaches any documents linked to service logs (documents have intrinsic
+// value and survive parent deletion). Mirrors HardDeleteIncident.
+func (s *Store) HardDeleteMaintenance(id string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Find all child service log entries (including soft-deleted).
+		var logs []ServiceLogEntry
+		if err := tx.Unscoped().
+			Where(ColMaintenanceItemID+" = ?", id).
+			Find(&logs).Error; err != nil {
+			return err
+		}
+
+		if !isSyncApplying(tx) {
+			// Detach documents linked to each service log and write oplog
+			// entries for the detachment, then write delete entries for each
+			// service log.
+			for _, log := range logs {
+				var docs []Document
+				if err := tx.Unscoped().
+					Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
+						DocumentEntityServiceLog, log.ID).
+					Find(&docs).Error; err != nil {
+					return err
+				}
+				for i := range docs {
+					docs[i].EntityKind = DocumentEntityNone
+					docs[i].EntityID = ""
+					if err := writeOplogEntry(tx, TableDocuments, docs[i].ID, OpUpdate,
+						newDocumentOplogPayload(docs[i])); err != nil {
+						return err
+					}
+				}
+				if err := writeOplogEntryRaw(tx, TableServiceLogEntries, log.ID, OpDelete, "{}"); err != nil {
+					return err
+				}
+			}
+		}
+
+		// Detach documents from all service logs (persist the detachment).
+		for _, log := range logs {
+			if err := tx.Unscoped().Model(&Document{}).
+				Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
+					DocumentEntityServiceLog, log.ID).
+				Updates(map[string]any{
+					ColEntityKind: DocumentEntityNone,
+					ColEntityID:   "",
+				}).Error; err != nil {
+				return err
+			}
+		}
+
+		// Delete deletion records for the maintenance item and its children.
+		if err := tx.
+			Where(ColEntity+" = ? AND "+ColTargetID+" = ?", DeletionEntityMaintenance, id).
+			Delete(&DeletionRecord{}).Error; err != nil {
+			return err
+		}
+		for _, log := range logs {
+			if err := tx.
+				Where(ColEntity+" = ? AND "+ColTargetID+" = ?", DeletionEntityServiceLog, log.ID).
+				Delete(&DeletionRecord{}).Error; err != nil {
+				return err
+			}
+		}
+
+		// Write oplog delete entry for the maintenance item itself.
+		if !isSyncApplying(tx) {
+			if err := writeOplogEntryRaw(tx, TableMaintenanceItems, id, OpDelete, "{}"); err != nil {
+				return err
+			}
+		}
+
+		// Permanently remove the maintenance item (CASCADE deletes children).
+		result := tx.Unscoped().Where("id = ?", id).Delete(&MaintenanceItem{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+}
+
 func (s *Store) DeleteAppliance(id string) error {
 	if err := s.checkDependencies(id, []dependencyCheck{
 		{&MaintenanceItem{}, ColApplianceID, "appliance has %d active maintenance item(s) -- delete or reassign them first"},

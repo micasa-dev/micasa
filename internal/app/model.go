@@ -1802,7 +1802,12 @@ func (m *Model) toggleDeleteSelected() {
 
 func (m *Model) promptHardDelete() {
 	tab := m.effectiveTab()
-	if tab == nil || tab.Kind != tabIncidents {
+	if tab == nil {
+		return
+	}
+	switch tab.Kind {
+	case tabIncidents, tabMaintenance:
+	default:
 		return
 	}
 	meta, ok := m.selectedRowMeta()
@@ -1811,7 +1816,11 @@ func (m *Model) promptHardDelete() {
 		return
 	}
 	if !meta.Deleted {
-		m.setStatusError("Resolve the incident first (d), then permanently delete (D).")
+		if tab.Kind == tabIncidents {
+			m.setStatusError("Resolve the incident first (d), then permanently delete (D).")
+		} else {
+			m.setStatusError("Delete the item first (d), then permanently delete (D).")
+		}
 		return
 	}
 	m.confirm = confirmHardDelete
@@ -1822,7 +1831,14 @@ func (m *Model) handleConfirmHardDelete(key tea.KeyPressMsg) {
 	switch key.String() {
 	case keyY:
 		m.confirm = confirmNone
-		if err := m.store.HardDeleteIncident(m.hardDeleteID); err != nil {
+		tab := m.effectiveTab()
+		var err error
+		if tab != nil && tab.Kind == tabMaintenance {
+			err = m.store.HardDeleteMaintenance(m.hardDeleteID)
+		} else {
+			err = m.store.HardDeleteIncident(m.hardDeleteID)
+		}
+		if err != nil {
 			m.setStatusError(err.Error())
 			return
 		}

@@ -1016,6 +1016,46 @@ func TestIncidentHardDeleteErrorPath(t *testing.T) {
 	assert.Contains(t, m.statusView(), "not found")
 }
 
+func TestMaintenanceHardDeleteUserFlow(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	cats, err := m.store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	require.NoError(t, m.store.CreateMaintenance(&data.MaintenanceItem{
+		Name: "Replace filter", CategoryID: cats[0].ID,
+	}))
+
+	m.active = tabIndex(tabMaintenance)
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.Len(t, tab.Rows, 1)
+
+	// Enter edit mode, D on a non-deleted row should be rejected.
+	sendKey(m, "i")
+	sendKey(m, "D")
+	assert.NotEqual(t, confirmHardDelete, m.confirm, "should not prompt on non-deleted row")
+	assert.Contains(t, m.statusView(), "Delete the item first")
+
+	// Soft-delete first, then hard delete.
+	sendKey(m, "d")
+	require.NoError(t, m.reloadActiveTab())
+
+	sendKey(m, "D")
+	assert.Equal(t, confirmHardDelete, m.confirm, "should be in confirm state")
+	assert.Contains(t, m.statusView(), "Permanently delete this item")
+
+	// Press y to confirm.
+	sendKey(m, "y")
+	assert.Equal(t, confirmNone, m.confirm)
+	assert.Contains(t, m.statusView(), "Permanently deleted")
+
+	// Row is gone even with showDeleted.
+	tab.ShowDeleted = true
+	require.NoError(t, m.reloadActiveTab())
+	assert.Empty(t, tab.Rows)
+}
+
 // ---------------------------------------------------------------------------
 // applianceMaintenanceHandler (detail view)
 // ---------------------------------------------------------------------------

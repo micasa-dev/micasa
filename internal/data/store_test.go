@@ -2895,3 +2895,121 @@ func TestHardDeleteIncidentNotFound(t *testing.T) {
 	err := store.HardDeleteIncident("01JNOTEXIST000000000000999")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
+
+func TestHardDeleteMaintenanceRemovesRowAndChildren(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	// Create a maintenance item with a service log child.
+	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+		Name: "Filter change", CategoryID: cats[0].ID,
+	}))
+	items, _ := store.ListMaintenance(false)
+	require.Len(t, items, 1)
+	maintID := items[0].ID
+
+	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
+		MaintenanceItemID: maintID,
+		ServicedAt:        time.Now(),
+		Notes:             "Replaced filter",
+	}, Vendor{}))
+
+	logs, _ := store.ListServiceLog(maintID, false)
+	require.Len(t, logs, 1)
+
+	require.NoError(t, store.HardDeleteMaintenance(maintID))
+
+	// Maintenance item gone even with Unscoped.
+	var item MaintenanceItem
+	err = store.db.Unscoped().First(&item, "id = ?", maintID).Error
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+
+	// Child service log also gone.
+	var sle ServiceLogEntry
+	err = store.db.Unscoped().Where("maintenance_item_id = ?", maintID).First(&sle).Error
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
+
+func TestHardDeleteMaintenanceWritesOplogForChildren(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+		Name: "Oil change", CategoryID: cats[0].ID,
+	}))
+	items, _ := store.ListMaintenance(false)
+	maintID := items[0].ID
+
+	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
+		MaintenanceItemID: maintID,
+		ServicedAt:        time.Now(),
+	}, Vendor{}))
+	logs, _ := store.ListServiceLog(maintID, false)
+	logID := logs[0].ID
+
+	// Clear the oplog so we only see hard-delete entries.
+	store.db.Where("1=1").Delete(&SyncOplogEntry{})
+
+	require.NoError(t, store.HardDeleteMaintenance(maintID))
+
+	// Should have oplog entries for the service log child and the parent.
+	var entries []SyncOplogEntry
+	store.db.Order("id").Find(&entries)
+
+	// At least one delete entry for the service log and one for the maintenance item.
+	var foundChildDelete, foundParentDelete bool
+	for _, e := range entries {
+		if e.TableName == TableServiceLogEntries && e.RowID == logID && e.OpType == OpDelete {
+			foundChildDelete = true
+		}
+		if e.TableName == TableMaintenanceItems && e.RowID == maintID && e.OpType == OpDelete {
+			foundParentDelete = true
+		}
+	}
+	assert.True(t, foundChildDelete, "oplog should have delete entry for child service log")
+	assert.True(t, foundParentDelete, "oplog should have delete entry for parent maintenance item")
+}
+
+func TestHardDeleteMaintenanceDetachesServiceLogDocuments(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+		Name: "Roof repair", CategoryID: cats[0].ID,
+	}))
+	items, _ := store.ListMaintenance(false)
+	maintID := items[0].ID
+
+	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
+		MaintenanceItemID: maintID,
+		ServicedAt:        time.Now(),
+	}, Vendor{}))
+	logs, _ := store.ListServiceLog(maintID, false)
+	logID := logs[0].ID
+
+	// Attach a document to the service log.
+	require.NoError(t, store.CreateDocument(&Document{
+		Title: "Invoice", EntityKind: DocumentEntityServiceLog, EntityID: logID,
+	}))
+
+	require.NoError(t, store.HardDeleteMaintenance(maintID))
+
+	// Document is detached, not deleted.
+	detached, err := store.ListDocumentsByEntity(DocumentEntityNone, "", false)
+	require.NoError(t, err)
+	require.Len(t, detached, 1)
+	assert.Equal(t, "Invoice", detached[0].Title)
+}
+
+func TestHardDeleteMaintenanceNotFound(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	err := store.HardDeleteMaintenance("01JNOTEXIST000000000000999")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+}
