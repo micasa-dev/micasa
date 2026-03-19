@@ -294,7 +294,7 @@ func TestAtomicWriteFileNonExistentDirectory(t *testing.T) {
 	t.Parallel()
 	badPath := filepath.Join(t.TempDir(), "no", "such", "dir", "key.dat")
 	err := atomicWriteFile(badPath, []byte("data"), 0o600)
-	assert.Error(t, err, "writing to a non-existent directory should fail")
+	require.Error(t, err, "writing to a non-existent directory should fail")
 	assert.Contains(t, err.Error(), "create temp file")
 }
 
@@ -303,7 +303,7 @@ func TestSaveDeviceKeyPairBadDirectory(t *testing.T) {
 	kp, err := GenerateDeviceKeyPair()
 	require.NoError(t, err)
 	err = SaveDeviceKeyPair("/no/such/directory", kp)
-	assert.Error(t, err, "saving to a non-existent directory should fail")
+	require.Error(t, err, "saving to a non-existent directory should fail")
 	assert.Contains(t, err.Error(), "save device private key")
 }
 
@@ -322,8 +322,8 @@ func TestSaveDeviceKeyPairPublicKeyWriteFailure(t *testing.T) {
 	require.NoError(t, atomicWriteFile(
 		filepath.Join(dir, DevicePrivateKeyFile), kp.PrivateKey[:], 0o600,
 	))
-	require.NoError(t, os.Chmod(dir, 0o500))
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	require.NoError(t, os.Chmod(dir, 0o500))       //nolint:gosec // intentional read-only for test
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) //nolint:gosec // restore perms
 
 	err = SaveDeviceKeyPair(dir, kp)
 	assert.Error(t, err, "should fail when directory is read-only")
@@ -334,7 +334,7 @@ func TestSaveHouseholdKeyBadDirectory(t *testing.T) {
 	key, err := GenerateHouseholdKey()
 	require.NoError(t, err)
 	err = SaveHouseholdKey("/no/such/directory", key)
-	assert.Error(t, err, "saving to a non-existent directory should fail")
+	require.Error(t, err, "saving to a non-existent directory should fail")
 }
 
 // --- GenerateHouseholdKey / GenerateDeviceKeyPair uncovered error paths ---

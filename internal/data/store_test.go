@@ -3277,7 +3277,7 @@ func TestHardDeleteIncidentWithSoftDeletedAndActiveDocuments(t *testing.T) {
 	// Incident is gone.
 	var inc Incident
 	err = store.db.Unscoped().First(&inc, "id = ?", incID).Error
-	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
 
 	// Both documents survive -- detached but not destroyed.
 	// Active document is detached and alive.
