@@ -163,9 +163,16 @@ func (e *Engine) pushAll(ctx context.Context) (int, []OpPayload, error) {
 		return 0, nil, fmt.Errorf("push: %w", err)
 	}
 
+	// Only mark ops as synced if the relay confirmed IDs we actually pushed.
+	pushedIDs := make(map[string]struct{}, len(ops))
+	for _, op := range ops {
+		pushedIDs[op.ID] = struct{}{}
+	}
 	ids := make([]string, 0, len(pushResp.Confirmed))
 	for _, c := range pushResp.Confirmed {
-		ids = append(ids, c.ID)
+		if _, ok := pushedIDs[c.ID]; ok {
+			ids = append(ids, c.ID)
+		}
 	}
 	if err := e.store.MarkSynced(ids); err != nil {
 		return 0, nil, fmt.Errorf("mark synced: %w", err)

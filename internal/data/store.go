@@ -300,6 +300,7 @@ func (s *Store) Transaction(fn func(tx *Store) error) error {
 			db:              tx,
 			maxDocumentSize: s.maxDocumentSize,
 			currency:        s.currency,
+			deviceCell:      s.deviceCell,
 		}
 		return fn(txStore)
 	})
@@ -1374,7 +1375,19 @@ func (s *Store) UpdateDocument(doc Document) error {
 		return err
 	}
 	if !isSyncApplying(s.db) {
-		return writeOplogEntry(s.db, TableDocuments, doc.ID, OpUpdate, newDocumentOplogPayload(doc))
+		// Re-read the full row so the oplog entry contains all fields,
+		// not just the caller-provided partial update.
+		var full Document
+		if err := s.db.First(&full, ColID+" = ?", doc.ID).Error; err != nil {
+			return err
+		}
+		return writeOplogEntry(
+			s.db,
+			TableDocuments,
+			doc.ID,
+			OpUpdate,
+			newDocumentOplogPayload(full),
+		)
 	}
 	return nil
 }
@@ -1955,6 +1968,11 @@ func (s *Store) updateByID(table string, model any, id string, values any) error
 }
 
 func findOrCreateVendor(tx *gorm.DB, vendor Vendor) (Vendor, error) {
+	// Check if the vendor already exists before findOrCreate, so we know
+	// whether to write an oplog update for contact-field changes.
+	var preExisting Vendor
+	wasExisting := tx.Unscoped().Where(ColName+" = ?", vendor.Name).First(&preExisting).Error == nil
+
 	existing, err := findOrCreate(tx, vendor, vendor.Name, "vendor name",
 		func(db *gorm.DB) *gorm.DB { return db.Where(ColName+" = ?", vendor.Name) },
 		DeletionEntityVendor,
@@ -1980,6 +1998,13 @@ func findOrCreateVendor(tx *gorm.DB, vendor Vendor) (Vendor, error) {
 	// Re-read so the returned struct reflects the persisted state.
 	if err := tx.First(&existing, "id = ?", existing.ID).Error; err != nil {
 		return Vendor{}, err
+	}
+	// Write oplog update for contact-field changes on existing vendors.
+	// New vendors already have an insert oplog entry from AfterCreate.
+	if wasExisting && !isSyncApplying(tx) {
+		if err := writeOplogEntry(tx, TableVendors, existing.ID, OpUpdate, existing); err != nil {
+			return Vendor{}, err
+		}
 	}
 	return existing, nil
 }

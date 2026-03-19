@@ -507,6 +507,9 @@ func runProInvite(dbPath string) error {
 found:
 
 	// Encrypt household key for the joiner.
+	if len(exchange.JoinerPublicKey) != crypto.KeySize {
+		return fmt.Errorf("joiner public key has wrong size: got %d, want %d", len(exchange.JoinerPublicKey), crypto.KeySize)
+	}
 	var joinerPubKey [crypto.KeySize]byte
 	copy(joinerPubKey[:], exchange.JoinerPublicKey)
 
@@ -649,6 +652,9 @@ func runProJoin(code, dbPath, relayURL string) error {
 exchangeDone:
 
 	// Decrypt household key.
+	if len(joinResp.InviterPublicKey) != crypto.KeySize {
+		return fmt.Errorf("inviter public key has wrong size: got %d, want %d", len(joinResp.InviterPublicKey), crypto.KeySize)
+	}
 	var inviterPubKey [crypto.KeySize]byte
 	copy(inviterPubKey[:], joinResp.InviterPublicKey)
 

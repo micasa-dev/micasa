@@ -577,11 +577,15 @@ func TestOplogFindOrCreateVendorExisting(t *testing.T) {
 	_, err := store.FindOrCreateVendor(Vendor{Name: "Existing Co"})
 	require.NoError(t, err)
 
-	// findOrCreate of existing vendor does a contact field sync via
-	// tx.Model().Updates() which does NOT go through updateByIDWith,
-	// so no additional oplog entry is expected.
+	// findOrCreate of existing vendor writes an oplog update for
+	// contact-field changes so they propagate via sync.
 	after := oplogCount(t, store, TableVendors, v.ID)
-	assert.Equal(t, before, after, "findOrCreate existing should not write extra oplog")
+	assert.Equal(
+		t,
+		before+1,
+		after,
+		"findOrCreate existing should write oplog update for contact fields",
+	)
 }
 
 func TestOplogFindOrCreateVendorRestore(t *testing.T) {
