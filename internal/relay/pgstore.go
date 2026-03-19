@@ -329,14 +329,20 @@ func (s *PgStore) CreateInvite(
 	expiresAt := time.Now().Add(24 * time.Hour)
 	var result sync.InviteCode
 
-	// Wrap count + create in a transaction with FOR UPDATE to prevent a
-	// TOCTOU race where two concurrent requests both see active < max.
-	// READ COMMITTED alone is insufficient; the row-level lock serializes
-	// concurrent invite creation for the same household.
+	// Wrap count + create in a transaction. Lock the household row with
+	// FOR UPDATE to serialize concurrent invite creation for the same
+	// household (Postgres doesn't allow FOR UPDATE with aggregate functions).
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Lock household row as the serialization point.
+		if err := tx.Model(&pgHousehold{}).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", householdID).
+			First(&pgHousehold{}).Error; err != nil {
+			return fmt.Errorf("lock household: %w", err)
+		}
+
 		var active int64
 		if err := tx.Model(&pgInvite{}).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("household_id = ? AND consumed = false AND expires_at > ?",
 				householdID, time.Now()).
 			Count(&active).Error; err != nil {
