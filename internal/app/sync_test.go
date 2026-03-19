@@ -29,16 +29,6 @@ func sendMsg(m *Model, msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func TestSyncStartedSetsSyncing(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
-	m.syncCfg = &syncConfig{} // enable sync indicator
-
-	sendMsg(m, syncStartedMsg{})
-
-	assert.Equal(t, syncSyncing, m.syncStatus)
-}
-
 func TestSyncDoneSetsSynced(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)

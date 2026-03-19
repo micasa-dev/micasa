@@ -469,9 +469,6 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setStatusError(fmt.Sprintf("open: %s", typed.Err))
 		}
 		return m, nil
-	case syncStartedMsg:
-		m.syncStatus = syncSyncing
-		return m, nil
 	case syncDoneMsg:
 		if typed.BlobErrs > 0 {
 			m.setStatusError(fmt.Sprintf("sync: %d blob error(s)", typed.BlobErrs))

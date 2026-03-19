@@ -9,4 +9,4 @@ plans/
 deploy/
 result
 *.md
-*_test.go
+**/*_test.go

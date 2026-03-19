@@ -33,8 +33,6 @@ type syncConfig struct {
 
 // --- tea.Msg types ---
 
-type syncStartedMsg struct{}
-
 type syncDoneMsg struct {
 	Pulled    int
 	Pushed    int
