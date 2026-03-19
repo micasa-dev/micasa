@@ -3007,6 +3007,32 @@ func TestHardDeleteMaintenanceDetachesServiceLogDocuments(t *testing.T) {
 	assert.Equal(t, "Invoice", detached[0].Title)
 }
 
+func TestHardDeleteMaintenanceDetachesOwnDocuments(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
+		Name: "Gutter cleaning", CategoryID: cats[0].ID,
+	}))
+	items, _ := store.ListMaintenance(false)
+	maintID := items[0].ID
+
+	// Attach a document directly to the maintenance item.
+	require.NoError(t, store.CreateDocument(&Document{
+		Title: "Manual", EntityKind: DocumentEntityMaintenance, EntityID: maintID,
+	}))
+
+	require.NoError(t, store.HardDeleteMaintenance(maintID))
+
+	// Document is detached, not deleted.
+	detached, err := store.ListDocumentsByEntity(DocumentEntityNone, "", false)
+	require.NoError(t, err)
+	require.Len(t, detached, 1)
+	assert.Equal(t, "Manual", detached[0].Title)
+}
+
 func TestHardDeleteMaintenanceNotFound(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)

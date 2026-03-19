@@ -1566,8 +1566,9 @@ func (s *Store) DeleteMaintenance(id string) error {
 
 // HardDeleteMaintenance permanently removes a maintenance item and its child
 // service log entries. Before deleting, it writes oplog entries for each child
-// and detaches any documents linked to service logs (documents have intrinsic
-// value and survive parent deletion). Mirrors HardDeleteIncident.
+// and detaches any documents linked to the maintenance item or its service
+// logs (documents have intrinsic value and survive parent deletion).
+// Mirrors HardDeleteIncident.
 func (s *Store) HardDeleteMaintenance(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Find all child service log entries (including soft-deleted).
@@ -1579,6 +1580,23 @@ func (s *Store) HardDeleteMaintenance(id string) error {
 		}
 
 		if !isSyncApplying(tx) {
+			// Detach documents linked directly to the maintenance item.
+			var maintDocs []Document
+			if err := tx.Unscoped().
+				Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
+					DocumentEntityMaintenance, id).
+				Find(&maintDocs).Error; err != nil {
+				return err
+			}
+			for i := range maintDocs {
+				maintDocs[i].EntityKind = DocumentEntityNone
+				maintDocs[i].EntityID = ""
+				if err := writeOplogEntry(tx, TableDocuments, maintDocs[i].ID, OpUpdate,
+					newDocumentOplogPayload(maintDocs[i])); err != nil {
+					return err
+				}
+			}
+
 			// Detach documents linked to each service log and write oplog
 			// entries for the detachment, then write delete entries for each
 			// service log.
@@ -1602,6 +1620,17 @@ func (s *Store) HardDeleteMaintenance(id string) error {
 					return err
 				}
 			}
+		}
+
+		// Detach documents from the maintenance item itself.
+		if err := tx.Unscoped().Model(&Document{}).
+			Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
+				DocumentEntityMaintenance, id).
+			Updates(map[string]any{
+				ColEntityKind: DocumentEntityNone,
+				ColEntityID:   "",
+			}).Error; err != nil {
+			return err
 		}
 
 		// Detach documents from all service logs (persist the detachment).
