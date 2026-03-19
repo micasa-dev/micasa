@@ -97,11 +97,11 @@ func TestDecryptTruncatedFails(t *testing.T) {
 
 	// Too short to contain a nonce.
 	_, err = Decrypt(key, []byte("short"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Exactly nonce length, no ciphertext.
 	_, err = Decrypt(key, make([]byte, NonceSize))
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestEncryptProducesUniqueNonces(t *testing.T) {
@@ -247,12 +247,12 @@ func TestLoadDeviceKeyPairRejectsMismatchedKeys(t *testing.T) {
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, DevicePrivateKeyFile), kp1.PrivateKey[:], 0o600,
 	))
-	require.NoError(t, os.WriteFile(
+	require.NoError(t, os.WriteFile( //nolint:gosec // test file, 0644 is intentional for public key
 		filepath.Join(dir, DevicePublicKeyFile), kp2.PublicKey[:], 0o644,
 	))
 
 	_, err = LoadDeviceKeyPair(dir)
-	assert.Error(t, err, "mismatched pub/priv keys should fail validation")
+	require.Error(t, err, "mismatched pub/priv keys should fail validation")
 	assert.Contains(t, err.Error(), "does not match")
 }
 

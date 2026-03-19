@@ -337,7 +337,7 @@ func (m *Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.formInitCmd(), tea.RequestBackgroundColor}
 	if m.syncEngine != nil {
 		m.syncStatus = syncSyncing
-		cmds = append(cmds, doSync(m.syncEngine, m.syncCtx), syncTick())
+		cmds = append(cmds, doSync(m.syncCtx, m.syncEngine), syncTick())
 	}
 	return tea.Batch(cmds...)
 }
@@ -495,13 +495,13 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, syncTick()
 		}
 		m.syncStatus = syncSyncing
-		return m, tea.Batch(doSync(m.syncEngine, m.syncCtx), syncTick())
+		return m, tea.Batch(doSync(m.syncCtx, m.syncEngine), syncTick())
 	case syncDebounceMsg:
 		if typed.gen != m.syncDebounceGen || m.syncEngine == nil || m.syncStatus == syncSyncing {
 			return m, nil
 		}
 		m.syncStatus = syncSyncing
-		return m, doSync(m.syncEngine, m.syncCtx)
+		return m, doSync(m.syncCtx, m.syncEngine)
 	case editorFinishedMsg:
 		return m, m.handleEditorFinished(typed)
 	}

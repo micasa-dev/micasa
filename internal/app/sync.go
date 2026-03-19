@@ -51,7 +51,7 @@ type syncDebounceMsg struct{ gen int }
 
 // --- tea.Cmd constructors ---
 
-func doSync(engine *sync.Engine, ctx context.Context) tea.Cmd {
+func doSync(ctx context.Context, engine *sync.Engine) tea.Cmd {
 	return func() tea.Msg {
 		result, err := engine.Sync(ctx)
 		if err != nil {

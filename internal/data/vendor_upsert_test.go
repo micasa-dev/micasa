@@ -28,7 +28,7 @@ func TestFindOrCreateVendorNewVendor(t *testing.T) {
 	db := openTestDB(t)
 	v, err := findOrCreateVendor(db, Vendor{Name: "New Plumber"})
 	require.NoError(t, err)
-	assert.NotZero(t, v.ID)
+	assert.NotEmpty(t, v.ID)
 	assert.Equal(t, "New Plumber", v.Name)
 }
 

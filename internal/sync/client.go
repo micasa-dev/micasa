@@ -5,6 +5,7 @@ package sync
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -83,9 +84,14 @@ func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("construct push URL: %w", err)
 	}
-	req, err := http.NewRequest("POST", pushURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(
+		context.Background(),
+		"POST",
+		pushURL,
+		bytes.NewReader(body),
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create push request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
@@ -94,7 +100,7 @@ func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("push request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)
@@ -119,9 +125,9 @@ func (c *Client) Pull(afterSeq int64, limit int) (*PullResult, error) {
 		pullURL += "&limit=" + strconv.Itoa(limit)
 	}
 
-	req, err := http.NewRequest("GET", pullURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", pullURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create pull request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -129,7 +135,7 @@ func (c *Client) Pull(afterSeq int64, limit int) (*PullResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pull request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)

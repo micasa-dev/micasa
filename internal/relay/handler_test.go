@@ -1,6 +1,7 @@
 // Copyright 2026 Phillip Cloud
 // Licensed under the Apache License, Version 2.0
 
+//nolint:noctx // test file uses httptest.NewRequest which sets context internally
 package relay
 
 import (
@@ -32,10 +33,11 @@ func newTestHandler() (*Handler, *MemStore) {
 
 func createTestHousehold(t *testing.T, h *Handler) sync.CreateHouseholdResponse {
 	t.Helper()
-	body, _ := json.Marshal(sync.CreateHouseholdRequest{
+	body, err := json.Marshal(sync.CreateHouseholdRequest{
 		DeviceName: "test-desktop",
 		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
+	require.NoError(t, err)
 	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -49,7 +51,9 @@ func createTestHousehold(t *testing.T, h *Handler) sync.CreateHouseholdResponse 
 func authRequest(method, path string, body any, token string) *http.Request {
 	var buf bytes.Buffer
 	if body != nil {
-		_ = json.NewEncoder(&buf).Encode(body)
+		if err := json.NewEncoder(&buf).Encode(body); err != nil {
+			panic("marshal test body: " + err.Error())
+		}
 	}
 	req := httptest.NewRequest(method, path, &buf)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -86,7 +90,8 @@ func TestCreateHouseholdMissingName(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
 
-	body, _ := json.Marshal(sync.CreateHouseholdRequest{})
+	body, err := json.Marshal(sync.CreateHouseholdRequest{})
+	require.NoError(t, err)
 	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -218,14 +223,14 @@ func TestTwoDeviceSync(t *testing.T) {
 	tokenA := hhResp.DeviceToken
 
 	// Device B registers in same household.
-	regBody, _ := json.Marshal(sync.RegisterDeviceRequest{
+	regBody, err := json.Marshal(sync.RegisterDeviceRequest{
 		HouseholdID: hhResp.HouseholdID,
 		Name:        "test-laptop",
 		PublicKey:   []byte("device-b-pubkey-32-bytes-padding"),
 	})
-	rec := httptest.NewRecorder()
+	require.NoError(t, err)
 	// Register via store directly (no HTTP endpoint exposed in MVP).
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: hhResp.HouseholdID,
 		Name:        "test-laptop",
 		PublicKey:   regBody,
@@ -240,7 +245,7 @@ func TestTwoDeviceSync(t *testing.T) {
 		Ciphertext: []byte("encrypted-data-from-A"),
 		CreatedAt:  time.Now(),
 	}
-	rec = httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
 		authRequest("POST", "/sync/push", sync.PushRequest{Ops: []sync.Envelope{op}}, tokenA),
@@ -269,7 +274,7 @@ func TestPullPagination(t *testing.T) {
 	tokenA := hhResp.DeviceToken
 
 	// Register device B.
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: hhResp.HouseholdID,
 		Name:        "device-b",
 	})
@@ -277,7 +282,7 @@ func TestPullPagination(t *testing.T) {
 	tokenB := regResp.DeviceToken
 
 	// Push 5 ops from device A.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		op := sync.Envelope{
 			ID:         uid.New(),
 			Nonce:      []byte("nonce-24-bytes-padding!!"),
@@ -415,7 +420,7 @@ func TestCreateInviteMaxActiveLimit(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	// Create 3 invites (max).
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(
 			rec,
@@ -455,7 +460,8 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 		DeviceName: "joiner-phone",
 		PublicKey:  joinerPubKey,
 	}
-	joinBody, _ := json.Marshal(joinReq)
+	joinBody, err := json.Marshal(joinReq)
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -535,7 +541,8 @@ func TestJoinInvalidInviteCode(t *testing.T) {
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	}
-	joinBody, _ := json.Marshal(joinReq)
+	joinBody, err := json.Marshal(joinReq)
+	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -567,7 +574,8 @@ func TestJoinWrongHouseholdDoesNotConsumeAttempt(t *testing.T) {
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	}
-	joinBody, _ := json.Marshal(joinReq)
+	joinBody, err := json.Marshal(joinReq)
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -579,7 +587,8 @@ func TestJoinWrongHouseholdDoesNotConsumeAttempt(t *testing.T) {
 
 	// Join with the correct household ID should still succeed,
 	// proving no attempt was consumed by the wrong-ID request.
-	joinBody, _ = json.Marshal(joinReq)
+	joinBody, err = json.Marshal(joinReq)
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(
 		"POST",
@@ -606,10 +615,11 @@ func TestJoinMissingFields(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
 	// Missing device_name.
-	joinBody, _ := json.Marshal(sync.JoinRequest{
+	joinBody, err := json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -635,11 +645,12 @@ func TestKeyExchangeResultBeforeCompletion(t *testing.T) {
 	var invite sync.InviteCode
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
-	joinBody, _ := json.Marshal(sync.JoinRequest{
+	joinBody, err := json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -678,11 +689,12 @@ func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
 	var invite sync.InviteCode
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
-	joinBody, _ := json.Marshal(sync.JoinRequest{
+	joinBody, err := json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -747,11 +759,12 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
 	// Join and complete exchange.
-	joinBody, _ := json.Marshal(sync.JoinRequest{
+	joinBody, err := json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -777,11 +790,12 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	// Try to use invite code again -- should fail.
-	joinBody, _ = json.Marshal(sync.JoinRequest{
+	joinBody, err = json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
 		DeviceName: "tablet",
 		PublicKey:  []byte("another-key-32-bytes-padding!!!!"),
 	})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(
 		"POST",
@@ -820,7 +834,7 @@ func TestRevokeDevice(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	// Register a second device.
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: hh.HouseholdID,
 		Name:        "device-b",
 	})
@@ -905,11 +919,12 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 	var invite sync.InviteCode
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
-	joinBody, _ := json.Marshal(sync.JoinRequest{
+	joinBody, err := json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -981,7 +996,7 @@ func TestPushReturns402WhenSubscriptionCanceled(t *testing.T) {
 
 	// Set subscription to canceled.
 	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_123", sync.SubscriptionCanceled,
+		context.Background(), hh.HouseholdID, "sub_123", sync.SubscriptionCanceled,
 	))
 
 	op := sync.Envelope{
@@ -1010,7 +1025,7 @@ func TestPullReturns402WhenSubscriptionCanceled(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_456", sync.SubscriptionCanceled,
+		context.Background(), hh.HouseholdID, "sub_456", sync.SubscriptionCanceled,
 	))
 
 	rec := httptest.NewRecorder()
@@ -1027,7 +1042,7 @@ func TestPushSucceedsWhenSubscriptionActive(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_789", sync.SubscriptionActive,
+		context.Background(), hh.HouseholdID, "sub_789", sync.SubscriptionActive,
 	))
 
 	op := sync.Envelope{
@@ -1080,7 +1095,7 @@ func TestPushReturns402WhenSubscriptionPastDue(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_pd", sync.SubscriptionPastDue,
+		context.Background(), hh.HouseholdID, "sub_pd", sync.SubscriptionPastDue,
 	))
 
 	op := sync.Envelope{
@@ -1112,13 +1127,13 @@ func newTestHandlerWithWebhook(secret string) (*Handler, *MemStore) {
 
 func TestStripeWebhookUpdatesSubscription(t *testing.T) {
 	t.Parallel()
-	secret := "whsec_test_secret"
+	secret := "whsec_test_secret" //nolint:gosec // test credential
 	h, store := newTestHandlerWithWebhook(secret)
 
 	// Create household and set an initial subscription.
 	hh := createTestHousehold(t, h)
 	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_webhook_1", sync.SubscriptionActive,
+		context.Background(), hh.HouseholdID, "sub_webhook_1", sync.SubscriptionActive,
 	))
 
 	// Send a subscription.deleted webhook event.
@@ -1127,7 +1142,8 @@ func TestStripeWebhookUpdatesSubscription(t *testing.T) {
 		Type: "customer.subscription.deleted",
 		Data: json.RawMessage(`{"object":{"id":"sub_webhook_1","status":"canceled"}}`),
 	}
-	body, _ := json.Marshal(event)
+	body, err := json.Marshal(event)
+	require.NoError(t, err)
 	sigHeader := makeSignatureHeader(body, secret, time.Now())
 
 	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
@@ -1137,7 +1153,7 @@ func TestStripeWebhookUpdatesSubscription(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	// Verify household subscription status updated.
-	household, err := store.GetHousehold(nil, hh.HouseholdID)
+	household, err := store.GetHousehold(context.Background(), hh.HouseholdID)
 	require.NoError(t, err)
 	assert.Equal(t, sync.SubscriptionCanceled, household.StripeStatus)
 }
@@ -1151,7 +1167,8 @@ func TestStripeWebhookRejectsInvalidSignature(t *testing.T) {
 		Type: "customer.subscription.created",
 		Data: json.RawMessage(`{"object":{"id":"sub_1","status":"active"}}`),
 	}
-	body, _ := json.Marshal(event)
+	body, err := json.Marshal(event)
+	require.NoError(t, err)
 	// Sign with wrong secret.
 	sigHeader := makeSignatureHeader(body, "wrong_secret", time.Now())
 
@@ -1165,7 +1182,7 @@ func TestStripeWebhookRejectsInvalidSignature(t *testing.T) {
 
 func TestStripeWebhookIgnoresNonSubscriptionEvents(t *testing.T) {
 	t.Parallel()
-	secret := "whsec_ignore_test"
+	secret := "whsec_ignore_test" //nolint:gosec // test credential
 	h, _ := newTestHandlerWithWebhook(secret)
 
 	event := StripeEvent{
@@ -1173,7 +1190,8 @@ func TestStripeWebhookIgnoresNonSubscriptionEvents(t *testing.T) {
 		Type: "charge.succeeded",
 		Data: json.RawMessage(`{"object":{"id":"ch_123"}}`),
 	}
-	body, _ := json.Marshal(event)
+	body, err := json.Marshal(event)
+	require.NoError(t, err)
 	sigHeader := makeSignatureHeader(body, secret, time.Now())
 
 	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
@@ -1193,7 +1211,8 @@ func TestStripeWebhookNoSecretReturns503(t *testing.T) {
 		Type: "customer.subscription.updated",
 		Data: json.RawMessage(`{"object":{"id":"sub_nosec","status":"past_due"}}`),
 	}
-	body, _ := json.Marshal(event)
+	body, err := json.Marshal(event)
+	require.NoError(t, err)
 
 	// Without a webhook secret, the handler must refuse to process
 	// webhooks to prevent accepting arbitrary payloads in production.
@@ -1232,7 +1251,7 @@ func TestStatusEndpoint(t *testing.T) {
 
 	// Set subscription status.
 	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_status", sync.SubscriptionActive,
+		context.Background(), hh.HouseholdID, "sub_status", sync.SubscriptionActive,
 	))
 
 	// Push an op to increment ops count.
@@ -1448,7 +1467,7 @@ func TestBlobSubscriptionGating(t *testing.T) {
 
 	// Cancel subscription.
 	require.NoError(t, store.UpdateSubscription(
-		nil, hh.HouseholdID, "sub_blob", sync.SubscriptionCanceled,
+		context.Background(), hh.HouseholdID, "sub_blob", sync.SubscriptionCanceled,
 	))
 
 	rec := httptest.NewRecorder()
@@ -1483,7 +1502,7 @@ func TestStatusIncludesBlobStorage(t *testing.T) {
 	var status sync.StatusResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
 	assert.Equal(t, int64(len(payload)), status.BlobStorage.UsedBytes)
-	assert.True(t, status.BlobStorage.QuotaBytes > 0)
+	assert.Positive(t, status.BlobStorage.QuotaBytes)
 }
 
 func TestKeyExchangeExpiredReturnsError(t *testing.T) {
@@ -1501,11 +1520,12 @@ func TestKeyExchangeExpiredReturnsError(t *testing.T) {
 	var invite sync.InviteCode
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
-	joinBody, _ := json.Marshal(sync.JoinRequest{
+	joinBody, err := json.Marshal(sync.JoinRequest{
 		InviteCode: invite.Code,
 		DeviceName: "phone",
 		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
 	})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
 		"POST",
@@ -1589,7 +1609,7 @@ func TestAuthEdgeCases(t *testing.T) {
 		const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 		b := make([]byte, tokenLen)
 		for i := range b {
-			b[i] = charset[rand.IntN(len(charset))]
+			b[i] = charset[rand.IntN(len(charset))] //nolint:gosec // test helper
 		}
 		longToken := string(b)
 
@@ -1675,11 +1695,12 @@ func TestMalformedJSONBodies(t *testing.T) {
 		var invite sync.InviteCode
 		require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
 
-		joinBody, _ := json.Marshal(sync.JoinRequest{
+		joinBody, err := json.Marshal(sync.JoinRequest{
 			InviteCode: invite.Code,
 			DeviceName: "joiner",
 			PublicKey:  []byte("joiner-key-32-bytes-padding!!!!!"),
 		})
+		require.NoError(t, err)
 		rec = httptest.NewRecorder()
 		req := httptest.NewRequest(
 			"POST",
@@ -1786,7 +1807,7 @@ func TestCustomBlobQuota(t *testing.T) {
 	// Verify the 413 response reports the custom quota, not DefaultBlobQuota.
 	var body map[string]any
 	require.NoError(t, json.NewDecoder(rec2.Body).Decode(&body))
-	assert.Equal(t, float64(500), body["quota_bytes"])
+	assert.InDelta(t, float64(500), body["quota_bytes"], 0)
 }
 
 func TestSelfHostedIntegration(t *testing.T) {

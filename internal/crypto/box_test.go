@@ -77,7 +77,7 @@ func TestBoxTooShort(t *testing.T) {
 	t.Parallel()
 	var priv, pub [KeySize]byte
 	_, err := BoxOpen(priv, pub, make([]byte, NonceSize))
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "too short")
 }
 

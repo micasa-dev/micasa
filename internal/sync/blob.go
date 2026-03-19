@@ -5,6 +5,7 @@ package sync
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -39,9 +40,14 @@ func (c *Client) UploadBlob(householdID, hash string, plaintext []byte) error {
 	if err != nil {
 		return fmt.Errorf("construct blob upload URL: %w", err)
 	}
-	req, err := http.NewRequest("PUT", blobURL, bytes.NewReader(sealed))
+	req, err := http.NewRequestWithContext(
+		context.Background(),
+		"PUT",
+		blobURL,
+		bytes.NewReader(sealed),
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("create blob upload request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -49,7 +55,7 @@ func (c *Client) UploadBlob(householdID, hash string, plaintext []byte) error {
 	if err != nil {
 		return fmt.Errorf("upload blob: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusCreated, http.StatusConflict:
@@ -68,9 +74,9 @@ func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("construct blob download URL: %w", err)
 	}
-	req, err := http.NewRequest("GET", blobURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", blobURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create blob download request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -78,7 +84,7 @@ func (c *Client) DownloadBlob(householdID, hash string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("download blob: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body := readErrorBody(resp.Body)
@@ -116,9 +122,9 @@ func (c *Client) HasBlob(householdID, hash string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("construct blob check URL: %w", err)
 	}
-	req, err := http.NewRequest("HEAD", blobURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "HEAD", blobURL, nil)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("create blob check request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -126,7 +132,7 @@ func (c *Client) HasBlob(householdID, hash string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("check blob: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusOK:

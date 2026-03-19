@@ -4,6 +4,7 @@
 package sync_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cpcloud/micasa/internal/crypto"
@@ -151,7 +152,7 @@ func TestClientRevokeDevice(t *testing.T) {
 	require.NoError(t, err)
 
 	// Register a second device to revoke.
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: status.HouseholdID,
 		Name:        "second-device",
 	})

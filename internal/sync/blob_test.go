@@ -202,7 +202,7 @@ func TestBlobDownloadIntegrityCheckFailsOnTamperedContent(t *testing.T) {
 	require.NoError(t, err)
 
 	// Serve the tampered ciphertext for any GET request.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(sealed)
 	}))

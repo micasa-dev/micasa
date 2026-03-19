@@ -754,7 +754,10 @@ func runProDevicesList(dbPath string) error {
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	return enc.Encode(devices)
+	if err := enc.Encode(devices); err != nil {
+		return fmt.Errorf("encode devices: %w", err)
+	}
+	return nil
 }
 
 func newProDevicesRevokeCmd() *cobra.Command {
@@ -845,5 +848,8 @@ func runProConflicts(w io.Writer, dbPath string) error {
 			return fmt.Errorf("write conflict: %w", err)
 		}
 	}
-	return tw.Flush()
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("flush output: %w", err)
+	}
+	return nil
 }

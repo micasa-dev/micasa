@@ -364,98 +364,98 @@ type SyncDevice struct {
 	CreatedAt   time.Time
 }
 
-func (x *SyncOplogEntry) BeforeCreate(tx *gorm.DB) error {
+func (x *SyncOplogEntry) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *SyncDevice) BeforeCreate(tx *gorm.DB) error {
+func (x *SyncDevice) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *HouseProfile) BeforeCreate(tx *gorm.DB) error {
+func (x *HouseProfile) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *ProjectType) BeforeCreate(tx *gorm.DB) error {
+func (x *ProjectType) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *Vendor) BeforeCreate(tx *gorm.DB) error {
+func (x *Vendor) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *Project) BeforeCreate(tx *gorm.DB) error {
+func (x *Project) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *Quote) BeforeCreate(tx *gorm.DB) error {
+func (x *Quote) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *MaintenanceCategory) BeforeCreate(tx *gorm.DB) error {
+func (x *MaintenanceCategory) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *Appliance) BeforeCreate(tx *gorm.DB) error {
+func (x *Appliance) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *MaintenanceItem) BeforeCreate(tx *gorm.DB) error {
+func (x *MaintenanceItem) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *Incident) BeforeCreate(tx *gorm.DB) error {
+func (x *Incident) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *ServiceLogEntry) BeforeCreate(tx *gorm.DB) error {
+func (x *ServiceLogEntry) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *Document) BeforeCreate(tx *gorm.DB) error {
+func (x *Document) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}
 	return nil
 }
 
-func (x *DeletionRecord) BeforeCreate(tx *gorm.DB) error {
+func (x *DeletionRecord) BeforeCreate(_ *gorm.DB) error {
 	if x.ID == "" {
 		x.ID = uid.New()
 	}

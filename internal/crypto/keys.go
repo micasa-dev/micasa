@@ -69,14 +69,14 @@ func GenerateDeviceKeyPair() (DeviceKeyPair, error) {
 // readBoundedFile reads at most maxKeyFileSize bytes from path.
 // Returns an error if the file exceeds maxKeyFileSize.
 func readBoundedFile(path string) ([]byte, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // path is caller-controlled (key directory)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open key file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	data, err := io.ReadAll(io.LimitReader(f, maxKeyFileSize+1))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read key file: %w", err)
 	}
 	if len(data) > maxKeyFileSize {
 		return nil, fmt.Errorf("key file exceeds %d bytes: %s", maxKeyFileSize, path)
@@ -89,7 +89,11 @@ func readBoundedFile(path string) ([]byte, error) {
 // must never be committed, backed up to the cloud, or included in
 // SQLite backups.
 func SecretsDir() (string, error) {
-	return xdg.DataFile(filepath.Join("micasa", "secrets", "."))
+	dir, err := xdg.DataFile(filepath.Join("micasa", "secrets", "."))
+	if err != nil {
+		return "", fmt.Errorf("resolve secrets directory: %w", err)
+	}
+	return dir, nil
 }
 
 // SaveHouseholdKey writes the household key to dir/household.key with
@@ -137,23 +141,26 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	f, err := os.CreateTemp(dir, ".tmp-*")
 	if err != nil {
-		return err
+		return fmt.Errorf("create temp file: %w", err)
 	}
 	tmp := f.Name()
-	defer os.Remove(tmp) // clean up on any failure path
+	defer func() { _ = os.Remove(tmp) }() // clean up on any failure path
 
 	if err := f.Chmod(perm); err != nil {
-		f.Close()
-		return err
+		_ = f.Close()
+		return fmt.Errorf("chmod temp file: %w", err)
 	}
 	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
+		_ = f.Close()
+		return fmt.Errorf("write temp file: %w", err)
 	}
 	if err := f.Close(); err != nil {
-		return err
+		return fmt.Errorf("close temp file: %w", err)
 	}
-	return os.Rename(tmp, path)
+	if err := os.Rename(tmp, path); err != nil {
+		return fmt.Errorf("rename temp file: %w", err)
+	}
+	return nil
 }
 
 // LoadDeviceKeyPair reads the device keypair from dir/ and validates

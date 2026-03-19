@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testIncidentID = "01JTEST00000000000000005"
+
 // nonEmptyDashboard returns a minimal dashboardData that is not empty,
 // for tests that just need the dashboard overlay to render.
 func nonEmptyDashboard() dashboardData {
@@ -121,7 +123,7 @@ func TestDashboardNavigation(t *testing.T) {
 		{Tab: tabMaintenance, ID: "01JTEST00000000000000002"},
 		{Tab: tabProjects, ID: "01JTEST00000000000000003"},
 		{Tab: tabAppliances, ID: "01JTEST00000000000000004"},
-		{Tab: tabMaintenance, ID: "01JTEST00000000000000005"},
+		{Tab: tabMaintenance, ID: testIncidentID},
 	}
 	m.dash.cursor = 0
 
@@ -500,7 +502,7 @@ func TestBuildDashNav(t *testing.T) {
 			DaysFromNow: 45,
 		}},
 	}
-	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
+	m.dash.data.OpenIncidents[0].ID = testIncidentID
 	// Expand incidents (default) so its data rows appear in nav.
 	m.dash.expanded = map[string]bool{
 		dashSectionIncidents: true,
@@ -515,7 +517,7 @@ func TestBuildDashNav(t *testing.T) {
 	assert.True(t, m.dash.nav[0].IsHeader)
 	assert.Equal(t, dashSectionIncidents, m.dash.nav[0].Section)
 	assert.Equal(t, tabIncidents, m.dash.nav[1].Tab)
-	assert.Equal(t, "01JTEST00000000000000005", m.dash.nav[1].ID)
+	assert.Equal(t, testIncidentID, m.dash.nav[1].ID)
 
 	// Collapsed sections: just headers.
 	assert.True(t, m.dash.nav[2].IsHeader)
@@ -818,7 +820,7 @@ func TestDashboardExpandCollapseWithEKey(t *testing.T) {
 			DaysFromNow: daysUntil(now, overdueDue),
 		}},
 	}
-	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
+	m.dash.data.OpenIncidents[0].ID = testIncidentID
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.prepareDashboardView()
 
@@ -864,7 +866,7 @@ func TestDashboardSectionNavWithShiftJK(t *testing.T) {
 		}},
 		ActiveProjects: []data.Project{{ID: "01JTEST00000000000000020", Title: "Deck"}},
 	}
-	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
+	m.dash.data.OpenIncidents[0].ID = testIncidentID
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 
@@ -943,7 +945,7 @@ func TestDashboardEnterKeyJumpsToExpiring(t *testing.T) {
 			DaysFromNow: daysUntil(now, expiry),
 		}},
 	}
-	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
+	m.dash.data.OpenIncidents[0].ID = testIncidentID
 	m.dash.data.ExpiringWarranties[0].Appliance.ID = "01JTEST00000000000000099"
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
@@ -993,7 +995,7 @@ func TestDashboardExpiringNavWithInsuranceOnly(t *testing.T) {
 			DaysFromNow: 60,
 		},
 	}
-	m.dash.data.OpenIncidents[0].ID = "01JTEST00000000000000005"
+	m.dash.data.OpenIncidents[0].ID = testIncidentID
 	m.dash.expanded = map[string]bool{dashSectionIncidents: true}
 	m.buildDashNav()
 

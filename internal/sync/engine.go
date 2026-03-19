@@ -44,7 +44,7 @@ func NewEngine(store *data.Store, client *Client, householdID string) *Engine {
 // each phase so the caller can cancel mid-sync (e.g., on app shutdown).
 func (e *Engine) Sync(ctx context.Context) (SyncResult, error) {
 	if err := ctx.Err(); err != nil {
-		return SyncResult{}, err
+		return SyncResult{}, fmt.Errorf("sync cancelled: %w", err)
 	}
 
 	dev, err := e.store.GetSyncDevice()
@@ -58,7 +58,7 @@ func (e *Engine) Sync(ctx context.Context) (SyncResult, error) {
 	}
 
 	if err := ctx.Err(); err != nil {
-		return SyncResult{}, err
+		return SyncResult{}, fmt.Errorf("sync cancelled after pull: %w", err)
 	}
 
 	pushed, pushedOps, err := e.pushAll(ctx)
@@ -67,7 +67,7 @@ func (e *Engine) Sync(ctx context.Context) (SyncResult, error) {
 	}
 
 	if err := ctx.Err(); err != nil {
-		return SyncResult{}, err
+		return SyncResult{}, fmt.Errorf("sync cancelled after push: %w", err)
 	}
 
 	blobsUp, blobErrs := e.uploadPendingBlobs(ctx, pushedOps)
@@ -82,7 +82,7 @@ func (e *Engine) Sync(ctx context.Context) (SyncResult, error) {
 		BlobErrs:  blobErrs + fetchErrs,
 	}
 	if err := ctx.Err(); err != nil {
-		return result, err
+		return result, fmt.Errorf("sync interrupted during blob phase: %w", err)
 	}
 	return result, nil
 }
@@ -93,7 +93,7 @@ func (e *Engine) pullAll(ctx context.Context, lastSeq int64) (int, int, error) {
 	seq := lastSeq
 	for {
 		if err := ctx.Err(); err != nil {
-			return total, totalConflicts, err
+			return total, totalConflicts, fmt.Errorf("pull cancelled: %w", err)
 		}
 
 		result, err := e.client.Pull(seq, 100)
@@ -134,7 +134,7 @@ func (e *Engine) pullAll(ctx context.Context, lastSeq int64) (int, int, error) {
 
 func (e *Engine) pushAll(ctx context.Context) (int, []OpPayload, error) {
 	if err := ctx.Err(); err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("push cancelled: %w", err)
 	}
 
 	unsynced, err := e.store.UnsyncedOps()

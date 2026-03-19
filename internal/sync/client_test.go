@@ -4,6 +4,7 @@
 package sync_test
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http/httptest"
@@ -26,7 +27,7 @@ func setupTestRelay(t *testing.T) (*httptest.Server, *relay.MemStore, string) {
 	t.Cleanup(srv.Close)
 
 	// Create a household + device.
-	resp, err := store.CreateHousehold(nil, sync.CreateHouseholdRequest{
+	resp, err := store.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
 		DeviceName: "test-device",
 		PublicKey:  []byte("test-key-32-bytes-of-padding!!!!"),
 	})
@@ -59,8 +60,8 @@ func TestClientPushAndPull(t *testing.T) {
 	assert.Equal(t, int64(1), pushResp.Confirmed[0].Seq)
 
 	// Register device B and pull.
-	devAResp, _ := store.AuthenticateDevice(nil, tokenA)
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})
@@ -100,8 +101,8 @@ func TestClientEncryptionRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// Device B pulls and decrypts.
-	devAResp, _ := store.AuthenticateDevice(nil, tokenA)
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})
@@ -138,8 +139,8 @@ func TestClientWrongKeyCannotDecrypt(t *testing.T) {
 	_, err = clientA.Push(ops)
 	require.NoError(t, err)
 
-	devAResp, _ := store.AuthenticateDevice(nil, tokenA)
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})
@@ -175,8 +176,8 @@ func TestClientHandlesTrailingSlashInBaseURL(t *testing.T) {
 	require.Len(t, pushResp.Confirmed, 1)
 
 	// Pull should also work.
-	devAResp, _ := store.AuthenticateDevice(nil, tokenA)
-	regResp, err := store.RegisterDevice(nil, sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})

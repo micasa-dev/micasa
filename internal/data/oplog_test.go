@@ -854,7 +854,7 @@ func TestAllSyncableModelsHaveJSONTags(t *testing.T) {
 			// omitempty breaks null propagation in sync: nil pointers
 			// are omitted from the payload, so remote devices never
 			// clear the field.
-			assert.False(t, strings.Contains(tag, "omitempty"),
+			assert.NotContains(t, tag, "omitempty",
 				"%s.%s must not use omitempty (breaks sync null propagation)",
 				rt.Name(), f.Name)
 
@@ -870,9 +870,16 @@ func TestAllSyncableModelsHaveJSONTags(t *testing.T) {
 			if wantCol == "" {
 				wantCol = namer.ColumnName("", f.Name)
 			}
-			assert.Equal(t, wantCol, jsonName,
+			assert.Equal(
+				t,
+				wantCol,
+				jsonName, //nolint:testifylint // not JSON comparison, just column name strings
 				"%s.%s json tag %q does not match GORM column %q",
-				rt.Name(), f.Name, jsonName, wantCol)
+				rt.Name(),
+				f.Name,
+				jsonName,
+				wantCol,
+			)
 		}
 	}
 }

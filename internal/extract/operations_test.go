@@ -467,7 +467,7 @@ func TestParseStringID(t *testing.T) {
 	assert.Equal(t, "42", ParseStringID(" 42 "))
 	assert.Equal(t, "-1", ParseStringID(float64(-1)))
 	assert.Equal(t, "abc", ParseStringID("abc"))
-	assert.Equal(t, "", ParseStringID(nil))
+	assert.Empty(t, ParseStringID(nil))
 	// Concrete integer types from GORM/SQLite map queries.
 	assert.Equal(t, "7", ParseStringID(uint(7)))
 	assert.Equal(t, "9", ParseStringID(uint64(9)))
@@ -481,7 +481,7 @@ func TestParseStringID(t *testing.T) {
 	// []byte from GORM raw queries.
 	assert.Equal(t, "01JTEST", ParseStringID([]byte("01JTEST")))
 	// Unsupported type.
-	assert.Equal(t, "", ParseStringID([]int{1}))
+	assert.Empty(t, ParseStringID([]int{1}))
 	// ULID string passes through.
 	assert.Equal(t, "01ARZ3NDEKTSV4RRFFQ69G5FAV", ParseStringID("01ARZ3NDEKTSV4RRFFQ69G5FAV"))
 }

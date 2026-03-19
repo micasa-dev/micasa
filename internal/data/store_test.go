@@ -404,7 +404,7 @@ func TestSoftDeletePersistsAcrossRuns(t *testing.T) {
 			break
 		}
 	}
-	require.NotZero(t, projectID)
+	require.NotEmpty(t, projectID)
 	require.NoError(t, store1.DeleteProject(projectID))
 	_ = store1.Close()
 
@@ -1501,7 +1501,7 @@ func TestUpdateDocumentClearsEntity(t *testing.T) {
 	updated, err := store.GetDocument(original.ID)
 	require.NoError(t, err)
 	assert.Empty(t, updated.EntityKind)
-	assert.Zero(t, updated.EntityID)
+	assert.Empty(t, updated.EntityID)
 }
 
 func TestUpdateDocumentReplacesFile(t *testing.T) {
@@ -1669,7 +1669,7 @@ func TestUnlinkedDocumentFullLifecycle(t *testing.T) {
 	require.Len(t, docs, 1)
 	doc := docs[0]
 	assert.Empty(t, doc.EntityKind)
-	assert.Zero(t, doc.EntityID)
+	assert.Empty(t, doc.EntityID)
 
 	// User edits the notes.
 	require.NoError(t, store.UpdateDocument(Document{
@@ -2925,7 +2925,7 @@ func TestHardDeleteMaintenanceRemovesRowAndChildren(t *testing.T) {
 	// Maintenance item gone even with Unscoped.
 	var item MaintenanceItem
 	err = store.db.Unscoped().First(&item, "id = ?", maintID).Error
-	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
 
 	// Child service log also gone.
 	var sle ServiceLogEntry

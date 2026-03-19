@@ -5,6 +5,7 @@ package sync
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -23,9 +24,14 @@ func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdRe
 	if err != nil {
 		return nil, fmt.Errorf("construct create household URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("POST", hhURL, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(
+		context.Background(),
+		"POST",
+		hhURL,
+		bytes.NewReader(body),
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create household request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
@@ -33,7 +39,7 @@ func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdRe
 	if err != nil {
 		return nil, fmt.Errorf("create household request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		respBody := readErrorBody(resp.Body)
@@ -53,9 +59,9 @@ func (c *Client) Invite(householdID string) (*InviteCode, error) {
 	if err != nil {
 		return nil, fmt.Errorf("construct invite URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("POST", inviteURL, nil)
+	httpReq, err := http.NewRequestWithContext(context.Background(), "POST", inviteURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create invite request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -63,7 +69,7 @@ func (c *Client) Invite(householdID string) (*InviteCode, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invite request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		respBody := readErrorBody(resp.Body)
@@ -88,9 +94,14 @@ func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error
 	if err != nil {
 		return nil, fmt.Errorf("construct join URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("POST", joinURL, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(
+		context.Background(),
+		"POST",
+		joinURL,
+		bytes.NewReader(body),
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create join request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
@@ -98,7 +109,7 @@ func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error
 	if err != nil {
 		return nil, fmt.Errorf("join request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)
@@ -118,9 +129,9 @@ func (c *Client) Status() (*StatusResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("construct status URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("GET", statusURL, nil)
+	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", statusURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create status request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -128,7 +139,7 @@ func (c *Client) Status() (*StatusResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("status request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)
@@ -148,9 +159,9 @@ func (c *Client) ListDevices(householdID string) ([]Device, error) {
 	if err != nil {
 		return nil, fmt.Errorf("construct list devices URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("GET", devicesURL, nil)
+	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", devicesURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create list devices request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -158,7 +169,7 @@ func (c *Client) ListDevices(householdID string) ([]Device, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list devices request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)
@@ -180,9 +191,9 @@ func (c *Client) RevokeDevice(householdID, deviceID string) error {
 	if err != nil {
 		return fmt.Errorf("construct revoke device URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("DELETE", revokeURL, nil)
+	httpReq, err := http.NewRequestWithContext(context.Background(), "DELETE", revokeURL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("create revoke device request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -190,7 +201,7 @@ func (c *Client) RevokeDevice(householdID, deviceID string) error {
 	if err != nil {
 		return fmt.Errorf("revoke device request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)
@@ -205,9 +216,9 @@ func (c *Client) GetPendingExchanges(householdID string) ([]PendingKeyExchange, 
 	if err != nil {
 		return nil, fmt.Errorf("construct pending exchanges URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("GET", exchURL, nil)
+	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", exchURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create pending exchanges request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 
@@ -215,7 +226,7 @@ func (c *Client) GetPendingExchanges(householdID string) ([]PendingKeyExchange, 
 	if err != nil {
 		return nil, fmt.Errorf("pending exchanges request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)
@@ -248,9 +259,14 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 	if err != nil {
 		return fmt.Errorf("construct complete key exchange URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("POST", completeURL, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(
+		context.Background(),
+		"POST",
+		completeURL,
+		bytes.NewReader(body),
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("create complete key exchange request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -259,7 +275,7 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 	if err != nil {
 		return fmt.Errorf("complete key exchange request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)
@@ -277,16 +293,16 @@ func (c *Client) GetKeyExchangeResult(exchangeID string) (*KeyExchangeResult, er
 	if err != nil {
 		return nil, fmt.Errorf("construct key exchange result URL: %w", err)
 	}
-	httpReq, err := http.NewRequest("GET", resultURL, nil)
+	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", resultURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create key exchange result request: %w", err)
 	}
 
 	resp, err := c.http.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("key exchange result request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody := readErrorBody(resp.Body)

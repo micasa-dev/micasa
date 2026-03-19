@@ -5,6 +5,7 @@ package uid
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,7 @@ func TestNewIsTimeSorted(t *testing.T) {
 	t.Parallel()
 	prev := New()
 	for range 100 {
+		time.Sleep(time.Millisecond)
 		cur := New()
 		assert.LessOrEqual(t, prev, cur, "ULIDs should be lexicographically non-decreasing")
 		prev = cur

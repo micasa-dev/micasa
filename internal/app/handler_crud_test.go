@@ -1083,7 +1083,7 @@ func TestApplianceMaintenanceHandlerLoad(t *testing.T) {
 	rows, meta, _, err := h.Load(m.store, false)
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
-	assert.NotZero(t, meta[0].ID)
+	assert.NotEmpty(t, meta[0].ID)
 }
 
 func TestApplianceMaintenanceInlineEditSeasonDispatchesCorrectly(t *testing.T) {

@@ -125,7 +125,12 @@ func TestConcurrentPutBlobRespectsQuota(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 			url := "/blobs/" + hh.HouseholdID + "/" + blobs[idx].hash
-			req := httptest.NewRequest("PUT", url, bytes.NewReader(blobs[idx].data))
+			req := httptest.NewRequestWithContext(
+				context.Background(),
+				"PUT",
+				url,
+				bytes.NewReader(blobs[idx].data),
+			)
 			req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
@@ -151,7 +156,7 @@ func TestConcurrentPutBlobRespectsQuota(t *testing.T) {
 		}
 	}
 
-	require.Greater(t, created, 0, "at least one blob should have been stored")
+	require.Positive(t, created, "at least one blob should have been stored")
 	assert.Equal(
 		t,
 		goroutines,

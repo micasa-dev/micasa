@@ -340,11 +340,11 @@ func TestProStorageCmdWiring(t *testing.T) {
 
 	root := newRootCmd()
 	proCmd, _, err := root.Find([]string{"pro"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, proCmd)
 
 	storageCmd, _, err := root.Find([]string{"pro", "storage"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, storageCmd)
 	assert.Equal(t, "storage [database-path]", storageCmd.Use)
 }

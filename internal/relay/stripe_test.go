@@ -26,7 +26,7 @@ func makeSignatureHeader(payload []byte, secret string, ts time.Time) string {
 
 func TestVerifyWebhookSignatureValid(t *testing.T) {
 	t.Parallel()
-	secret := "whsec_test_secret"
+	secret := "whsec_test_secret" //nolint:gosec // test credential
 	payload := []byte(`{"type":"customer.subscription.created"}`)
 	header := makeSignatureHeader(payload, secret, time.Now())
 
@@ -40,7 +40,7 @@ func TestVerifyWebhookSignatureWrongSecret(t *testing.T) {
 	header := makeSignatureHeader(payload, "correct-secret", time.Now())
 
 	err := VerifyWebhookSignature(payload, header, "wrong-secret", 5*time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no matching signature")
 }
 
@@ -51,14 +51,14 @@ func TestVerifyWebhookSignatureExpired(t *testing.T) {
 	header := makeSignatureHeader(payload, secret, time.Now().Add(-10*time.Minute))
 
 	err := VerifyWebhookSignature(payload, header, secret, 5*time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "too old")
 }
 
 func TestVerifyWebhookSignatureInvalidHeader(t *testing.T) {
 	t.Parallel()
 	err := VerifyWebhookSignature([]byte("body"), "garbage", "secret", 5*time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid signature header")
 }
 
@@ -70,12 +70,12 @@ func TestVerifyWebhookSignatureTamperedPayload(t *testing.T) {
 
 	tampered := []byte(`{"type":"tampered"}`)
 	err := VerifyWebhookSignature(tampered, header, secret, 5*time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestParseSubscriptionEvent(t *testing.T) {
 	t.Parallel()
-	data, _ := json.Marshal(StripeSubscriptionData{
+	data, err := json.Marshal(StripeSubscriptionData{
 		Object: struct {
 			ID     string `json:"id"`
 			Status string `json:"status"`
@@ -84,6 +84,7 @@ func TestParseSubscriptionEvent(t *testing.T) {
 			Status: "active",
 		},
 	})
+	require.NoError(t, err)
 	event := StripeEvent{
 		ID:   "evt_1",
 		Type: "customer.subscription.created",
@@ -100,7 +101,7 @@ func TestParseSubscriptionEventUnsupportedType(t *testing.T) {
 	t.Parallel()
 	event := StripeEvent{Type: "charge.succeeded", Data: json.RawMessage(`{}`)}
 	_, _, err := ParseSubscriptionEvent(event)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported")
 }
 
@@ -111,6 +112,6 @@ func TestVerifyWebhookSignatureFutureTimestamp(t *testing.T) {
 	header := makeSignatureHeader(payload, secret, time.Now().Add(10*time.Minute))
 
 	err := VerifyWebhookSignature(payload, header, secret, 5*time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "future")
 }

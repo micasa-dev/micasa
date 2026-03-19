@@ -37,15 +37,15 @@ func TestEntityRows_WithDemoData(t *testing.T) {
 
 	// Every row should have a nonzero ID and non-empty name.
 	for _, r := range ctx.Vendors {
-		assert.NotZero(t, r.ID)
+		assert.NotEmpty(t, r.ID)
 		assert.NotEmpty(t, r.Name)
 	}
 	for _, r := range ctx.Projects {
-		assert.NotZero(t, r.ID)
+		assert.NotEmpty(t, r.ID)
 		assert.NotEmpty(t, r.Name)
 	}
 	for _, r := range ctx.Appliances {
-		assert.NotZero(t, r.ID)
+		assert.NotEmpty(t, r.ID)
 		assert.NotEmpty(t, r.Name)
 	}
 }
