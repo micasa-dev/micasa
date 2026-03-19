@@ -1880,3 +1880,758 @@ func TestWithBlobQuotaNegativePanics(t *testing.T) {
 	t.Parallel()
 	assert.Panics(t, func() { WithBlobQuota(-1) })
 }
+
+// --- failingStore: error-injecting wrapper for coverage of store error paths ---
+
+// failingStore wraps a real Store and lets tests inject errors for specific methods.
+type failingStore struct {
+	Store
+	listDevicesErr      error
+	getHouseholdErr     error
+	opsCountErr         error
+	blobUsageErr        error
+	getPendingErr       error
+	hasBlobErr          error
+	getBlobErr          error
+	createHouseholdErr  error
+	completeExchangeErr error
+	pullErr             error
+	pushErr             error
+	revokeDeviceErr     error
+	putBlobErr          error
+}
+
+func (f *failingStore) ListDevices(ctx context.Context, hhID string) ([]sync.Device, error) {
+	if f.listDevicesErr != nil {
+		return nil, f.listDevicesErr
+	}
+	return f.Store.ListDevices(ctx, hhID)
+}
+
+func (f *failingStore) GetHousehold(ctx context.Context, hhID string) (sync.Household, error) {
+	if f.getHouseholdErr != nil {
+		return sync.Household{}, f.getHouseholdErr
+	}
+	return f.Store.GetHousehold(ctx, hhID)
+}
+
+func (f *failingStore) OpsCount(ctx context.Context, hhID string) (int64, error) {
+	if f.opsCountErr != nil {
+		return 0, f.opsCountErr
+	}
+	return f.Store.OpsCount(ctx, hhID)
+}
+
+func (f *failingStore) BlobUsage(ctx context.Context, hhID string) (int64, error) {
+	if f.blobUsageErr != nil {
+		return 0, f.blobUsageErr
+	}
+	return f.Store.BlobUsage(ctx, hhID)
+}
+
+func (f *failingStore) GetPendingExchanges(
+	ctx context.Context,
+	hhID string,
+) ([]sync.PendingKeyExchange, error) {
+	if f.getPendingErr != nil {
+		return nil, f.getPendingErr
+	}
+	return f.Store.GetPendingExchanges(ctx, hhID)
+}
+
+func (f *failingStore) HasBlob(ctx context.Context, hhID, hash string) (bool, error) {
+	if f.hasBlobErr != nil {
+		return false, f.hasBlobErr
+	}
+	return f.Store.HasBlob(ctx, hhID, hash)
+}
+
+func (f *failingStore) GetBlob(ctx context.Context, hhID, hash string) ([]byte, error) {
+	if f.getBlobErr != nil {
+		return nil, f.getBlobErr
+	}
+	return f.Store.GetBlob(ctx, hhID, hash)
+}
+
+func (f *failingStore) CreateHousehold(
+	ctx context.Context,
+	req sync.CreateHouseholdRequest,
+) (sync.CreateHouseholdResponse, error) {
+	if f.createHouseholdErr != nil {
+		return sync.CreateHouseholdResponse{}, f.createHouseholdErr
+	}
+	return f.Store.CreateHousehold(ctx, req)
+}
+
+func (f *failingStore) CompleteKeyExchange(
+	ctx context.Context,
+	hhID, exchangeID string,
+	encryptedKey []byte,
+) error {
+	if f.completeExchangeErr != nil {
+		return f.completeExchangeErr
+	}
+	return f.Store.CompleteKeyExchange(ctx, hhID, exchangeID, encryptedKey)
+}
+
+func (f *failingStore) Pull(
+	ctx context.Context,
+	householdID, excludeDeviceID string,
+	afterSeq int64,
+	limit int,
+) ([]sync.Envelope, bool, error) {
+	if f.pullErr != nil {
+		return nil, false, f.pullErr
+	}
+	return f.Store.Pull(ctx, householdID, excludeDeviceID, afterSeq, limit)
+}
+
+func (f *failingStore) Push(
+	ctx context.Context,
+	ops []sync.Envelope,
+) ([]sync.PushConfirmation, error) {
+	if f.pushErr != nil {
+		return nil, f.pushErr
+	}
+	return f.Store.Push(ctx, ops)
+}
+
+func (f *failingStore) RevokeDevice(ctx context.Context, hhID, deviceID string) error {
+	if f.revokeDeviceErr != nil {
+		return f.revokeDeviceErr
+	}
+	return f.Store.RevokeDevice(ctx, hhID, deviceID)
+}
+
+func (f *failingStore) PutBlob(
+	ctx context.Context,
+	hhID, hash string,
+	data []byte,
+	quota int64,
+) error {
+	if f.putBlobErr != nil {
+		return f.putBlobErr
+	}
+	return f.Store.PutBlob(ctx, hhID, hash, data, quota)
+}
+
+// newFailingHandler creates a handler backed by a failingStore wrapping a MemStore.
+func newFailingHandler(fs *failingStore) *Handler {
+	return NewHandler(fs, slog.Default())
+}
+
+// createTestHouseholdDirect creates a household via the underlying MemStore,
+// then authenticates the device token through the failingStore. Returns the
+// response so tests can use the token for authenticated requests.
+func createTestHouseholdDirect(
+	t *testing.T,
+	ms *MemStore,
+	h *Handler,
+) sync.CreateHouseholdResponse {
+	t.Helper()
+	resp, err := ms.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+		DeviceName: "test-desktop",
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+	})
+	require.NoError(t, err)
+	return resp
+}
+
+// --- handleStatus error paths ---
+
+func TestStatusListDevicesError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.listDevicesErr = fmt.Errorf("database connection lost")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
+}
+
+func TestStatusGetHouseholdError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.getHouseholdErr = fmt.Errorf("household lookup failed")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
+}
+
+func TestStatusOpsCountError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.opsCountErr = fmt.Errorf("ops count query failed")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
+}
+
+func TestStatusBlobUsageError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.blobUsageErr = fmt.Errorf("blob usage query failed")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
+}
+
+// --- handleGetPendingExchanges error paths ---
+
+func TestGetPendingExchangesForbidden(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/households/wrong-id/pending-exchanges", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "does not belong")
+}
+
+func TestGetPendingExchangesStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.getPendingErr = fmt.Errorf("database unavailable")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"GET",
+			"/households/"+hh.HouseholdID+"/pending-exchanges",
+			nil,
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
+}
+
+// --- handleHeadBlob error paths ---
+
+func TestHeadBlobForbidden(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("HEAD", blobURL("wrong-household", testHash), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestHeadBlobInvalidHash(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("HEAD", blobURL(hh.HouseholdID, "not-valid-hash"), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestHeadBlobNotFound(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestHeadBlobStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.hasBlobErr = fmt.Errorf("storage backend unreachable")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+// --- handleCreateHousehold error paths ---
+
+func TestCreateHouseholdMissingPublicKey(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+
+	body, err := json.Marshal(sync.CreateHouseholdRequest{
+		DeviceName: "test-desktop",
+		// PublicKey omitted (nil/empty).
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "public_key must be exactly 32 bytes")
+}
+
+func TestCreateHouseholdPublicKeyWrongSize(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+
+	body, err := json.Marshal(sync.CreateHouseholdRequest{
+		DeviceName: "test-desktop",
+		PublicKey:  []byte("too-short-key"),
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "public_key must be exactly 32 bytes")
+}
+
+func TestCreateHouseholdDeviceNameTooLong(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+
+	longName := strings.Repeat("a", maxDeviceNameLen+1)
+	body, err := json.Marshal(sync.CreateHouseholdRequest{
+		DeviceName: longName,
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "device_name exceeds maximum length")
+}
+
+func TestCreateHouseholdStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms, createHouseholdErr: fmt.Errorf("db write failed")}
+	h := newFailingHandler(fs)
+
+	body, err := json.Marshal(sync.CreateHouseholdRequest{
+		DeviceName: "test-desktop",
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
+}
+
+// --- handleGetBlob error paths ---
+
+func TestGetBlobForbidden(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", blobURL("wrong-household", testHash), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "does not belong")
+}
+
+func TestGetBlobInvalidHash(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", blobURL(hh.HouseholdID, "INVALID"), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid hash")
+}
+
+func TestGetBlobStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.getBlobErr = fmt.Errorf("storage read failure")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "get blob failed")
+}
+
+// --- handleCompleteKeyExchange error paths ---
+
+func TestCompleteKeyExchangeEmptyEncryptedKey(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Set up an exchange.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+	)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var invite sync.InviteCode
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&invite))
+
+	joinBody, err := json.Marshal(sync.JoinRequest{
+		InviteCode: invite.Code,
+		DeviceName: "phone",
+		PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+	})
+	require.NoError(t, err)
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"POST",
+		"/households/"+hh.HouseholdID+"/join",
+		bytes.NewReader(joinBody),
+	)
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var joinResp sync.JoinResponse
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&joinResp))
+
+	// Send empty encrypted key.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/key-exchange/"+joinResp.ExchangeID+"/complete",
+			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte{}},
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "encrypted_household_key is required")
+}
+
+func TestCompleteKeyExchangeStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	// Set up an exchange via the underlying MemStore.
+	invite, err := ms.CreateInvite(context.Background(), hh.HouseholdID, hh.DeviceID)
+	require.NoError(t, err)
+
+	joinResp, err := ms.StartJoin(
+		context.Background(),
+		hh.HouseholdID,
+		invite.Code,
+		sync.JoinRequest{
+			InviteCode: invite.Code,
+			DeviceName: "phone",
+			PublicKey:  []byte("key-32-bytes-of-padding-here!!!!"),
+		},
+	)
+	require.NoError(t, err)
+
+	// Inject the error.
+	fs.completeExchangeErr = fmt.Errorf("db constraint violation")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/key-exchange/"+joinResp.ExchangeID+"/complete",
+			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("some-key-data")},
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "key exchange failed")
+}
+
+// --- handleRevokeDevice error paths ---
+
+func TestRevokeDeviceWrongHousehold(t *testing.T) {
+	t.Parallel()
+	h, store := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	// Register a second device to revoke.
+	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+		HouseholdID: hh.HouseholdID,
+		Name:        "device-b",
+	})
+	require.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"DELETE",
+			"/households/wrong-id/devices/"+regResp.DeviceID,
+			nil,
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "does not belong")
+}
+
+func TestRevokeDeviceStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	// Register a second device.
+	regResp, err := ms.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+		HouseholdID: hh.HouseholdID,
+		Name:        "device-b",
+	})
+	require.NoError(t, err)
+
+	fs.revokeDeviceErr = fmt.Errorf("device revocation constraint failure")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"DELETE",
+			"/households/"+hh.HouseholdID+"/devices/"+regResp.DeviceID,
+			nil,
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "device revocation failed")
+}
+
+// --- handleListDevices error paths ---
+
+func TestListDevicesStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.listDevicesErr = fmt.Errorf("database timeout")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest("GET", "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
+	)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal error")
+}
+
+// --- handlePull error paths ---
+
+func TestPullInvalidAfterParam(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=not-a-number", nil, hh.DeviceToken))
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid after parameter")
+}
+
+func TestPullInvalidLimitParam(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	t.Run("non-numeric", func(t *testing.T) {
+		t.Parallel()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=abc", nil, hh.DeviceToken))
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
+	})
+
+	t.Run("zero", func(t *testing.T) {
+		t.Parallel()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=0", nil, hh.DeviceToken))
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
+	})
+
+	t.Run("exceeds max", func(t *testing.T) {
+		t.Parallel()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=1001", nil, hh.DeviceToken))
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
+	})
+
+	t.Run("negative", func(t *testing.T) {
+		t.Parallel()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=-1", nil, hh.DeviceToken))
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
+	})
+}
+
+func TestPullStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.pullErr = fmt.Errorf("query execution failed")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "pull failed")
+}
+
+// --- handlePutBlob error paths ---
+
+func TestPutBlobInvalidHashFormats(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler()
+	hh := createTestHousehold(t, h)
+
+	cases := []struct {
+		name string
+		hash string
+	}{
+		{"uppercase hex", "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"},
+		{"too short", "abcdef"},
+		{"too long", testHash + "aa"},
+		{"non-hex chars", "g3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(
+				"PUT",
+				blobURL(hh.HouseholdID, tc.hash),
+				bytes.NewReader([]byte("data")),
+			)
+			req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+			h.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+			assert.Contains(t, rec.Body.String(), "invalid hash")
+		})
+	}
+}
+
+func TestPutBlobStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.putBlobErr = fmt.Errorf("disk full")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		"PUT",
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader([]byte("data")),
+	)
+	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "store blob failed")
+}
+
+// --- handlePush error paths ---
+
+func TestPushStoreError(t *testing.T) {
+	t.Parallel()
+	ms := NewMemStore()
+	fs := &failingStore{Store: ms}
+	h := newFailingHandler(fs)
+	hh := createTestHouseholdDirect(t, ms, h)
+
+	fs.pushErr = fmt.Errorf("write conflict")
+
+	op := sync.Envelope{
+		ID:         uid.New(),
+		Nonce:      []byte("nonce-24-bytes-padding!!"),
+		Ciphertext: []byte("data"),
+		CreatedAt:  time.Now(),
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(
+		rec,
+		authRequest(
+			"POST",
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			hh.DeviceToken,
+		),
+	)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "push failed")
+}
