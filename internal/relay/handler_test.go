@@ -2026,7 +2026,7 @@ func newFailingHandler(fs *failingStore) *Handler {
 func createTestHouseholdDirect(
 	t *testing.T,
 	ms *MemStore,
-	h *Handler,
+	_ *Handler,
 ) sync.CreateHouseholdResponse {
 	t.Helper()
 	resp, err := ms.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
