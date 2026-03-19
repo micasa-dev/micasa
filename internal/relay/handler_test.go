@@ -2021,12 +2021,10 @@ func newFailingHandler(fs *failingStore) *Handler {
 }
 
 // createTestHouseholdDirect creates a household via the underlying MemStore,
-// then authenticates the device token through the failingStore. Returns the
-// response so tests can use the token for authenticated requests.
+// returning the response so tests can use the token for authenticated requests.
 func createTestHouseholdDirect(
 	t *testing.T,
 	ms *MemStore,
-	_ *Handler,
 ) sync.CreateHouseholdResponse {
 	t.Helper()
 	resp, err := ms.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
@@ -2044,7 +2042,7 @@ func TestStatusListDevicesError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.listDevicesErr = fmt.Errorf("database connection lost")
 
@@ -2059,7 +2057,7 @@ func TestStatusGetHouseholdError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.getHouseholdErr = fmt.Errorf("household lookup failed")
 
@@ -2074,7 +2072,7 @@ func TestStatusOpsCountError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.opsCountErr = fmt.Errorf("ops count query failed")
 
@@ -2089,7 +2087,7 @@ func TestStatusBlobUsageError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.blobUsageErr = fmt.Errorf("blob usage query failed")
 
@@ -2120,7 +2118,7 @@ func TestGetPendingExchangesStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.getPendingErr = fmt.Errorf("database unavailable")
 
@@ -2184,7 +2182,7 @@ func TestHeadBlobStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.hasBlobErr = fmt.Errorf("storage backend unreachable")
 
@@ -2304,7 +2302,7 @@ func TestGetBlobStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.getBlobErr = fmt.Errorf("storage read failure")
 
@@ -2371,7 +2369,7 @@ func TestCompleteKeyExchangeStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	// Set up an exchange via the underlying MemStore.
 	invite, err := ms.CreateInvite(context.Background(), hh.HouseholdID, hh.DeviceID)
@@ -2439,7 +2437,7 @@ func TestRevokeDeviceStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	// Register a second device.
 	regResp, err := ms.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
@@ -2471,7 +2469,7 @@ func TestListDevicesStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.listDevicesErr = fmt.Errorf("database timeout")
 
@@ -2540,7 +2538,7 @@ func TestPullStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.pullErr = fmt.Errorf("query execution failed")
 
@@ -2589,7 +2587,7 @@ func TestPutBlobStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.putBlobErr = fmt.Errorf("disk full")
 
@@ -2612,7 +2610,7 @@ func TestPushStoreError(t *testing.T) {
 	ms := NewMemStore()
 	fs := &failingStore{Store: ms}
 	h := newFailingHandler(fs)
-	hh := createTestHouseholdDirect(t, ms, h)
+	hh := createTestHouseholdDirect(t, ms)
 
 	fs.pushErr = fmt.Errorf("write conflict")
 

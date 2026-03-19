@@ -6,7 +6,6 @@ package sync_test
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -568,8 +567,7 @@ func TestEngineSyncBlobDownloadCountsErrorForMissingRemoteBlob(t *testing.T) {
 
 	// Create a local document with a checksum but no data. The blob is NOT
 	// on the relay, so the download should fail and count as an error.
-	missingHash := sha256.Sum256([]byte("does not exist on relay"))
-	missingChecksum := hex.EncodeToString(missingHash[:])
+	missingChecksum := fmt.Sprintf("%x", sha256.Sum256([]byte("does not exist on relay")))
 	require.NoError(t, store.GormDB().Create(&data.Document{
 		ID:             uid.New(),
 		Title:          "Missing Blob",
