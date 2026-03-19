@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -49,7 +50,7 @@ func TestResolveDBPathArg(t *testing.T) {
 		got, err := resolveDBPathArg("~/test.db")
 		require.NoError(t, err)
 		home, _ := os.UserHomeDir()
-		assert.Equal(t, home+"/test.db", got)
+		assert.Equal(t, filepath.Join(home, "test.db"), got)
 	})
 
 	t.Run("empty falls back to default", func(t *testing.T) {
