@@ -2906,7 +2906,8 @@ func TestHardDeleteMaintenanceRemovesRowAndChildren(t *testing.T) {
 	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
 		Name: "Filter change", CategoryID: cats[0].ID,
 	}))
-	items, _ := store.ListMaintenance(false)
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
 	require.Len(t, items, 1)
 	maintID := items[0].ID
 
@@ -2941,7 +2942,8 @@ func TestHardDeleteMaintenanceWritesOplogForChildren(t *testing.T) {
 	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
 		Name: "Oil change", CategoryID: cats[0].ID,
 	}))
-	items, _ := store.ListMaintenance(false)
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
 	maintID := items[0].ID
 
 	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
@@ -2983,7 +2985,8 @@ func TestHardDeleteMaintenanceDetachesServiceLogDocuments(t *testing.T) {
 	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
 		Name: "Roof repair", CategoryID: cats[0].ID,
 	}))
-	items, _ := store.ListMaintenance(false)
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
 	maintID := items[0].ID
 
 	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
@@ -3016,7 +3019,8 @@ func TestHardDeleteMaintenanceDetachesOwnDocuments(t *testing.T) {
 	require.NoError(t, store.CreateMaintenance(&MaintenanceItem{
 		Name: "Gutter cleaning", CategoryID: cats[0].ID,
 	}))
-	items, _ := store.ListMaintenance(false)
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
 	maintID := items[0].ID
 
 	// Attach a document directly to the maintenance item.
