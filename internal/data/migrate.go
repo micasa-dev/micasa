@@ -5,6 +5,7 @@ package data
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/cpcloud/micasa/internal/uid"
@@ -21,7 +22,7 @@ import (
 // the correct TEXT-based schema → copy data with converted IDs → drop the
 // renamed originals. This avoids any DDL parsing issues in the GORM
 // migrator.
-func migrateIntToStringIDs(db *gorm.DB) error {
+func migrateIntToStringIDs(db *gorm.DB) (retErr error) {
 	needed, err := needsIntToStringMigration(db)
 	if err != nil || !needed {
 		return err
@@ -30,7 +31,11 @@ func migrateIntToStringIDs(db *gorm.DB) error {
 	if err := db.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
 		return fmt.Errorf("disable foreign keys: %w", err)
 	}
-	defer db.Exec("PRAGMA foreign_keys = ON")
+	defer func() {
+		if fkErr := db.Exec("PRAGMA foreign_keys = ON").Error; fkErr != nil && retErr == nil {
+			retErr = fmt.Errorf("re-enable foreign keys: %w", fkErr)
+		}
+	}()
 
 	// Phase 1: Build ID mappings for every table.
 	idMaps := make(map[string]map[string]string)
@@ -69,8 +74,10 @@ func migrateIntToStringIDs(db *gorm.DB) error {
 		return fmt.Errorf("rename old tables: %w", err)
 	}
 
-	// Phase 3: Let AutoMigrate create fresh tables.
+	// Phase 3: Let AutoMigrate create fresh tables. If this fails, rename
+	// the old tables back so the database isn't left in a broken state.
 	if err := db.AutoMigrate(Models()...); err != nil {
+		_ = rollbackRenames(db, idMaps)
 		return fmt.Errorf("auto-migrate fresh tables: %w", err)
 	}
 
@@ -92,7 +99,6 @@ func migrateIntToStringIDs(db *gorm.DB) error {
 
 	// Phase 5: Drop old tables.
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		// Reverse order to avoid FK violations (though FKs are off).
 		order := migrationOrder()
 		for i := len(order) - 1; i >= 0; i-- {
 			m := order[i]
@@ -109,6 +115,24 @@ func migrateIntToStringIDs(db *gorm.DB) error {
 	}
 
 	return nil
+}
+
+// rollbackRenames restores renamed tables to their original names if
+// AutoMigrate fails between Phase 2 and Phase 4.
+func rollbackRenames(db *gorm.DB, idMaps map[string]map[string]string) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		// Drop any partially-created new tables, then rename old back.
+		for _, m := range migrationOrder() {
+			if _, ok := idMaps[m.table]; !ok {
+				continue
+			}
+			_ = tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS `%s`", m.table)).Error
+			if err := renameTable(tx, oldName(m.table), m.table); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func oldName(table string) string { return "_old_" + table }
@@ -141,7 +165,7 @@ func hasIntegerPK(db *gorm.DB, table string) (bool, error) {
 		PK        int
 	}
 	var cols []columnInfo
-	if err := db.Raw("PRAGMA table_info(" + table + ")").Scan(&cols).Error; err != nil {
+	if err := db.Raw("PRAGMA table_info(`" + table + "`)").Scan(&cols).Error; err != nil {
 		return false, fmt.Errorf("pragma table_info(%s): %w", table, err)
 	}
 	for _, col := range cols {
@@ -267,10 +291,11 @@ func buildSelectExpr(
 
 // buildCaseExpr builds a SQL CASE that maps old integer values to new ULIDs.
 func buildCaseExpr(col string, mapping map[string]string) string {
+	keys := sortedKeys(mapping)
 	var b strings.Builder
 	fmt.Fprintf(&b, "CASE CAST(`%s` AS TEXT)", col)
-	for oldID, newID := range mapping {
-		fmt.Fprintf(&b, " WHEN '%s' THEN '%s'", oldID, newID)
+	for _, oldID := range keys {
+		fmt.Fprintf(&b, " WHEN '%s' THEN '%s'", oldID, mapping[oldID])
 	}
 	fmt.Fprintf(&b, " ELSE `%s` END", col)
 	return b.String()
@@ -285,15 +310,17 @@ func buildPolymorphicCaseExpr(
 ) string {
 	// For each entity kind, embed a sub-CASE over the ID values.
 	var parts []string
-	for kind, table := range kindToTable {
+	for _, kind := range sortedKeys(kindToTable) {
+		table := kindToTable[kind]
 		parentMap := idMaps[table]
 		if len(parentMap) == 0 {
 			continue
 		}
+		parentKeys := sortedKeys(parentMap)
 		var sub strings.Builder
 		fmt.Fprintf(&sub, "WHEN `%s` = '%s' THEN (CASE CAST(`%s` AS TEXT)", kindCol, kind, idCol)
-		for oldID, newID := range parentMap {
-			fmt.Fprintf(&sub, " WHEN '%s' THEN '%s'", oldID, newID)
+		for _, oldID := range parentKeys {
+			fmt.Fprintf(&sub, " WHEN '%s' THEN '%s'", oldID, parentMap[oldID])
 		}
 		fmt.Fprintf(&sub, " ELSE `%s` END)", idCol)
 		parts = append(parts, sub.String())
@@ -377,7 +404,7 @@ func getColumnNames(db *gorm.DB, table string) ([]string, error) {
 		PK        int
 	}
 	var cols []columnInfo
-	if err := db.Raw("PRAGMA table_info(" + table + ")").Scan(&cols).Error; err != nil {
+	if err := db.Raw("PRAGMA table_info(`" + table + "`)").Scan(&cols).Error; err != nil {
 		return nil, fmt.Errorf("pragma table_info(%s): %w", table, err)
 	}
 	names := make([]string, len(cols))
@@ -422,4 +449,13 @@ func joinQuoted(cols []string) string {
 		quoted[i] = quoteCol(c)
 	}
 	return strings.Join(quoted, ", ")
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }

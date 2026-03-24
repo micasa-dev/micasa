@@ -516,6 +516,8 @@ func TestMigrateIntToStringIDs(t *testing.T) {
 		}
 		require.NotNil(t, newProject)
 		assert.True(t, uid.IsValid(newProject.ID))
+		assert.True(t, uid.IsValid(newProject.ProjectTypeID))
+		assert.NotEmpty(t, newProject.ProjectType.Name)
 	})
 }
 
