@@ -100,6 +100,33 @@ func TestDashboardToggle(t *testing.T) {
 	assert.False(t, m.showDashboard)
 }
 
+func TestDashboardPreservesDrilldown(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	m.showDashboard = false
+
+	// Drill into a vendor's quotes.
+	m.active = tabIndex(tabVendors)
+	vendors, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	require.NotEmpty(t, vendors, "need at least one vendor row")
+	require.NoError(t, m.openVendorQuoteDetail(vendors[0].ID, vendors[0].Name))
+	require.True(t, m.inDetail(), "should be in detail view")
+	require.Len(t, m.detailStack, 1)
+
+	// Toggle dashboard ON — drilldown should be preserved.
+	sendKey(m, "D")
+	assert.True(t, m.showDashboard, "dashboard should be visible")
+	assert.True(t, m.inDetail(), "drilldown should be preserved while dashboard is open")
+	assert.Len(t, m.detailStack, 1, "detail stack should not be cleared")
+
+	// Toggle dashboard OFF — should return to drilldown, not top-level tab.
+	sendKey(m, "D")
+	assert.False(t, m.showDashboard, "dashboard should be hidden")
+	assert.True(t, m.inDetail(), "should still be in drilldown after dismissing dashboard")
+	assert.Len(t, m.detailStack, 1, "detail stack should still have one level")
+}
+
 func TestDashboardDismissedByTabSwitch(t *testing.T) {
 	t.Parallel()
 	for _, key := range []string{"f", "b"} {

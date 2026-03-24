@@ -860,6 +860,7 @@ func (m *Model) dashJump() {
 		return
 	}
 	m.showDashboard = false
+	m.closeAllDetails()
 	m.switchToTab(tabIndex(entry.Tab))
 	if tab := m.activeTab(); tab != nil {
 		selectRowByID(tab, entry.ID)

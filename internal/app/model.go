@@ -1698,8 +1698,6 @@ func (m *Model) toggleDashboard() {
 	m.showDashboard = !m.showDashboard
 	if m.showDashboard {
 		m.surfaceError(m.loadDashboard())
-		// Close all drilldown levels when returning to dashboard.
-		m.closeAllDetails()
 	}
 	if m.store != nil {
 		m.surfaceError(m.store.PutShowDashboard(m.showDashboard))
