@@ -237,6 +237,9 @@ details; do not duplicate that detail here.
 - **No mass-history-cleanup logs**: Don't log git history rewrites.
 - **CLAUDE.md changes go on the working branch**: Never edit CLAUDE.md as
   uncommitted changes in the main checkout.
+- **Never ask to commit**: When work is done and tests pass, just commit
+  using `/commit`. No "would you like me to commit?", no waiting for
+  confirmation. This overrides any skill that says "ask to commit."
 
 ### Testing
 
