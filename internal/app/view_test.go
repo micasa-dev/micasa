@@ -894,6 +894,39 @@ func TestDimBackgroundNeutralizesCancelFaint(t *testing.T) {
 	assert.Contains(t, dimmed, "\033[2m", "dimBackground should apply faint")
 }
 
+func TestDimBackgroundCatchesBareReset(t *testing.T) {
+	t.Parallel()
+	// lipgloss v2 uses \033[m (bare reset without the 0) instead of
+	// \033[0m. dimBackground must catch both forms and re-establish faint.
+	input := "\033[38;2;75;85;99mnormal cell\033[m next text"
+	dimmed := dimBackground(input)
+
+	// The bare \033[m should be replaced with \033[0;2m to re-establish faint.
+	assert.NotContains(t, dimmed, "\033[m next",
+		"bare reset should not survive dimBackground")
+	assert.Contains(t, dimmed, "\033[0;2m",
+		"bare reset should be replaced with reset+faint")
+}
+
+func TestDimBackgroundNeutralizesBold(t *testing.T) {
+	t.Parallel()
+	// Bold (\033[1m / \033[1;...) cancels faint (\033[2m) in most terminals
+	// because they share the SGR "intensity" group. dimBackground must
+	// neutralize bold so cursor/selected-row cells don't punch through.
+
+	// Standalone bold.
+	standalone := "\033[1mtext\033[m"
+	dimmed := dimBackground(standalone)
+	assert.NotContains(t, dimmed, "\033[1m",
+		"standalone bold should be neutralized")
+
+	// Bold as first parameter in combined sequence (lipgloss v2 pattern).
+	combined := "\033[1;48;2;51;51;51mrow cell\033[m"
+	dimmed = dimBackground(combined)
+	assert.NotContains(t, dimmed, "\033[1;",
+		"bold in combined sequence should be neutralized")
+}
+
 func TestNormalModeOmitsDiscoveryHints(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)

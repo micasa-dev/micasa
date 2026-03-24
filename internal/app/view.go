@@ -1105,8 +1105,20 @@ func dimBackground(s string) string {
 	// Keep the vectorized ReplaceAll for escape-sequence substitution (fast
 	// SIMD path in the runtime), but avoid Split+Join for the per-line
 	// prefix by scanning for newlines with a Builder.
+
+	// lipgloss v2 emits \033[m (bare reset) instead of \033[0m. Catch both
+	// forms and re-establish faint after the reset. Process bare reset
+	// BEFORE the \033[0m replacement to avoid double-matching.
+	s = strings.ReplaceAll(s, "\033[m", "\033[0;2m")
 	s = strings.ReplaceAll(s, "\033[0m", "\033[0;2m")
 	s = strings.ReplaceAll(s, "\033[22m", "\033[2m")
+
+	// Bold (\033[1m) cancels faint because they share the SGR intensity
+	// group. Neutralize bold so cursor/selected-row cells don't punch
+	// through the dim. lipgloss puts bold first in combined sequences.
+	s = strings.ReplaceAll(s, "\033[1;", "\033[2;")
+	s = strings.ReplaceAll(s, "\033[1m", "\033[2m")
+
 	return prependLines(s, "\033[2m", "\033[0m")
 }
 
