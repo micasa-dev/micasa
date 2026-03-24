@@ -276,18 +276,7 @@ func (s *Store) DataDump() string {
 		if name == TableSyncOplogEntries || name == TableSyncDevices {
 			continue
 		}
-		//nolint:gosec // table name comes from sqlite_master, not user input
-		sqlRows, err := s.db.Raw(fmt.Sprintf("SELECT * FROM %s", name)).Rows()
-		if err != nil {
-			continue
-		}
-		cols, err := sqlRows.Columns()
-		if err != nil {
-			_ = sqlRows.Close()
-			continue
-		}
-		rows, err := scanTableRows(sqlRows, cols)
-		_ = sqlRows.Close()
+		rows, cols, err := dumpTable(s, name)
 		if err != nil {
 			continue
 		}
@@ -441,6 +430,27 @@ func containsWord(s, keyword string) bool {
 func isIdentChar(b byte) bool {
 	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') ||
 		(b >= '0' && b <= '9') || b == '_'
+}
+
+// dumpTable queries all non-deleted rows from a single table, returning
+// them as string slices along with column names. The sql.Rows lifecycle
+// is scoped to this function so defer closes correctly.
+func dumpTable(s *Store, name string) ([][]string, []string, error) {
+	//nolint:gosec // table name comes from sqlite_master, not user input
+	sqlRows, err := s.db.Raw(fmt.Sprintf("SELECT * FROM %s", name)).Rows()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = sqlRows.Close() }()
+	cols, err := sqlRows.Columns()
+	if err != nil {
+		return nil, nil, err
+	}
+	rows, err := scanTableRows(sqlRows, cols)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rows, cols, nil
 }
 
 // scanTableRows reads all non-deleted rows from an open sql.Rows into
