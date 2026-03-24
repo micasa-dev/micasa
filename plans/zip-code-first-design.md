@@ -49,7 +49,7 @@ empty** -- never overwrite user-provided values.
 {
   "country": "United States",
   "country abbreviation": "US",
-  "post_code": "90210",
+  "post code": "90210",
   "places": [
     {
       "place name": "Beverly Hills",
