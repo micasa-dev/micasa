@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime/debug"
 
@@ -373,7 +374,10 @@ func runBackup(w io.Writer, opts *backupOpts) error {
 		)
 	}
 
-	if err := store.Backup(context.Background(), destPath); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	if err := store.Backup(ctx, destPath); err != nil {
 		return err
 	}
 

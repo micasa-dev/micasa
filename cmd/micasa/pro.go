@@ -207,6 +207,9 @@ func newProInitCmd() *cobra.Command {
 }
 
 func runProInit(dbPath, relayURL string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	store, err := openAndMigrate(dbPath)
 	if err != nil {
 		return err
@@ -245,7 +248,7 @@ func runProInit(dbPath, relayURL string) error {
 
 	// Register with relay.
 	client := sync.NewManagementClient(relayURL, "")
-	resp, err := client.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+	resp, err := client.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: hostname,
 		PublicKey:  kp.PublicKey[:],
 	})
@@ -307,6 +310,9 @@ func newProStatusCmd() *cobra.Command {
 }
 
 func runProStatus(dbPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	deps, err := resolveProDeps(dbPath)
 	if err != nil {
 		return err
@@ -314,7 +320,7 @@ func runProStatus(dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
-	status, err := client.Status(context.Background())
+	status, err := client.Status(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch status: %w", err)
 	}
@@ -358,6 +364,9 @@ func newProStorageCmd() *cobra.Command {
 }
 
 func runProStorage(dbPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	deps, err := resolveProDeps(dbPath)
 	if err != nil {
 		return err
@@ -365,7 +374,7 @@ func runProStorage(dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
-	status, err := client.Status(context.Background())
+	status, err := client.Status(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch status: %w", err)
 	}
@@ -412,6 +421,9 @@ func newProSyncCmd() *cobra.Command {
 }
 
 func runProSync(dbPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	deps, err := resolveProDeps(dbPath)
 	if err != nil {
 		return err
@@ -421,7 +433,7 @@ func runProSync(dbPath string) error {
 	client := sync.NewClient(deps.device.RelayURL, deps.token, deps.key)
 	engine := sync.NewEngine(deps.store, client, deps.device.HouseholdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(ctx)
 	if err != nil {
 		return err
 	}
@@ -455,6 +467,9 @@ func newProInviteCmd() *cobra.Command {
 }
 
 func runProInvite(dbPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	deps, err := resolveProDeps(dbPath)
 	if err != nil {
 		return err
@@ -463,7 +478,7 @@ func runProInvite(dbPath string) error {
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
 
-	invite, err := client.Invite(context.Background(), deps.device.HouseholdID)
+	invite, err := client.Invite(ctx, deps.device.HouseholdID)
 	if err != nil {
 		return fmt.Errorf("create invite: %w", err)
 	}
@@ -477,10 +492,6 @@ func runProInvite(dbPath string) error {
 		invite.ExpiresAt.Format(time.RFC3339),
 	)
 	fmt.Fprintf(os.Stderr, "waiting for joiner...\n")
-
-	// Poll for pending key exchanges, cancellable via Ctrl+C.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
@@ -560,6 +571,9 @@ func newProJoinCmd() *cobra.Command {
 }
 
 func runProJoin(code, dbPath, relayURL string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	store, err := openAndMigrate(dbPath)
 	if err != nil {
 		return err
@@ -610,7 +624,7 @@ func runProJoin(code, dbPath, relayURL string) error {
 
 	// Join household.
 	client := sync.NewManagementClient(relayURL, "")
-	joinResp, err := client.Join(context.Background(), householdID, sync.JoinRequest{
+	joinResp, err := client.Join(ctx, householdID, sync.JoinRequest{
 		InviteCode: inviteCode,
 		DeviceName: hostname,
 		PublicKey:  kp.PublicKey[:],
@@ -620,10 +634,6 @@ func runProJoin(code, dbPath, relayURL string) error {
 	}
 
 	fmt.Fprintf(os.Stderr, "waiting for inviter to approve...\n")
-
-	// Poll for key exchange result, cancellable via Ctrl+C.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
@@ -715,7 +725,7 @@ exchangeDone:
 	// Initial pull using the sync engine (pull-only: nothing to push on a fresh join).
 	syncClient := sync.NewClient(relayURL, result.DeviceToken, key)
 	engine := sync.NewEngine(store, syncClient, householdID)
-	syncResult, err := engine.Sync(context.Background())
+	syncResult, err := engine.Sync(ctx)
 	if err != nil {
 		return fmt.Errorf("initial pull: %w", err)
 	}
@@ -746,6 +756,9 @@ func newProDevicesCmd() *cobra.Command {
 }
 
 func runProDevicesList(dbPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	deps, err := resolveProDeps(dbPath)
 	if err != nil {
 		return err
@@ -753,7 +766,7 @@ func runProDevicesList(dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
-	devices, err := client.ListDevices(context.Background(), deps.device.HouseholdID)
+	devices, err := client.ListDevices(ctx, deps.device.HouseholdID)
 	if err != nil {
 		return fmt.Errorf("list devices: %w", err)
 	}
@@ -786,6 +799,9 @@ func newProDevicesRevokeCmd() *cobra.Command {
 }
 
 func runProDevicesRevoke(deviceID, dbPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	deps, err := resolveProDeps(dbPath)
 	if err != nil {
 		return err
@@ -798,7 +814,7 @@ func runProDevicesRevoke(deviceID, dbPath string) error {
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
 	if err := client.RevokeDevice(
-		context.Background(),
+		ctx,
 		deps.device.HouseholdID,
 		deviceID,
 	); err != nil {
