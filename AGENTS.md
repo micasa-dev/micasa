@@ -403,4 +403,4 @@ Session history is in the git log.
 
 # Remaining work
 
-Work items are tracked as [GitHub issues](https://github.com/cpcloud/micasa/issues).
+Work items are tracked as [GitHub issues](https://github.com/micasa-dev/micasa/issues).

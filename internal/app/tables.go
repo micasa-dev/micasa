@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/table"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/locale"
 )
 
 // baseTableKeyMap returns the default table KeyMap with b/f removed from

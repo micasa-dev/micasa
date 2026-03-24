@@ -4,9 +4,9 @@
 package main
 
 import (
-	"github.com/cpcloud/micasa/internal/app"
-	"github.com/cpcloud/micasa/internal/crypto"
-	"github.com/cpcloud/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/app"
+	"github.com/micasa-dev/micasa/internal/crypto"
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // tryLoadSyncConfig detects a Pro setup and configures background sync

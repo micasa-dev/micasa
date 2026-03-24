@@ -21,10 +21,10 @@ debugging my own config system last month. That was the moment.
 
 ## Orthogonal or nothing
 
-[v2.0](https://github.com/cpcloud/micasa/releases/tag/v2.0.0) rips out the
+[v2.0](https://github.com/micasa-dev/micasa/releases/tag/v2.0.0) rips out the
 shared `[llm]` section and replaces it with two independent sections that
 don't know about each other
-([#747](https://github.com/cpcloud/micasa/pull/747)):
+([#747](https://github.com/micasa-dev/micasa/pull/747)):
 
 ```toml
 [chat.llm]
@@ -49,7 +49,7 @@ you're removing the right thing.
 ## Talking to your config
 
 The old `micasa config` printed a TOML dump. The new one has two subcommands
-([#750](https://github.com/cpcloud/micasa/pull/750)):
+([#750](https://github.com/micasa-dev/micasa/pull/750)):
 
 `config edit` opens your config file in `$EDITOR`. If there's no file yet,
 it creates one with annotated example TOML so you're not staring at a blank
@@ -76,7 +76,7 @@ dependency.
 
 The config validation used to be a hundred lines of hand-written `if` chains.
 Now it's struct tags
-([#761](https://github.com/cpcloud/micasa/pull/761)):
+([#761](https://github.com/micasa-dev/micasa/pull/761)):
 
 ```go
 type LLMConfig struct {
@@ -98,14 +98,14 @@ natural question than "show me all maintenance items with an interval between
 60 and 120 days."
 
 Maintenance items now have an optional season tag -- spring, summer, fall,
-winter ([#733](https://github.com/cpcloud/micasa/pull/733)). The dashboard
+winter ([#733](https://github.com/micasa-dev/micasa/pull/733)). The dashboard
 picks up the current season and shows a section for items tagged with it. Pin
 the season column to filter the table. Inline-edit it with <kbd>e</kbd>.
 
 ## Better OCR for structured documents
 
 The extraction pipeline now sends spatial layout annotations from Tesseract
-to the LLM ([#724](https://github.com/cpcloud/micasa/pull/724)). Each line
+to the LLM ([#724](https://github.com/micasa-dev/micasa/pull/724)). Each line
 gets a compact `[left,top,width]` prefix so the model knows where text sits
 on the page. Lines with low OCR confidence get flagged with a confidence
 score.
@@ -121,24 +121,24 @@ documents.
 
 - **Code-generated columns** -- column constants are now generated from
   declarative definitions in `coldefs.go`
-  ([#760](https://github.com/cpcloud/micasa/pull/760)). Adding a column is
+  ([#760](https://github.com/micasa-dev/micasa/pull/760)). Adding a column is
   a one-line edit followed by `go generate`. No more hand-syncing iota blocks
   with column specs.
 - **Weekly releases** -- micasa stopped releasing on every push to main
-  ([#756](https://github.com/cpcloud/micasa/pull/756)). Releases now run on
+  ([#756](https://github.com/micasa-dev/micasa/pull/756)). Releases now run on
   a weekly schedule with grouped release notes. Fewer notifications, better
   changelogs.
 - **Docs audit** -- config reference, keybindings page, README, and website
   all got a pass for accuracy
-  ([#743](https://github.com/cpcloud/micasa/pull/743)).
+  ([#743](https://github.com/micasa-dev/micasa/pull/743)).
 
 ## Try it
 
 ```sh
-go run github.com/cpcloud/micasa/cmd/micasa@latest demo
+go run github.com/micasa-dev/micasa/cmd/micasa@latest demo
 ```
 
 If you're upgrading from 1.x, check the
 [config reference](/docs/reference/configuration/) for the new section
 layout. Binaries on the
-[releases page](https://github.com/cpcloud/micasa/releases/latest).
+[releases page](https://github.com/micasa-dev/micasa/releases/latest).

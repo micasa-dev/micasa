@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/sync"
+	"github.com/micasa-dev/micasa/internal/sync"
 )
 
 const (

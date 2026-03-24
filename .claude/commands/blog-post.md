@@ -41,7 +41,7 @@ the work genuinely interesting but would never use an exclamation mark to
 prove it. If a sentence sounds like a LinkedIn post, delete it.
 
 - Lead with a concrete anecdote or problem, not a feature announcement.
-- Link to PRs/issues with `[#NNN](https://github.com/cpcloud/micasa/pull/NNN)`.
+- Link to PRs/issues with `[#NNN](https://github.com/micasa-dev/micasa/pull/NNN)`.
 - Use `<kbd>key</kbd>` for keyboard shortcuts, backticks for code/config.
 - End with a "Try it" section showing `go run` and releases link.
 - Keep it under ~150 lines. These are weekly dev logs, not essays.

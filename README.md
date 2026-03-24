@@ -6,9 +6,9 @@
 
   <br><br>
 
-  [![CI](https://github.com/cpcloud/micasa/actions/workflows/ci.yml/badge.svg)](https://github.com/cpcloud/micasa/actions/workflows/ci.yml)
-  [![Release](https://img.shields.io/github/v/release/cpcloud/micasa)](https://github.com/cpcloud/micasa/releases/latest)
-  [![Go](https://img.shields.io/github/go-mod/go-version/cpcloud/micasa)](https://go.dev)
+  [![CI](https://github.com/micasa-dev/micasa/actions/workflows/ci.yml/badge.svg)](https://github.com/micasa-dev/micasa/actions/workflows/ci.yml)
+  [![Release](https://img.shields.io/github/v/release/micasa-dev/micasa)](https://github.com/micasa-dev/micasa/releases/latest)
+  [![Go](https://img.shields.io/github/go-mod/go-version/micasa-dev/micasa)](https://go.dev)
   [![Docs](https://img.shields.io/badge/docs-micasa.dev-blue)](https://micasa.dev/docs)
 </div>
 
@@ -58,10 +58,10 @@ brew install micasa
 Or with Go (1.25+):
 
 ```sh
-go install github.com/cpcloud/micasa/cmd/micasa@latest
+go install github.com/micasa-dev/micasa/cmd/micasa@latest
 ```
 
-Or grab a binary from the [latest release](https://github.com/cpcloud/micasa/releases/latest). Linux, macOS, and Windows binaries are available for amd64 and arm64.
+Or grab a binary from the [latest release](https://github.com/micasa-dev/micasa/releases/latest). Linux, macOS, and Windows binaries are available for amd64 and arm64.
 
 ```sh
 micasa demo           # poke around with sample data

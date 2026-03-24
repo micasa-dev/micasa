@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/locale"
 )
 
 func (m *Model) houseView() string {

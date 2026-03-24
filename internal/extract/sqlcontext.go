@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cpcloud/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // EntityRow is a lightweight (id, name) pair for FK context in LLM prompts.

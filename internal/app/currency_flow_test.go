@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"

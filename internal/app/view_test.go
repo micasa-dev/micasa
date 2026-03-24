@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/locale"
 	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

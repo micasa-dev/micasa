@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cpcloud/micasa/internal/sync"
+	"github.com/micasa-dev/micasa/internal/sync"
 )
 
 const (

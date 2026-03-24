@@ -6,7 +6,7 @@ package app
 import (
 	"strings"
 
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/locale"
 )
 
 // statusLabels maps full status names to short display labels.

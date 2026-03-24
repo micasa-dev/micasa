@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cpcloud/micasa/internal/crypto"
-	"github.com/cpcloud/micasa/internal/sync"
+	"github.com/micasa-dev/micasa/internal/crypto"
+	"github.com/micasa-dev/micasa/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

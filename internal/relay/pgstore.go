@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/sync"
-	"github.com/cpcloud/micasa/internal/uid"
+	"github.com/micasa-dev/micasa/internal/sync"
+	"github.com/micasa-dev/micasa/internal/uid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

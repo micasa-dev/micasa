@@ -13,7 +13,7 @@ Run these steps to understand the current state before doing anything else:
    uncommitted work in progress
 4. **Open PRs**: `gh pr list` -- check for PRs that may need updates or
    are awaiting review
-5. **Open issues**: `gh issue list --repo cpcloud/micasa` -- browse recent
+5. **Open issues**: `gh issue list --repo micasa-dev/micasa` -- browse recent
    issues to understand what's being worked on
 6. **Read conversation summary**: If the session includes a continuation
    summary, read it carefully for pending tasks, file locations, and

@@ -11,9 +11,9 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
-	"github.com/cpcloud/micasa/internal/crypto"
-	"github.com/cpcloud/micasa/internal/extract"
-	"github.com/cpcloud/micasa/internal/llm"
+	"github.com/micasa-dev/micasa/internal/crypto"
+	"github.com/micasa-dev/micasa/internal/extract"
+	"github.com/micasa-dev/micasa/internal/llm"
 )
 
 type Mode int

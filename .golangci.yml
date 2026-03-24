@@ -62,7 +62,7 @@ linters:
 
     wrapcheck:
       ignore-package-globs:
-        - github.com/cpcloud/micasa/*
+        - github.com/micasa-dev/micasa/*
         - database/sql
         - database/sql/*
         - gorm.io/gorm

@@ -26,7 +26,7 @@ Enter `any-llm-go`.
 Mozilla that wraps the official SDKs for Ollama, OpenAI, Anthropic, Gemini,
 Groq, Mistral, DeepSeek, OpenRouter, llama.cpp, and Llamafile behind one
 interface. I deleted my client and replaced it with about forty lines of setup
-([#566](https://github.com/cpcloud/micasa/pull/566)). The binary grew from
+([#566](https://github.com/micasa-dev/micasa/pull/566)). The binary grew from
 27 MB to 47 MB from linking all the provider SDKs, which is fine because the
 alternative was me writing auth code for ten APIs.
 
@@ -60,7 +60,7 @@ something that can actually reason about whether your roof maintenance is
 overdue.
 
 They used to share a model. Now they don't
-([#575](https://github.com/cpcloud/micasa/pull/575)):
+([#575](https://github.com/micasa-dev/micasa/pull/575)):
 
 ```toml
 [chat.llm]
@@ -80,7 +80,7 @@ sections -- no inheritance, no cross-contamination.
 ## Picking models at runtime
 
 <kbd>r</kbd> on a completed extraction step opens a fuzzy model picker instead of
-immediately rerunning ([#560](https://github.com/cpcloud/micasa/pull/560)).
+immediately rerunning ([#560](https://github.com/micasa-dev/micasa/pull/560)).
 Type to filter, arrows to navigate, enter to select. If the model isn't local,
 it pulls first.
 
@@ -92,7 +92,7 @@ overlay keeps the loop tight.
 ## Extraction in the background
 
 OCR on a multi-page scan takes a while. <kbd>ctrl+b</kbd> now backgrounds a running
-extraction ([#559](https://github.com/cpcloud/micasa/pull/559)). The status bar
+extraction ([#559](https://github.com/micasa-dev/micasa/pull/559)). The status bar
 shows a spinner while jobs run and a count when they finish. <kbd>ctrl+b</kbd> again
 foregrounds the latest result for review. Nothing auto-accepts -- you always
 look before it writes.
@@ -103,34 +103,34 @@ look before it writes.
   EUR gets comma decimals and period grouping (`1.234,56`), GBP gets the pound
   sign, JPY drops decimal places. Auto-detected from your system locale or set
   via `MICASA_LOCALE_CURRENCY`.
-  ([#467](https://github.com/cpcloud/micasa/pull/467))
+  ([#467](https://github.com/micasa-dev/micasa/pull/467))
 - **[Imperial/metric toggle](/docs/guide/house-profile/)** -- <kbd>U</kbd> switches
   between square feet and square meters. Defaults to metric unless your locale
   is US, Liberia, or Myanmar.
-  ([#555](https://github.com/cpcloud/micasa/pull/555))
+  ([#555](https://github.com/micasa-dev/micasa/pull/555))
 - **[Resolved incidents](/docs/guide/incidents/)** -- resolving an incident now
   sets a proper `resolved` status. <kbd>D</kbd> permanently deletes resolved incidents
   with confirmation.
-  ([#588](https://github.com/cpcloud/micasa/pull/588))
+  ([#588](https://github.com/micasa-dev/micasa/pull/588))
 - **`config get`** -- prints fully resolved config as JSON, queryable with jq
   filters. API keys are stripped to prevent us from doing dumb things like
   pasting secrets into an AI.
-  ([#597](https://github.com/cpcloud/micasa/pull/597))
+  ([#597](https://github.com/micasa-dev/micasa/pull/597))
 - **Extraction timeout** -- configurable LLM timeout (default 2 minutes) so
   a hung model doesn't lock the overlay.
-  ([#604](https://github.com/cpcloud/micasa/pull/604))
+  ([#604](https://github.com/micasa-dev/micasa/pull/604))
 
 Under the hood: the 56-field `Model` God-struct got demoted to demi-god status during
-some [code surgery](https://github.com/cpcloud/micasa/pull/567) with
+some [code surgery](https://github.com/micasa-dev/micasa/pull/567) with
 generics in the data layer (-248 lines of code, +339 lines of tests), and
-eight new [static analysis tools](https://github.com/cpcloud/micasa/pull/599)
+eight new [static analysis tools](https://github.com/micasa-dev/micasa/pull/599)
 run in pre-commit. Static analysis seems to keep the bot army away from some of
 its dumber tendencies, so let's load up on it.
 
 ## Try it
 
 ```sh
-go run github.com/cpcloud/micasa/cmd/micasa@latest demo
+go run github.com/micasa-dev/micasa/cmd/micasa@latest demo
 ```
 
 Or with a cloud provider:
@@ -139,8 +139,8 @@ Or with a cloud provider:
 export MICASA_CHAT_LLM_PROVIDER=anthropic
 export MICASA_CHAT_LLM_MODEL=claude-haiku-4-5-latest
 export MICASA_CHAT_LLM_API_KEY=sk-...
-go run github.com/cpcloud/micasa/cmd/micasa@latest demo
+go run github.com/micasa-dev/micasa/cmd/micasa@latest demo
 ```
 
 Binaries on the
-[releases page](https://github.com/cpcloud/micasa/releases/latest).
+[releases page](https://github.com/micasa-dev/micasa/releases/latest).

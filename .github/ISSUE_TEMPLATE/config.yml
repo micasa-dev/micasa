@@ -7,5 +7,5 @@ contact_links:
     url: https://micasa.dev/docs/
     about: Check the docs before opening an issue.
   - name: Security vulnerability
-    url: https://github.com/cpcloud/micasa/security/advisories/new
+    url: https://github.com/micasa-dev/micasa/security/advisories/new
     about: Report security issues privately, not as public issues.

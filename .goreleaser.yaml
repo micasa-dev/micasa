@@ -39,7 +39,7 @@ changelog:
 
 dockers_v2:
   - images:
-      - "ghcr.io/cpcloud/micasa"
+      - "ghcr.io/micasa-dev/micasa"
     tags:
       - "{{ .Version }}"
       - "{{ .Major }}.{{ .Minor }}"
@@ -54,7 +54,7 @@ dockers_v2:
     labels:
       "org.opencontainers.image.title": micasa
       "org.opencontainers.image.description": Terminal UI for managing home projects and maintenance
-      "org.opencontainers.image.source": https://github.com/cpcloud/micasa
+      "org.opencontainers.image.source": https://github.com/micasa-dev/micasa
       "org.opencontainers.image.url": https://micasa.dev
       "org.opencontainers.image.documentation": https://micasa.dev/docs/
       "org.opencontainers.image.licenses": Apache-2.0
@@ -62,7 +62,7 @@ dockers_v2:
     annotations:
       "org.opencontainers.image.title": micasa
       "org.opencontainers.image.description": Terminal UI for managing home projects and maintenance
-      "org.opencontainers.image.source": https://github.com/cpcloud/micasa
+      "org.opencontainers.image.source": https://github.com/micasa-dev/micasa
       "org.opencontainers.image.url": https://micasa.dev
       "org.opencontainers.image.documentation": https://micasa.dev/docs/
       "org.opencontainers.image.licenses": Apache-2.0

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cpcloud/micasa/internal/llm"
+	"github.com/micasa-dev/micasa/internal/llm"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -57,6 +57,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh api /users/cpcloud/packages/container/micasa/versions \
+          gh api /orgs/micasa-dev/packages/container/micasa/versions \
             --paginate --jq '.[] | select(.metadata.container.tags | length == 0) | .id' \
-          | xargs -I{} gh api -X DELETE /users/cpcloud/packages/container/micasa/versions/{}
+          | xargs -I{} gh api -X DELETE /orgs/micasa-dev/packages/container/micasa/versions/{}

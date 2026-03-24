@@ -156,8 +156,8 @@ import (
     "context"
     "time"
 
-    "github.com/cpcloud/micasa/internal/crypto"
-    "github.com/cpcloud/micasa/internal/sync"
+    "github.com/micasa-dev/micasa/internal/crypto"
+    "github.com/micasa-dev/micasa/internal/sync"
     tea "charm.land/bubbletea/v2"
 )
 

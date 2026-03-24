@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"charm.land/bubbles/v2/table"
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

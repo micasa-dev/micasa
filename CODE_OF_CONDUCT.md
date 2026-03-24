@@ -9,6 +9,6 @@ This project follows the
 ## Reporting
 
 Report unacceptable behavior to the project maintainer via
-[GitHub Security Advisories](https://github.com/cpcloud/micasa/security/advisories/new)
+[GitHub Security Advisories](https://github.com/micasa-dev/micasa/security/advisories/new)
 or by opening a private issue. You should receive an initial response within
 72 hours.

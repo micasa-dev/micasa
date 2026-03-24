@@ -15,10 +15,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/crypto"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/sync"
 	"github.com/dustin/go-humanize"
+	"github.com/micasa-dev/micasa/internal/crypto"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/sync"
 	"github.com/spf13/cobra"
 )
 

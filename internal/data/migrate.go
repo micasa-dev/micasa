@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cpcloud/micasa/internal/uid"
+	"github.com/micasa-dev/micasa/internal/uid"
 
 	"gorm.io/gorm"
 )

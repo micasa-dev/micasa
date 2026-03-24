@@ -17,7 +17,7 @@ Only the latest release is supported with security updates.
 **Please do not open a public issue for security vulnerabilities.**
 
 Instead, report vulnerabilities privately via
-[GitHub Security Advisories](https://github.com/cpcloud/micasa/security/advisories/new).
+[GitHub Security Advisories](https://github.com/micasa-dev/micasa/security/advisories/new).
 
 Include:
 

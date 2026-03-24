@@ -3,7 +3,7 @@
 
 # Postal Code First: Form Reorder + Auto-fill
 
-**Issue:** [#793](https://github.com/cpcloud/micasa/issues/793)
+**Issue:** [#793](https://github.com/micasa-dev/micasa/issues/793)
 **Date:** 2026-03-24
 
 ## Problem
