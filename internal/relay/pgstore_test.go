@@ -207,12 +207,10 @@ func TestPgStoreInviteJoinFlow(t *testing.T) {
 	assert.NotEmpty(t, result.DeviceID)
 	assert.NotEmpty(t, result.DeviceToken)
 
-	// Second retrieval clears credentials.
-	result2, err := store.GetKeyExchangeResult(ctx, joinResp.ExchangeID)
-	require.NoError(t, err)
-	assert.True(t, result2.Ready)
-	assert.Nil(t, result2.EncryptedHouseholdKey)
-	assert.Empty(t, result2.DeviceToken)
+	// Second retrieval fails (credentials are single-use).
+	_, err = store.GetKeyExchangeResult(ctx, joinResp.ExchangeID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "already consumed")
 
 	// Joiner can authenticate.
 	dev, err := store.AuthenticateDevice(ctx, result.DeviceToken)
