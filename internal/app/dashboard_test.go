@@ -363,7 +363,7 @@ func TestDashboardViewFitsOverlayWidth(t *testing.T) {
 	}
 	m.prepareDashboardView()
 
-	innerW := m.overlayContentWidth() - 4
+	innerW := m.overlayContentWidth() - m.styles.OverlayBox().GetHorizontalFrameSize()
 
 	view := m.dashboardView(50, innerW)
 	for i, line := range strings.Split(view, "\n") {
@@ -387,6 +387,30 @@ func TestDashboardOverlay(t *testing.T) {
 	today := time.Now().Format("Monday, Jan 2")
 	assert.Contains(t, ov, today)
 	assert.Contains(t, ov, "help")
+}
+
+func TestDashboardOverlayLinesDoNotExceedBoxWidth(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	m.width = 120
+	m.height = 40
+	m.showDashboard = true
+	m.dash.expanded = map[string]bool{
+		dashSectionIncidents: true,
+		dashSectionOverdue:   true,
+		dashSectionUpcoming:  true,
+		dashSectionProjects:  true,
+		dashSectionExpiring:  true,
+	}
+
+	ov := m.buildDashboardOverlay()
+	boxW := m.overlayContentWidth()
+	for i, line := range strings.Split(ov, "\n") {
+		w := lipgloss.Width(line)
+		assert.LessOrEqual(t, w, boxW,
+			"line %d width %d exceeds box width %d: %q",
+			i, w, boxW, line)
+	}
 }
 
 func TestDashboardOverlayFitsHeight(t *testing.T) {

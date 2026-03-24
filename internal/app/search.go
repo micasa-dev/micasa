@@ -158,7 +158,7 @@ func (m *Model) buildDocSearchOverlay() string {
 	}
 
 	contentW := m.searchOverlayWidth()
-	innerW := contentW - 4 // padding
+	innerW := contentW - appStyles.OverlayBox().GetHorizontalFrameSize()
 
 	var b strings.Builder
 

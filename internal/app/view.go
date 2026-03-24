@@ -166,7 +166,7 @@ func (m *Model) buildBaseView() string {
 // with navigation hints, suitable for compositing over the base view.
 func (m *Model) buildDashboardOverlay() string {
 	contentW := m.overlayContentWidth()
-	innerW := contentW - 4 // exclude box padding (2 each side)
+	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
 	header := m.dashboardHeader()
 
 	// Minimal hints inside the overlay.
@@ -714,7 +714,7 @@ func (m *Model) buildNotePreviewOverlay() string {
 	b.WriteString("\n\n")
 
 	// Word-wrap the note text to fit within the box.
-	innerW := contentW - 4 // padding
+	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
 	text := m.notePreview.text
 	b.WriteString(wordWrap(text, innerW))
 	b.WriteString("\n\n")

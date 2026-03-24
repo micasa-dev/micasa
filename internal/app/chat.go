@@ -1373,7 +1373,7 @@ func (m *Model) buildChatOverlay() string {
 	}
 
 	contentW := m.chatOverlayWidth()
-	innerW := contentW - 4
+	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
 
 	titleText := " Ask "
 	if m.llmClient != nil {

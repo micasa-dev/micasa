@@ -1373,7 +1373,7 @@ func (m *Model) buildExtractionOverlay() string {
 	}
 
 	contentW := m.extractionOverlayWidth()
-	innerW := contentW - 4 // padding
+	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
 
 	// Title line.
 	title := m.styles.HeaderSection().Render(" Extracting ")

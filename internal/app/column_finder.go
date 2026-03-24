@@ -181,7 +181,7 @@ func (m *Model) buildColumnFinderOverlay() string {
 	if contentW < 20 {
 		contentW = 20
 	}
-	innerW := contentW - 4 // padding
+	innerW := contentW - appStyles.OverlayBox().GetHorizontalFrameSize()
 
 	var b strings.Builder
 

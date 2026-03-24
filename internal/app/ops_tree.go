@@ -386,7 +386,7 @@ func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
 func (m *Model) buildOpsTreeOverlay() string {
 	tree := m.opsTree
 	contentW := m.overlayContentWidth()
-	innerW := contentW - 4 // box padding
+	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
 
 	var b strings.Builder
 
