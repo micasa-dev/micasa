@@ -43,19 +43,20 @@ type Locale struct {
 }
 
 // Address holds settings for postal code auto-fill in the house form.
+// When enabled, postal codes are sent to api.zippopotam.us (a public,
+// third-party API) to resolve city and state. No authentication or
+// account is required; the API sees the postal code and your IP address.
 type Address struct {
 	// Autofill controls whether the app looks up city/state from the
-	// postal code via an external API. Default: true.
+	// postal code via api.zippopotam.us. Default: true.
 	Autofill *bool `toml:"autofill,omitempty"`
 }
 
 // IsAutofillEnabled returns whether postal code auto-fill is enabled.
-// Defaults to true.
+// Defaults to false — the user must opt in, consistent with the app's
+// principle that no data leaves the machine without explicit consent.
 func (a Address) IsAutofillEnabled() bool {
-	if a.Autofill != nil {
-		return *a.Autofill
-	}
-	return true
+	return a.Autofill != nil && *a.Autofill
 }
 
 // Chat holds settings for the chat (NL-to-SQL) pipeline.
@@ -838,7 +839,9 @@ model = "` + DefaultModel + `"
 # currency = "USD"
 
 [address]
-# Set to false to disable postal code auto-fill (city/state lookup).
-# autofill = true
+# Postal code auto-fill: when you type a postal code in the house form,
+# micasa queries api.zippopotam.us to fill in city and state. The API
+# sees the postal code and your IP address. Disabled by default.
+# autofill = false
 `
 }
