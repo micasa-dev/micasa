@@ -19,6 +19,11 @@ jobs:
     outputs:
       go: ${{ steps.detect.outputs.go }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           sparse-checkout: .github/detect-go-changes.bash
@@ -46,6 +51,11 @@ jobs:
       group: security-govulncheck-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
@@ -64,6 +74,11 @@ jobs:
       group: security-osv-scanner-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
@@ -80,6 +95,11 @@ jobs:
       group: security-secrets-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
@@ -102,6 +122,11 @@ jobs:
     env:
       CGO_ENABLED: "0"
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
@@ -122,23 +147,16 @@ jobs:
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
 
-  harden-runner:
-    name: Harden runner
+  result:
+    name: Security Result
+    if: always()
+    needs: [changes, govulncheck, osv-scanner, secrets, codeql]
     runs-on: ubuntu-latest
-    concurrency:
-      group: security-harden-runner-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
         with:
           egress-policy: audit
 
-  result:
-    name: Security Result
-    if: always()
-    needs: [changes, govulncheck, osv-scanner, secrets, codeql, harden-runner]
-    runs-on: ubuntu-latest
-    steps:
       - run: exit 1
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
