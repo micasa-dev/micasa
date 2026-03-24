@@ -55,7 +55,7 @@ func NewManagementClient(baseURL, token string) *Client {
 }
 
 // Push encrypts and sends local oplog entries to the relay.
-func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
+func (c *Client) Push(ctx context.Context, ops []OpPayload) (*PushResponse, error) {
 	envelopes := make([]Envelope, 0, len(ops))
 	for _, op := range ops {
 		plaintext, err := json.Marshal(op)
@@ -85,7 +85,7 @@ func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 		return nil, fmt.Errorf("construct push URL: %w", err)
 	}
 	req, err := http.NewRequestWithContext(
-		context.Background(),
+		ctx,
 		"POST",
 		pushURL,
 		bytes.NewReader(body),
@@ -115,7 +115,7 @@ func (c *Client) Push(ops []OpPayload) (*PushResponse, error) {
 }
 
 // Pull fetches and decrypts remote ops from the relay.
-func (c *Client) Pull(afterSeq int64, limit int) (*PullResult, error) {
+func (c *Client) Pull(ctx context.Context, afterSeq int64, limit int) (*PullResult, error) {
 	pullURL, err := url.JoinPath(c.baseURL, "sync", "pull")
 	if err != nil {
 		return nil, fmt.Errorf("construct pull URL: %w", err)
@@ -125,7 +125,7 @@ func (c *Client) Pull(afterSeq int64, limit int) (*PullResult, error) {
 		pullURL += "&limit=" + strconv.Itoa(limit)
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), "GET", pullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", pullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create pull request: %w", err)
 	}

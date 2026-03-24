@@ -287,9 +287,7 @@ func (m *MemStore) StartJoin(
 	if time.Now().After(inv.expiresAt) {
 		return sync.JoinResponse{}, fmt.Errorf("invite code expired")
 	}
-	inv.usedAttempts++
 	if inv.usedAttempts >= inv.maxAttempts {
-		inv.consumed = true
 		return sync.JoinResponse{}, fmt.Errorf("invite code max attempts exceeded")
 	}
 
@@ -308,6 +306,10 @@ func (m *MemStore) StartJoin(
 		joinerPublicKey: req.PublicKey,
 		createdAt:       time.Now(),
 	}
+
+	// Increment after successful key exchange creation so that
+	// valid joins don't consume brute-force attempt slots.
+	inv.usedAttempts++
 
 	return sync.JoinResponse{
 		ExchangeID:       exchangeID,
@@ -405,6 +407,16 @@ func (m *MemStore) GetKeyExchangeResult(
 
 	if !ex.completed {
 		return sync.KeyExchangeResult{Ready: false}, nil
+	}
+
+	// Credentials are single-use: cleared after first retrieval. If
+	// the encrypted key is nil on a completed exchange, a previous
+	// retrieval already consumed them and the client must create a
+	// new invite.
+	if ex.encryptedKey == nil {
+		return sync.KeyExchangeResult{}, fmt.Errorf(
+			"key exchange %s credentials already consumed; create a new invite", exchangeID,
+		)
 	}
 
 	result := sync.KeyExchangeResult{

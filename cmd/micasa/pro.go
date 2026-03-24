@@ -245,7 +245,7 @@ func runProInit(dbPath, relayURL string) error {
 
 	// Register with relay.
 	client := sync.NewManagementClient(relayURL, "")
-	resp, err := client.CreateHousehold(sync.CreateHouseholdRequest{
+	resp, err := client.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
 		DeviceName: hostname,
 		PublicKey:  kp.PublicKey[:],
 	})
@@ -314,7 +314,7 @@ func runProStatus(dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
-	status, err := client.Status()
+	status, err := client.Status(context.Background())
 	if err != nil {
 		return fmt.Errorf("fetch status: %w", err)
 	}
@@ -365,7 +365,7 @@ func runProStorage(dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
-	status, err := client.Status()
+	status, err := client.Status(context.Background())
 	if err != nil {
 		return fmt.Errorf("fetch status: %w", err)
 	}
@@ -463,7 +463,7 @@ func runProInvite(dbPath string) error {
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
 
-	invite, err := client.Invite(deps.device.HouseholdID)
+	invite, err := client.Invite(context.Background(), deps.device.HouseholdID)
 	if err != nil {
 		return fmt.Errorf("create invite: %w", err)
 	}
@@ -494,7 +494,7 @@ func runProInvite(dbPath string) error {
 		case <-deadline:
 			return fmt.Errorf("timed out waiting for joiner (5 minutes)")
 		case <-ticker.C:
-			exchanges, err := client.GetPendingExchanges(deps.device.HouseholdID)
+			exchanges, err := client.GetPendingExchanges(ctx, deps.device.HouseholdID)
 			if err != nil {
 				return fmt.Errorf("poll pending exchanges: %w", err)
 			}
@@ -522,7 +522,7 @@ found:
 		return fmt.Errorf("encrypt household key for joiner: %w", err)
 	}
 
-	if err := client.CompleteKeyExchange(exchange.ID, sealed); err != nil {
+	if err := client.CompleteKeyExchange(ctx, exchange.ID, sealed); err != nil {
 		return fmt.Errorf("complete key exchange: %w", err)
 	}
 
@@ -610,7 +610,7 @@ func runProJoin(code, dbPath, relayURL string) error {
 
 	// Join household.
 	client := sync.NewManagementClient(relayURL, "")
-	joinResp, err := client.Join(householdID, sync.JoinRequest{
+	joinResp, err := client.Join(context.Background(), householdID, sync.JoinRequest{
 		InviteCode: inviteCode,
 		DeviceName: hostname,
 		PublicKey:  kp.PublicKey[:],
@@ -639,7 +639,7 @@ func runProJoin(code, dbPath, relayURL string) error {
 				"timed out waiting for inviter approval (5 minutes)",
 			)
 		case <-ticker.C:
-			r, err := client.GetKeyExchangeResult(joinResp.ExchangeID)
+			r, err := client.GetKeyExchangeResult(ctx, joinResp.ExchangeID)
 			if err != nil {
 				return fmt.Errorf("poll key exchange: %w", err)
 			}
@@ -753,7 +753,7 @@ func runProDevicesList(dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
-	devices, err := client.ListDevices(deps.device.HouseholdID)
+	devices, err := client.ListDevices(context.Background(), deps.device.HouseholdID)
 	if err != nil {
 		return fmt.Errorf("list devices: %w", err)
 	}
@@ -798,6 +798,7 @@ func runProDevicesRevoke(deviceID, dbPath string) error {
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)
 	if err := client.RevokeDevice(
+		context.Background(),
 		deps.device.HouseholdID,
 		deviceID,
 	); err != nil {

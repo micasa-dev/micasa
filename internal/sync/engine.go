@@ -96,7 +96,7 @@ func (e *Engine) pullAll(ctx context.Context, lastSeq int64) (int, int, error) {
 			return total, totalConflicts, fmt.Errorf("pull cancelled: %w", err)
 		}
 
-		result, err := e.client.Pull(seq, 100)
+		result, err := e.client.Pull(ctx, seq, 100)
 		if err != nil {
 			return total, totalConflicts, fmt.Errorf("pull: %w", err)
 		}
@@ -158,7 +158,7 @@ func (e *Engine) pushAll(ctx context.Context) (int, []OpPayload, error) {
 		})
 	}
 
-	pushResp, err := e.client.Push(ops)
+	pushResp, err := e.client.Push(ctx, ops)
 	if err != nil {
 		return 0, nil, fmt.Errorf("push: %w", err)
 	}
@@ -205,7 +205,7 @@ func (e *Engine) uploadPendingBlobs(ctx context.Context, ops []OpPayload) (int, 
 			continue
 		}
 
-		exists, err := e.client.HasBlob(e.householdID, blobRef)
+		exists, err := e.client.HasBlob(ctx, e.householdID, blobRef)
 		if err != nil {
 			slog.Warn("check blob on relay", "blob_ref", blobRef, "error", err)
 			errCount++
@@ -225,7 +225,7 @@ func (e *Engine) uploadPendingBlobs(ctx context.Context, ops []OpPayload) (int, 
 			continue
 		}
 
-		if err := e.client.UploadBlob(e.householdID, blobRef, doc.Data); err != nil {
+		if err := e.client.UploadBlob(ctx, e.householdID, blobRef, doc.Data); err != nil {
 			slog.Warn("upload blob", "blob_ref", blobRef, "error", err)
 			errCount++
 			continue
@@ -255,7 +255,7 @@ func (e *Engine) fetchPendingBlobs(ctx context.Context) (int, int) {
 			return fetched, errCount
 		}
 
-		plaintext, err := e.client.DownloadBlob(e.householdID, doc.ChecksumSHA256)
+		plaintext, err := e.client.DownloadBlob(ctx, e.householdID, doc.ChecksumSHA256)
 		if err != nil {
 			slog.Warn("download blob", "checksum", doc.ChecksumSHA256, "error", err)
 			errCount++

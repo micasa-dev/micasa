@@ -14,7 +14,10 @@ import (
 
 // CreateHousehold registers a new household and the founding device.
 // No auth token is required.
-func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdResponse, error) {
+func (c *Client) CreateHousehold(
+	ctx context.Context,
+	req CreateHouseholdRequest,
+) (*CreateHouseholdResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal create household request: %w", err)
@@ -25,7 +28,7 @@ func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdRe
 		return nil, fmt.Errorf("construct create household URL: %w", err)
 	}
 	httpReq, err := http.NewRequestWithContext(
-		context.Background(),
+		ctx,
 		"POST",
 		hhURL,
 		bytes.NewReader(body),
@@ -54,12 +57,12 @@ func (c *Client) CreateHousehold(req CreateHouseholdRequest) (*CreateHouseholdRe
 }
 
 // Invite creates a one-time invite code for the household.
-func (c *Client) Invite(householdID string) (*InviteCode, error) {
+func (c *Client) Invite(ctx context.Context, householdID string) (*InviteCode, error) {
 	inviteURL, err := url.JoinPath(c.baseURL, "households", householdID, "invite")
 	if err != nil {
 		return nil, fmt.Errorf("construct invite URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(context.Background(), "POST", inviteURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", inviteURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create invite request: %w", err)
 	}
@@ -84,7 +87,11 @@ func (c *Client) Invite(householdID string) (*InviteCode, error) {
 }
 
 // Join initiates a join request with an invite code. No auth required.
-func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error) {
+func (c *Client) Join(
+	ctx context.Context,
+	householdID string,
+	req JoinRequest,
+) (*JoinResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal join request: %w", err)
@@ -95,7 +102,7 @@ func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error
 		return nil, fmt.Errorf("construct join URL: %w", err)
 	}
 	httpReq, err := http.NewRequestWithContext(
-		context.Background(),
+		ctx,
 		"POST",
 		joinURL,
 		bytes.NewReader(body),
@@ -124,12 +131,12 @@ func (c *Client) Join(householdID string, req JoinRequest) (*JoinResponse, error
 }
 
 // Status returns the sync status for the authenticated device's household.
-func (c *Client) Status() (*StatusResponse, error) {
+func (c *Client) Status(ctx context.Context) (*StatusResponse, error) {
 	statusURL, err := url.JoinPath(c.baseURL, "status")
 	if err != nil {
 		return nil, fmt.Errorf("construct status URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", statusURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", statusURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create status request: %w", err)
 	}
@@ -154,12 +161,12 @@ func (c *Client) Status() (*StatusResponse, error) {
 }
 
 // ListDevices returns all devices in the household.
-func (c *Client) ListDevices(householdID string) ([]Device, error) {
+func (c *Client) ListDevices(ctx context.Context, householdID string) ([]Device, error) {
 	devicesURL, err := url.JoinPath(c.baseURL, "households", householdID, "devices")
 	if err != nil {
 		return nil, fmt.Errorf("construct list devices URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", devicesURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", devicesURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create list devices request: %w", err)
 	}
@@ -186,12 +193,12 @@ func (c *Client) ListDevices(householdID string) ([]Device, error) {
 }
 
 // RevokeDevice removes a device from the household.
-func (c *Client) RevokeDevice(householdID, deviceID string) error {
+func (c *Client) RevokeDevice(ctx context.Context, householdID, deviceID string) error {
 	revokeURL, err := url.JoinPath(c.baseURL, "households", householdID, "devices", deviceID)
 	if err != nil {
 		return fmt.Errorf("construct revoke device URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(context.Background(), "DELETE", revokeURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "DELETE", revokeURL, nil)
 	if err != nil {
 		return fmt.Errorf("create revoke device request: %w", err)
 	}
@@ -211,12 +218,15 @@ func (c *Client) RevokeDevice(householdID, deviceID string) error {
 }
 
 // GetPendingExchanges returns incomplete key exchanges for the household.
-func (c *Client) GetPendingExchanges(householdID string) ([]PendingKeyExchange, error) {
+func (c *Client) GetPendingExchanges(
+	ctx context.Context,
+	householdID string,
+) ([]PendingKeyExchange, error) {
 	exchURL, err := url.JoinPath(c.baseURL, "households", householdID, "pending-exchanges")
 	if err != nil {
 		return nil, fmt.Errorf("construct pending exchanges URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", exchURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", exchURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create pending exchanges request: %w", err)
 	}
@@ -247,7 +257,11 @@ func (c *Client) GetPendingExchanges(householdID string) ([]PendingKeyExchange, 
 }
 
 // CompleteKeyExchange sends the encrypted household key for a pending exchange.
-func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) error {
+func (c *Client) CompleteKeyExchange(
+	ctx context.Context,
+	exchangeID string,
+	encryptedKey []byte,
+) error {
 	body, err := json.Marshal(CompleteKeyExchangeRequest{
 		EncryptedHouseholdKey: encryptedKey,
 	})
@@ -260,7 +274,7 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 		return fmt.Errorf("construct complete key exchange URL: %w", err)
 	}
 	httpReq, err := http.NewRequestWithContext(
-		context.Background(),
+		ctx,
 		"POST",
 		completeURL,
 		bytes.NewReader(body),
@@ -288,12 +302,15 @@ func (c *Client) CompleteKeyExchange(exchangeID string, encryptedKey []byte) err
 // This endpoint is intentionally unauthenticated: the joiner does not
 // yet have a device token. The exchange ID (a 256-bit crypto-random hex string) serves
 // as a bearer credential -- it is only known to the inviter and joiner.
-func (c *Client) GetKeyExchangeResult(exchangeID string) (*KeyExchangeResult, error) {
+func (c *Client) GetKeyExchangeResult(
+	ctx context.Context,
+	exchangeID string,
+) (*KeyExchangeResult, error) {
 	resultURL, err := url.JoinPath(c.baseURL, "key-exchange", exchangeID)
 	if err != nil {
 		return nil, fmt.Errorf("construct key exchange result URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", resultURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", resultURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create key exchange result request: %w", err)
 	}

@@ -54,7 +54,7 @@ func TestClientPushAndPull(t *testing.T) {
 		DeviceID:  "dev-a",
 		CreatedAt: time.Now(),
 	}}
-	pushResp, err := clientA.Push(ops)
+	pushResp, err := clientA.Push(context.Background(), ops)
 	require.NoError(t, err)
 	require.Len(t, pushResp.Confirmed, 1)
 	assert.Equal(t, int64(1), pushResp.Confirmed[0].Seq)
@@ -68,7 +68,7 @@ func TestClientPushAndPull(t *testing.T) {
 	require.NoError(t, err)
 
 	clientB := sync.NewClient(srv.URL, regResp.DeviceToken, key)
-	pullResult, err := clientB.Pull(0, 100)
+	pullResult, err := clientB.Pull(context.Background(), 0, 100)
 	require.NoError(t, err)
 	require.Len(t, pullResult.Ops, 1)
 
@@ -97,7 +97,7 @@ func TestClientEncryptionRoundTrip(t *testing.T) {
 		CreatedAt: time.Now(),
 	}}
 
-	_, err = clientA.Push(ops)
+	_, err = clientA.Push(context.Background(), ops)
 	require.NoError(t, err)
 
 	// Device B pulls and decrypts.
@@ -109,7 +109,7 @@ func TestClientEncryptionRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	clientB := sync.NewClient(srv.URL, regResp.DeviceToken, key)
-	pullResult, err := clientB.Pull(0, 100)
+	pullResult, err := clientB.Pull(context.Background(), 0, 100)
 	require.NoError(t, err)
 	require.Len(t, pullResult.Ops, 1)
 
@@ -136,7 +136,7 @@ func TestClientWrongKeyCannotDecrypt(t *testing.T) {
 		DeviceID:  "dev-a",
 		CreatedAt: time.Now(),
 	}}
-	_, err = clientA.Push(ops)
+	_, err = clientA.Push(context.Background(), ops)
 	require.NoError(t, err)
 
 	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
@@ -148,7 +148,7 @@ func TestClientWrongKeyCannotDecrypt(t *testing.T) {
 
 	// Device B uses wrong key.
 	clientB := sync.NewClient(srv.URL, regResp.DeviceToken, keyB)
-	_, err = clientB.Pull(0, 100)
+	_, err = clientB.Pull(context.Background(), 0, 100)
 	assert.Error(t, err, "decryption with wrong key should fail")
 }
 
@@ -171,7 +171,7 @@ func TestClientHandlesTrailingSlashInBaseURL(t *testing.T) {
 		DeviceID:  "dev-a",
 		CreatedAt: time.Now(),
 	}}
-	pushResp, err := clientA.Push(ops)
+	pushResp, err := clientA.Push(context.Background(), ops)
 	require.NoError(t, err)
 	require.Len(t, pushResp.Confirmed, 1)
 
@@ -184,7 +184,7 @@ func TestClientHandlesTrailingSlashInBaseURL(t *testing.T) {
 	require.NoError(t, err)
 
 	clientB := sync.NewClient(srv.URL+"/", regResp.DeviceToken, key)
-	pullResult, err := clientB.Pull(0, 100)
+	pullResult, err := clientB.Pull(context.Background(), 0, 100)
 	require.NoError(t, err)
 	require.Len(t, pullResult.Ops, 1)
 }

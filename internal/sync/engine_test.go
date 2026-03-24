@@ -114,7 +114,7 @@ func seedRelayOps(
 		}
 	}
 
-	pushResp, err := remoteClient.Push(ops)
+	pushResp, err := remoteClient.Push(context.Background(), ops)
 	require.NoError(t, err)
 	return len(pushResp.Confirmed)
 }
@@ -255,7 +255,7 @@ func TestEngineSyncUploadsBlobForDocument(t *testing.T) {
 	assert.Zero(t, result.BlobErrs)
 
 	// Verify the blob is actually on the relay.
-	exists, err := client.HasBlob(householdID, checksum)
+	exists, err := client.HasBlob(context.Background(), householdID, checksum)
 	require.NoError(t, err)
 	assert.True(t, exists, "blob should exist on relay after upload")
 }
@@ -274,7 +274,7 @@ func TestEngineSyncSkipsBlobUploadWhenAlreadyOnRelay(t *testing.T) {
 
 	// Pre-upload the blob so the relay already has it.
 	client := sync.NewClient(srv.URL, token, key)
-	require.NoError(t, client.UploadBlob(householdID, checksum, blobData))
+	require.NoError(t, client.UploadBlob(context.Background(), householdID, checksum, blobData))
 
 	// Create the document locally.
 	docID := uid.New()
@@ -389,7 +389,7 @@ func TestEngineSyncDownloadsPendingBlobs(t *testing.T) {
 	// Upload a blob to the relay directly.
 	blobData := []byte("remote blob content to fetch")
 	checksum := fmt.Sprintf("%x", sha256.Sum256(blobData))
-	require.NoError(t, client.UploadBlob(householdID, checksum, blobData))
+	require.NoError(t, client.UploadBlob(context.Background(), householdID, checksum, blobData))
 
 	// Create a local document with a checksum but no data, simulating a
 	// document record that arrived via sync without the blob payload.
@@ -435,7 +435,7 @@ func TestEngineSyncDownloadsMultiplePendingBlobs(t *testing.T) {
 	for i := range n {
 		content := []byte(fmt.Sprintf("blob content number %d", i))
 		checksum := fmt.Sprintf("%x", sha256.Sum256(content))
-		require.NoError(t, client.UploadBlob(householdID, checksum, content))
+		require.NoError(t, client.UploadBlob(context.Background(), householdID, checksum, content))
 
 		docID := uid.New()
 		require.NoError(t, store.GormDB().Create(&data.Document{
@@ -525,7 +525,10 @@ func TestEngineSyncBlobUploadAndDownloadSameCycle(t *testing.T) {
 	// Document to download: blob is on relay, local doc has checksum but no data.
 	downloadData := []byte("remote blob for download")
 	downloadChecksum := fmt.Sprintf("%x", sha256.Sum256(downloadData))
-	require.NoError(t, client.UploadBlob(householdID, downloadChecksum, downloadData))
+	require.NoError(
+		t,
+		client.UploadBlob(context.Background(), householdID, downloadChecksum, downloadData),
+	)
 	downloadDocID := uid.New()
 	require.NoError(t, store.GormDB().Create(&data.Document{
 		ID:             downloadDocID,
@@ -547,7 +550,7 @@ func TestEngineSyncBlobUploadAndDownloadSameCycle(t *testing.T) {
 	assert.Zero(t, result.BlobErrs)
 
 	// Verify the uploaded blob is on the relay.
-	exists, err := client.HasBlob(householdID, uploadChecksum)
+	exists, err := client.HasBlob(context.Background(), householdID, uploadChecksum)
 	require.NoError(t, err)
 	assert.True(t, exists)
 

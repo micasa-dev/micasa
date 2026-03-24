@@ -396,16 +396,8 @@ func (s *PgStore) StartJoin(
 			return fmt.Errorf("invite code expired")
 		}
 
-		inv.Attempts++
 		if inv.Attempts >= maxInviteAttempts {
-			inv.Consumed = true
-			if err := tx.Save(&inv).Error; err != nil {
-				return fmt.Errorf("update invite: %w", err)
-			}
 			return fmt.Errorf("invite code max attempts exceeded")
-		}
-		if err := tx.Save(&inv).Error; err != nil {
-			return fmt.Errorf("update invite: %w", err)
 		}
 
 		// Find inviter's public key.
@@ -424,6 +416,13 @@ func (s *PgStore) StartJoin(
 		}
 		if err := tx.Create(&ex).Error; err != nil {
 			return fmt.Errorf("create key exchange: %w", err)
+		}
+
+		// Increment after successful key exchange creation so that
+		// valid joins don't consume brute-force attempt slots.
+		inv.Attempts++
+		if err := tx.Save(&inv).Error; err != nil {
+			return fmt.Errorf("update invite: %w", err)
 		}
 
 		resp = sync.JoinResponse{
@@ -546,6 +545,17 @@ func (s *PgStore) GetKeyExchangeResult(
 		if !ex.Completed {
 			result = sync.KeyExchangeResult{Ready: false}
 			return nil
+		}
+
+		// Credentials are single-use: cleared after first retrieval. If
+		// the encrypted key is nil on a completed exchange, a previous
+		// retrieval already consumed them and the client must create a
+		// new invite.
+		if ex.EncryptedHouseholdKey == nil {
+			return fmt.Errorf(
+				"key exchange %s credentials already consumed; create a new invite",
+				exchangeID,
+			)
 		}
 
 		result = sync.KeyExchangeResult{
@@ -676,6 +686,16 @@ func (s *PgStore) PutBlob(
 	quota int64,
 ) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Lock the household row to serialize concurrent blob uploads.
+		// Without this, READ COMMITTED allows two transactions to read
+		// the same usage sum and both insert, overshooting the quota.
+		if err := tx.Model(&pgHousehold{}).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", householdID).
+			First(&pgHousehold{}).Error; err != nil {
+			return fmt.Errorf("lock household for blob quota: %w", err)
+		}
+
 		// Check if blob already exists.
 		var count int64
 		if err := tx.Model(&pgBlob{}).

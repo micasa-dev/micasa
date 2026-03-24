@@ -730,17 +730,11 @@ func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
 	assert.NotEmpty(t, result.DeviceToken)
 	assert.NotEmpty(t, result.EncryptedHouseholdKey)
 
-	// Second retrieval -- credentials must be gone.
+	// Second retrieval -- must fail (credentials are single-use).
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
 	h.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusOK, rec.Code)
-
-	var result2 sync.KeyExchangeResult
-	require.NoError(t, json.NewDecoder(rec.Body).Decode(&result2))
-	assert.True(t, result2.Ready)
-	assert.Empty(t, result2.DeviceToken, "token must not be returned twice")
-	assert.Empty(t, result2.EncryptedHouseholdKey, "encrypted key must not be returned twice")
+	assert.Equal(t, http.StatusNotFound, rec.Code, "consumed credentials must return 404")
 }
 
 func TestInviteConsumedAfterKeyExchange(t *testing.T) {

@@ -49,7 +49,8 @@ func (s *Store) setupFTS() error {
 	}
 
 	// Install triggers to keep the FTS index in sync with the documents
-	// table. The IF NOT EXISTS guard prevents errors on repeated calls.
+	// table. Triggers are dropped and recreated on every Open so that
+	// definition changes (e.g., soft-delete awareness) apply to existing DBs.
 	triggers := []struct {
 		name string
 		sql  string
@@ -57,7 +58,7 @@ func (s *Store) setupFTS() error {
 		{
 			name: triggerFTSInsert,
 			sql: fmt.Sprintf(`
-				CREATE TRIGGER IF NOT EXISTS %s AFTER INSERT ON %s BEGIN
+				CREATE TRIGGER %s AFTER INSERT ON %s BEGIN
 					INSERT INTO %s(rowid, title, notes, extracted_text)
 					VALUES (new.rowid, new.title, new.notes, new.extracted_text);
 				END`, triggerFTSInsert, TableDocuments, tableFTS),
@@ -65,7 +66,7 @@ func (s *Store) setupFTS() error {
 		{
 			name: triggerFTSDelete,
 			sql: fmt.Sprintf(`
-				CREATE TRIGGER IF NOT EXISTS %s AFTER DELETE ON %s BEGIN
+				CREATE TRIGGER %s AFTER DELETE ON %s BEGIN
 					INSERT INTO %s(%s, rowid, title, notes, extracted_text)
 					VALUES ('delete', old.rowid, old.title, old.notes, old.extracted_text);
 				END`, triggerFTSDelete, TableDocuments, tableFTS, tableFTS),
@@ -73,15 +74,24 @@ func (s *Store) setupFTS() error {
 		{
 			name: triggerFTSUpdate,
 			sql: fmt.Sprintf(`
-				CREATE TRIGGER IF NOT EXISTS %s AFTER UPDATE ON %s BEGIN
+				CREATE TRIGGER %s AFTER UPDATE ON %s BEGIN
+					-- Remove old FTS entry only when it was previously indexed.
 					INSERT INTO %s(%s, rowid, title, notes, extracted_text)
-					VALUES ('delete', old.rowid, old.title, old.notes, old.extracted_text);
+					SELECT 'delete', old.rowid, old.title, old.notes, old.extracted_text
+					WHERE old.deleted_at IS NULL;
+					-- Re-index only when the row is alive (not soft-deleted).
 					INSERT INTO %s(rowid, title, notes, extracted_text)
-					VALUES (new.rowid, new.title, new.notes, new.extracted_text);
+					SELECT new.rowid, new.title, new.notes, new.extracted_text
+					WHERE new.deleted_at IS NULL;
 				END`, triggerFTSUpdate, TableDocuments, tableFTS, tableFTS, tableFTS),
 		},
 	}
 	for _, t := range triggers {
+		// Drop first so updated trigger definitions take effect on existing DBs.
+		drop := fmt.Sprintf("DROP TRIGGER IF EXISTS %s", t.name)
+		if err := s.db.Exec(drop).Error; err != nil {
+			return fmt.Errorf("drop trigger %s: %w", t.name, err)
+		}
 		if err := s.db.Exec(t.sql).Error; err != nil {
 			return fmt.Errorf("create trigger %s: %w", t.name, err)
 		}

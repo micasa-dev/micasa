@@ -624,7 +624,7 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 	subID, status, err := ParseSubscriptionEvent(event)
 	if err != nil {
-		// Not a subscription event we handle -- acknowledge silently.
+		h.log.Info("webhook: ignoring non-subscription event", "event_type", event.Type)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
 		return
 	}

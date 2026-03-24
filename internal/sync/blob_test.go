@@ -4,6 +4,7 @@
 package sync_test
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"log/slog"
@@ -27,10 +28,11 @@ func newBlobTestSetup(t *testing.T) (*sync.Client, string) {
 	t.Cleanup(srv.Close)
 
 	// Create household.
-	resp, err := sync.NewManagementClient(srv.URL, "").CreateHousehold(sync.CreateHouseholdRequest{
-		DeviceName: "test-device",
-		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
-	})
+	resp, err := sync.NewManagementClient(srv.URL, "").
+		CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+			DeviceName: "test-device",
+			PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+		})
 	require.NoError(t, err)
 
 	key, err := crypto.GenerateHouseholdKey()
@@ -54,11 +56,11 @@ func TestBlobRoundTrip(t *testing.T) {
 	hash := sha256Hex(plaintext)
 
 	// Upload.
-	err := client.UploadBlob(hhID, hash, plaintext)
+	err := client.UploadBlob(context.Background(), hhID, hash, plaintext)
 	require.NoError(t, err)
 
 	// Download.
-	got, err := client.DownloadBlob(hhID, hash)
+	got, err := client.DownloadBlob(context.Background(), hhID, hash)
 	require.NoError(t, err)
 	assert.Equal(t, plaintext, got)
 }
@@ -71,10 +73,10 @@ func TestBlobDedupTreatedAsSuccess(t *testing.T) {
 	hash := sha256Hex(plaintext)
 
 	// First upload.
-	require.NoError(t, client.UploadBlob(hhID, hash, plaintext))
+	require.NoError(t, client.UploadBlob(context.Background(), hhID, hash, plaintext))
 
 	// Second upload -- should succeed (409 treated as success).
-	require.NoError(t, client.UploadBlob(hhID, hash, plaintext))
+	require.NoError(t, client.UploadBlob(context.Background(), hhID, hash, plaintext))
 }
 
 func TestBlobDownloadNotFound(t *testing.T) {
@@ -82,7 +84,7 @@ func TestBlobDownloadNotFound(t *testing.T) {
 	client, hhID := newBlobTestSetup(t)
 
 	hash := sha256Hex([]byte("nonexistent"))
-	_, err := client.DownloadBlob(hhID, hash)
+	_, err := client.DownloadBlob(context.Background(), hhID, hash)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "404")
 }
@@ -95,14 +97,14 @@ func TestBlobHasBlob(t *testing.T) {
 	hash := sha256Hex(data)
 
 	// Before upload.
-	exists, err := client.HasBlob(hhID, hash)
+	exists, err := client.HasBlob(context.Background(), hhID, hash)
 	require.NoError(t, err)
 	assert.False(t, exists)
 
 	// After upload.
-	require.NoError(t, client.UploadBlob(hhID, hash, data))
+	require.NoError(t, client.UploadBlob(context.Background(), hhID, hash, data))
 
-	exists, err = client.HasBlob(hhID, hash)
+	exists, err = client.HasBlob(context.Background(), hhID, hash)
 	require.NoError(t, err)
 	assert.True(t, exists)
 }
@@ -115,10 +117,11 @@ func TestBlobWrongKeyCannotDecrypt(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	resp, err := sync.NewManagementClient(srv.URL, "").CreateHousehold(sync.CreateHouseholdRequest{
-		DeviceName: "test-device",
-		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
-	})
+	resp, err := sync.NewManagementClient(srv.URL, "").
+		CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+			DeviceName: "test-device",
+			PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+		})
 	require.NoError(t, err)
 
 	key1, err := crypto.GenerateHouseholdKey()
@@ -131,10 +134,10 @@ func TestBlobWrongKeyCannotDecrypt(t *testing.T) {
 
 	plaintext := []byte("secret document content")
 	hash := sha256Hex(plaintext)
-	require.NoError(t, client1.UploadBlob(resp.HouseholdID, hash, plaintext))
+	require.NoError(t, client1.UploadBlob(context.Background(), resp.HouseholdID, hash, plaintext))
 
 	// Download with wrong key -- should fail decryption.
-	_, err = client2.DownloadBlob(resp.HouseholdID, hash)
+	_, err = client2.DownloadBlob(context.Background(), resp.HouseholdID, hash)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "decrypt")
 }
@@ -147,10 +150,11 @@ func TestBlobURLHandlesTrailingSlash(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	resp, err := sync.NewManagementClient(srv.URL, "").CreateHousehold(sync.CreateHouseholdRequest{
-		DeviceName: "test-device",
-		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
-	})
+	resp, err := sync.NewManagementClient(srv.URL, "").
+		CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+			DeviceName: "test-device",
+			PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+		})
 	require.NoError(t, err)
 
 	key, err := crypto.GenerateHouseholdKey()
@@ -161,14 +165,14 @@ func TestBlobURLHandlesTrailingSlash(t *testing.T) {
 	plaintext := []byte("trailing slash blob test")
 	hash := sha256Hex(plaintext)
 
-	err = client.UploadBlob(resp.HouseholdID, hash, plaintext)
+	err = client.UploadBlob(context.Background(), resp.HouseholdID, hash, plaintext)
 	require.NoError(t, err)
 
-	got, err := client.DownloadBlob(resp.HouseholdID, hash)
+	got, err := client.DownloadBlob(context.Background(), resp.HouseholdID, hash)
 	require.NoError(t, err)
 	assert.Equal(t, plaintext, got)
 
-	exists, err := client.HasBlob(resp.HouseholdID, hash)
+	exists, err := client.HasBlob(context.Background(), resp.HouseholdID, hash)
 	require.NoError(t, err)
 	assert.True(t, exists)
 }
@@ -181,7 +185,7 @@ func TestBlobUploadRejectsHashMismatch(t *testing.T) {
 	fakeHash := sha256Hex([]byte("different content"))
 
 	// Upload with a hash that doesn't match the plaintext.
-	err := client.UploadBlob(hhID, fakeHash, plaintext)
+	err := client.UploadBlob(context.Background(), hhID, fakeHash, plaintext)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "hash mismatch")
 }
@@ -209,7 +213,7 @@ func TestBlobDownloadIntegrityCheckFailsOnTamperedContent(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := sync.NewClient(srv.URL, "fake-token", key)
-	_, err = client.DownloadBlob("hh-id", realHash)
+	_, err = client.DownloadBlob(context.Background(), "hh-id", realHash)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "integrity")
 	assert.Contains(t, err.Error(), realHash)

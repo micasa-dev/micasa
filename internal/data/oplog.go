@@ -162,11 +162,13 @@ func newDocumentOplogPayload(doc Document) documentOplogPayload {
 		ExtractedText:   doc.ExtractedText,
 		ExtractionModel: doc.ExtractionModel,
 		ChecksumSHA256:  doc.ChecksumSHA256,
-		BlobRef:         doc.ChecksumSHA256,
 		MIMEType:        doc.MIMEType,
 		SizeBytes:       doc.SizeBytes,
 		CreatedAt:       doc.CreatedAt,
 		UpdatedAt:       doc.UpdatedAt,
+	}
+	if doc.ChecksumSHA256 != "" {
+		p.BlobRef = doc.ChecksumSHA256
 	}
 	if doc.ExtractionOps != nil {
 		p.ExtractionOps = doc.ExtractionOps
