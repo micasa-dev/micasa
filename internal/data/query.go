@@ -5,6 +5,7 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -282,45 +283,12 @@ func (s *Store) DataDump() string {
 		}
 		cols, err := sqlRows.Columns()
 		if err != nil {
-			_ = sqlRows.Close() //nolint:sqlclosecheck // close-on-error before defer
+			_ = sqlRows.Close()
 			continue
 		}
-		defer func() { _ = sqlRows.Close() }()
-		// Find the deleted_at column so we can skip soft-deleted rows.
-		// Raw SQL bypasses GORM's automatic WHERE deleted_at IS NULL scope.
-		deletedAtIdx := -1
-		for i, c := range cols {
-			if strings.ToLower(c) == ColDeletedAt {
-				deletedAtIdx = i
-				break
-			}
-		}
-
-		var rows [][]string
-		for sqlRows.Next() {
-			values := make([]any, len(cols))
-			ptrs := make([]any, len(cols))
-			for i := range values {
-				ptrs[i] = &values[i]
-			}
-			if err := sqlRows.Scan(ptrs...); err != nil {
-				continue
-			}
-			// Skip soft-deleted rows: deleted_at is non-null.
-			if deletedAtIdx >= 0 && values[deletedAtIdx] != nil {
-				continue
-			}
-			row := make([]string, len(cols))
-			for i, v := range values {
-				if v == nil {
-					row[i] = ""
-				} else {
-					row[i] = fmt.Sprintf("%v", v)
-				}
-			}
-			rows = append(rows, row)
-		}
-		if err := sqlRows.Err(); err != nil {
+		rows, err := scanTableRows(sqlRows, cols)
+		_ = sqlRows.Close()
+		if err != nil {
 			continue
 		}
 
@@ -473,4 +441,44 @@ func containsWord(s, keyword string) bool {
 func isIdentChar(b byte) bool {
 	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') ||
 		(b >= '0' && b <= '9') || b == '_'
+}
+
+// scanTableRows reads all non-deleted rows from an open sql.Rows into
+// string slices. The caller must close sqlRows after this returns.
+func scanTableRows(sqlRows *sql.Rows, cols []string) ([][]string, error) {
+	deletedAtIdx := -1
+	for i, c := range cols {
+		if strings.ToLower(c) == ColDeletedAt {
+			deletedAtIdx = i
+			break
+		}
+	}
+
+	var rows [][]string
+	for sqlRows.Next() {
+		values := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
+		for i := range values {
+			ptrs[i] = &values[i]
+		}
+		if err := sqlRows.Scan(ptrs...); err != nil {
+			continue
+		}
+		if deletedAtIdx >= 0 && values[deletedAtIdx] != nil {
+			continue
+		}
+		row := make([]string, len(cols))
+		for i, v := range values {
+			if v == nil {
+				row[i] = ""
+			} else {
+				row[i] = fmt.Sprintf("%v", v)
+			}
+		}
+		rows = append(rows, row)
+	}
+	if err := sqlRows.Err(); err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
