@@ -234,6 +234,11 @@ details; do not duplicate that detail here.
   issue MUST include numbered steps to reproduce.
 - **No test plans in PRs**: Omit the "Test plan" section entirely unless
   something genuinely cannot be automated.
+- **Label every PR**: When creating a PR, add labels matching the commit
+  type: `fix:` → `bug`, `feat:` → `enhancement`, `test:` → `test`,
+  `ci:` → `ci`, `docs:` → `documentation`, `chore:` → `chore`,
+  `refactor:` → `refactor`. Add scope-specific labels too when applicable
+  (e.g. `data`, `ux`, `llm`, `nix`, `finance`, `documents`, `website`).
 - **No mass-history-cleanup logs**: Don't log git history rewrites.
 - **CLAUDE.md changes go on the working branch**: Never edit CLAUDE.md as
   uncommitted changes in the main checkout.
