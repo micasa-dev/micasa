@@ -49,3 +49,63 @@ cleans up the UI state.
   was visibly frozen but all state-based tests passed.
 - Concurrency bugs in message-passing systems are almost always about
   *what messages get sent*, not about *what flags are set when they arrive*.
+
+---
+
+## Postal code autofill: 1 hour for a 20-minute feature
+
+**Feature**: Auto-fill city/state from postal code in the house form (#793).
+
+**What went wrong**: Three compounding failures turned a straightforward
+feature into 16 commits and over an hour of debugging.
+
+### Failure 1: Mocks matched the code, not the API
+
+During design, the real zippopotam.us API was fetched and showed JSON keys
+with spaces (`"place name"`, `"state abbreviation"`). The struct tags were
+written from memory with underscores (`"place_name"`, `"state_abbreviation"`).
+Every test mock used the same wrong keys. All tests passed. The real API
+silently returned zero values.
+
+### Failure 2: Assumed huh's tab key synchronously moves focus
+
+Built three blur detection approaches:
+1. Compare focused field before/after a single `form.Update` call -- failed
+   because huh returns a `NextField` *command* that executes on the next frame.
+2. Track `lastFocusedField` across frames -- failed because
+   `GetFocusedField()` returns unstable pointers across `form.Update` calls.
+3. Intercept `nextFieldMsg` directly -- failed because the message arrives
+   after the user's keystrokes, which go into the wrong field.
+
+The fix was trivial: trigger on postal code *value change*, not field blur.
+Every `updateForm` call checks if `values.PostalCode` changed and has >= 3
+characters. No focus tracking needed.
+
+### Failure 3: Didn't understand huh's buffer model
+
+Setting `values.City = "Beverly Hills"` on the Go struct doesn't update
+huh's internal `textinput` buffer. The form renders the buffer, not the
+struct pointer. The city field appeared empty to the user even though the
+struct was correct. Fix: call `cityInput.Value(&values.City)` to resync
+huh's buffer from the pointer.
+
+### Root cause
+
+All three failures share the same root: **implementing from assumptions
+instead of verifying against the real system.** The mocks validated
+assumptions, not behavior.
+
+### What would have prevented this
+
+- Run a live API smoke test before writing mocks (catches #1 in 30 seconds)
+- Read huh's `Input.Update` and `Group.Update` source before designing
+  blur detection (catches #2)
+- Read huh's `Input.View` to understand buffer vs accessor rendering
+  (catches #3)
+
+### Rules added
+
+- **Never mock from memory**: Copy real API responses into test mocks.
+  Always include a live API smoke test for external integrations.
+- **Read framework source before designing integration**: Don't assume
+  sync/async behavior -- verify it in the source.
