@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -110,6 +111,51 @@ func TestLookupUnexpectedStatusCode(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "unexpected status 500")
+}
+
+func TestLookupRejectsInvalidPostalCodeCharacters(t *testing.T) {
+	t.Parallel()
+	for _, code := range []string{"../us", "90210?q=1", "90210#frag", "hello\nworld"} {
+		result, err := Lookup(context.Background(), &http.Client{}, "http://unused", "us", code)
+		require.Error(t, err, "expected error for postal code %q", code)
+		assert.Contains(t, err.Error(), "invalid postal code character")
+		assert.Nil(t, result)
+	}
+}
+
+func TestLookupAcceptsValidPostalCodeFormats(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(
+			[]byte(
+				`{"places": [{"place name": "Test", "state": "Test", "state abbreviation": "TS"}]}`,
+			),
+		)
+	}))
+	defer srv.Close()
+
+	for _, code := range []string{"90210", "SW1A 1AA", "H0H-0H0", "1010"} {
+		result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", code)
+		require.NoError(t, err, "unexpected error for postal code %q", code)
+		require.NotNil(t, result, "unexpected nil result for postal code %q", code)
+	}
+}
+
+func TestLookupSetsUserAgent(t *testing.T) {
+	t.Parallel()
+	var called atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called.Store(true)
+		assert.Equal(t, "micasa", r.Header.Get("User-Agent"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"places": []}`))
+	}))
+	defer srv.Close()
+
+	_, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	require.NoError(t, err)
+	assert.True(t, called.Load(), "handler was never invoked")
 }
 
 func TestLookupEmptyPlaces(t *testing.T) {

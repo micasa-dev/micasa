@@ -314,7 +314,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			extractors:         options.ExtractionConfig.Extractors,
 		},
 		pull:            pullState{progress: pprog},
-		addressClient:   &http.Client{Timeout: 5 * time.Second},
+		addressClient:   &http.Client{},
 		addressBaseURL:  postalCodeAPIBaseURL,
 		addressCountry:  options.AddressCountry,
 		addressAutofill: options.AddressAutofill,
