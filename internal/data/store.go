@@ -320,6 +320,9 @@ func (s *Store) IsMicasaDB() (bool, error) {
 }
 
 func (s *Store) AutoMigrate() error {
+	if err := migrateIntToStringIDs(s.db); err != nil {
+		return fmt.Errorf("pre-migrate int-to-string IDs: %w", err)
+	}
 	if err := s.db.AutoMigrate(Models()...); err != nil {
 		return err
 	}
