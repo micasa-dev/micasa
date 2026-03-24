@@ -137,7 +137,7 @@ jobs:
   result:
     name: Security Result
     if: always()
-    needs: [changes, govulncheck, osv-scanner, secrets, codeql]
+    needs: [changes, govulncheck, osv-scanner, secrets, codeql, harden-runner]
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
