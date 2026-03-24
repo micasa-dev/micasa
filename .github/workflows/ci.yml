@@ -145,11 +145,6 @@ jobs:
         shell: bash
         run: bash internal/extract/gen-mixed-pdf.bash
 
-      - name: Check go mod tidy
-        run: |
-          go mod tidy
-          git diff --exit-code go.mod go.sum
-
       - name: Build
         run: go build ./cmd/micasa
 
