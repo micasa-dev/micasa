@@ -9,6 +9,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDetectCountryLCAllOverridesLang(t *testing.T) {
+	// LC_ALL=C should produce "us" even if LANG=en_GB.UTF-8.
+	t.Setenv("LC_ALL", "C")
+	t.Setenv("LANG", "en_GB.UTF-8")
+	assert.Equal(t, "us", DetectCountry())
+}
+
+func TestDetectCountryFallsBackToLang(t *testing.T) {
+	t.Setenv("LC_ALL", "")
+	t.Setenv("LANG", "en_GB.UTF-8")
+	assert.Equal(t, "gb", DetectCountry())
+}
+
+func TestDetectCountryDefaultsToUS(t *testing.T) {
+	t.Setenv("LC_ALL", "")
+	t.Setenv("LANG", "")
+	assert.Equal(t, "us", DetectCountry())
+}
+
 func TestDetectCountryFromLocale(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

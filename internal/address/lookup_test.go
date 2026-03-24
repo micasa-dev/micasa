@@ -98,3 +98,29 @@ func TestLookupMultiplePlacesUsesFirst(t *testing.T) {
 	assert.Equal(t, "Allston", result.City)
 	assert.Equal(t, "MA", result.State)
 }
+
+func TestLookupUnexpectedStatusCode(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "unexpected status 500")
+}
+
+func TestLookupEmptyPlaces(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"places": []}`))
+	}))
+	defer srv.Close()
+
+	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "99999")
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
