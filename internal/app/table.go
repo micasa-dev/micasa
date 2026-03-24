@@ -11,8 +11,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/cpcloud/micasa/internal/data"
 	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // defaultStyle is reused for cells that need no special styling, avoiding

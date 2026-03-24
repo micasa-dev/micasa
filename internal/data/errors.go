@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/locale"
 )
 
 // hintError wraps an error with a user-facing hint message.

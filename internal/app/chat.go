@@ -15,11 +15,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/cpcloud/micasa/internal/config"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/llm"
-	ollamaPull "github.com/cpcloud/micasa/internal/ollama"
-	"github.com/cpcloud/micasa/internal/sqlfmt"
+	"github.com/micasa-dev/micasa/internal/config"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/llm"
+	ollamaPull "github.com/micasa-dev/micasa/internal/ollama"
+	"github.com/micasa-dev/micasa/internal/sqlfmt"
 )
 
 const (

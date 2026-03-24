@@ -23,7 +23,7 @@ history clean.
    ```
    gh api graphql \
      -F query=@.claude/graphql/review-threads.graphql \
-     -f owner=cpcloud -f repo=micasa \
+     -f owner=micasa-dev -f repo=micasa \
      -F pr="$(gh pr view --json number --jq '.number')"
    ```
    Filter to `isResolved == false`.
@@ -31,7 +31,7 @@ history clean.
    - Read the referenced file and line to understand the context.
    - Make the requested change (or explain in a reply why not).
    - Reply to the review comment using its `databaseId`:
-     `gh api repos/cpcloud/micasa/pulls/<pr>/comments/<databaseId>/replies -f body='...'`
+     `gh api repos/micasa-dev/micasa/pulls/<pr>/comments/<databaseId>/replies -f body='...'`
      Explain how it was addressed (commit hash, what changed).
    - **Resolve the thread**:
      ```

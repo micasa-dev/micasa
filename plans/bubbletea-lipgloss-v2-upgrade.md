@@ -3,7 +3,7 @@
 
 # Bubbletea/Lipgloss v2 Upgrade
 
-Issue: https://github.com/cpcloud/micasa/issues/622
+Issue: https://github.com/micasa-dev/micasa/issues/622
 
 ## Current State
 

@@ -565,7 +565,7 @@ package main
 import (
 	"testing"
 
-	"github.com/cpcloud/micasa/internal/relay"
+	"github.com/micasa-dev/micasa/internal/relay"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

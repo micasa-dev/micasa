@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/fake"
+	"github.com/micasa-dev/micasa/internal/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"

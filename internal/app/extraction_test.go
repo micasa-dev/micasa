@@ -11,10 +11,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/extract"
-	"github.com/cpcloud/micasa/internal/llm"
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/extract"
+	"github.com/micasa-dev/micasa/internal/llm"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

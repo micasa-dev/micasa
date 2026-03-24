@@ -16,10 +16,10 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/iancoleman/strcase"
 
-	"github.com/cpcloud/micasa/internal/data/sqlite"
-	"github.com/cpcloud/micasa/internal/fake"
-	"github.com/cpcloud/micasa/internal/locale"
-	"github.com/cpcloud/micasa/internal/safeconv"
+	"github.com/micasa-dev/micasa/internal/data/sqlite"
+	"github.com/micasa-dev/micasa/internal/fake"
+	"github.com/micasa-dev/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/safeconv"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )

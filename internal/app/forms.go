@@ -16,9 +16,9 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/extract"
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/extract"
+	"github.com/micasa-dev/micasa/internal/locale"
 )
 
 func (*houseFormData) formKind() FormKind       { return formHouse }

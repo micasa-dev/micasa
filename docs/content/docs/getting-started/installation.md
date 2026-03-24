@@ -21,7 +21,7 @@ brew install micasa
 Requires Go 1.25+:
 
 ```sh
-go install github.com/cpcloud/micasa/cmd/micasa@latest
+go install github.com/micasa-dev/micasa/cmd/micasa@latest
 ```
 
 This installs the binary into your `$GOBIN` (usually `~/go/bin`).
@@ -29,7 +29,7 @@ This installs the binary into your `$GOBIN` (usually `~/go/bin`).
 ## Pre-built binaries
 
 Download from the
-[latest release](https://github.com/cpcloud/micasa/releases/latest). Binaries
+[latest release](https://github.com/micasa-dev/micasa/releases/latest). Binaries
 are available for:
 
 | OS      | Architectures    |
@@ -46,11 +46,11 @@ If you use [Nix](https://nixos.org) with flakes:
 
 ```sh
 # Run directly
-nix run github:cpcloud/micasa
+nix run github:micasa-dev/micasa
 
 # Or add to a flake
 {
-  inputs.micasa.url = "github:cpcloud/micasa";
+  inputs.micasa.url = "github:micasa-dev/micasa";
 }
 ```
 
@@ -59,8 +59,8 @@ nix run github:cpcloud/micasa
 A container image is published to GitHub Container Registry on each release:
 
 ```sh
-docker pull ghcr.io/cpcloud/micasa:latest
-docker run -it --rm ghcr.io/cpcloud/micasa:latest demo
+docker pull ghcr.io/micasa-dev/micasa:latest
+docker run -it --rm ghcr.io/micasa-dev/micasa:latest demo
 ```
 
 > **Note:** micasa is a terminal UI, so you need `-it` (interactive + TTY) for

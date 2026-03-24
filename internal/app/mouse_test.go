@@ -9,9 +9,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/extract"
 	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/extract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

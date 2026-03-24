@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/relay"
+	"github.com/micasa-dev/micasa/internal/relay"
 )
 
 func main() {

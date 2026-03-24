@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/fake"
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/fake"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/require"
 )
 

@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/cpcloud/micasa/internal/safeconv"
 	"github.com/itchyny/gojq"
+	"github.com/micasa-dev/micasa/internal/safeconv"
 )
 
 const (

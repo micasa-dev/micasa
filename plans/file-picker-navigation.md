@@ -3,7 +3,7 @@
 
 # File picker full filesystem navigation
 
-**Issue:** [#485](https://github.com/cpcloud/micasa/issues/485)
+**Issue:** [#485](https://github.com/micasa-dev/micasa/issues/485)
 
 ## Problem
 

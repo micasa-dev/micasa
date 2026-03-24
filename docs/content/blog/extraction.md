@@ -19,7 +19,7 @@ So I tried to teach micasa to read.
 ## The pipeline
 
 The [extraction pipeline](/docs/guide/documents/#extraction-pipeline)
-([#475](https://github.com/cpcloud/micasa/pull/475)) runs when you save
+([#475](https://github.com/micasa-dev/micasa/pull/475)) runs when you save
 a document with a file attached. It has three layers and each one is
 independent. If a layer's tools aren't installed, it gets skipped and the
 others still run.
@@ -84,32 +84,32 @@ Some other things that landed since the [launch post](/blog/launch/):
 - **[Relative dates](/docs/using/date-input/#natural-language)** -- type `yesterday`,
   `2 weeks ago`, or `last friday` instead of `YYYY-MM-DD`. Works in any date
   field.
-  ([#528](https://github.com/cpcloud/micasa/pull/528))
+  ([#528](https://github.com/micasa-dev/micasa/pull/528))
 - **[<kbd>t</kbd> for today](/docs/using/date-input/#calendar-picker)** -- in date
   pickers. Typing `2026-02-26` every time was a small daily indignity.
-  ([#517](https://github.com/cpcloud/micasa/pull/517))
+  ([#517](https://github.com/micasa-dev/micasa/pull/517))
 - **[Maintenance](/docs/guide/maintenance/) due dates** -- items can now have
   a fixed date instead of only a recurring interval. "Clean the gutters every
   6 months" and "replace the roof by 2028" are different kinds of tasks.
-  ([#525](https://github.com/cpcloud/micasa/pull/525))
+  ([#525](https://github.com/micasa-dev/micasa/pull/525))
 - **<kbd>E</kbd> for [full edit](/docs/reference/keybindings/#data-operations)** -- opens the edit form
   from any column. Previously you had to navigate to the right column first.
-  ([#540](https://github.com/cpcloud/micasa/pull/540))
+  ([#540](https://github.com/micasa-dev/micasa/pull/540))
 - **Scrollable [dashboard](/docs/guide/dashboard/)** -- previously clipped
   sections that didn't fit. It scrolls correctly now.
-  ([#531](https://github.com/cpcloud/micasa/pull/531))
+  ([#531](https://github.com/micasa-dev/micasa/pull/531))
 
 ## Try it
 
 ```sh
-go run github.com/cpcloud/micasa/cmd/micasa@latest demo
+go run github.com/micasa-dev/micasa/cmd/micasa@latest demo
 ```
 
 Switch to the Docs tab, press <kbd>i</kbd> to enter Edit mode, then <kbd>A</kbd> to drop
 a PDF in and see what the pipeline makes of it. Binaries on the
-[releases page](https://github.com/cpcloud/micasa/releases/latest).
+[releases page](https://github.com/micasa-dev/micasa/releases/latest).
 
 If you find a bug or have an opinion about how extraction should work,
-[open an issue](https://github.com/cpcloud/micasa/issues). If you find it
-useful, a [star](https://github.com/cpcloud/micasa) helps other people
+[open an issue](https://github.com/micasa-dev/micasa/issues). If you find it
+useful, a [star](https://github.com/micasa-dev/micasa) helps other people
 find the project.

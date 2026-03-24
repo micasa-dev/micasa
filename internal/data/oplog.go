@@ -13,7 +13,7 @@ import (
 	gosync "sync"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/uid"
+	"github.com/micasa-dev/micasa/internal/uid"
 	"gorm.io/gorm"
 )
 

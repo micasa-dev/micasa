@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/crypto"
+	"github.com/micasa-dev/micasa/internal/crypto"
 )
 
 // maxErrorBody caps how much of an error response body we read to

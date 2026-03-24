@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/data/sqlite"
-	"github.com/cpcloud/micasa/internal/safeconv"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/sqlite"
+	"github.com/micasa-dev/micasa/internal/safeconv"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )

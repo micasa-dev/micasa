@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/llm"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/llm"
 )
 
 // ExtractionPromptInput holds the inputs for building an extraction prompt.

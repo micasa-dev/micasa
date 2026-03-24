@@ -9,7 +9,7 @@ the request is made, not later in a batch.
 
 Conventions:
 
-- Repo: `cpcloud/micasa`
+- Repo: `micasa-dev/micasa`
 - Title: conventional-commit style (e.g. `feat(ui): add dark mode toggle`,
   `fix(data): quotes not linking to vendor`)
 - Body: write to a temp file and use `--body-file` (not `--body`)
@@ -19,4 +19,4 @@ Exceptions:
 
 - Do not create an issue solely for AGENTS.md rule updates
 - Do not create duplicate issues -- search first with
-  `gh issue list --repo cpcloud/micasa --search "relevant keywords"`
+  `gh issue list --repo micasa-dev/micasa --search "relevant keywords"`

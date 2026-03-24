@@ -33,7 +33,7 @@ Create a pull request for the current branch.
 Before creating the PR, search for open issues that would be closed by it:
 
 ```
-gh issue list --repo cpcloud/micasa --search "<relevant keywords>" --state open
+gh issue list --repo micasa-dev/micasa --search "<relevant keywords>" --state open
 ```
 
 Add `closes #<number>` lines to the PR body for each matching issue so

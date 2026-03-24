@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/cpcloud/micasa/internal/crypto"
+	"github.com/micasa-dev/micasa/internal/crypto"
 	"golang.org/x/crypto/nacl/secretbox"
 )
 

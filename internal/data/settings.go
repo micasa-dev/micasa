@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

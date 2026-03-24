@@ -10,7 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/cpcloud/micasa/internal/address"
+	"github.com/micasa-dev/micasa/internal/address"
 )
 
 const (

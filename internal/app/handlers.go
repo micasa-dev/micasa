@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/table"
-	"github.com/cpcloud/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // TabHandler encapsulates entity-specific operations for a tab, eliminating

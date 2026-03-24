@@ -8,8 +8,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/cpcloud/micasa/internal/crypto"
-	"github.com/cpcloud/micasa/internal/sync"
+	"github.com/micasa-dev/micasa/internal/crypto"
+	"github.com/micasa-dev/micasa/internal/sync"
 )
 
 type syncStatus int

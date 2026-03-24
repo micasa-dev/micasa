@@ -15,10 +15,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/cpcloud/micasa/internal/app"
-	"github.com/cpcloud/micasa/internal/config"
-	"github.com/cpcloud/micasa/internal/data"
-	"github.com/cpcloud/micasa/internal/extract"
+	"github.com/micasa-dev/micasa/internal/app"
+	"github.com/micasa-dev/micasa/internal/config"
+	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/extract"
 	"github.com/spf13/cobra"
 )
 

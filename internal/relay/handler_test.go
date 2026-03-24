@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/sync"
-	"github.com/cpcloud/micasa/internal/uid"
+	"github.com/micasa-dev/micasa/internal/sync"
+	"github.com/micasa-dev/micasa/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

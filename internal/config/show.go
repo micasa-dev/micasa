@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/locale"
 )
 
 // hiddenPaths lists TOML key paths excluded from ShowConfig output.

@@ -13,7 +13,7 @@ linkTitle = "Building"
 ## Quick build
 
 ```sh
-git clone https://github.com/cpcloud/micasa.git
+git clone https://github.com/micasa-dev/micasa.git
 cd micasa
 CGO_ENABLED=0 go build ./cmd/micasa
 ./micasa demo
@@ -91,5 +91,5 @@ Multi-arch container images (`linux/amd64` and `linux/arm64`) are published to
 GHCR on every release:
 
 ```sh
-docker run -it --rm ghcr.io/cpcloud/micasa:latest demo
+docker run -it --rm ghcr.io/micasa-dev/micasa:latest demo
 ```

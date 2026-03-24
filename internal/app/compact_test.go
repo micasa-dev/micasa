@@ -6,7 +6,7 @@ package app
 import (
 	"testing"
 
-	"github.com/cpcloud/micasa/internal/locale"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 )
 

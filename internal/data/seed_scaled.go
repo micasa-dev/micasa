@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cpcloud/micasa/internal/fake"
+	"github.com/micasa-dev/micasa/internal/fake"
 )
 
 // SeedSummary holds counts of generated entities for display after seeding.

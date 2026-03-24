@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cpcloud/micasa/internal/llm"
+	"github.com/micasa-dev/micasa/internal/llm"
 )
 
 // Pipeline orchestrates the document extraction layers: text extraction,

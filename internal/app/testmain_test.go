@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cpcloud/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // testSeed is the base seed for all faker instances in this package's tests.

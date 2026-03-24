@@ -18,7 +18,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/adrg/xdg"
 
-	"github.com/cpcloud/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // Config is the top-level application configuration, loaded from a TOML file.
