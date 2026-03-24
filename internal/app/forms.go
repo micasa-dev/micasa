@@ -33,11 +33,11 @@ func (*applianceFormData) formKind() FormKind   { return formAppliance }
 
 type houseFormData struct {
 	Nickname         string
+	PostalCode       string
 	AddressLine1     string
 	AddressLine2     string
 	City             string
 	State            string
-	PostalCode       string
 	YearBuilt        string
 	SquareFeet       string
 	LotSquareFeet    string
@@ -183,17 +183,21 @@ func (m *Model) startHouseForm() {
 		values = m.houseFormValues(m.house)
 	}
 
+	postalCodeInput := huh.NewInput().Title("Postal code").Value(&values.PostalCode)
+	cityInput := huh.NewInput().Title("City").Value(&values.City)
+	stateInput := huh.NewInput().Title("State").Value(&values.State)
+
 	basicsGroup := huh.NewGroup(
 		huh.NewInput().
 			Title(requiredTitle("Nickname")).
 			Description("Ex: Primary Residence").
 			Value(&values.Nickname).
 			Validate(requiredText("nickname")),
+		postalCodeInput,
 		huh.NewInput().Title("Address line 1").Value(&values.AddressLine1),
 		huh.NewInput().Title("Address line 2").Value(&values.AddressLine2),
-		huh.NewInput().Title("City").Value(&values.City),
-		huh.NewInput().Title("State").Value(&values.State),
-		huh.NewInput().Title("Postal code").Value(&values.PostalCode),
+		cityInput,
+		stateInput,
 	).Title("Basics")
 	if !m.hasHouse {
 		basicsGroup.Description(
@@ -267,6 +271,9 @@ func (m *Model) startHouseForm() {
 	}
 	form.WithWidth(formWidth)
 	m.activateForm(form, values)
+	m.fs.postalCodeField = postalCodeInput
+	m.fs.cityInput = cityInput
+	m.fs.stateInput = stateInput
 }
 
 func (m *Model) startProjectForm() {

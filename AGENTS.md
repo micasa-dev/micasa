@@ -351,6 +351,12 @@ details; do not duplicate that detail here.
 - **Two-strike rule for bug fixes**: If your second attempt doesn't work,
   stop. Re-read the code path end-to-end and fix the root cause. See
   `POSTMORTEMS.md`.
+- **Never mock from memory**: When writing test mocks for external APIs,
+  copy the response payload from a real API call — never reconstruct it
+  from memory or documentation. JSON field names, casing, nesting, and
+  types must exactly match the real response. If the API was fetched
+  during design, use that exact payload in the mock. Mismatched mocks
+  silently pass while the real integration fails.
 
 If the user asks you to learn something, add behavioral constraints to this
 "Hard rules" section, or create a skill in `.claude/commands/` for workflows.
@@ -386,6 +392,10 @@ For big or core features and key design decisions, write a plan document in the
 `plans/` directory (e.g. `plans/row-filtering.md`) before doing anything. These
 are committed to the repo as permanent design records -- not throwaway scratch.
 Name the file after the feature or decision. Be diligent about this.
+
+**Never delete plan or spec files.** They are permanent design records.
+Design specs also belong in `plans/`, not in `docs/` (which is the Hugo
+site and would be publicly rendered).
 
 # Session log
 

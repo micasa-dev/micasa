@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
@@ -222,6 +223,12 @@ type Model struct {
 	maintenanceCategories []data.MaintenanceCategory
 	vendors               []data.Vendor
 
+	// Postal code auto-fill.
+	addressClient   *http.Client
+	addressBaseURL  string
+	addressCountry  string
+	addressAutofill bool
+
 	// Sync state (Pro background sync).
 	syncStatus        syncStatus
 	syncCfg           *syncConfig
@@ -292,14 +299,18 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			ocrConfThreshold:   options.ExtractionConfig.OCRConfThreshold,
 			extractors:         options.ExtractionConfig.Extractors,
 		},
-		pull:      pullState{progress: pprog},
-		styles:    appStyles,
-		tabs:      NewTabs(),
-		active:    0,
-		showHouse: false,
-		mode:      modeNormal,
-		cur:       store.Currency(),
-		syncCfg:   options.syncCfg,
+		pull:            pullState{progress: pprog},
+		addressClient:   &http.Client{Timeout: 5 * time.Second},
+		addressBaseURL:  postalCodeAPIBaseURL,
+		addressCountry:  options.AddressCountry,
+		addressAutofill: options.AddressAutofill,
+		styles:          appStyles,
+		tabs:            NewTabs(),
+		active:          0,
+		showHouse:       false,
+		mode:            modeNormal,
+		cur:             store.Currency(),
+		syncCfg:         options.syncCfg,
 	}
 
 	if cfg := options.syncCfg; cfg != nil {
@@ -502,6 +513,52 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.syncStatus = syncSyncing
 		return m, doSync(m.syncCtx, m.syncEngine)
+	case postalCodeLookupMsg:
+		if typed.Err != nil {
+			return m, nil
+		}
+		values, ok := m.fs.formData.(*houseFormData)
+		if !ok {
+			return m, nil
+		}
+		cityAutoFilled := values.City == "" || values.City == m.fs.autoFilledCity
+		stateAutoFilled := values.State == "" || values.State == m.fs.autoFilledState
+		// No results: clear previously auto-filled values (e.g., user
+		// edited the postal code to an invalid prefix).
+		if typed.City == "" && typed.State == "" {
+			if cityAutoFilled && m.fs.autoFilledCity != "" {
+				values.City = ""
+				m.fs.autoFilledCity = ""
+				if m.fs.cityInput != nil {
+					m.fs.cityInput.Value(&values.City)
+				}
+			}
+			if stateAutoFilled && m.fs.autoFilledState != "" {
+				values.State = ""
+				m.fs.autoFilledState = ""
+				if m.fs.stateInput != nil {
+					m.fs.stateInput.Value(&values.State)
+				}
+			}
+			return m, nil
+		}
+		// Overwrite city/state if they're empty or were set by a previous
+		// autofill (not manually typed by the user).
+		if cityAutoFilled && typed.City != "" {
+			values.City = typed.City
+			m.fs.autoFilledCity = typed.City
+			if m.fs.cityInput != nil {
+				m.fs.cityInput.Value(&values.City)
+			}
+		}
+		if stateAutoFilled && typed.State != "" {
+			values.State = typed.State
+			m.fs.autoFilledState = typed.State
+			if m.fs.stateInput != nil {
+				m.fs.stateInput.Value(&values.State)
+			}
+		}
+		return m, nil
 	case editorFinishedMsg:
 		return m, m.handleEditorFinished(typed)
 	}
@@ -627,6 +684,21 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	syncFilePickerTitle(m.fs.form)
 	syncFilePickerDescription(m.fs.form)
 	m.checkFormDirty()
+	// Postal code autofill: watch for the postal code value to stabilize
+	// at >= 3 characters. Once it does, dispatch a single lookup. We track
+	// the last-seen value to avoid re-dispatching on every keystroke.
+	if m.fs.postalCodeField != nil && m.addressAutofill {
+		if values, ok := m.fs.formData.(*houseFormData); ok {
+			pc := values.PostalCode
+			if len(pc) >= postalCodeMinLength && pc != m.fs.lastPostalCode {
+				m.fs.lastPostalCode = pc
+				cmd = tea.Batch(cmd, lookupPostalCodeCmd(
+					m.addressClient, m.addressBaseURL,
+					m.addressCountry, pc,
+				))
+			}
+		}
+	}
 	switch m.fs.form.State {
 	case huh.StateCompleted:
 		return m, m.saveForm()
@@ -2541,6 +2613,9 @@ func (m *Model) resetFormState() {
 	m.fs.editID = nil
 	m.fs.notesEditMode = false
 	m.fs.notesFieldPtr = nil
+	m.fs.postalCodeField = nil
+	m.fs.cityInput = nil
+	m.fs.stateInput = nil
 	if m.confirm.isFormConfirm() {
 		m.confirm = confirmNone
 	}

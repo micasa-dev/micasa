@@ -698,6 +698,8 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_DOCUMENTS_FILE_PICKER_DIR": "documents.file_picker_dir",
 
 		"MICASA_LOCALE_CURRENCY": "locale.currency",
+
+		"MICASA_ADDRESS_AUTOFILL": "address.autofill",
 	}
 	assert.Equal(t, want, m)
 }

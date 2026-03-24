@@ -74,6 +74,12 @@ type formState struct {
 	notesEditMode   bool
 	notesFieldPtr   *string
 	pendingEditor   *editorState
+	postalCodeField huh.Field  // non-nil when house form is active
+	cityInput       *huh.Input // city field for autofill value sync
+	stateInput      *huh.Input // state field for autofill value sync
+	lastPostalCode  string     // last postal code value that triggered a lookup
+	autoFilledCity  string     // city value set by autofill (empty = user-typed or not set)
+	autoFilledState string     // state value set by autofill (empty = user-typed or not set)
 }
 
 // formKind returns the FormKind of the current form data, or formNone when no
@@ -268,6 +274,8 @@ type Options struct {
 	FilePickerDir    string // starting directory for document file picker
 	ChatConfig       chatConfig
 	ExtractionConfig extractionConfig
+	AddressAutofill  bool
+	AddressCountry   string
 	syncCfg          *syncConfig
 }
 

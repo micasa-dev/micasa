@@ -179,9 +179,11 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 	}
 
 	appOpts := app.Options{
-		DBPath:        dbPath,
-		ConfigPath:    config.Path(),
-		FilePickerDir: cfg.Documents.ResolvedFilePickerDir(),
+		DBPath:          dbPath,
+		ConfigPath:      config.Path(),
+		FilePickerDir:   cfg.Documents.ResolvedFilePickerDir(),
+		AddressAutofill: cfg.Address.IsAutofillEnabled(),
+		AddressCountry:  config.DetectCountry(),
 	}
 
 	chatLLM := cfg.Chat.LLM

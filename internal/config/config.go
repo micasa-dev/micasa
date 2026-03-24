@@ -28,6 +28,7 @@ type Config struct {
 	Extraction Extraction `toml:"extraction" doc:"Document extraction pipeline: LLM, OCR, and pdftotext."`
 	Documents  Documents  `toml:"documents"  doc:"Document attachment limits and caching."`
 	Locale     Locale     `toml:"locale"     doc:"Locale and currency settings."`
+	Address    Address    `toml:"address"    doc:"Postal code auto-fill settings."`
 
 	// Warnings collects non-fatal messages (e.g. deprecations) during load.
 	// Not serialized; the caller decides how to display them.
@@ -39,6 +40,22 @@ type Locale struct {
 	// Currency is the ISO 4217 code (e.g. "USD", "EUR", "GBP").
 	// Used as the default when the database has no currency set yet.
 	Currency string `toml:"currency"`
+}
+
+// Address holds settings for postal code auto-fill in the house form.
+type Address struct {
+	// Autofill controls whether the app looks up city/state from the
+	// postal code via an external API. Default: true.
+	Autofill *bool `toml:"autofill,omitempty"`
+}
+
+// IsAutofillEnabled returns whether postal code auto-fill is enabled.
+// Defaults to true.
+func (a Address) IsAutofillEnabled() bool {
+	if a.Autofill != nil {
+		return *a.Autofill
+	}
+	return true
 }
 
 // Chat holds settings for the chat (NL-to-SQL) pipeline.
@@ -819,5 +836,9 @@ model = "` + DefaultModel + `"
 # ISO 4217 currency code. Stored in the database on first run; after that the
 # database value is authoritative. Auto-detected from system locale if not set.
 # currency = "USD"
+
+[address]
+# Set to false to disable postal code auto-fill (city/state lookup).
+# autofill = true
 `
 }
