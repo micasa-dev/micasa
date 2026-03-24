@@ -264,6 +264,11 @@ details; do not duplicate that detail here.
   one test exercising that failure.
 - **Tests over test plans**: Write actual tests that ship with the PR.
   Never substitute a prose "test plan" for automated coverage.
+- **Verify coverage before committing (mandatory)**: Before committing,
+  run `nix run '.#coverage'` (or `go test -coverprofile cover.out ./...`
+  followed by `go tool cover -func cover.out`) to confirm new and
+  changed code is exercised by tests. This is not optional -- there is
+  no coverage reporting service, you are the coverage tool.
 
 ### Architecture and code style
 

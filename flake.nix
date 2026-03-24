@@ -648,6 +648,20 @@
             run-osv-scanner
             run-golangci-lint
             ;
+          coverage = pkgs.writeShellApplication {
+            name = "coverage";
+            runtimeInputs = [
+              go
+              pkgs.sd
+            ];
+            runtimeEnv.CGO_ENABLED = "1";
+            text = ''
+              go test -coverprofile cover.out ./...
+              go tool cover -func cover.out \
+                | sd '^github.com/micasa-dev/micasa/' "" \
+                | column -t
+            '';
+          };
           run-pre-commit = pkgs.writeShellApplication {
             name = "run-pre-commit";
             runtimeInputs = [

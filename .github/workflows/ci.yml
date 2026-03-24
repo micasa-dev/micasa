@@ -153,19 +153,13 @@ jobs:
         env:
           CGO_ENABLED: "1"
           MICASA_TEST_SEED: ${{ github.run_id }}
-        run: go test -race -shuffle on -timeout 5m -coverprofile coverage.txt ./...
+        run: go test -race -shuffle on -timeout 5m ./...
 
       - name: Test (no race)
         if: runner.os == 'Windows' && runner.arch == 'ARM64'
         env:
           MICASA_TEST_SEED: ${{ github.run_id }}
-        run: go test -shuffle on -timeout 5m -coverprofile coverage.txt ./...
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-        with:
-          files: coverage.txt
-          token: ${{ secrets.CODECOV_TOKEN }}
+        run: go test -shuffle on -timeout 5m ./...
 
   pgtest:
     name: Postgres Integration
@@ -207,14 +201,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
           RELAY_POSTGRES_DSN: "postgres://micasa:testpass@localhost:5432/micasa_test?sslmode=disable"
-        run: go test -race -shuffle on -timeout 5m -coverprofile coverage-pg.txt ./internal/relay/
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-        with:
-          files: coverage-pg.txt
-          flags: postgres
-          token: ${{ secrets.CODECOV_TOKEN }}
+        run: go test -race -shuffle on -timeout 5m ./internal/relay/
 
   benchmarks:
     name: Benchmarks (smoke)
