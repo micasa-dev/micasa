@@ -279,7 +279,7 @@ func (m *Model) startExtractionOverlay(
 
 	//nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
 	ctx, cancel := context.WithCancel(
-		context.Background(),
+		m.lifecycleCtx(),
 	)
 
 	// Text extraction only applies to PDFs and text files -- unless
@@ -509,8 +509,9 @@ func (m *Model) llmPingCmd(state *extractionLogState) tea.Cmd {
 	}
 	id := state.ID
 	quickOpTimeout := client.Timeout()
+	appCtx := m.lifecycleCtx()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), quickOpTimeout)
+		ctx, cancel := context.WithTimeout(appCtx, quickOpTimeout)
 		defer cancel()
 		err := client.Ping(ctx)
 		return extractionLLMPingMsg{ID: id, Err: err}
@@ -990,7 +991,7 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 	// Replace a cancelled context so the rerun has a live one.
 	if ex.ctx.Err() != nil {
 		ctx, cancel := context.WithCancel( //nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
-			context.Background(),
+			m.lifecycleCtx(),
 		)
 		ex.ctx = ctx
 		ex.CancelFn = cancel
@@ -1172,8 +1173,9 @@ func (m *Model) activateExtractionModelPicker() tea.Cmd {
 		return nil
 	}
 	timeout := client.Timeout()
+	appCtx := m.lifecycleCtx()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(appCtx, timeout)
 		defer cancel()
 		models, err := client.ListModels(ctx)
 		return modelsListMsg{Models: models, Err: err}
@@ -1247,6 +1249,7 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 	}
 	timeout := client.Timeout()
 	canList := client.SupportsModelListing()
+	appCtx := m.lifecycleCtx()
 	return func() tea.Msg {
 		// Cloud providers without model listing: trust the name.
 		if !canList {
@@ -1256,7 +1259,7 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 				Model:  name,
 			}
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(appCtx, timeout)
 		defer cancel()
 		models, _ := client.ListModels(ctx)
 		for _, model := range models {
@@ -1268,7 +1271,7 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 				}
 			}
 		}
-		return startPull(client.BaseURL(), name)
+		return startPull(appCtx, client.BaseURL(), name)
 	}
 }
 

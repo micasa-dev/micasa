@@ -2573,6 +2573,7 @@ func (m *Model) parseDocumentFormData() (documentParseResult, error) {
 		// extraction and LLM run in the extraction overlay after save.
 		var extractErr error
 		text, err := extract.ExtractText(
+			m.lifecycleCtx(),
 			fileData,
 			doc.MIMEType,
 			extract.ExtractorTimeout(m.ex.extractors),

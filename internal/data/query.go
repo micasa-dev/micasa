@@ -93,7 +93,10 @@ var disallowedKeywords = []string{
 //     validation and catches attacks that bypass keyword matching.
 //  5. Timeout: the actual query runs under a 10-second context deadline to
 //     prevent long-running queries from hanging the app.
-func (s *Store) ReadOnlyQuery(query string) (columns []string, rows [][]string, err error) {
+func (s *Store) ReadOnlyQuery(
+	ctx context.Context,
+	query string,
+) (columns []string, rows [][]string, err error) {
 	trimmed := strings.TrimSpace(query)
 	if trimmed == "" {
 		return nil, nil, fmt.Errorf("empty query")
@@ -128,7 +131,7 @@ func (s *Store) ReadOnlyQuery(query string) (columns []string, rows [][]string, 
 	}
 
 	// --- Layer 5: execute with timeout ---
-	ctx, cancel := context.WithTimeout(context.Background(), readOnlyQueryTimeout)
+	ctx, cancel := context.WithTimeout(ctx, readOnlyQueryTimeout)
 	defer cancel()
 
 	sqlRows, err := s.db.WithContext(ctx).Raw(trimmed).Rows()
