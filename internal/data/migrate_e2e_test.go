@@ -4,6 +4,7 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"path/filepath"
 	"testing"
@@ -278,7 +279,7 @@ func createRealisticV22DB(t *testing.T) string {
 		`CREATE TABLE "chat_inputs" ("id" integer,"input" text NOT NULL,"created_at" datetime,PRIMARY KEY ("id"))`,
 	}
 	for _, ddl := range ddls {
-		_, err := db.Exec(ddl)
+		_, err := db.ExecContext(context.Background(), ddl)
 		require.NoError(t, err, "DDL: %s", ddl)
 	}
 
@@ -289,7 +290,7 @@ func createRealisticV22DB(t *testing.T) string {
 		"renovation", "repair", "upgrade", "addition", "landscaping",
 		"emergency", "cosmetic", "structural", "electrical", "plumbing",
 	} {
-		_, err := db.Exec(
+		_, err := db.ExecContext(context.Background(),
 			`INSERT INTO project_types (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
 			i+1, name, now, now,
 		)
@@ -301,7 +302,8 @@ func createRealisticV22DB(t *testing.T) string {
 		"HVAC", "plumbing", "electrical", "appliance", "exterior",
 		"interior", "safety", "pest control", "seasonal",
 	} {
-		_, err := db.Exec(
+		_, err := db.ExecContext(
+			context.Background(),
 			`INSERT INTO maintenance_categories (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
 			i+1,
 			name,
@@ -383,7 +385,7 @@ func createRealisticV22DB(t *testing.T) string {
 		},
 	}
 	for _, ins := range inserts {
-		_, err := db.Exec(ins.sql, ins.args...)
+		_, err := db.ExecContext(context.Background(), ins.sql, ins.args...)
 		require.NoError(t, err, "INSERT: %s", ins.sql)
 	}
 
@@ -420,7 +422,7 @@ func TestMigrateE2E_V22EmptyAfterSeedDefaults(t *testing.T) {
 		`CREATE TABLE "chat_inputs" ("id" integer,"input" text NOT NULL,"created_at" datetime,PRIMARY KEY ("id"))`,
 	}
 	for _, ddl := range ddls {
-		_, err := db.Exec(ddl)
+		_, err := db.ExecContext(context.Background(), ddl)
 		require.NoError(t, err)
 	}
 
@@ -428,7 +430,7 @@ func TestMigrateE2E_V22EmptyAfterSeedDefaults(t *testing.T) {
 
 	// Only project types and categories (from SeedDefaults)
 	for i, name := range []string{"renovation", "repair", "upgrade", "addition", "landscaping", "emergency", "cosmetic", "structural", "electrical", "plumbing"} {
-		_, err := db.Exec(
+		_, err := db.ExecContext(context.Background(),
 			`INSERT INTO project_types (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
 			i+1,
 			name,
@@ -438,7 +440,8 @@ func TestMigrateE2E_V22EmptyAfterSeedDefaults(t *testing.T) {
 		require.NoError(t, err)
 	}
 	for i, name := range []string{"HVAC", "plumbing", "electrical", "appliance", "exterior", "interior", "safety", "pest control", "seasonal"} {
-		_, err := db.Exec(
+		_, err := db.ExecContext(
+			context.Background(),
 			`INSERT INTO maintenance_categories (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
 			i+1,
 			name,
@@ -503,13 +506,14 @@ func TestMigrateE2E_V22GORMExactDDL(t *testing.T) {
 
 	// This is the exact DDL GORM produces: PRIMARY KEY as separate clause,
 	// double-quoted identifiers, no AUTOINCREMENT.
-	_, err = db.Exec(
+	_, err = db.ExecContext(
+		context.Background(),
 		`CREATE TABLE "project_types" ("id" integer,"name" text UNIQUE,"created_at" datetime,"updated_at" datetime,PRIMARY KEY ("id"))`,
 	)
 	require.NoError(t, err)
 
 	now := time.Now().UTC()
-	_, err = db.Exec(
+	_, err = db.ExecContext(context.Background(),
 		`INSERT INTO "project_types" ("id","name","created_at","updated_at") VALUES (1,'test',?,?)`,
 		now,
 		now,

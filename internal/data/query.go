@@ -282,9 +282,10 @@ func (s *Store) DataDump() string {
 		}
 		cols, err := sqlRows.Columns()
 		if err != nil {
-			_ = sqlRows.Close()
+			_ = sqlRows.Close() //nolint:sqlclosecheck // close-on-error before defer
 			continue
 		}
+		defer func() { _ = sqlRows.Close() }()
 		// Find the deleted_at column so we can skip soft-deleted rows.
 		// Raw SQL bypasses GORM's automatic WHERE deleted_at IS NULL scope.
 		deletedAtIdx := -1
@@ -319,7 +320,9 @@ func (s *Store) DataDump() string {
 			}
 			rows = append(rows, row)
 		}
-		_ = sqlRows.Close()
+		if err := sqlRows.Err(); err != nil {
+			continue
+		}
 
 		if len(rows) == 0 {
 			continue

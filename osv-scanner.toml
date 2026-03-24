@@ -41,3 +41,9 @@ reason = "ollama server cross-domain token exposure; micasa is an HTTP client, n
 [[IgnoredVulns]]
 id = "GO-2025-4251"
 reason = "ollama server missing auth; micasa is an HTTP client, not a server"
+
+# buger/jsonparser: transitive dependency (via ollama, any-llm-go,
+# anthropic-sdk-go). Micasa never imports or calls jsonparser directly.
+[[IgnoredVulns]]
+id = "GO-2026-4514"
+reason = "jsonparser.Delete panic on malformed JSON; micasa never imports or calls jsonparser — transitive dep only, no fix version available upstream"
