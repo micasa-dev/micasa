@@ -26,7 +26,12 @@ const DefaultTextTimeout = 30 * time.Second
 //
 // This is a convenience wrapper that delegates to PDFTextExtractor and
 // PlainTextExtractor. For full pipeline extraction, use Pipeline.Run.
-func ExtractText(data []byte, mime string, timeout time.Duration) (string, error) {
+func ExtractText(
+	ctx context.Context,
+	data []byte,
+	mime string,
+	timeout time.Duration,
+) (string, error) {
 	if len(data) == 0 {
 		return "", nil
 	}
@@ -39,7 +44,7 @@ func ExtractText(data []byte, mime string, timeout time.Duration) (string, error
 		if !ext.Matches(mime) || !ext.Available() {
 			continue
 		}
-		src, err := ext.Extract(context.Background(), data)
+		src, err := ext.Extract(ctx, data)
 		if err != nil {
 			return "", err
 		}

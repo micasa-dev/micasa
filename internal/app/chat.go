@@ -336,6 +336,7 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 	store := m.store
 	extraContext := m.chatCfg.ExtraContext
 	chatTimeout := m.chatInferenceTimeout()
+	appCtx := m.lifecycleCtx()
 	// Capture conversation history on the main goroutine before the closure
 	// runs in a background goroutine -- m.chat.Messages is mutated by the
 	// Bubble Tea event loop and is not safe to read concurrently.
@@ -360,7 +361,7 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 
 		//nolint:gosec // cancel stored in CancelFn, called on ctrl+c
 		ctx, cancel := context.WithTimeout(
-			context.Background(), chatTimeout,
+			appCtx, chatTimeout,
 		)
 		streamCh, err := client.ChatStream(ctx, messages)
 		if err != nil {
@@ -435,8 +436,9 @@ func (m *Model) cmdListModels() tea.Cmd {
 	}
 	client := m.llmClient
 	timeout := client.Timeout()
+	appCtx := m.lifecycleCtx()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(appCtx, timeout)
 		defer cancel()
 		models, err := client.ListModels(ctx)
 		return modelsListMsg{Models: models, Err: err}
@@ -516,8 +518,9 @@ func (m *Model) activateCompleter() tea.Cmd {
 	}
 	client := m.llmClient
 	timeout := client.Timeout()
+	appCtx := m.lifecycleCtx()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(appCtx, timeout)
 		defer cancel()
 		models, err := client.ListModels(ctx)
 		return modelsListMsg{Models: models, Err: err}
@@ -632,6 +635,7 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 	baseURL := client.BaseURL()
 	isLocal := client.IsLocalServer()
 	canList := client.SupportsModelListing()
+	appCtx := m.lifecycleCtx()
 	return func() tea.Msg {
 		// Cloud providers without model listing: trust the name.
 		if !canList {
@@ -641,7 +645,7 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 				Model:  name,
 			}
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(appCtx, timeout)
 		defer cancel()
 		// Best-effort: if listing fails, fall through to pull attempt.
 		models, _ := client.ListModels(ctx)
@@ -660,14 +664,14 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 				Done: true,
 			}
 		}
-		return startPull(baseURL, name)
+		return startPull(appCtx, baseURL, name)
 	}
 }
 
 // startPull initiates a model pull via the Ollama HTTP API and returns the
 // first progress message.
-func startPull(baseURL, name string) tea.Msg {
-	ctx, cancel := context.WithCancel(context.Background())
+func startPull(appCtx context.Context, baseURL, name string) tea.Msg {
+	ctx, cancel := context.WithCancel(appCtx)
 	scanner, err := ollamaPull.PullModel(ctx, baseURL, name)
 	if err != nil {
 		cancel()
@@ -776,7 +780,7 @@ func (m *Model) handleSQLResult(msg sqlResultMsg) tea.Cmd {
 		{Role: roleUser, Content: "Summarize these results."},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), m.chatInferenceTimeout())
+	ctx, cancel := context.WithTimeout(m.lifecycleCtx(), m.chatInferenceTimeout())
 	ch, err := m.llmClient.ChatStream(ctx, messages)
 	if err != nil {
 		cancel()
@@ -801,7 +805,7 @@ func (m *Model) handleSQLResult(msg sqlResultMsg) tea.Cmd {
 func (m *Model) startFallbackStream(question string) tea.Cmd {
 	messages := m.buildFallbackMessages(question)
 
-	ctx, cancel := context.WithTimeout(context.Background(), m.chatInferenceTimeout())
+	ctx, cancel := context.WithTimeout(m.lifecycleCtx(), m.chatInferenceTimeout())
 	ch, err := m.llmClient.ChatStream(ctx, messages)
 	if err != nil {
 		cancel()
@@ -1001,9 +1005,10 @@ func (m *Model) handleSQLChunk(msg sqlChunkMsg) tea.Cmd {
 func (m *Model) executeSQLQuery(sql string) tea.Cmd {
 	store := m.store
 	query := m.chat.CurrentQuery
+	appCtx := m.lifecycleCtx()
 
 	return func() tea.Msg {
-		cols, rows, err := store.ReadOnlyQuery(sql)
+		cols, rows, err := store.ReadOnlyQuery(appCtx, sql)
 		if err != nil {
 			return sqlResultMsg{Question: query, SQL: sql, Err: fmt.Errorf("query error: %w", err)}
 		}

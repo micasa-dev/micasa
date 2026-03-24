@@ -4,6 +4,7 @@
 package data
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,7 +63,10 @@ func TestReadOnlyQuerySelect(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	cols, rows, err := store.ReadOnlyQuery("SELECT name FROM project_types ORDER BY name LIMIT 3")
+	cols, rows, err := store.ReadOnlyQuery(
+		context.Background(),
+		"SELECT name FROM project_types ORDER BY name LIMIT 3",
+	)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"name"}, cols)
 	assert.Len(t, rows, 3)
@@ -71,7 +75,10 @@ func TestReadOnlyQuerySelect(t *testing.T) {
 func TestReadOnlyQueryRejectsInsert(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, _, err := store.ReadOnlyQuery("INSERT INTO projects (title) VALUES ('hack')")
+	_, _, err := store.ReadOnlyQuery(
+		context.Background(),
+		"INSERT INTO projects (title) VALUES ('hack')",
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "only SELECT")
 }
@@ -79,7 +86,7 @@ func TestReadOnlyQueryRejectsInsert(t *testing.T) {
 func TestReadOnlyQueryRejectsDelete(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, _, err := store.ReadOnlyQuery("DELETE FROM projects WHERE id = 1")
+	_, _, err := store.ReadOnlyQuery(context.Background(), "DELETE FROM projects WHERE id = 1")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "only SELECT")
 }
@@ -87,7 +94,10 @@ func TestReadOnlyQueryRejectsDelete(t *testing.T) {
 func TestReadOnlyQueryRejectsMultiStatement(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, _, err := store.ReadOnlyQuery("SELECT * FROM projects; DROP TABLE projects")
+	_, _, err := store.ReadOnlyQuery(
+		context.Background(),
+		"SELECT * FROM projects; DROP TABLE projects",
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "multiple statements")
 }
@@ -95,7 +105,10 @@ func TestReadOnlyQueryRejectsMultiStatement(t *testing.T) {
 func TestReadOnlyQueryRejectsAttach(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, _, err := store.ReadOnlyQuery("SELECT * FROM (SELECT 1) ATTACH DATABASE '/tmp/x' AS x")
+	_, _, err := store.ReadOnlyQuery(
+		context.Background(),
+		"SELECT * FROM (SELECT 1) ATTACH DATABASE '/tmp/x' AS x",
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "disallowed keyword: ATTACH")
 }
@@ -103,7 +116,7 @@ func TestReadOnlyQueryRejectsAttach(t *testing.T) {
 func TestReadOnlyQueryRejectsPragma(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, _, err := store.ReadOnlyQuery(
+	_, _, err := store.ReadOnlyQuery(context.Background(),
 		"SELECT * FROM pragma_table_info('projects') WHERE 1=1 PRAGMA journal_mode",
 	)
 	require.Error(t, err)
@@ -113,7 +126,7 @@ func TestReadOnlyQueryRejectsPragma(t *testing.T) {
 func TestReadOnlyQueryEmpty(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, _, err := store.ReadOnlyQuery("")
+	_, _, err := store.ReadOnlyQuery(context.Background(), "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty")
 }
@@ -122,7 +135,7 @@ func TestReadOnlyQueryAllowsDeletedAtColumn(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 	// "deleted_at" contains "DELETE" as a substring but should be allowed.
-	cols, _, err := store.ReadOnlyQuery(
+	cols, _, err := store.ReadOnlyQuery(context.Background(),
 		"SELECT id FROM projects WHERE deleted_at IS NULL LIMIT 1",
 	)
 	require.NoError(t, err)
@@ -132,7 +145,7 @@ func TestReadOnlyQueryAllowsDeletedAtColumn(t *testing.T) {
 func TestReadOnlyQueryAllowsWithCTE(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	cols, _, err := store.ReadOnlyQuery(
+	cols, _, err := store.ReadOnlyQuery(context.Background(),
 		"WITH cte AS (SELECT name FROM project_types) SELECT name FROM cte LIMIT 1",
 	)
 	require.NoError(t, err)
@@ -143,7 +156,10 @@ func TestReadOnlyQueryRejectsCommentHiddenInsert(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 	// Leading comment hides the real statement from naive prefix checks.
-	_, _, err := store.ReadOnlyQuery("-- SELECT\nINSERT INTO projects (title) VALUES ('hack')")
+	_, _, err := store.ReadOnlyQuery(
+		context.Background(),
+		"-- SELECT\nINSERT INTO projects (title) VALUES ('hack')",
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "only SELECT")
 }
@@ -151,7 +167,10 @@ func TestReadOnlyQueryRejectsCommentHiddenInsert(t *testing.T) {
 func TestReadOnlyQueryRejectsBlockCommentHiddenInsert(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	_, _, err := store.ReadOnlyQuery("/* SELECT */ INSERT INTO projects (title) VALUES ('hack')")
+	_, _, err := store.ReadOnlyQuery(
+		context.Background(),
+		"/* SELECT */ INSERT INTO projects (title) VALUES ('hack')",
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "only SELECT")
 }
@@ -162,7 +181,7 @@ func TestReadOnlyQueryExplainRejectsSubqueryWrite(t *testing.T) {
 	// A SELECT that embeds a write via a subquery should be caught by EXPLAIN.
 	// This might fail at the keyword layer or at EXPLAIN -- either way it must
 	// be rejected.
-	_, _, err := store.ReadOnlyQuery(
+	_, _, err := store.ReadOnlyQuery(context.Background(),
 		"SELECT * FROM projects WHERE id IN (DELETE FROM projects RETURNING id)",
 	)
 	require.Error(t, err)

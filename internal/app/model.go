@@ -229,6 +229,11 @@ type Model struct {
 	addressCountry  string
 	addressAutofill bool
 
+	// App lifecycle context: cancelled on quit, parent of all feature contexts.
+	// Access via lifecycleCtx() which provides a nil-safe fallback for tests.
+	appCtx    context.Context
+	appCancel context.CancelFunc
+
 	// Sync state (Pro background sync).
 	syncStatus        syncStatus
 	syncCfg           *syncConfig
@@ -240,6 +245,13 @@ type Model struct {
 }
 
 func NewModel(store *data.Store, options Options) (*Model, error) {
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer func() {
+		if appCancel != nil {
+			appCancel()
+		}
+	}()
+
 	var client *llm.Client
 	chatCfg := options.ChatConfig
 	if chatCfg.Enabled {
@@ -251,7 +263,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			// No persisted model -- try auto-detecting if the server has exactly one.
 			tempClient, err := llm.NewClient(chatCfg.Provider, chatCfg.BaseURL, model, chatCfg.APIKey, chatCfg.Timeout)
 			if err == nil {
-				if detected := autoDetectModel(tempClient); detected != "" {
+				if detected := autoDetectModel(appCtx, tempClient); detected != "" {
 					model = detected
 					_ = store.PutLastModel(model)
 				}
@@ -280,6 +292,8 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 	pprog.PercentageStyle = appStyles.TextDim()
 
 	model := &Model{
+		appCtx:        appCtx,
+		appCancel:     appCancel,
 		zones:         zone.New(),
 		store:         store,
 		dbPath:        options.DBPath,
@@ -316,7 +330,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 	if cfg := options.syncCfg; cfg != nil {
 		syncClient := sync.NewClient(cfg.relayURL, cfg.token, cfg.key)
 		model.syncEngine = sync.NewEngine(store, syncClient, cfg.householdID)
-		model.syncCtx, model.syncCancel = context.WithCancel(context.Background())
+		model.syncCtx, model.syncCancel = context.WithCancel(model.appCtx)
 		model.syncStatus = syncSyncing
 	}
 	// Best-effort: fall back to locale detection if setting unreadable.
@@ -341,7 +355,18 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			_ = model.loadDashboard()
 		}
 	}
+	appCancel = nil // prevent deferred cleanup; Model now owns the context
 	return model, nil
+}
+
+// lifecycleCtx returns the app lifecycle context. Falls back to
+// context.Background() when appCtx is nil (e.g., in tests that
+// construct Model directly without NewModel).
+func (m *Model) lifecycleCtx() context.Context {
+	if m.appCtx != nil {
+		return m.appCtx
+	}
+	return context.Background()
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -380,6 +405,9 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.mode == modeForm && m.fs.formDirty {
 				m.confirm = confirmFormQuitDiscard
 				return m, nil
+			}
+			if m.appCancel != nil {
+				m.appCancel()
 			}
 			m.cancelChatOperations()
 			m.cancelAllExtractions()
@@ -693,12 +721,8 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			pc := values.PostalCode
 			if len(pc) >= postalCodeMinLength && pc != m.fs.lastPostalCode {
 				m.fs.lastPostalCode = pc
-				ctx := context.Background()
-				if m.syncCtx != nil {
-					ctx = m.syncCtx
-				}
 				cmd = tea.Batch(cmd, lookupPostalCodeCmd(
-					ctx, m.addressClient, m.addressBaseURL,
+					m.lifecycleCtx(), m.addressClient, m.addressBaseURL,
 					m.addressCountry, pc,
 				))
 			}
@@ -726,6 +750,9 @@ func (m *Model) handleConfirmDiscard(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case keyY:
 		if m.confirm == confirmFormQuitDiscard {
 			m.confirm = confirmNone
+			if m.appCancel != nil {
+				m.appCancel()
+			}
 			m.cancelChatOperations()
 			m.cancelPull()
 			return m, tea.Quit
@@ -2142,8 +2169,9 @@ func (m *Model) checkExtractionModelCmd() tea.Cmd {
 		}
 	}
 
+	appCtx := m.lifecycleCtx()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(appCtx, timeout)
 		defer cancel()
 		models, err := client.ListModels(ctx)
 		if err != nil {
@@ -2161,7 +2189,7 @@ func (m *Model) checkExtractionModelCmd() tea.Cmd {
 				}
 			}
 		}
-		return startPull(client.BaseURL(), model)
+		return startPull(appCtx, client.BaseURL(), model)
 	}
 }
 
@@ -3212,8 +3240,8 @@ func (m *Model) reopenNotesEdit(pe *editorState) {
 // autoDetectModel checks if the LLM server has exactly one model available
 // and returns it. Returns "" if the server is unreachable or has zero/multiple
 // models (ambiguous cases where manual config is safer).
-func autoDetectModel(client *llm.Client) string {
-	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout())
+func autoDetectModel(ctx context.Context, client *llm.Client) string {
+	ctx, cancel := context.WithTimeout(ctx, client.Timeout())
 	defer cancel()
 
 	models, err := client.ListModels(ctx)

@@ -433,7 +433,7 @@ func runConfigGet(w io.Writer, filter string) error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	return cfg.Query(w, filter)
+	return cfg.Query(context.Background(), w, filter)
 }
 
 func newConfigEditCmd() *cobra.Command {
