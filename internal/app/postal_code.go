@@ -25,9 +25,13 @@ type postalCodeLookupMsg struct {
 	Err   error
 }
 
-func lookupPostalCodeCmd(client *http.Client, baseURL, country, postalCode string) tea.Cmd {
+func lookupPostalCodeCmd(
+	parent context.Context,
+	client *http.Client,
+	baseURL, country, postalCode string,
+) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), postalCodeLookupTimeout)
+		ctx, cancel := context.WithTimeout(parent, postalCodeLookupTimeout)
 		defer cancel()
 
 		result, err := address.Lookup(ctx, client, baseURL, country, postalCode)

@@ -515,6 +515,7 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, doSync(m.syncCtx, m.syncEngine)
 	case postalCodeLookupMsg:
 		if typed.Err != nil {
+			m.setStatusError(fmt.Sprintf("postal code lookup: %v", typed.Err))
 			return m, nil
 		}
 		values, ok := m.fs.formData.(*houseFormData)
@@ -692,8 +693,12 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			pc := values.PostalCode
 			if len(pc) >= postalCodeMinLength && pc != m.fs.lastPostalCode {
 				m.fs.lastPostalCode = pc
+				ctx := context.Background()
+				if m.syncCtx != nil {
+					ctx = m.syncCtx
+				}
 				cmd = tea.Batch(cmd, lookupPostalCodeCmd(
-					m.addressClient, m.addressBaseURL,
+					ctx, m.addressClient, m.addressBaseURL,
 					m.addressCountry, pc,
 				))
 			}
@@ -2616,6 +2621,9 @@ func (m *Model) resetFormState() {
 	m.fs.postalCodeField = nil
 	m.fs.cityInput = nil
 	m.fs.stateInput = nil
+	m.fs.lastPostalCode = ""
+	m.fs.autoFilledCity = ""
+	m.fs.autoFilledState = ""
 	if m.confirm.isFormConfirm() {
 		m.confirm = confirmNone
 	}

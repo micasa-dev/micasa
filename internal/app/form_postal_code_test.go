@@ -4,6 +4,7 @@
 package app
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -222,6 +223,65 @@ func TestPostalCodeChangeDoesNotOverwriteUserEditedCity(t *testing.T) {
 	}
 	assert.Equal(t, "Custom City", values.City,
 		"user-edited city should not be overwritten by autofill")
+	// State was auto-filled and not edited — it should update.
+	assert.Equal(t, "CA", values.State,
+		"auto-filled state should still update when city was user-edited")
+}
+
+func TestPostalCodeInvalidClearsOnlyAutofilledFields(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/us/234" {
+			_, _ = w.Write(
+				[]byte(`{"places": [{"place name": "Norfolk", "state abbreviation": "VA"}]}`),
+			)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	m := newTestModelWithStore(t)
+	m.addressClient = srv.Client()
+	m.addressBaseURL = srv.URL
+	m.addressCountry = "us"
+	m.addressAutofill = true
+
+	openHouseForm(m)
+	m.Update(huh.NextField())
+
+	values, ok := m.fs.formData.(*houseFormData)
+	require.True(t, ok)
+
+	// Type "234" — fills both city and state.
+	for _, ch := range "234" {
+		_, cmd := m.Update(keyPress(string(ch)))
+		for _, msg := range drainBatchCmds(cmd) {
+			m.Update(msg)
+		}
+	}
+	require.Equal(t, "Norfolk", values.City)
+	require.Equal(t, "VA", values.State)
+
+	// User edits city manually.
+	values.City = "Custom City"
+	if m.fs.cityInput != nil {
+		m.fs.cityInput.Value(&values.City)
+	}
+
+	// Postal code becomes invalid (type "x" making it "234x").
+	_, cmd := m.Update(keyPress("x"))
+	for _, msg := range drainBatchCmds(cmd) {
+		m.Update(msg)
+	}
+
+	// User-edited city should be preserved; auto-filled state should clear.
+	assert.Equal(t, "Custom City", values.City,
+		"user-edited city should not be cleared on invalid postal code")
+	assert.Empty(t, values.State,
+		"auto-filled state should be cleared on invalid postal code")
 }
 
 func TestPostalCodeAutofillDoesNotOverwriteExistingValues(t *testing.T) {
@@ -250,7 +310,13 @@ func TestPostalCodeAutofillDoesNotOverwriteExistingValues(t *testing.T) {
 	values.City = "Custom City"
 	values.State = "XX"
 
-	cmd := lookupPostalCodeCmd(m.addressClient, m.addressBaseURL, m.addressCountry, "90210")
+	cmd := lookupPostalCodeCmd(
+		context.Background(),
+		m.addressClient,
+		m.addressBaseURL,
+		m.addressCountry,
+		"90210",
+	)
 	msg := cmd()
 	m.Update(msg)
 

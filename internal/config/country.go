@@ -9,14 +9,15 @@ import (
 )
 
 // DetectCountry returns the ISO 3166-1 alpha-2 country code derived from
-// the system locale. Falls back to "us" when the locale cannot be parsed.
+// the system locale. Respects POSIX precedence: LC_ALL overrides LANG.
+// Falls back to "us" when the locale cannot be parsed.
 func DetectCountry() string {
-	for _, env := range []string{"LC_ALL", "LANG"} {
-		if val := os.Getenv(env); val != "" {
-			if c := detectCountryFromLang(val); c != "us" || strings.Contains(val, "_US") {
-				return c
-			}
-		}
+	// LC_ALL overrides LANG per POSIX. If set, use it unconditionally.
+	if val := os.Getenv("LC_ALL"); val != "" {
+		return detectCountryFromLang(val)
+	}
+	if val := os.Getenv("LANG"); val != "" {
+		return detectCountryFromLang(val)
 	}
 	return "us"
 }

@@ -48,13 +48,13 @@ empty** -- never overwrite user-provided values.
 ```json
 {
   "country": "United States",
-  "country_abbreviation": "US",
+  "country abbreviation": "US",
   "post_code": "90210",
   "places": [
     {
-      "place_name": "Beverly Hills",
+      "place name": "Beverly Hills",
       "state": "California",
-      "state_abbreviation": "CA"
+      "state abbreviation": "CA"
     }
   ]
 }

@@ -5,7 +5,6 @@ package address
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -22,15 +21,14 @@ func TestLookupLiveAPI(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	result, err := Lookup(ctx, client, "https://api.zippopotam.us", "us", "90210")
+	result, err := Lookup(ctx, &http.Client{}, "https://api.zippopotam.us", "us", "90210")
 	if err != nil {
 		t.Fatalf("Lookup failed: %v", err)
 	}
 	if result == nil {
 		t.Fatal("result is nil")
 	}
-	fmt.Printf("City: %q State: %q\n", result.City, result.State)
+	t.Logf("City: %q State: %q", result.City, result.State)
 	if result.City == "" {
 		t.Error("City is empty — JSON keys likely don't match the API response")
 	}
