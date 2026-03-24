@@ -328,6 +328,15 @@ details; do not duplicate that detail here.
   `coldefs.go`, then run `go generate ./internal/app/` to regenerate the
   typed iota blocks in `columns_generated.go`. Never hand-edit
   `columns_generated.go`.
+- **Context lifecycle**: Never use `context.Background()` inside a
+  function that has a caller-supplied context available. Thread `ctx
+  context.Context` through every function that does I/O (network, disk,
+  DB). `context.Background()` is only acceptable at the true root of a
+  call chain: `main`, test setup, or `signal.NotifyContext` creation in
+  CLI handlers. In the TUI, derive contexts from the app lifecycle
+  context so operations cancel on quit. When reviewing or writing code
+  that makes HTTP requests, runs queries, or calls external services,
+  always ask: "if the caller cancels, does this operation stop?"
 
 ### UI/UX conventions
 
