@@ -31,8 +31,8 @@ type place struct {
 }
 
 // maxResponseBytes caps the response body to prevent OOM from a hostile
-// or misbehaving server. 64 KiB is generous for this API's payloads.
-const maxResponseBytes = 64 * 1024
+// or misbehaving server. Real responses are ~200 bytes; 4 KiB is generous.
+const maxResponseBytes = 4 * 1024
 
 // Lookup queries the postal code API for city/state. Returns nil (no error)
 // when the postal code is not found (404). The baseURL parameter allows
