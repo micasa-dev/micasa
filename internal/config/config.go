@@ -48,7 +48,7 @@ type Locale struct {
 // account is required; the API sees the postal code and your IP address.
 type Address struct {
 	// Autofill controls whether the app looks up city/state from the
-	// postal code via api.zippopotam.us. Default: true.
+	// postal code via api.zippopotam.us. Default: false.
 	Autofill *bool `toml:"autofill,omitempty"`
 }
 

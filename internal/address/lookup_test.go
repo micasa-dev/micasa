@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -143,14 +144,18 @@ func TestLookupAcceptsValidPostalCodeFormats(t *testing.T) {
 
 func TestLookupSetsUserAgent(t *testing.T) {
 	t.Parallel()
+	var called atomic.Bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called.Store(true)
 		assert.Equal(t, "micasa", r.Header.Get("User-Agent"))
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"places": []}`))
 	}))
 	defer srv.Close()
 
-	_, _ = Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	_, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	require.NoError(t, err)
+	assert.True(t, called.Load(), "handler was never invoked")
 }
 
 func TestLookupEmptyPlaces(t *testing.T) {
