@@ -397,6 +397,10 @@ func (s *PgStore) StartJoin(
 		}
 
 		if inv.Attempts >= maxInviteAttempts {
+			inv.Consumed = true
+			if err := tx.Save(&inv).Error; err != nil {
+				return fmt.Errorf("update invite: %w", err)
+			}
 			return fmt.Errorf("invite code max attempts exceeded")
 		}
 

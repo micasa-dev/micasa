@@ -288,6 +288,7 @@ func (m *MemStore) StartJoin(
 		return sync.JoinResponse{}, fmt.Errorf("invite code expired")
 	}
 	if inv.usedAttempts >= inv.maxAttempts {
+		inv.consumed = true
 		return sync.JoinResponse{}, fmt.Errorf("invite code max attempts exceeded")
 	}
 

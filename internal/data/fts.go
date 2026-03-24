@@ -60,7 +60,8 @@ func (s *Store) setupFTS() error {
 			sql: fmt.Sprintf(`
 				CREATE TRIGGER %s AFTER INSERT ON %s BEGIN
 					INSERT INTO %s(rowid, title, notes, extracted_text)
-					VALUES (new.rowid, new.title, new.notes, new.extracted_text);
+					SELECT new.rowid, new.title, new.notes, new.extracted_text
+					WHERE new.deleted_at IS NULL;
 				END`, triggerFTSInsert, TableDocuments, tableFTS),
 		},
 		{
