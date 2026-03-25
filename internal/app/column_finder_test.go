@@ -288,8 +288,8 @@ func TestBuildColumnFinderOverlay_CursorBeforeGhostText(t *testing.T) {
 
 	rendered := m.buildColumnFinderOverlay()
 
-	// The block cursor (█) should appear before the ghost text, not after.
-	cursorIdx := strings.Index(rendered, "\u2588")
+	// The bar cursor (│) should appear before the ghost text, not after.
+	cursorIdx := strings.Index(rendered, "│")
 	ghostIdx := strings.Index(rendered, "type to filter")
 	require.NotEqual(t, -1, cursorIdx, "cursor should be present")
 	require.NotEqual(t, -1, ghostIdx, "ghost text should be present")
