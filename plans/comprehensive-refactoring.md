@@ -51,8 +51,9 @@ Split `store.go` (2,017 lines, 120 methods) into per-entity files. The
 2. **`restoreWithParentChecks`** -- consolidates restore methods that all fetch
    unscoped, validate parent liveness, then call restoreEntity. Concrete
    methods: RestoreQuote (checks Project + Vendor), RestoreMaintenance (checks
-   Appliance), RestoreServiceLog (checks MaintenanceItem + Vendor),
-   RestoreIncident (checks Appliance + Vendor). The helper signature:
+   Appliance). RestoreServiceLog and RestoreIncident are intentionally excluded
+   because they have custom transaction bodies (syncLastServiced for service
+   logs, status-reset + bespoke oplog for incidents). The helper signature:
    ```go
    type parentCheck struct {
        model any       // GORM model to check
@@ -116,6 +117,7 @@ type inlineEditSpec struct {
     selectCols map[int]func(*Model) ([]huh.Option[string], error)
     dateCols   []int
     moneyCols  []int
+    notesCols  []int
 }
 ```
 

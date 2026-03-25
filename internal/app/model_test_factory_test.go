@@ -21,8 +21,6 @@ import (
 //     creation (demo seeder creates its own).
 //   - currency / currencyTag: resolve a specific currency; when currency is
 //     empty the store default (locale.DefaultCurrency) is used.
-//   - maxDocBytes: when > 0, calls store.SetMaxDocumentSize; omitted for
-//     currency-only tests that don't exercise document uploads.
 type testModelOpts struct {
 	// Demo data
 	withDemo bool
@@ -52,7 +50,8 @@ func newTestModelWith(t *testing.T, opts testModelOpts) *Model {
 		require.NoError(t, store.PutCurrency(opts.currency))
 	} else {
 		store.SetCurrency(locale.DefaultCurrency())
-		// SetMaxDocumentSize is only meaningful for the non-currency paths.
+		// Currency-only tests don't exercise document uploads, so skip
+		// SetMaxDocumentSize to match the old newTestModelWithCurrency behavior.
 		require.NoError(t, store.SetMaxDocumentSize(50<<20))
 	}
 
@@ -71,6 +70,7 @@ func newTestModelWith(t *testing.T, opts testModelOpts) *Model {
 	m.width = 120
 	m.height = 40
 
+	// Demo data may trigger the house form; dismiss it for a clean slate.
 	if m.mode == modeForm {
 		m.exitForm()
 	}

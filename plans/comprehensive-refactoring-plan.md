@@ -219,8 +219,8 @@ func prepareQuoteRelations(db *gorm.DB) *gorm.DB {
 
 Move:
 - `prepareQuoteRelations` (new helper)
-- `ListQuotes` (805–813) — refactor to use `prepareQuoteRelations`
-- `GetQuote` (848–855) — refactor to use `prepareQuoteRelations`
+- `ListQuotes` (805–813) — refactor to use `prepareQuoteRelationsFull`
+- `GetQuote` (848–855) — refactor to use `prepareQuoteRelationsFull`
 - `CreateQuote` (857–866)
 - `UpdateQuote` (868–877)
 - `DeleteQuote` (1570–1572)

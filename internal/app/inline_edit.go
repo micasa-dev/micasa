@@ -48,7 +48,7 @@ type inlineColSpec struct {
 func mustAssert[T any](v any) T {
 	t, ok := v.(T)
 	if !ok {
-		panic(fmt.Sprintf("inline edit: expected %T, got %T", (*T)(nil), v))
+		panic(fmt.Sprintf("inline edit: expected %T, got %T", *new(T), v))
 	}
 	return t
 }
@@ -86,6 +86,12 @@ func (m *Model) dispatchInlineEdit(
 		m.openNotesEdit(id, spec.fieldPtr(values), values)
 
 	case ieSelect:
+		if spec.selectOptions == nil {
+			return true, fmt.Errorf(
+				"inline edit: ieSelect spec for col %d has nil selectOptions",
+				col,
+			)
+		}
 		opts, err := spec.selectOptions(m)
 		if err != nil {
 			return true, err
