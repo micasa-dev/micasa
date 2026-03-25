@@ -34,6 +34,10 @@ vendor
 *.sqlite-shm
 *.sqlite-wal
 
+# SQLite WAL/SHM artifacts (catches DBs without standard extensions)
+*-shm
+*-wal
+
 # GoReleaser
 dist/
 
