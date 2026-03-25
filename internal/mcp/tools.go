@@ -6,10 +6,12 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
+	"gorm.io/gorm"
 )
 
 func (s *Server) registerTools() {
@@ -208,7 +210,7 @@ func (s *Server) handleSearchDocuments(
 			EntityKind: r.EntityKind,
 			EntityID:   r.EntityID,
 			Snippet:    r.Snippet,
-			UpdatedAt:  r.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:  r.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -282,7 +284,10 @@ func (s *Server) handleGetHouseProfile(
 ) (*mcpgo.CallToolResult, error) {
 	profile, err := s.store.HouseProfile()
 	if err != nil {
-		return mcpgo.NewToolResultError(fmt.Sprintf("no house profile configured: %v", err)), nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return mcpgo.NewToolResultError("no house profile configured"), nil
+		}
+		return mcpgo.NewToolResultError(fmt.Sprintf("load house profile: %v", err)), nil
 	}
 
 	b, err := json.Marshal(profile)

@@ -108,17 +108,34 @@ func TestQueryToolInvalidSQL(t *testing.T) {
 	assert.True(t, result.IsError)
 }
 
+func toolResultText(t *testing.T, result *mcpgo.CallToolResult) string {
+	t.Helper()
+	require.NotEmpty(t, result.Content)
+	tc, ok := result.Content[0].(mcpgo.TextContent)
+	require.True(t, ok, "expected TextContent, got %T", result.Content[0])
+	return tc.Text
+}
+
 func TestGetSchemaTool(t *testing.T) {
 	srv, _ := newTestServer(t)
 
 	result := callTool(t, srv, "get_schema", map[string]any{})
 	require.False(t, result.IsError)
 
-	raw, err := json.Marshal(result.Content)
-	require.NoError(t, err)
-	output := string(raw)
-	assert.Contains(t, output, "vendors")
-	assert.Contains(t, output, "projects")
+	var schema struct {
+		Tables []struct {
+			Name string `json:"name"`
+		} `json:"tables"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(toolResultText(t, result)), &schema))
+	require.NotEmpty(t, schema.Tables)
+
+	names := make([]string, 0, len(schema.Tables))
+	for _, tbl := range schema.Tables {
+		names = append(names, tbl.Name)
+	}
+	assert.Contains(t, names, "vendors")
+	assert.Contains(t, names, "projects")
 }
 
 func TestGetSchemaToolFiltered(t *testing.T) {
@@ -129,11 +146,14 @@ func TestGetSchemaToolFiltered(t *testing.T) {
 	})
 	require.False(t, result.IsError)
 
-	raw, err := json.Marshal(result.Content)
-	require.NoError(t, err)
-	output := string(raw)
-	assert.Contains(t, output, "vendors")
-	assert.NotContains(t, output, "projects")
+	var schema struct {
+		Tables []struct {
+			Name string `json:"name"`
+		} `json:"tables"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(toolResultText(t, result)), &schema))
+	require.Len(t, schema.Tables, 1)
+	assert.Equal(t, "vendors", schema.Tables[0].Name)
 }
 
 func TestSearchDocumentsTool(t *testing.T) {
@@ -198,11 +218,24 @@ func TestGetMaintenanceScheduleTool(t *testing.T) {
 	result := callTool(t, srv, "get_maintenance_schedule", map[string]any{})
 	require.False(t, result.IsError)
 
-	raw, err := json.Marshal(result.Content)
-	require.NoError(t, err)
-	output := string(raw)
-	assert.Contains(t, output, "Replace furnace filter")
-	assert.Contains(t, output, `\"overdue\":true`)
+	var items []struct {
+		Name    string     `json:"name"`
+		Overdue bool       `json:"overdue"`
+		DueDate *time.Time `json:"due_date"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(toolResultText(t, result)), &items))
+	require.NotEmpty(t, items)
+
+	var found bool
+	for _, it := range items {
+		if it.Name == "Replace furnace filter" {
+			found = true
+			assert.True(t, it.Overdue)
+			require.NotNil(t, it.DueDate, "computed due_date should be populated")
+			break
+		}
+	}
+	require.True(t, found, "expected maintenance item not found")
 }
 
 func TestGetHouseProfileTool(t *testing.T) {

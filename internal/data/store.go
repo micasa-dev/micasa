@@ -316,7 +316,15 @@ func (s *Store) IsMicasaDB() (bool, error) {
 }
 
 func (s *Store) SetQueryOnly() error {
-	return s.db.Exec("PRAGMA query_only = ON").Error
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return fmt.Errorf("get sql.DB for query_only: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	if err := s.db.Exec("PRAGMA query_only = ON").Error; err != nil {
+		return fmt.Errorf("set query_only pragma: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) AutoMigrate() error {
