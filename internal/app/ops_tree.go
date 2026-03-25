@@ -15,6 +15,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/micasa-dev/micasa/internal/extract"
 )
 
 // Zone ID prefix for clickable tree nodes (expand/collapse toggle).
@@ -57,11 +58,13 @@ func (n *jsonTreeNode) isExpandable() bool {
 
 // opsTreeState holds the state for the interactive JSON tree overlay.
 type opsTreeState struct {
-	root     []*jsonTreeNode // single-element: the "operations" wrapper
-	cursor   int             // index into visibleNodes()
-	expanded map[string]bool // keyed by node path
-	docTitle string          // document title shown in overlay header
-	maxNodes int             // total node count when fully expanded (for stable viewport)
+	root          []*jsonTreeNode // single-element: the "operations" wrapper
+	cursor        int             // index into visibleNodes()
+	expanded      map[string]bool // keyed by node path
+	docTitle      string          // document title shown in overlay header
+	maxNodes      int             // total node count when fully expanded (for stable viewport)
+	previewGroups []previewTableGroup
+	previewTab    int
 }
 
 // visibleNodes returns the flattened list of currently visible tree nodes,
@@ -322,6 +325,29 @@ func (m *Model) openOpsTree() {
 		expanded: expanded,
 		docTitle: doc.Title,
 		maxNodes: countAllNodes(root),
+	}
+
+	var ops []extract.Operation
+	if err := json.Unmarshal(doc.ExtractionOps, &ops); err == nil && len(ops) > 0 {
+		m.opsTree.previewGroups = groupOperationsByTable(ops, m.cur)
+	}
+
+	// Account for table preview section height in maxNodes so the overlay
+	// doesn't jump when collapsing tree nodes.
+	if groups := m.opsTree.previewGroups; len(groups) > 0 {
+		maxRows := 0
+		for _, g := range groups {
+			if len(g.cells) > maxRows {
+				maxRows = len(g.cells)
+			}
+		}
+		// divider(1) + header(1) + table-divider(1) + rows
+		extra := 3 + maxRows
+		if len(groups) > 1 {
+			// tab-bar(1) + underline(1)
+			extra += 2
+		}
+		m.opsTree.maxNodes += extra
 	}
 }
 

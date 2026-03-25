@@ -411,6 +411,22 @@ func TestAutoExpand(t *testing.T) {
 	assert.True(t, expanded["operations.1.data"])
 }
 
+func TestOpsTreePreviewGroupsPopulated(t *testing.T) {
+	t.Parallel()
+	m := newOpsTreeModel(t)
+
+	tab := m.effectiveTab()
+	tab.ColCursor = int(documentColOps)
+	sendKey(m, "enter")
+
+	require.NotNil(t, m.opsTree)
+	require.NotEmpty(t, m.opsTree.previewGroups, "preview groups should be populated")
+
+	// testOpsJSON has vendors create + documents update -> 2 groups.
+	assert.Len(t, m.opsTree.previewGroups, 2)
+	assert.Equal(t, 0, m.opsTree.previewTab)
+}
+
 func TestOpsTreeCollapseNestedContainer(t *testing.T) {
 	t.Parallel()
 	m := newOpsTreeModel(t)
