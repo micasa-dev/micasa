@@ -762,64 +762,74 @@ func (m *Model) parseIncidentFormData() (data.Incident, error) {
 	}, nil
 }
 
+var incidentInlineSpecs = map[int]inlineColSpec{
+	int(incidentColTitle): {
+		kind: ieText, title: "Title",
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Title },
+		validate: func(*Model) func(string) error { return requiredText("title") },
+	},
+	int(incidentColStatus): {
+		kind: ieSelect, title: "Status",
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Status },
+		selectOptions: func(*Model) ([]huh.Option[string], error) {
+			return incidentStatusOptions(), nil
+		},
+	},
+	int(incidentColSeverity): {
+		kind: ieSelect, title: "Severity",
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Severity },
+		selectOptions: func(*Model) ([]huh.Option[string], error) {
+			return incidentSeverityOptions(), nil
+		},
+	},
+	int(incidentColLocation): {
+		kind: ieText, title: "Location", placeholder: "Kitchen",
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Location },
+	},
+	int(incidentColAppliance): {
+		kind: ieSelect, title: "Appliance",
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).ApplianceID },
+		selectOptions: func(m *Model) ([]huh.Option[string], error) {
+			appliances, err := m.store.ListAppliances(false)
+			if err != nil {
+				return nil, err
+			}
+			return applianceOptions(appliances), nil
+		},
+	},
+	int(incidentColVendor): {
+		kind: ieSelect, title: "Vendor",
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).VendorID },
+		selectOptions: func(m *Model) ([]huh.Option[string], error) {
+			return vendorOpts("(none)", m.vendors), nil
+		},
+	},
+	int(incidentColNoticed): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).DateNoticed },
+	},
+	int(incidentColResolved): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).DateResolved },
+	},
+	int(incidentColCost): {
+		kind: ieMoney, title: "Cost", placeholder: "250.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Cost },
+		validate: func(m *Model) func(string) error { return optionalMoney("cost", m.cur) },
+	},
+}
+
 func (m *Model) inlineEditIncident(id string, col incidentCol) error {
 	item, err := m.store.GetIncident(id)
 	if err != nil {
 		return fmt.Errorf("load incident: %w", err)
 	}
 	values := incidentFormValues(item, m.cur)
-	switch col {
-	case incidentColTitle:
-		m.openInlineInput(
-			id,
-			"Title",
-			"",
-			&values.Title,
-			requiredText("title"),
-			values,
-		)
-	case incidentColStatus:
-		field := huh.NewSelect[string]().Title("Status").
-			Options(incidentStatusOptions()...).
-			Value(&values.Status)
-		m.openInlineEdit(id, field, values)
-	case incidentColSeverity:
-		field := huh.NewSelect[string]().Title("Severity").
-			Options(incidentSeverityOptions()...).
-			Value(&values.Severity)
-		m.openInlineEdit(id, field, values)
-	case incidentColLocation:
-		m.openInlineInput(id, "Location", "Kitchen", &values.Location, nil, values)
-	case incidentColAppliance:
-		appliances, loadErr := m.store.ListAppliances(false)
-		if loadErr != nil {
-			return loadErr
-		}
-		appOpts := applianceOptions(appliances)
-		field := huh.NewSelect[string]().Title("Appliance").
-			Options(appOpts...).
-			Value(&values.ApplianceID)
-		m.openInlineEdit(id, field, values)
-	case incidentColVendor:
-		vendorOpts := vendorOpts("(none)", m.vendors)
-		field := huh.NewSelect[string]().Title("Vendor").
-			Options(vendorOpts...).
-			Value(&values.VendorID)
-		m.openInlineEdit(id, field, values)
-	case incidentColNoticed:
-		m.openDatePicker(id, &values.DateNoticed, values)
-	case incidentColResolved:
-		m.openDatePicker(id, &values.DateResolved, values)
-	case incidentColCost:
-		m.openInlineInput(
-			id,
-			"Cost",
-			"250.00",
-			&values.Cost,
-			optionalMoney("cost", m.cur),
-			values,
-		)
-	case incidentColID, incidentColDocs:
+	handled, err := m.dispatchInlineEdit(id, int(col), incidentInlineSpecs, values)
+	if err != nil {
+		return err
+	}
+	if !handled {
 		return m.startEditIncidentForm(id)
 	}
 	return nil
@@ -1087,24 +1097,41 @@ func (m *Model) parseVendorFormData() (data.Vendor, error) {
 	}, nil
 }
 
+var vendorInlineSpecs = map[int]inlineColSpec{
+	int(vendorColName): {
+		kind: ieText, title: "Name",
+		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Name },
+		validate: func(*Model) func(string) error { return requiredText("name") },
+	},
+	int(vendorColContact): {
+		kind: ieText, title: "Contact name",
+		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).ContactName },
+	},
+	int(vendorColEmail): {
+		kind: ieText, title: "Email",
+		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Email },
+	},
+	int(vendorColPhone): {
+		kind: ieText, title: "Phone",
+		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Phone },
+	},
+	int(vendorColWebsite): {
+		kind: ieText, title: "Website",
+		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Website },
+	},
+}
+
 func (m *Model) inlineEditVendor(id string, col vendorCol) error {
 	vendor, err := m.store.GetVendor(id)
 	if err != nil {
 		return fmt.Errorf("load vendor: %w", err)
 	}
 	values := vendorFormValues(vendor)
-	switch col {
-	case vendorColName:
-		m.openInlineInput(id, "Name", "", &values.Name, requiredText("name"), values)
-	case vendorColContact:
-		m.openInlineInput(id, "Contact name", "", &values.ContactName, nil, values)
-	case vendorColEmail:
-		m.openInlineInput(id, "Email", "", &values.Email, nil, values)
-	case vendorColPhone:
-		m.openInlineInput(id, "Phone", "", &values.Phone, nil, values)
-	case vendorColWebsite:
-		m.openInlineInput(id, "Website", "", &values.Website, nil, values)
-	case vendorColID, vendorColQuotes, vendorColJobs, vendorColDocs:
+	handled, err := m.dispatchInlineEdit(id, int(col), vendorInlineSpecs, values)
+	if err != nil {
+		return err
+	}
+	if !handled {
 		return m.startEditVendorForm(id)
 	}
 	return nil
@@ -1121,59 +1148,103 @@ func vendorFormValues(vendor data.Vendor) *vendorFormData {
 	}
 }
 
+var projectInlineSpecs = map[int]inlineColSpec{
+	int(projectColType): {
+		kind: ieSelect, title: "Project type",
+		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).ProjectTypeID },
+		selectOptions: func(m *Model) ([]huh.Option[string], error) {
+			return projectTypeOptions(m.projectTypes), nil
+		},
+	},
+	int(projectColTitle): {
+		kind: ieText, title: "Title",
+		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).Title },
+		validate: func(*Model) func(string) error { return requiredText("title") },
+	},
+	int(projectColStatus): {
+		kind: ieSelect, title: "Status",
+		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).Status },
+		selectOptions: func(*Model) ([]huh.Option[string], error) {
+			return statusOptions(), nil
+		},
+	},
+	int(projectColBudget): {
+		kind: ieMoney, title: "Budget", placeholder: "1250.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).Budget },
+		validate: func(m *Model) func(string) error { return optionalMoney("budget", m.cur) },
+	},
+	int(projectColActual): {
+		kind: ieMoney, title: "Actual cost", placeholder: "1400.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).Actual },
+		validate: func(m *Model) func(string) error { return optionalMoney("actual cost", m.cur) },
+	},
+	int(projectColStart): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).StartDate },
+	},
+	int(projectColEnd): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).EndDate },
+	},
+}
+
 func (m *Model) inlineEditProject(id string, col projectCol) error {
 	project, err := m.store.GetProject(id)
 	if err != nil {
 		return fmt.Errorf("load project: %w", err)
 	}
 	values := projectFormValues(project, m.cur)
-	switch col {
-	case projectColType:
-		options := projectTypeOptions(m.projectTypes)
-		field := huh.NewSelect[string]().Title("Project type").
-			Options(options...).
-			Value(&values.ProjectTypeID)
-		m.openInlineEdit(id, field, values)
-	case projectColTitle:
-		m.openInlineInput(
-			id,
-			"Title",
-			"",
-			&values.Title,
-			requiredText("title"),
-			values,
-		)
-	case projectColStatus:
-		field := huh.NewSelect[string]().Title("Status").
-			Options(statusOptions()...).
-			Value(&values.Status)
-		m.openInlineEdit(id, field, values)
-	case projectColBudget:
-		m.openInlineInput(
-			id,
-			"Budget",
-			"1250.00",
-			&values.Budget,
-			optionalMoney("budget", m.cur),
-			values,
-		)
-	case projectColActual:
-		m.openInlineInput(
-			id,
-			"Actual cost",
-			"1400.00",
-			&values.Actual,
-			optionalMoney("actual cost", m.cur),
-			values,
-		)
-	case projectColStart:
-		m.openDatePicker(id, &values.StartDate, values)
-	case projectColEnd:
-		m.openDatePicker(id, &values.EndDate, values)
-	case projectColID, projectColQuotes, projectColDocs:
+	handled, err := m.dispatchInlineEdit(id, int(col), projectInlineSpecs, values)
+	if err != nil {
+		return err
+	}
+	if !handled {
 		return m.startEditProjectForm(id)
 	}
 	return nil
+}
+
+var quoteInlineSpecs = map[int]inlineColSpec{
+	int(quoteColProject): {
+		kind: ieSelect, title: "Project",
+		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).ProjectID },
+		selectOptions: func(m *Model) ([]huh.Option[string], error) {
+			projects, err := m.store.ListProjects(false)
+			if err != nil {
+				return nil, err
+			}
+			return projectOptions(projects), nil
+		},
+	},
+	int(quoteColVendor): {
+		kind: ieText, title: "Vendor name",
+		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).VendorName },
+		validate: func(*Model) func(string) error { return requiredText("vendor name") },
+	},
+	int(quoteColTotal): {
+		kind: ieMoney, title: "Total", placeholder: "3250.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Total },
+		validate: func(m *Model) func(string) error { return requiredMoney("total", m.cur) },
+	},
+	int(quoteColLabor): {
+		kind: ieMoney, title: "Labor", placeholder: "2000.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Labor },
+		validate: func(m *Model) func(string) error { return optionalMoney("labor", m.cur) },
+	},
+	int(quoteColMat): {
+		kind: ieMoney, title: "Materials", placeholder: "1000.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Materials },
+		validate: func(m *Model) func(string) error { return optionalMoney("materials", m.cur) },
+	},
+	int(quoteColOther): {
+		kind: ieMoney, title: "Other", placeholder: "250.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Other },
+		validate: func(m *Model) func(string) error { return optionalMoney("other costs", m.cur) },
+	},
+	int(quoteColRecv): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).ReceivedDate },
+	},
 }
 
 func (m *Model) inlineEditQuote(id string, col quoteCol) error {
@@ -1181,69 +1252,71 @@ func (m *Model) inlineEditQuote(id string, col quoteCol) error {
 	if err != nil {
 		return fmt.Errorf("load quote: %w", err)
 	}
-	projects, err := m.store.ListProjects(false)
+	values := quoteFormValues(quote, m.cur)
+	handled, err := m.dispatchInlineEdit(id, int(col), quoteInlineSpecs, values)
 	if err != nil {
 		return err
 	}
-	values := quoteFormValues(quote, m.cur)
-	switch col {
-	case quoteColProject:
-		projectOpts := projectOptions(projects)
-		field := huh.NewSelect[string]().Title("Project").
-			Options(projectOpts...).
-			Value(&values.ProjectID)
-		m.openInlineEdit(id, field, values)
-	case quoteColVendor:
-		m.openInlineInput(
-			id,
-			"Vendor name",
-			"",
-			&values.VendorName,
-			requiredText("vendor name"),
-			values,
-		)
-	case quoteColTotal:
-		m.openInlineInput(
-			id,
-			"Total",
-			"3250.00",
-			&values.Total,
-			requiredMoney("total", m.cur),
-			values,
-		)
-	case quoteColLabor:
-		m.openInlineInput(
-			id,
-			"Labor",
-			"2000.00",
-			&values.Labor,
-			optionalMoney("labor", m.cur),
-			values,
-		)
-	case quoteColMat:
-		m.openInlineInput(
-			id,
-			"Materials",
-			"1000.00",
-			&values.Materials,
-			optionalMoney("materials", m.cur),
-			values,
-		)
-	case quoteColOther:
-		m.openInlineInput(
-			id,
-			"Other",
-			"250.00",
-			&values.Other,
-			optionalMoney("other costs", m.cur),
-			values,
-		)
-	case quoteColRecv:
-		m.openDatePicker(id, &values.ReceivedDate, values)
-	case quoteColID, quoteColDocs:
+	if !handled {
 		return m.startEditQuoteForm(id)
 	}
 	return nil
+}
+
+var maintenanceInlineSpecs = map[int]inlineColSpec{
+	int(maintenanceColItem): {
+		kind: ieText, title: "Item",
+		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).Name },
+		validate: func(*Model) func(string) error { return requiredText("item") },
+	},
+	int(maintenanceColCategory): {
+		kind: ieSelect, title: "Category",
+		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).CategoryID },
+		selectOptions: func(m *Model) ([]huh.Option[string], error) {
+			return maintenanceOptions(m.maintenanceCategories), nil
+		},
+	},
+	int(maintenanceColSeason): {
+		kind: ieSelect, title: "Season",
+		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).Season },
+		selectOptions: func(*Model) ([]huh.Option[string], error) {
+			return seasonOptions(), nil
+		},
+	},
+	int(maintenanceColAppliance): {
+		kind: ieSelect, title: "Appliance",
+		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).ApplianceID },
+		selectOptions: func(m *Model) ([]huh.Option[string], error) {
+			appliances, err := m.store.ListAppliances(false)
+			if err != nil {
+				return nil, err
+			}
+			return applianceOptions(appliances), nil
+		},
+	},
+	int(maintenanceColLast): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).LastServiced },
+	},
+	int(maintenanceColEvery): {
+		kind: ieText, title: "Interval", placeholder: "6m",
+		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).IntervalMonths },
+		validate: func(*Model) func(string) error { return optionalInterval("interval") },
+		beforeEdit: func(d formData) {
+			v := mustAssert[*maintenanceFormData](d)
+			v.ScheduleType = schedInterval
+			v.DueDate = ""
+		},
+	},
+	int(maintenanceColNext): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).DueDate },
+		beforeEdit: func(d formData) {
+			v := mustAssert[*maintenanceFormData](d)
+			v.ScheduleType = schedDueDate
+			v.IntervalMonths = ""
+		},
+	},
 }
 
 func (m *Model) inlineEditMaintenance(id string, col maintenanceCol) error {
@@ -1252,58 +1325,51 @@ func (m *Model) inlineEditMaintenance(id string, col maintenanceCol) error {
 		return fmt.Errorf("load maintenance item: %w", err)
 	}
 	values := maintenanceFormValues(item, m.cur)
-	switch col {
-	case maintenanceColItem:
-		m.openInlineInput(
-			id,
-			"Item",
-			"",
-			&values.Name,
-			requiredText("item"),
-			values,
-		)
-	case maintenanceColCategory:
-		catOptions := maintenanceOptions(m.maintenanceCategories)
-		field := huh.NewSelect[string]().Title("Category").
-			Options(catOptions...).
-			Value(&values.CategoryID)
-		m.openInlineEdit(id, field, values)
-	case maintenanceColSeason:
-		field := huh.NewSelect[string]().Title("Season").
-			Options(seasonOptions()...).
-			Value(&values.Season)
-		m.openInlineEdit(id, field, values)
-	case maintenanceColAppliance:
-		appliances, loadErr := m.store.ListAppliances(false)
-		if loadErr != nil {
-			return loadErr
-		}
-		appOpts := applianceOptions(appliances)
-		field := huh.NewSelect[string]().Title("Appliance").
-			Options(appOpts...).
-			Value(&values.ApplianceID)
-		m.openInlineEdit(id, field, values)
-	case maintenanceColLast:
-		m.openDatePicker(id, &values.LastServiced, values)
-	case maintenanceColEvery:
-		values.ScheduleType = schedInterval
-		values.DueDate = ""
-		m.openInlineInput(
-			id,
-			"Interval",
-			"6m",
-			&values.IntervalMonths,
-			optionalInterval("interval"),
-			values,
-		)
-	case maintenanceColNext:
-		values.ScheduleType = schedDueDate
-		values.IntervalMonths = ""
-		m.openDatePicker(id, &values.DueDate, values)
-	case maintenanceColID, maintenanceColLog, maintenanceColDocs:
+	handled, err := m.dispatchInlineEdit(id, int(col), maintenanceInlineSpecs, values)
+	if err != nil {
+		return err
+	}
+	if !handled {
 		return m.startEditMaintenanceForm(id)
 	}
 	return nil
+}
+
+var applianceInlineSpecs = map[int]inlineColSpec{
+	int(applianceColName): {
+		kind: ieText, title: "Name",
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Name },
+		validate: func(*Model) func(string) error { return requiredText("name") },
+	},
+	int(applianceColBrand): {
+		kind: ieText, title: "Brand",
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Brand },
+	},
+	int(applianceColModel): {
+		kind: ieText, title: "Model number",
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).ModelNumber },
+	},
+	int(applianceColSerial): {
+		kind: ieText, title: "Serial number",
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).SerialNumber },
+	},
+	int(applianceColLocation): {
+		kind: ieText, title: "Location", placeholder: "Kitchen",
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Location },
+	},
+	int(applianceColPurchased): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).PurchaseDate },
+	},
+	int(applianceColWarranty): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).WarrantyExpiry },
+	},
+	int(applianceColCost): {
+		kind: ieMoney, title: "Cost", placeholder: "899.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Cost },
+		validate: func(m *Model) func(string) error { return optionalMoney("cost", m.cur) },
+	},
 }
 
 func (m *Model) inlineEditAppliance(id string, col applianceCol) error {
@@ -1312,31 +1378,11 @@ func (m *Model) inlineEditAppliance(id string, col applianceCol) error {
 		return fmt.Errorf("load appliance: %w", err)
 	}
 	values := applianceFormValues(item, m.cur)
-	switch col {
-	case applianceColName:
-		m.openInlineInput(id, "Name", "", &values.Name, requiredText("name"), values)
-	case applianceColBrand:
-		m.openInlineInput(id, "Brand", "", &values.Brand, nil, values)
-	case applianceColModel:
-		m.openInlineInput(id, "Model number", "", &values.ModelNumber, nil, values)
-	case applianceColSerial:
-		m.openInlineInput(id, "Serial number", "", &values.SerialNumber, nil, values)
-	case applianceColLocation:
-		m.openInlineInput(id, "Location", "Kitchen", &values.Location, nil, values)
-	case applianceColPurchased:
-		m.openDatePicker(id, &values.PurchaseDate, values)
-	case applianceColWarranty:
-		m.openDatePicker(id, &values.WarrantyExpiry, values)
-	case applianceColCost:
-		m.openInlineInput(
-			id,
-			"Cost",
-			"899.00",
-			&values.Cost,
-			optionalMoney("cost", m.cur),
-			values,
-		)
-	case applianceColID, applianceColAge, applianceColMaint, applianceColDocs:
+	handled, err := m.dispatchInlineEdit(id, int(col), applianceInlineSpecs, values)
+	if err != nil {
+		return err
+	}
+	if !handled {
 		return m.startEditApplianceForm(id)
 	}
 	return nil
@@ -1444,34 +1490,40 @@ func (m *Model) parseServiceLogFormData() (data.ServiceLogEntry, data.Vendor, er
 	return entry, vendor, nil
 }
 
+var serviceLogInlineSpecs = map[int]inlineColSpec{
+	int(serviceLogColDate): {
+		kind:     ieDate,
+		fieldPtr: func(d formData) *string { return &mustAssert[*serviceLogFormData](d).ServicedAt },
+	},
+	int(serviceLogColPerformedBy): {
+		kind: ieSelect, title: "Performed by",
+		fieldPtr: func(d formData) *string { return &mustAssert[*serviceLogFormData](d).VendorID },
+		selectOptions: func(m *Model) ([]huh.Option[string], error) {
+			return vendorOpts("Self (homeowner)", m.vendors), nil
+		},
+	},
+	int(serviceLogColCost): {
+		kind: ieMoney, title: "Cost", placeholder: "125.00",
+		fieldPtr: func(d formData) *string { return &mustAssert[*serviceLogFormData](d).Cost },
+		validate: func(m *Model) func(string) error { return optionalMoney("cost", m.cur) },
+	},
+	int(serviceLogColNotes): {
+		kind:     ieNotes,
+		fieldPtr: func(d formData) *string { return &mustAssert[*serviceLogFormData](d).Notes },
+	},
+}
+
 func (m *Model) inlineEditServiceLog(id string, col serviceLogCol) error {
 	entry, err := m.store.GetServiceLog(id)
 	if err != nil {
 		return fmt.Errorf("load service log: %w", err)
 	}
 	values := serviceLogFormValues(entry, m.cur)
-	switch col {
-	case serviceLogColDate:
-		m.openDatePicker(id, &values.ServicedAt, values)
-	case serviceLogColPerformedBy:
-		vendorOpts := vendorOpts("Self (homeowner)", m.vendors)
-		field := huh.NewSelect[string]().
-			Title("Performed by").
-			Options(vendorOpts...).
-			Value(&values.VendorID)
-		m.openInlineEdit(id, field, values)
-	case serviceLogColCost:
-		m.openInlineInput(
-			id,
-			"Cost",
-			"125.00",
-			&values.Cost,
-			optionalMoney("cost", m.cur),
-			values,
-		)
-	case serviceLogColNotes:
-		m.openNotesEdit(id, &values.Notes, values)
-	case serviceLogColID, serviceLogColDocs:
+	handled, err := m.dispatchInlineEdit(id, int(col), serviceLogInlineSpecs, values)
+	if err != nil {
+		return err
+	}
+	if !handled {
 		return m.startEditServiceLogForm(id)
 	}
 	return nil
@@ -2591,28 +2643,37 @@ func (m *Model) showTesseractHint() {
 	_ = m.store.MarkTesseractHintSeen()
 }
 
+var documentInlineSpecs = map[int]inlineColSpec{
+	int(documentColTitle): {
+		kind: ieText, title: "Title",
+		fieldPtr: func(d formData) *string { return &mustAssert[*documentFormData](d).Title },
+		validate: func(*Model) func(string) error { return requiredText("title") },
+	},
+	int(documentColNotes): {
+		kind:     ieNotes,
+		fieldPtr: func(d formData) *string { return &mustAssert[*documentFormData](d).Notes },
+	},
+}
+
 func (m *Model) inlineEditDocument(id string, col documentCol) error {
 	doc, err := m.store.GetDocumentMetadata(id)
 	if err != nil {
 		return fmt.Errorf("load document: %w", err)
 	}
 	values := documentFormValues(doc)
-	switch col {
-	case documentColTitle:
-		m.openInlineInput(
-			id,
-			"Title",
-			"",
-			&values.Title,
-			requiredText("title"),
-			values,
-		)
-	case documentColNotes:
-		m.openNotesEdit(id, &values.Notes, values)
-	case documentColEntity:
-		entityOpts, err := m.documentEntityOptions()
-		if err != nil {
-			return err
+	handled, err := m.dispatchInlineEdit(id, int(col), documentInlineSpecs, values)
+	if err != nil {
+		return err
+	}
+	if handled {
+		return nil
+	}
+	// Entity column uses a typed select (entityRef, not string), so it stays
+	// as a manual case outside the generic dispatcher.
+	if col == documentColEntity {
+		entityOpts, loadErr := m.documentEntityOptions()
+		if loadErr != nil {
+			return loadErr
 		}
 		field := huh.NewSelect[entityRef]().
 			Title("Entity").
@@ -2620,15 +2681,9 @@ func (m *Model) inlineEditDocument(id string, col documentCol) error {
 			Options(entityOpts...).
 			Value(&values.EntityRef)
 		m.openInlineEdit(id, field, values)
-	case documentColID,
-		documentColType,
-		documentColSize,
-		documentColModel,
-		documentColOps,
-		documentColUpdated:
-		return m.startEditDocumentForm(id)
+		return nil
 	}
-	return nil
+	return m.startEditDocumentForm(id)
 }
 
 func documentFormValues(doc data.Document) *documentFormData {
