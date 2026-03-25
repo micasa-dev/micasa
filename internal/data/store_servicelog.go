@@ -40,6 +40,16 @@ func (s *Store) ListServiceLog(
 	})
 }
 
+// ListAllServiceLogEntries returns all service log entries across all
+// maintenance items, with vendor and maintenance item preloaded.
+func (s *Store) ListAllServiceLogEntries(includeDeleted bool) ([]ServiceLogEntry, error) {
+	return listQuery[ServiceLogEntry](s, includeDeleted, func(db *gorm.DB) *gorm.DB {
+		return db.Preload("MaintenanceItem", unscopedPreload).
+			Preload("Vendor", unscopedPreload).
+			Order(ColServicedAt + " desc, " + ColID + " desc")
+	})
+}
+
 func (s *Store) GetServiceLog(id string) (ServiceLogEntry, error) {
 	return getByID[ServiceLogEntry](s, id, func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Vendor", unscopedPreload)
