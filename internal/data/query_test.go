@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestTableNames(t *testing.T) {
@@ -199,6 +200,23 @@ func TestReadOnlyQueryPragmaQueryOnly(t *testing.T) {
 	// Writes through the normal store should still work after ReadOnlyQuery
 	// releases the connection (pragma was cleared).
 	require.NoError(t, store.db.Create(&Vendor{Name: "PragmaTestVendor"}).Error)
+}
+
+func TestPragmaQueryOnlyBlocksWrites(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	// Verify that PRAGMA query_only = 1 actually prevents writes at the
+	// SQLite engine level. This locks in the defense-in-depth guarantee
+	// independent of the application-level keyword/EXPLAIN checks.
+	err := store.db.Connection(func(tx *gorm.DB) error {
+		require.NoError(t, tx.Exec("PRAGMA query_only = 1").Error)
+		defer func() { _ = tx.Exec("PRAGMA query_only = 0").Error }()
+
+		return tx.Exec("INSERT INTO vendors (id, name) VALUES ('test-id', 'blocked')").Error
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "attempt to write a readonly database")
 }
 
 func TestStripLeadingComments(t *testing.T) {

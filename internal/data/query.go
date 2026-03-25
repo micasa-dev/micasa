@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -146,7 +147,9 @@ func (s *Store) ReadOnlyQuery(
 		defer func() {
 			// Always clear the pragma before releasing the connection back
 			// to the pool, even if the query fails.
-			_ = tx.Exec("PRAGMA query_only = 0").Error
+			if clearErr := tx.Exec("PRAGMA query_only = 0").Error; clearErr != nil {
+				slog.Error("failed to clear query_only pragma", "error", clearErr)
+			}
 		}()
 
 		sqlRows, qErr := tx.Raw(trimmed).Rows()
