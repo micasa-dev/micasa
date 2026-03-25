@@ -87,8 +87,8 @@ GitHub Actions workflows:
 - **release.yml**: goreleaser for binary/container releases on GitHub Release.
 - **pages.yml**: Hugo site deploy to GitHub Pages.
 
-CI uses change detection (`.github/detect-go-changes.bash`) to skip Go jobs
-when only non-Go files changed.
+CI uses change detection (`.github/detect-ci-changes.bash`) to skip jobs
+when only non-Go or metadata-only files changed.
 
 ## Coding Conventions
 

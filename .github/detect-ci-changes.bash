@@ -57,7 +57,7 @@ fi
 
 # Files that need zero CI: root markdown, .claude/, LICENSE.
 # Everything else (including docs/, images/, workflows) needs some CI.
-if grep -qvE '\.md$|^LICENSE$|^\.claude/' <<< "$changed"; then
+if grep -qvE '^[^/]*\.md$|^LICENSE$|^\.claude/' <<< "$changed"; then
   echo "ci=true"
 else
   echo "ci=false"
