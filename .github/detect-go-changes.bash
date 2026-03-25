@@ -49,8 +49,7 @@ fi
 
 # Anything outside these paths is considered Go-related.
 # Intentionally conservative: unknown paths trigger Go CI.
-non_docs=$(grep -vE '^docs/|^images/|\.md$|^LICENSE|^\.github/workflows/pages\.yml$|^\.claude/' <<< "$changed" || true)
-if [ -n "$non_docs" ]; then
+if grep -qvE '^docs/|^images/|\.md$|^LICENSE|^\.github/workflows/pages\.yml$|^\.claude/' <<< "$changed"; then
   echo "go=true"
 else
   echo "go=false"
@@ -58,8 +57,7 @@ fi
 
 # Files that need zero CI: root markdown, .claude/, LICENSE.
 # Everything else (including docs/, images/, workflows) needs some CI.
-needs_ci=$(grep -vE '\.md$|^LICENSE$|^\.claude/' <<< "$changed" || true)
-if [ -n "$needs_ci" ]; then
+if grep -qvE '\.md$|^LICENSE$|^\.claude/' <<< "$changed"; then
   echo "ci=true"
 else
   echo "ci=false"
