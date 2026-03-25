@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       go: ${{ steps.detect.outputs.go }}
+      ci: ${{ steps.detect.outputs.ci }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -29,17 +30,16 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
-      - name: Check for Go-related changes
+      - name: Check for changes
         id: detect
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          go=$(bash .github/detect-go-changes.bash \
+          bash .github/detect-go-changes.bash \
             "${{ github.event_name }}" \
             "${{ github.event.pull_request.number }}" \
             "${{ github.event.before }}" \
-            "${{ github.sha }}")
-          echo "go=$go" >> "$GITHUB_OUTPUT"
+            "${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
   test:
     name: Build & Test (${{ matrix.os }})
@@ -250,6 +250,8 @@ jobs:
 
   docs:
     name: Docs Build
+    needs: changes
+    if: needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ci-docs-${{ github.ref }}
@@ -270,7 +272,8 @@ jobs:
 
   semantic-release-dry-run:
     name: Semantic Release (dry-run)
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
