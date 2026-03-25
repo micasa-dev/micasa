@@ -91,13 +91,13 @@ var disallowedKeywords = []string{
 //     whitespace and SQL comments).
 //  2. Semicolon check: rejects multi-statement payloads.
 //  3. Keyword blocklist (containsWord): catches obvious mutation keywords.
-//  4. EXPLAIN opcode check: runs EXPLAIN on the query and rejects it if any
-//     write-related VDBE opcodes appear. This is the primary structural
-//     validation and catches attacks that bypass keyword matching.
-//  5. PRAGMA query_only: pins a database connection and sets
-//     PRAGMA query_only = 1 so SQLite itself rejects any write operation at
-//     the engine level. The pragma is cleared before releasing the connection.
-//  6. Timeout: the actual query runs under a 10-second context deadline to
+//  4. PRAGMA query_only + EXPLAIN opcode check: pins a database connection,
+//     sets PRAGMA query_only = 1, then runs EXPLAIN on the query to reject it
+//     if any write-related VDBE opcodes appear. Both the EXPLAIN and the
+//     actual query execute on the same query_only connection, so SQLite itself
+//     rejects any write at the engine level. The pragma is cleared before
+//     releasing the connection.
+//  5. Timeout: the actual query runs under a 10-second context deadline to
 //     prevent long-running queries from hanging the app.
 func (s *Store) ReadOnlyQuery(
 	ctx context.Context,
@@ -131,12 +131,10 @@ func (s *Store) ReadOnlyQuery(
 		}
 	}
 
-	// --- Layer 4: EXPLAIN opcode validation ---
-	if err := s.explainIsReadOnly(trimmed); err != nil {
-		return nil, nil, err
-	}
-
-	// --- Layers 5+6: PRAGMA query_only on a pinned connection + timeout ---
+	// --- Layers 4+5+6: pinned connection with PRAGMA query_only ---
+	// All untrusted SQL (EXPLAIN check + actual query) runs on a single
+	// pinned connection with query_only = 1, so SQLite itself rejects any
+	// write at the engine level.
 	ctx, cancel := context.WithTimeout(ctx, readOnlyQueryTimeout)
 	defer cancel()
 
@@ -152,6 +150,12 @@ func (s *Store) ReadOnlyQuery(
 			}
 		}()
 
+		// --- Layer 4: EXPLAIN opcode validation ---
+		if err := s.explainIsReadOnly(tx, trimmed); err != nil {
+			return err
+		}
+
+		// --- Layer 5: execute query ---
 		sqlRows, qErr := tx.Raw(trimmed).Rows()
 		if qErr != nil {
 			return fmt.Errorf("execute query: %w", qErr)
@@ -192,9 +196,11 @@ func (s *Store) ReadOnlyQuery(
 
 // explainIsReadOnly runs EXPLAIN on the query and inspects the resulting VDBE
 // program for write-related opcodes. Returns nil if the query is read-only, or
-// an error describing which opcode was found.
-func (s *Store) explainIsReadOnly(query string) error {
-	explainRows, err := s.db.Raw("EXPLAIN " + query).Rows()
+// an error describing which opcode was found. The caller provides the *gorm.DB
+// to use so the EXPLAIN runs on the same pinned, query_only connection as the
+// actual query.
+func (s *Store) explainIsReadOnly(db *gorm.DB, query string) error {
+	explainRows, err := db.Raw("EXPLAIN " + query).Rows()
 	if err != nil {
 		return fmt.Errorf("EXPLAIN validation failed: %w", err)
 	}
