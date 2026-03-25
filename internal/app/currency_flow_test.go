@@ -16,38 +16,18 @@ import (
 	"golang.org/x/text/language"
 )
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 // newTestModelWithCurrency creates a store-backed Model whose database uses
 // the given ISO 4217 currency code and explicit formatting locale. The
 // currency code is persisted to SQLite so subsequent ResolveCurrency calls
 // honour the DB value; the locale tag controls number formatting.
 func newTestModelWithCurrency(t *testing.T, code string, tag language.Tag) *Model {
 	t.Helper()
-
-	path := filepath.Join(t.TempDir(), "test.db")
-	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
-	store, err := data.Open(path)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = store.Close() })
-
-	cur := locale.MustResolve(code, tag)
-	store.SetCurrency(cur)
-	require.NoError(t, store.PutCurrency(code))
-
-	require.NoError(t, store.CreateHouseProfile(data.HouseProfile{
-		Nickname: "Test House",
-	}))
-
-	m, err := NewModel(store, Options{DBPath: path})
-	require.NoError(t, err)
-	m.width = 120
-	m.height = 40
-	m.showDashboard = false
-	return m
+	return newTestModelWith(t, testModelOpts{currency: code, currencyTag: tag})
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 // seedProject creates a project and returns its ID.
 func seedProject(t *testing.T, m *Model) string {
