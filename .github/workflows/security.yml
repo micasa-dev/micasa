@@ -30,12 +30,13 @@ jobs:
         id: detect
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           bash .github/detect-ci-changes.bash \
-            "${{ github.event_name }}" \
-            "${{ github.event.pull_request.number }}" \
-            "${{ github.event.before }}" \
-            "${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            "$EVENT_NAME" "$PR_NUMBER" "$BEFORE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
   govulncheck:
     name: Vulnerability Check

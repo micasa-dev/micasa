@@ -30,12 +30,13 @@ jobs:
         id: detect
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           bash .github/detect-ci-changes.bash \
-            "${{ github.event_name }}" \
-            "${{ github.event.pull_request.number }}" \
-            "${{ github.event.before }}" \
-            "${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            "$EVENT_NAME" "$PR_NUMBER" "$BEFORE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
   deadcode:
     name: Dead Code
@@ -90,7 +91,9 @@ jobs:
       - uses: cachix/install-nix-action@1ca7d21a94afc7c957383a2d217460d980de4934 # v31.10.1
 
       - name: Run pre-commit hooks
-        run: nix run '.#pre-commit' -- --from-ref 'origin/${{ github.base_ref || 'main' }}' --to-ref HEAD
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: nix run '.#pre-commit' -- --from-ref "origin/$BASE_REF" --to-ref HEAD
 
   result:
     name: Lint Result
