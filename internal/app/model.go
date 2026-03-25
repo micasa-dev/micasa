@@ -1334,53 +1334,143 @@ func (m *Model) terminalTooSmall() bool {
 	return m.effectiveWidth() < minUsableWidth || m.effectiveHeight() < minUsableHeight
 }
 
-// hasActiveOverlay returns true when any overlay is currently shown. Overlays
-// include dashboard, calendar, note preview, column finder, and help. When
-// true, main tab keybindings should be hidden from the status bar since they
-// are not accessible.
+// overlay unifies dispatch for UI surfaces that capture keyboard input when
+// visible (help, calendar, chat, etc.). Rendering stays in view.go; this
+// interface only standardises visibility checks and key handling.
+type overlay interface {
+	// isVisible reports whether the overlay is currently shown.
+	isVisible() bool
+	// handleKey processes a key press while the overlay is active.
+	handleKey(key tea.KeyPressMsg) tea.Cmd
+	// hidesMainKeys reports whether this overlay should suppress the main
+	// tab keybindings from the status bar. Lightweight overlays like chat
+	// and inline input return false.
+	hidesMainKeys() bool
+}
+
+type helpOverlay struct{ m *Model }
+
+func (o helpOverlay) isVisible() bool                       { return o.m.helpViewport != nil }
+func (o helpOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd { return o.m.helpOverlayKey(key) }
+func (o helpOverlay) hidesMainKeys() bool                   { return true }
+
+type extractionOverlay struct{ m *Model }
+
+func (o extractionOverlay) isVisible() bool {
+	return o.m.ex.extraction != nil && o.m.ex.extraction.Visible
+}
+
+func (o extractionOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd {
+	return o.m.handleExtractionKey(key)
+}
+func (o extractionOverlay) hidesMainKeys() bool { return true }
+
+type chatOverlay struct{ m *Model }
+
+func (o chatOverlay) isVisible() bool                       { return o.m.chat != nil && o.m.chat.Visible }
+func (o chatOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd { return o.m.handleChatKey(key) }
+func (o chatOverlay) hidesMainKeys() bool                   { return false }
+
+type notePreviewOverlay struct{ m *Model }
+
+func (o notePreviewOverlay) isVisible() bool { return o.m.notePreview != nil }
+func (o notePreviewOverlay) handleKey(tea.KeyPressMsg) tea.Cmd {
+	o.m.notePreview = nil
+	return nil
+}
+func (o notePreviewOverlay) hidesMainKeys() bool { return true }
+
+type opsTreeOverlay struct{ m *Model }
+
+func (o opsTreeOverlay) isVisible() bool                       { return o.m.opsTree != nil }
+func (o opsTreeOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd { return o.m.handleOpsTreeKey(key) }
+func (o opsTreeOverlay) hidesMainKeys() bool                   { return true }
+
+type calendarOverlay struct{ m *Model }
+
+func (o calendarOverlay) isVisible() bool { return o.m.calendar != nil }
+
+func (o calendarOverlay) handleKey(
+	key tea.KeyPressMsg,
+) tea.Cmd {
+	return o.m.handleCalendarKey(key)
+}
+func (o calendarOverlay) hidesMainKeys() bool { return true }
+
+type columnFinderOverlay struct{ m *Model }
+
+func (o columnFinderOverlay) isVisible() bool { return o.m.columnFinder != nil }
+func (o columnFinderOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd {
+	return o.m.handleColumnFinderKey(key)
+}
+func (o columnFinderOverlay) hidesMainKeys() bool { return true }
+
+type docSearchOverlay struct{ m *Model }
+
+func (o docSearchOverlay) isVisible() bool { return o.m.docSearch != nil }
+
+func (o docSearchOverlay) handleKey(
+	key tea.KeyPressMsg,
+) tea.Cmd {
+	return o.m.handleDocSearchKey(key)
+}
+func (o docSearchOverlay) hidesMainKeys() bool { return true }
+
+type inlineInputOverlay struct{ m *Model }
+
+func (o inlineInputOverlay) isVisible() bool { return o.m.inlineInput != nil }
+func (o inlineInputOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd {
+	return o.m.handleInlineInputKey(key)
+}
+func (o inlineInputOverlay) hidesMainKeys() bool { return false }
+
+// overlays returns all overlays in priority order (highest priority first).
+// The dashboard is not included — it has special pre-handler nav interception
+// in update() that doesn't fit this interface.
+func (m *Model) overlays() []overlay {
+	return []overlay{
+		helpOverlay{m},
+		extractionOverlay{m},
+		chatOverlay{m},
+		notePreviewOverlay{m},
+		opsTreeOverlay{m},
+		calendarOverlay{m},
+		columnFinderOverlay{m},
+		docSearchOverlay{m},
+		inlineInputOverlay{m},
+	}
+}
+
+// hasActiveOverlay returns true when any overlay is currently shown that hides
+// main tab keybindings from the status bar. The dashboard is checked
+// separately because it has its own dispatch path.
 func (m *Model) hasActiveOverlay() bool {
-	return m.dashboardVisible() ||
-		m.calendar != nil ||
-		m.notePreview != nil ||
-		m.opsTree != nil ||
-		m.columnFinder != nil ||
-		m.docSearch != nil ||
-		(m.ex.extraction != nil && m.ex.extraction.Visible) ||
-		m.helpViewport != nil
+	if m.dashboardVisible() {
+		return true
+	}
+	for _, o := range m.overlays() {
+		if o.isVisible() && o.hidesMainKeys() {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
-	var handler func(tea.KeyPressMsg) tea.Cmd
-	switch {
-	case m.helpViewport != nil:
-		handler = m.helpOverlayKey
-	case m.ex.extraction != nil && m.ex.extraction.Visible:
-		handler = m.handleExtractionKey
-	case m.chat != nil && m.chat.Visible:
-		handler = m.handleChatKey
-	case m.notePreview != nil:
-		handler = func(tea.KeyPressMsg) tea.Cmd { m.notePreview = nil; return nil }
-	case m.opsTree != nil:
-		handler = m.handleOpsTreeKey
-	case m.calendar != nil:
-		handler = m.handleCalendarKey
-	case m.columnFinder != nil:
-		handler = m.handleColumnFinderKey
-	case m.docSearch != nil:
-		handler = m.handleDocSearchKey
-	case m.inlineInput != nil:
-		handler = m.handleInlineInputKey
-	default:
-		return nil, false
+	for _, o := range m.overlays() {
+		if !o.isVisible() {
+			continue
+		}
+		keyMsg, ok := msg.(tea.KeyPressMsg)
+		if !ok {
+			// Non-key messages (cursor blink, spinner ticks, etc.) should not
+			// be swallowed by the overlay dispatcher. Return false so the
+			// caller's normal Update path can handle them.
+			return nil, false
+		}
+		return o.handleKey(keyMsg), true
 	}
-	keyMsg, ok := msg.(tea.KeyPressMsg)
-	if !ok {
-		// Non-key messages (cursor blink, spinner ticks, etc.) should not
-		// be swallowed by the overlay dispatcher. Return false so the
-		// caller's normal Update path can handle them.
-		return nil, false
-	}
-	return handler(keyMsg), true
+	return nil, false
 }
 
 func (m *Model) helpOverlayKey(keyMsg tea.KeyPressMsg) tea.Cmd {
