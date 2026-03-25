@@ -419,36 +419,40 @@ func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
 	return nil
 }
 
-// opsTreeContentWidth returns the content width for the ops tree overlay,
-// widened to fit preview tables when present.
-func (m *Model) opsTreeContentWidth() int {
-	screenW := m.effectiveWidth() - 8
-
-	// Start with the standard overlay width.
-	w := m.overlayContentWidth()
-
-	// Widen to fit the widest preview table if groups exist.
-	if tree := m.opsTree; tree != nil && len(tree.previewGroups) > 0 {
-		sep := m.styles.TableSeparator().Render(" " + symVLine + " ")
-		sepW := lipgloss.Width(sep)
-		frameW := m.styles.OverlayBox().GetHorizontalFrameSize()
-		needed := previewNaturalWidth(tree.previewGroups, sepW, m.cur.Symbol()) + frameW
-		if needed > w {
-			w = needed
-		}
-	}
-
-	if w > screenW {
-		w = screenW
-	}
-	return w
-}
-
 // buildOpsTreeOverlay renders the ops tree overlay.
 func (m *Model) buildOpsTreeOverlay() string {
 	tree := m.opsTree
-	contentW := m.opsTreeContentWidth()
-	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
+	frameW := m.styles.OverlayBox().GetHorizontalFrameSize()
+
+	// Build hint bar early so we can measure it for width calculation.
+	hintParts := []string{
+		m.helpItem(keyJ+"/"+keyK, "nav"),
+		m.helpItem(symReturn, "toggle"),
+		m.helpItem(keyH, "collapse"),
+	}
+	if len(tree.previewGroups) > 1 {
+		hintParts = append(hintParts, m.helpItem(keyB+"/"+keyF, "tabs"))
+	}
+	hintParts = append(hintParts, m.helpItem(keyEsc, "close"))
+	hints := joinWithSeparator(m.helpSeparator(), hintParts...)
+
+	// Compute content width: widen to fit hint bar and preview tables.
+	contentW := m.overlayContentWidth()
+	screenW := m.effectiveWidth() - 8
+	if needed := ansi.StringWidth(hints) + frameW; needed > contentW {
+		contentW = needed
+	}
+	if groups := tree.previewGroups; len(groups) > 0 {
+		sep := m.styles.TableSeparator().Render(" " + symVLine + " ")
+		sepW := lipgloss.Width(sep)
+		if needed := previewNaturalWidth(groups, sepW, m.cur.Symbol()) + frameW; needed > contentW {
+			contentW = needed
+		}
+	}
+	if contentW > screenW {
+		contentW = screenW
+	}
+	innerW := contentW - frameW
 
 	var b strings.Builder
 
@@ -521,16 +525,6 @@ func (m *Model) buildOpsTreeOverlay() string {
 	}
 
 	b.WriteString("\n")
-	hintParts := []string{
-		m.helpItem(keyJ+"/"+keyK, "nav"),
-		m.helpItem(symReturn, "toggle"),
-		m.helpItem(keyH, "collapse"),
-	}
-	if len(tree.previewGroups) > 1 {
-		hintParts = append(hintParts, m.helpItem(keyB+"/"+keyF, "tabs"))
-	}
-	hintParts = append(hintParts, m.helpItem(keyEsc, "close"))
-	hints := joinWithSeparator(m.helpSeparator(), hintParts...)
 	b.WriteString(hints)
 
 	return m.styles.OverlayBox().
