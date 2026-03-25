@@ -187,6 +187,20 @@ func TestReadOnlyQueryExplainRejectsSubqueryWrite(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestReadOnlyQueryPragmaQueryOnly(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	// Verify the connection is NOT permanently query_only after ReadOnlyQuery.
+	// A successful read-only query should work and leave the connection usable.
+	_, _, err := store.ReadOnlyQuery(context.Background(), "SELECT name FROM project_types LIMIT 1")
+	require.NoError(t, err)
+
+	// Writes through the normal store should still work after ReadOnlyQuery
+	// releases the connection (pragma was cleared).
+	require.NoError(t, store.db.Create(&Vendor{Name: "PragmaTestVendor"}).Error)
+}
+
 func TestStripLeadingComments(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
