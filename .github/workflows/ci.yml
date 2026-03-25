@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          sparse-checkout: .github/detect-go-changes.bash
+          sparse-checkout: .github/detect-ci-changes.bash
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
@@ -35,7 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bash .github/detect-go-changes.bash \
+          bash .github/detect-ci-changes.bash \
             "${{ github.event_name }}" \
             "${{ github.event.pull_request.number }}" \
             "${{ github.event.before }}" \
