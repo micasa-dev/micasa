@@ -185,10 +185,10 @@ func (m *Model) buildColumnFinderOverlay() string {
 
 	// Input line with "/" prompt.
 	prompt := m.styles.Keycap().Render("/")
-	cursor := m.styles.HeaderHint().Render("│")
+	cursor := m.styles.BlinkCursor().Render("\u2588")
 	queryText := cf.Query + cursor
 	if cf.Query == "" {
-		queryText = m.styles.Empty().Render("type to filter") + cursor
+		queryText = cursor + m.styles.Empty().Render("type to filter")
 	}
 	b.WriteString(prompt + " " + queryText)
 	b.WriteString("\n\n")

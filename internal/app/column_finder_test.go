@@ -279,6 +279,24 @@ func TestHandleColumnFinderKey_Navigation(t *testing.T) {
 	assert.Equal(t, 0, cf.Cursor)
 }
 
+func TestBuildColumnFinderOverlay_CursorBeforeGhostText(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.width = 80
+	m.height = 40
+	m.openColumnFinder()
+
+	rendered := m.buildColumnFinderOverlay()
+
+	// The block cursor (█) should appear before the ghost text, not after.
+	cursorIdx := strings.Index(rendered, "\u2588")
+	ghostIdx := strings.Index(rendered, "type to filter")
+	require.NotEqual(t, -1, cursorIdx, "cursor should be present")
+	require.NotEqual(t, -1, ghostIdx, "ghost text should be present")
+	assert.Less(t, cursorIdx, ghostIdx,
+		"cursor should appear before ghost text")
+}
+
 func TestBuildColumnFinderOverlay_StableHeight(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
