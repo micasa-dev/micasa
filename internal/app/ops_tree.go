@@ -400,6 +400,14 @@ func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
 				}
 			}
 		}
+	case keyB:
+		if len(tree.previewGroups) > 1 && tree.previewTab > 0 {
+			tree.previewTab--
+		}
+	case keyF:
+		if len(tree.previewGroups) > 1 && tree.previewTab < len(tree.previewGroups)-1 {
+			tree.previewTab++
+		}
 	case keyG:
 		tree.cursor = 0
 	case keyShiftG:

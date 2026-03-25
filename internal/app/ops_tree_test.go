@@ -505,6 +505,65 @@ func TestOpsTreeNoTablePreviewForUnknownTables(t *testing.T) {
 	assert.Contains(t, view, "operations")
 }
 
+var testMultiTableOpsJSON = []byte(`[
+	{"action":"create","table":"vendors","data":{"name":"Garcia Plumbing","email":"info@garcia.com","phone":"555-1234"}},
+	{"action":"create","table":"appliances","data":{"name":"Dishwasher","brand":"Bosch","model_number":"SHP65"}},
+	{"action":"update","table":"documents","data":{"title":"Invoice #42"}}
+]`)
+
+func newMultiTableOpsTreeModel(t *testing.T) *Model {
+	t.Helper()
+
+	m := newTestModelWithStore(t)
+
+	doc := &data.Document{
+		Title:         "Multi-Table Invoice",
+		FileName:      "invoice.pdf",
+		MIMEType:      "application/pdf",
+		ExtractionOps: testMultiTableOpsJSON,
+	}
+	require.NoError(t, m.store.CreateDocument(doc))
+
+	m.active = tabIndex(tabDocuments)
+	require.NoError(t, m.reloadTab(m.effectiveTab()))
+
+	return m
+}
+
+func TestOpsTreeTabSwitchBF(t *testing.T) {
+	t.Parallel()
+	m := newMultiTableOpsTreeModel(t)
+
+	tab := m.effectiveTab()
+	tab.ColCursor = int(documentColOps)
+	sendKey(m, "enter")
+	require.NotNil(t, m.opsTree)
+	// vendors + appliances + documents = 3 groups.
+	require.Len(t, m.opsTree.previewGroups, 3)
+
+	assert.Equal(t, 0, m.opsTree.previewTab)
+
+	sendKey(m, "f")
+	assert.Equal(t, 1, m.opsTree.previewTab)
+
+	sendKey(m, "f")
+	assert.Equal(t, 2, m.opsTree.previewTab)
+
+	// f at last should clamp (no wrap).
+	sendKey(m, "f")
+	assert.Equal(t, 2, m.opsTree.previewTab)
+
+	sendKey(m, "b")
+	assert.Equal(t, 1, m.opsTree.previewTab)
+
+	sendKey(m, "b")
+	assert.Equal(t, 0, m.opsTree.previewTab)
+
+	// b at 0 should clamp (no wrap).
+	sendKey(m, "b")
+	assert.Equal(t, 0, m.opsTree.previewTab)
+}
+
 func TestOpsTreeSingleGroupNoTabBar(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
