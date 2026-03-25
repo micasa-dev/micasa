@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"testing"
+	"time"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/mcptest"
@@ -140,4 +141,39 @@ func TestSearchDocumentsToolEmpty(t *testing.T) {
 		"query": "nonexistent",
 	})
 	assert.False(t, result.IsError)
+}
+
+func TestGetMaintenanceScheduleTool(t *testing.T) {
+	srv, store := newTestServer(t)
+	require.NoError(t, store.SeedDefaults())
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+
+	var hvacCat data.MaintenanceCategory
+	for _, c := range cats {
+		if c.Name == "HVAC" {
+			hvacCat = c
+			break
+		}
+	}
+	require.NotEmpty(t, hvacCat.ID, "HVAC category not found in seeded data")
+
+	sixMonthsAgo := time.Now().AddDate(0, -6, 0)
+	item := &data.MaintenanceItem{
+		Name:           "Replace furnace filter",
+		CategoryID:     hvacCat.ID,
+		IntervalMonths: 3,
+		LastServicedAt: &sixMonthsAgo,
+	}
+	require.NoError(t, store.CreateMaintenance(item))
+
+	result := callTool(t, srv, "get_maintenance_schedule", map[string]any{})
+	require.False(t, result.IsError)
+
+	raw, err := json.Marshal(result.Content)
+	require.NoError(t, err)
+	output := string(raw)
+	assert.Contains(t, output, "Replace furnace filter")
+	assert.Contains(t, output, `\"overdue\":true`)
 }

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 )
@@ -56,6 +57,17 @@ func (s *Server) registerTools() {
 			),
 		),
 		s.handleGetSchema,
+	)
+
+	s.mcpSrv.AddTool(
+		mcpgo.NewTool("get_maintenance_schedule",
+			mcpgo.WithDescription(
+				"Get overdue and upcoming home maintenance items. Shows scheduled "+
+					"maintenance with due dates, intervals, and overdue status. "+
+					"Includes linked appliance names when available.",
+			),
+		),
+		s.handleGetMaintenanceSchedule,
 	)
 }
 
@@ -188,6 +200,63 @@ func (s *Server) handleSearchDocuments(
 	b, err := json.Marshal(out)
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("marshal results: %v", err)), nil
+	}
+	return mcpgo.NewToolResultText(string(b)), nil
+}
+
+type maintenanceScheduleItem struct {
+	ID             string     `json:"id"`
+	Name           string     `json:"name"`
+	Category       string     `json:"category"`
+	Season         string     `json:"season"`
+	LastServicedAt *time.Time `json:"last_serviced_at"`
+	IntervalMonths int        `json:"interval_months"`
+	DueDate        *time.Time `json:"due_date"`
+	Overdue        bool       `json:"overdue"`
+	ApplianceName  string     `json:"appliance_name,omitempty"`
+}
+
+func (s *Server) handleGetMaintenanceSchedule(
+	_ context.Context,
+	_ mcpgo.CallToolRequest,
+) (*mcpgo.CallToolResult, error) {
+	items, err := s.store.ListMaintenanceWithSchedule()
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("list maintenance: %v", err)), nil
+	}
+
+	now := time.Now()
+	out := make([]maintenanceScheduleItem, 0, len(items))
+	for _, item := range items {
+		overdue := false
+		if item.DueDate != nil {
+			overdue = item.DueDate.Before(now)
+		} else if item.LastServicedAt != nil && item.IntervalMonths > 0 {
+			due := item.LastServicedAt.AddDate(0, item.IntervalMonths, 0)
+			overdue = due.Before(now)
+		}
+
+		var applianceName string
+		if item.ApplianceID != nil {
+			applianceName = item.Appliance.Name
+		}
+
+		out = append(out, maintenanceScheduleItem{
+			ID:             item.ID,
+			Name:           item.Name,
+			Category:       item.Category.Name,
+			Season:         item.Season,
+			LastServicedAt: item.LastServicedAt,
+			IntervalMonths: item.IntervalMonths,
+			DueDate:        item.DueDate,
+			Overdue:        overdue,
+			ApplianceName:  applianceName,
+		})
+	}
+
+	b, err := json.Marshal(out)
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("marshal schedule: %v", err)), nil
 	}
 	return mcpgo.NewToolResultText(string(b)), nil
 }
