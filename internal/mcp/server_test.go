@@ -59,6 +59,33 @@ func callTool(
 	return result
 }
 
+func TestListTools(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	testSrv := mcptest.NewUnstartedServer(t)
+	for _, tool := range srv.Tools() {
+		testSrv.AddTools(tool)
+	}
+	err := testSrv.Start(context.Background())
+	require.NoError(t, err)
+	t.Cleanup(testSrv.Close)
+
+	client := testSrv.Client()
+	tools, err := client.ListTools(context.Background(), mcpgo.ListToolsRequest{})
+	require.NoError(t, err)
+
+	toolNames := make([]string, 0, len(tools.Tools))
+	for _, tool := range tools.Tools {
+		toolNames = append(toolNames, tool.Name)
+	}
+
+	assert.Contains(t, toolNames, "query")
+	assert.Contains(t, toolNames, "get_schema")
+	assert.Contains(t, toolNames, "search_documents")
+	assert.Contains(t, toolNames, "get_maintenance_schedule")
+	assert.Contains(t, toolNames, "get_house_profile")
+}
+
 func TestQueryTool(t *testing.T) {
 	srv, _ := newTestServer(t)
 
