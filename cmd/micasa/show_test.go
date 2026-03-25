@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
@@ -282,7 +283,10 @@ func TestShowEmptyCollection(t *testing.T) {
 	t.Parallel()
 	store := newTestStoreWithMigration(t)
 
-	for _, entity := range []string{"projects", "vendors", "appliances", "incidents"} {
+	for _, entity := range []string{
+		"projects", "vendors", "appliances", "incidents",
+		"quotes", "maintenance", "service-log", "documents",
+	} {
 		var buf bytes.Buffer
 		require.NoError(t, runShow(&buf, store, entity, false, false))
 		assert.Empty(t, buf.String(), "expected no output for empty %s", entity)
@@ -293,7 +297,10 @@ func TestShowEmptyCollectionJSON(t *testing.T) {
 	t.Parallel()
 	store := newTestStoreWithMigration(t)
 
-	for _, entity := range []string{"projects", "vendors", "appliances", "incidents"} {
+	for _, entity := range []string{
+		"projects", "vendors", "appliances", "incidents",
+		"quotes", "maintenance", "service-log", "documents",
+	} {
 		var buf bytes.Buffer
 		require.NoError(t, runShow(&buf, store, entity, true, false))
 
@@ -301,4 +308,323 @@ func TestShowEmptyCollectionJSON(t *testing.T) {
 		require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
 		assert.Empty(t, result, "expected empty array for %s", entity)
 	}
+}
+
+// --- quotes ---
+
+func TestShowQuotesText(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	ptypes, err := store.ProjectTypes()
+	require.NoError(t, err)
+	require.NotEmpty(t, ptypes)
+
+	require.NoError(t, store.CreateProject(&data.Project{
+		Title:         "Roof Replacement",
+		ProjectTypeID: ptypes[0].ID,
+		Status:        data.ProjectStatusPlanned,
+	}))
+	projects, err := store.ListProjects(false)
+	require.NoError(t, err)
+	require.Len(t, projects, 1)
+
+	require.NoError(t, store.CreateVendor(&data.Vendor{Name: "TopRoof Inc"}))
+	vendors, err := store.ListVendors(false)
+	require.NoError(t, err)
+	require.Len(t, vendors, 1)
+
+	require.NoError(t, store.CreateQuote(&data.Quote{
+		ProjectID:  projects[0].ID,
+		TotalCents: 750000,
+		Notes:      "includes permit fees",
+	}, data.Vendor{Name: "TopRoof Inc"}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "quotes", false, false))
+
+	out := buf.String()
+	assert.Contains(t, out, "=== QUOTES ===")
+	assert.Contains(t, out, "Roof Replacement")
+	assert.Contains(t, out, "TopRoof Inc")
+	assert.Contains(t, out, "$7500.00")
+	assert.Contains(t, out, "includes permit fees")
+}
+
+func TestShowQuotesJSON(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	ptypes, err := store.ProjectTypes()
+	require.NoError(t, err)
+	require.NotEmpty(t, ptypes)
+
+	require.NoError(t, store.CreateProject(&data.Project{
+		Title:         "Fence Install",
+		ProjectTypeID: ptypes[0].ID,
+		Status:        data.ProjectStatusPlanned,
+	}))
+	projects, err := store.ListProjects(false)
+	require.NoError(t, err)
+	require.Len(t, projects, 1)
+
+	require.NoError(t, store.CreateQuote(&data.Quote{
+		ProjectID:  projects[0].ID,
+		TotalCents: 320000,
+	}, data.Vendor{Name: "FencePro"}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "quotes", true, false))
+
+	var result []map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Len(t, result, 1)
+	assert.Equal(t, "Fence Install", result[0]["project"])
+	assert.Equal(t, "FencePro", result[0]["vendor"])
+	assert.Equal(t, float64(320000), result[0]["total_cents"])
+	assert.NotEmpty(t, result[0]["id"])
+}
+
+// --- maintenance ---
+
+func TestShowMaintenanceText(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	cost := int64(5000)
+	require.NoError(t, store.CreateMaintenance(&data.MaintenanceItem{
+		Name:           "Replace HVAC filter",
+		CategoryID:     cats[0].ID,
+		Season:         "spring",
+		IntervalMonths: 3,
+		CostCents:      &cost,
+	}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "maintenance", false, false))
+
+	out := buf.String()
+	assert.Contains(t, out, "=== MAINTENANCE ===")
+	assert.Contains(t, out, "Replace HVAC filter")
+	assert.Contains(t, out, cats[0].Name)
+	assert.Contains(t, out, "spring")
+	assert.Contains(t, out, "3")
+	assert.Contains(t, out, "$50.00")
+}
+
+func TestShowMaintenanceJSON(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	require.NoError(t, store.CreateMaintenance(&data.MaintenanceItem{
+		Name:           "Clean gutters",
+		CategoryID:     cats[0].ID,
+		Season:         "fall",
+		IntervalMonths: 12,
+	}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "maintenance", true, false))
+
+	var result []map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Len(t, result, 1)
+	assert.Equal(t, "Clean gutters", result[0]["name"])
+	assert.Equal(t, cats[0].Name, result[0]["category"])
+	assert.Equal(t, "fall", result[0]["season"])
+	assert.Equal(t, float64(12), result[0]["interval_months"])
+	assert.NotEmpty(t, result[0]["id"])
+}
+
+// --- service-log ---
+
+func TestShowServiceLogText(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	require.NoError(t, store.CreateMaintenance(&data.MaintenanceItem{
+		Name:           "Oil furnace",
+		CategoryID:     cats[0].ID,
+		IntervalMonths: 12,
+	}))
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+
+	cost := int64(15000)
+	require.NoError(t, store.CreateServiceLog(&data.ServiceLogEntry{
+		MaintenanceItemID: items[0].ID,
+		ServicedAt:        time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC),
+		CostCents:         &cost,
+		Notes:             "annual service",
+	}, data.Vendor{Name: "HeatPros"}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "service-log", false, false))
+
+	out := buf.String()
+	assert.Contains(t, out, "=== SERVICE LOG ===")
+	assert.Contains(t, out, "Oil furnace")
+	assert.Contains(t, out, "HeatPros")
+	assert.Contains(t, out, "2025-06-15")
+	assert.Contains(t, out, "$150.00")
+	assert.Contains(t, out, "annual service")
+}
+
+func TestShowServiceLogJSON(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	require.NoError(t, store.CreateMaintenance(&data.MaintenanceItem{
+		Name:           "Check sump pump",
+		CategoryID:     cats[0].ID,
+		IntervalMonths: 6,
+	}))
+	items, err := store.ListMaintenance(false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+
+	require.NoError(t, store.CreateServiceLog(&data.ServiceLogEntry{
+		MaintenanceItemID: items[0].ID,
+		ServicedAt:        time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+	}, data.Vendor{}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "service-log", true, false))
+
+	var result []map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Len(t, result, 1)
+	assert.Equal(t, "Check sump pump", result[0]["maintenance_item"])
+	assert.NotEmpty(t, result[0]["id"])
+}
+
+// --- documents ---
+
+func TestShowDocumentsText(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+	require.NoError(t, store.SetMaxDocumentSize(1<<30))
+
+	require.NoError(t, store.CreateDocument(&data.Document{
+		Title:      "Inspection Report",
+		FileName:   "inspection.pdf",
+		EntityKind: "project",
+		EntityID:   "proj-001",
+		MIMEType:   "application/pdf",
+		SizeBytes:  204800,
+		Notes:      "2025 inspection",
+	}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "documents", false, false))
+
+	out := buf.String()
+	assert.Contains(t, out, "=== DOCUMENTS ===")
+	assert.Contains(t, out, "Inspection Report")
+	assert.Contains(t, out, "inspection.pdf")
+	assert.Contains(t, out, "project")
+	assert.Contains(t, out, "application/pdf")
+	assert.Contains(t, out, "204800")
+}
+
+func TestShowDocumentsJSON(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+	require.NoError(t, store.SetMaxDocumentSize(1<<30))
+
+	require.NoError(t, store.CreateDocument(&data.Document{
+		Title:      "Warranty Card",
+		FileName:   "warranty.png",
+		EntityKind: "appliance",
+		EntityID:   "app-001",
+		MIMEType:   "image/png",
+		SizeBytes:  51200,
+	}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "documents", true, false))
+
+	var result []map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Len(t, result, 1)
+	assert.Equal(t, "Warranty Card", result[0]["title"])
+	assert.Equal(t, "warranty.png", result[0]["file_name"])
+	assert.Equal(t, "appliance", result[0]["entity_kind"])
+	assert.Equal(t, "app-001", result[0]["entity_id"])
+	assert.Equal(t, "image/png", result[0]["mime_type"])
+	assert.Equal(t, float64(51200), result[0]["size_bytes"])
+	assert.NotEmpty(t, result[0]["id"])
+}
+
+// --- project-types ---
+
+func TestShowProjectTypesText(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "project-types", false, false))
+
+	out := buf.String()
+	assert.Contains(t, out, "=== PROJECT TYPES ===")
+	assert.Contains(t, out, "NAME")
+}
+
+func TestShowProjectTypesJSON(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "project-types", true, false))
+
+	var result []map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.NotEmpty(t, result)
+	assert.NotEmpty(t, result[0]["name"])
+	assert.NotEmpty(t, result[0]["id"])
+}
+
+// --- maintenance-categories ---
+
+func TestShowMaintenanceCategoriesText(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "maintenance-categories", false, false))
+
+	out := buf.String()
+	assert.Contains(t, out, "=== MAINTENANCE CATEGORIES ===")
+	assert.Contains(t, out, "NAME")
+}
+
+func TestShowMaintenanceCategoriesJSON(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "maintenance-categories", true, false))
+
+	var result []map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.NotEmpty(t, result)
+	assert.NotEmpty(t, result[0]["name"])
+	assert.NotEmpty(t, result[0]["id"])
 }

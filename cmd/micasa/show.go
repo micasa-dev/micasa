@@ -38,6 +38,10 @@ func fmtInt(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
+func fmtIntAlways(n int) string {
+	return fmt.Sprintf("%d", n)
+}
+
 func fmtFloat(f float64) string {
 	if f == 0 {
 		return "-"
@@ -151,6 +155,36 @@ appliances, incidents, documents, all.`,
 		newShowEntityCmd("vendors", "Show vendors", &jsonFlag, &deletedFlag, showVendors),
 		newShowEntityCmd("appliances", "Show appliances", &jsonFlag, &deletedFlag, showAppliances),
 		newShowEntityCmd("incidents", "Show incidents", &jsonFlag, &deletedFlag, showIncidents),
+		newShowEntityCmd("quotes", "Show quotes", &jsonFlag, &deletedFlag, showQuotes),
+		newShowEntityCmd(
+			"maintenance",
+			"Show maintenance items",
+			&jsonFlag,
+			&deletedFlag,
+			showMaintenance,
+		),
+		newShowEntityCmd(
+			"service-log",
+			"Show service log entries",
+			&jsonFlag,
+			&deletedFlag,
+			showServiceLog,
+		),
+		newShowEntityCmd("documents", "Show documents", &jsonFlag, &deletedFlag, showDocuments),
+		newShowEntityCmd(
+			"project-types",
+			"Show project types",
+			&jsonFlag,
+			&deletedFlag,
+			showProjectTypes,
+		),
+		newShowEntityCmd(
+			"maintenance-categories",
+			"Show maintenance categories",
+			&jsonFlag,
+			&deletedFlag,
+			showMaintenanceCategories,
+		),
 	)
 
 	return cmd
@@ -215,6 +249,18 @@ func runShow(w io.Writer, store *data.Store, entity string, asJSON, includeDelet
 		return showAppliances(w, store, asJSON, includeDeleted)
 	case "incidents":
 		return showIncidents(w, store, asJSON, includeDeleted)
+	case "quotes":
+		return showQuotes(w, store, asJSON, includeDeleted)
+	case "maintenance":
+		return showMaintenance(w, store, asJSON, includeDeleted)
+	case "service-log":
+		return showServiceLog(w, store, asJSON, includeDeleted)
+	case "documents":
+		return showDocuments(w, store, asJSON, includeDeleted)
+	case "project-types":
+		return showProjectTypes(w, store, asJSON, includeDeleted)
+	case "maintenance-categories":
+		return showMaintenanceCategories(w, store, asJSON, includeDeleted)
 	default:
 		return fmt.Errorf("unknown entity %q; valid entities: %s",
 			entity, strings.Join(validEntities, ", "))
@@ -459,4 +505,195 @@ func showIncidents(w io.Writer, store *data.Store, asJSON, includeDeleted bool) 
 		return fmt.Errorf("list incidents: %w", err)
 	}
 	return showEntity(w, "INCIDENTS", items, incidentCols, incidentToMap, asJSON)
+}
+
+// --- quotes ---
+
+func fmtMoneyVal(cents int64) string {
+	return fmt.Sprintf("$%.2f", float64(cents)/100)
+}
+
+var quoteCols = []showCol[data.Quote]{
+	{"PROJECT", func(q data.Quote) string { return fmtStr(q.Project.Title) }},
+	{"VENDOR", func(q data.Quote) string { return fmtStr(q.Vendor.Name) }},
+	{"TOTAL", func(q data.Quote) string { return fmtMoneyVal(q.TotalCents) }},
+	{"LABOR", func(q data.Quote) string { return fmtMoney(q.LaborCents) }},
+	{"MATERIALS", func(q data.Quote) string { return fmtMoney(q.MaterialsCents) }},
+	{"RECEIVED", func(q data.Quote) string { return fmtDate(q.ReceivedDate) }},
+	{"NOTES", func(q data.Quote) string { return fmtStr(q.Notes) }},
+}
+
+func quoteToMap(q data.Quote) map[string]any {
+	return map[string]any{
+		"id":              q.ID,
+		"project":         q.Project.Title,
+		"vendor":          q.Vendor.Name,
+		"total_cents":     q.TotalCents,
+		"labor_cents":     q.LaborCents,
+		"materials_cents": q.MaterialsCents,
+		"received_date":   q.ReceivedDate,
+		"notes":           q.Notes,
+	}
+}
+
+func showQuotes(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListQuotes(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list quotes: %w", err)
+	}
+	return showEntity(w, "QUOTES", items, quoteCols, quoteToMap, asJSON)
+}
+
+// --- maintenance ---
+
+var maintenanceCols = []showCol[data.MaintenanceItem]{
+	{"NAME", func(m data.MaintenanceItem) string { return fmtStr(m.Name) }},
+	{"CATEGORY", func(m data.MaintenanceItem) string { return fmtStr(m.Category.Name) }},
+	{"APPLIANCE", func(m data.MaintenanceItem) string { return fmtStr(m.Appliance.Name) }},
+	{"SEASON", func(m data.MaintenanceItem) string { return fmtStr(m.Season) }},
+	{"LAST SERVICED", func(m data.MaintenanceItem) string { return fmtDate(m.LastServicedAt) }},
+	{"INTERVAL", func(m data.MaintenanceItem) string { return fmtIntAlways(m.IntervalMonths) }},
+	{"DUE", func(m data.MaintenanceItem) string { return fmtDate(m.DueDate) }},
+	{"COST", func(m data.MaintenanceItem) string { return fmtMoney(m.CostCents) }},
+}
+
+func maintenanceToMap(m data.MaintenanceItem) map[string]any {
+	return map[string]any{
+		"id":               m.ID,
+		"name":             m.Name,
+		"category":         m.Category.Name,
+		"appliance":        m.Appliance.Name,
+		"season":           m.Season,
+		"last_serviced_at": m.LastServicedAt,
+		"interval_months":  m.IntervalMonths,
+		"due_date":         m.DueDate,
+		"cost_cents":       m.CostCents,
+		"notes":            m.Notes,
+	}
+}
+
+func showMaintenance(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListMaintenance(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list maintenance: %w", err)
+	}
+	return showEntity(w, "MAINTENANCE", items, maintenanceCols, maintenanceToMap, asJSON)
+}
+
+// --- service-log ---
+
+var serviceLogCols = []showCol[data.ServiceLogEntry]{
+	{"ITEM", func(e data.ServiceLogEntry) string { return fmtStr(e.MaintenanceItem.Name) }},
+	{"VENDOR", func(e data.ServiceLogEntry) string { return fmtStr(e.Vendor.Name) }},
+	{"SERVICED", func(e data.ServiceLogEntry) string { return fmtDateVal(e.ServicedAt) }},
+	{"COST", func(e data.ServiceLogEntry) string { return fmtMoney(e.CostCents) }},
+	{"NOTES", func(e data.ServiceLogEntry) string { return fmtStr(e.Notes) }},
+}
+
+func serviceLogToMap(e data.ServiceLogEntry) map[string]any {
+	return map[string]any{
+		"id":               e.ID,
+		"maintenance_item": e.MaintenanceItem.Name,
+		"vendor":           e.Vendor.Name,
+		"serviced_at":      e.ServicedAt,
+		"cost_cents":       e.CostCents,
+		"notes":            e.Notes,
+	}
+}
+
+func showServiceLog(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListAllServiceLogEntries(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list service log: %w", err)
+	}
+	return showEntity(w, "SERVICE LOG", items, serviceLogCols, serviceLogToMap, asJSON)
+}
+
+// --- documents ---
+
+func fmtSize(n int64) string {
+	if n == 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%d", n)
+}
+
+var documentCols = []showCol[data.Document]{
+	{"TITLE", func(d data.Document) string { return fmtStr(d.Title) }},
+	{"FILE", func(d data.Document) string { return fmtStr(d.FileName) }},
+	{"ENTITY", func(d data.Document) string { return fmtStr(d.EntityKind) }},
+	{"MIME", func(d data.Document) string { return fmtStr(d.MIMEType) }},
+	{"SIZE", func(d data.Document) string { return fmtSize(d.SizeBytes) }},
+	{"NOTES", func(d data.Document) string { return fmtStr(d.Notes) }},
+}
+
+func documentToMap(d data.Document) map[string]any {
+	return map[string]any{
+		"id":          d.ID,
+		"title":       d.Title,
+		"file_name":   d.FileName,
+		"entity_kind": d.EntityKind,
+		"entity_id":   d.EntityID,
+		"mime_type":   d.MIMEType,
+		"size_bytes":  d.SizeBytes,
+		"sha256":      d.ChecksumSHA256,
+		"notes":       d.Notes,
+	}
+}
+
+func showDocuments(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListDocuments(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list documents: %w", err)
+	}
+	return showEntity(w, "DOCUMENTS", items, documentCols, documentToMap, asJSON)
+}
+
+// --- project-types ---
+
+var projectTypeCols = []showCol[data.ProjectType]{
+	{"NAME", func(pt data.ProjectType) string { return fmtStr(pt.Name) }},
+}
+
+func projectTypeToMap(pt data.ProjectType) map[string]any {
+	return map[string]any{
+		"id":   pt.ID,
+		"name": pt.Name,
+	}
+}
+
+func showProjectTypes(w io.Writer, store *data.Store, asJSON, _ bool) error {
+	items, err := store.ProjectTypes()
+	if err != nil {
+		return fmt.Errorf("list project types: %w", err)
+	}
+	return showEntity(w, "PROJECT TYPES", items, projectTypeCols, projectTypeToMap, asJSON)
+}
+
+// --- maintenance-categories ---
+
+var maintenanceCategoryCols = []showCol[data.MaintenanceCategory]{
+	{"NAME", func(mc data.MaintenanceCategory) string { return fmtStr(mc.Name) }},
+}
+
+func maintenanceCategoryToMap(mc data.MaintenanceCategory) map[string]any {
+	return map[string]any{
+		"id":   mc.ID,
+		"name": mc.Name,
+	}
+}
+
+func showMaintenanceCategories(w io.Writer, store *data.Store, asJSON, _ bool) error {
+	items, err := store.MaintenanceCategories()
+	if err != nil {
+		return fmt.Errorf("list maintenance categories: %w", err)
+	}
+	return showEntity(
+		w,
+		"MAINTENANCE CATEGORIES",
+		items,
+		maintenanceCategoryCols,
+		maintenanceCategoryToMap,
+		asJSON,
+	)
 }
