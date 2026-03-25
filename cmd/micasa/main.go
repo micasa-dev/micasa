@@ -78,6 +78,7 @@ func newRootCmd() *cobra.Command {
 		newCompletionCmd(root),
 		newProCmd(),
 		newMCPCmd(),
+		newShowCmd(),
 	)
 
 	return root
