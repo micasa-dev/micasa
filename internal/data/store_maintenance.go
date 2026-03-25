@@ -73,7 +73,6 @@ func (s *Store) DeleteMaintenance(id string) error {
 // service log entries. Before deleting, it writes oplog entries for each child
 // and detaches any documents linked to the maintenance item or its service
 // logs (documents have intrinsic value and survive parent deletion).
-// Mirrors HardDeleteIncident.
 func (s *Store) HardDeleteMaintenance(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Find all child service log entries (including soft-deleted).
@@ -84,84 +83,24 @@ func (s *Store) HardDeleteMaintenance(id string) error {
 			return err
 		}
 
-		if !isSyncApplying(tx) {
-			// Detach documents linked directly to the maintenance item.
-			var maintDocs []Document
-			if err := tx.Unscoped().
-				Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
-					DocumentEntityMaintenance, id).
-				Find(&maintDocs).Error; err != nil {
+		// Detach documents and clean up DeletionRecords for the
+		// maintenance item itself.
+		if err := detachDocumentsAndCleanup(tx,
+			DocumentEntityMaintenance, DeletionEntityMaintenance, id); err != nil {
+			return err
+		}
+
+		// Detach documents and clean up DeletionRecords for each child
+		// service log, then write oplog delete entries.
+		for _, log := range logs {
+			if err := detachDocumentsAndCleanup(tx,
+				DocumentEntityServiceLog, DeletionEntityServiceLog, log.ID); err != nil {
 				return err
 			}
-			for i := range maintDocs {
-				maintDocs[i].EntityKind = DocumentEntityNone
-				maintDocs[i].EntityID = ""
-				if err := writeOplogEntry(tx, TableDocuments, maintDocs[i].ID, OpUpdate,
-					newDocumentOplogPayload(maintDocs[i])); err != nil {
-					return err
-				}
-			}
-
-			// Detach documents linked to each service log and write oplog
-			// entries for the detachment, then write delete entries for each
-			// service log.
-			for _, log := range logs {
-				var docs []Document
-				if err := tx.Unscoped().
-					Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
-						DocumentEntityServiceLog, log.ID).
-					Find(&docs).Error; err != nil {
-					return err
-				}
-				for i := range docs {
-					docs[i].EntityKind = DocumentEntityNone
-					docs[i].EntityID = ""
-					if err := writeOplogEntry(tx, TableDocuments, docs[i].ID, OpUpdate,
-						newDocumentOplogPayload(docs[i])); err != nil {
-						return err
-					}
-				}
+			if !isSyncApplying(tx) {
 				if err := writeOplogEntryRaw(tx, TableServiceLogEntries, log.ID, OpDelete, "{}"); err != nil {
 					return err
 				}
-			}
-		}
-
-		// Detach documents from the maintenance item itself.
-		if err := tx.Unscoped().Model(&Document{}).
-			Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
-				DocumentEntityMaintenance, id).
-			Updates(map[string]any{
-				ColEntityKind: DocumentEntityNone,
-				ColEntityID:   "",
-			}).Error; err != nil {
-			return err
-		}
-
-		// Detach documents from all service logs (persist the detachment).
-		for _, log := range logs {
-			if err := tx.Unscoped().Model(&Document{}).
-				Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?",
-					DocumentEntityServiceLog, log.ID).
-				Updates(map[string]any{
-					ColEntityKind: DocumentEntityNone,
-					ColEntityID:   "",
-				}).Error; err != nil {
-				return err
-			}
-		}
-
-		// Delete deletion records for the maintenance item and its children.
-		if err := tx.
-			Where(ColEntity+" = ? AND "+ColTargetID+" = ?", DeletionEntityMaintenance, id).
-			Delete(&DeletionRecord{}).Error; err != nil {
-			return err
-		}
-		for _, log := range logs {
-			if err := tx.
-				Where(ColEntity+" = ? AND "+ColTargetID+" = ?", DeletionEntityServiceLog, log.ID).
-				Delete(&DeletionRecord{}).Error; err != nil {
-				return err
 			}
 		}
 

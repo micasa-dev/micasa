@@ -118,44 +118,13 @@ func (s *Store) RestoreIncident(id string) error {
 
 func (s *Store) HardDeleteIncident(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		// Log oplog entries for detached documents before modifying them.
-		if !isSyncApplying(tx) {
-			var docs []Document
-			if err := tx.Unscoped().
-				Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?", DocumentEntityIncident, id).
-				Find(&docs).Error; err != nil {
-				return err
-			}
-			for i := range docs {
-				docs[i].EntityKind = DocumentEntityNone
-				docs[i].EntityID = ""
-				if err := writeOplogEntry(tx, TableDocuments, docs[i].ID, OpUpdate,
-					newDocumentOplogPayload(docs[i])); err != nil {
-					return err
-				}
-			}
-		}
-
-		// Detach linked documents (including soft-deleted ones) so they
-		// survive the incident removal. Documents have intrinsic value
-		// independent of the entity they were filed under.
-		if err := tx.Unscoped().Model(&Document{}).
-			Where(ColEntityKind+" = ? AND "+ColEntityID+" = ?", DocumentEntityIncident, id).
-			Updates(map[string]any{
-				ColEntityKind: DocumentEntityNone,
-				ColEntityID:   "",
-			}).Error; err != nil {
-			return err
-		}
-		// Delete deletion records for this incident.
-		if err := tx.
-			Where(ColEntity+" = ? AND "+ColTargetID+" = ?", DeletionEntityIncident, id).
-			Delete(&DeletionRecord{}).Error; err != nil {
+		// Detach linked documents and remove DeletionRecords.
+		if err := detachDocumentsAndCleanup(tx,
+			DocumentEntityIncident, DeletionEntityIncident, id); err != nil {
 			return err
 		}
 
-		// Write oplog "delete" entry before the hard-delete (which uses
-		// an empty model instance that won't trigger hooks properly).
+		// Write oplog "delete" entry before the hard-delete.
 		if !isSyncApplying(tx) {
 			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpDelete, "{}"); err != nil {
 				return err
