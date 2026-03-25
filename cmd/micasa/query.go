@@ -37,7 +37,7 @@ with a 10-second timeout.`,
 				return err
 			}
 			defer func() { _ = store.Close() }()
-			return runQuery(cmd.OutOrStdout(), store, args[0], jsonFlag)
+			return runQuery(cmd.Context(), cmd.OutOrStdout(), store, args[0], jsonFlag)
 		},
 	}
 
@@ -45,8 +45,8 @@ with a 10-second timeout.`,
 	return cmd
 }
 
-func runQuery(w io.Writer, store *data.Store, sql string, asJSON bool) error {
-	columns, rows, err := store.ReadOnlyQuery(context.Background(), sql)
+func runQuery(ctx context.Context, w io.Writer, store *data.Store, sql string, asJSON bool) error {
+	columns, rows, err := store.ReadOnlyQuery(ctx, sql)
 	if err != nil {
 		return err
 	}

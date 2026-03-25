@@ -20,7 +20,7 @@ func TestQueryText(t *testing.T) {
 	require.NoError(t, store.CreateVendor(&data.Vendor{Name: "Acme"}))
 
 	var buf bytes.Buffer
-	err := runQuery(&buf, store, "SELECT name FROM vendors", false)
+	err := runQuery(t.Context(), &buf, store, "SELECT name FROM vendors", false)
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -34,7 +34,7 @@ func TestQueryJSON(t *testing.T) {
 	require.NoError(t, store.CreateVendor(&data.Vendor{Name: "Acme"}))
 
 	var buf bytes.Buffer
-	err := runQuery(&buf, store, "SELECT name FROM vendors", true)
+	err := runQuery(t.Context(), &buf, store, "SELECT name FROM vendors", true)
 	require.NoError(t, err)
 
 	var result []map[string]any
@@ -48,7 +48,7 @@ func TestQueryRejectsMutation(t *testing.T) {
 	store := newTestStoreWithMigration(t)
 
 	var buf bytes.Buffer
-	err := runQuery(&buf, store, "DELETE FROM vendors", false)
+	err := runQuery(t.Context(), &buf, store, "DELETE FROM vendors", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "only SELECT queries are allowed")
 }
@@ -58,7 +58,7 @@ func TestQueryEmpty(t *testing.T) {
 	store := newTestStoreWithMigration(t)
 
 	var buf bytes.Buffer
-	err := runQuery(&buf, store, "SELECT name FROM vendors", false)
+	err := runQuery(t.Context(), &buf, store, "SELECT name FROM vendors", false)
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), "name")
 }
