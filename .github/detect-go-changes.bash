@@ -38,7 +38,7 @@ fi
 
 # For push events, the compare API caps at 300 files.
 if [ "$event_name" != "pull_request" ]; then
-  file_count=$(echo "$changed" | wc -l)
+  file_count=$(wc -l <<< "$changed")
   if [ "$file_count" -ge 300 ]; then
     echo "::warning::Compare API file cap hit ($file_count files), assuming Go changes"
     echo "go=true"
@@ -49,7 +49,7 @@ fi
 
 # Anything outside these paths is considered Go-related.
 # Intentionally conservative: unknown paths trigger Go CI.
-non_docs=$(echo "$changed" | grep -vE '^docs/|^images/|\.md$|^LICENSE|^\.github/workflows/pages\.yml$|^\.claude/' || true)
+non_docs=$(grep -vE '^docs/|^images/|\.md$|^LICENSE|^\.github/workflows/pages\.yml$|^\.claude/' <<< "$changed" || true)
 if [ -n "$non_docs" ]; then
   echo "go=true"
 else
@@ -58,7 +58,7 @@ fi
 
 # Files that need zero CI: root markdown, .claude/, LICENSE.
 # Everything else (including docs/, images/, workflows) needs some CI.
-needs_ci=$(echo "$changed" | grep -vE '\.md$|^LICENSE$|^\.claude/' || true)
+needs_ci=$(grep -vE '\.md$|^LICENSE$|^\.claude/' <<< "$changed" || true)
 if [ -n "$needs_ci" ]; then
   echo "ci=true"
 else
