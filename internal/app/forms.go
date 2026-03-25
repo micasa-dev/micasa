@@ -849,66 +849,53 @@ func incidentFormValues(item data.Incident, cur locale.Currency) *incidentFormDa
 	}
 }
 
-func incidentStatusOptions() []huh.Option[string] {
-	type entry struct {
-		value string
-		color adaptiveColor
-	}
-	statuses := []entry{
-		{data.IncidentStatusOpen, accentPair},
-		{data.IncidentStatusInProgress, successPair},
-		{data.IncidentStatusResolved, textDimPair},
-	}
-	opts := make([]huh.Option[string], len(statuses))
-	for i, s := range statuses {
-		label := statusLabel(s.value)
-		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
-		opts[i] = huh.NewOption(colored, s.value)
+// colorEntry pairs a string value with its display color. When label is
+// non-empty it is used verbatim; otherwise statusLabel(value) is used.
+type colorEntry struct {
+	value string
+	color adaptiveColor
+	label string
+}
+
+// coloredOptions builds a colored huh option list from a slice of colorEntry
+// values and wraps the result with withOrdinals.
+func coloredOptions(entries []colorEntry) []huh.Option[string] {
+	opts := make([]huh.Option[string], len(entries))
+	for i, e := range entries {
+		lbl := e.label
+		if lbl == "" {
+			lbl = statusLabel(e.value)
+		}
+		colored := lipgloss.NewStyle().Foreground(e.color.resolve(appIsDark)).Render(lbl)
+		opts[i] = huh.NewOption(colored, e.value)
 	}
 	return withOrdinals(opts)
+}
+
+func incidentStatusOptions() []huh.Option[string] {
+	return coloredOptions([]colorEntry{
+		{value: data.IncidentStatusOpen, color: accentPair},
+		{value: data.IncidentStatusInProgress, color: successPair},
+		{value: data.IncidentStatusResolved, color: textDimPair},
+	})
 }
 
 func incidentSeverityOptions() []huh.Option[string] {
-	type entry struct {
-		value string
-		color adaptiveColor
-	}
-	severities := []entry{
-		{data.IncidentSeverityUrgent, dangerPair},
-		{data.IncidentSeveritySoon, warningPair},
-		{data.IncidentSeverityWhenever, textDimPair},
-	}
-	opts := make([]huh.Option[string], len(severities))
-	for i, s := range severities {
-		label := statusLabel(s.value)
-		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
-		opts[i] = huh.NewOption(colored, s.value)
-	}
-	return withOrdinals(opts)
+	return coloredOptions([]colorEntry{
+		{value: data.IncidentSeverityUrgent, color: dangerPair},
+		{value: data.IncidentSeveritySoon, color: warningPair},
+		{value: data.IncidentSeverityWhenever, color: textDimPair},
+	})
 }
 
 func seasonOptions() []huh.Option[string] {
-	type entry struct {
-		value string
-		color adaptiveColor
-	}
-	seasons := []entry{
-		{"", textDimPair},
-		{data.SeasonSpring, successPair},
-		{data.SeasonSummer, warningPair},
-		{data.SeasonFall, secondaryPair},
-		{data.SeasonWinter, accentPair},
-	}
-	opts := make([]huh.Option[string], len(seasons))
-	for i, s := range seasons {
-		label := "(none)"
-		if s.value != "" {
-			label = statusLabel(s.value)
-		}
-		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
-		opts[i] = huh.NewOption(colored, s.value)
-	}
-	return withOrdinals(opts)
+	return coloredOptions([]colorEntry{
+		{value: "", color: textDimPair, label: "(none)"},
+		{value: data.SeasonSpring, color: successPair},
+		{value: data.SeasonSummer, color: warningPair},
+		{value: data.SeasonFall, color: secondaryPair},
+		{value: data.SeasonWinter, color: accentPair},
+	})
 }
 
 // optionalVendorOptions is like vendorOptions but with "(none)" instead of "Self".
@@ -2097,26 +2084,15 @@ func projectOptions(projects []data.Project) []huh.Option[string] {
 }
 
 func statusOptions() []huh.Option[string] {
-	type entry struct {
-		value string
-		color adaptiveColor
-	}
-	statuses := []entry{
-		{data.ProjectStatusIdeating, mutedPair},
-		{data.ProjectStatusPlanned, accentPair},
-		{data.ProjectStatusQuoted, secondaryPair},
-		{data.ProjectStatusInProgress, successPair},
-		{data.ProjectStatusDelayed, warningPair},
-		{data.ProjectStatusCompleted, textDimPair},
-		{data.ProjectStatusAbandoned, dangerPair},
-	}
-	opts := make([]huh.Option[string], len(statuses))
-	for i, s := range statuses {
-		label := statusLabel(s.value)
-		colored := lipgloss.NewStyle().Foreground(s.color.resolve(appIsDark)).Render(label)
-		opts[i] = huh.NewOption(colored, s.value)
-	}
-	return withOrdinals(opts)
+	return coloredOptions([]colorEntry{
+		{value: data.ProjectStatusIdeating, color: mutedPair},
+		{value: data.ProjectStatusPlanned, color: accentPair},
+		{value: data.ProjectStatusQuoted, color: secondaryPair},
+		{value: data.ProjectStatusInProgress, color: successPair},
+		{value: data.ProjectStatusDelayed, color: warningPair},
+		{value: data.ProjectStatusCompleted, color: textDimPair},
+		{value: data.ProjectStatusAbandoned, color: dangerPair},
+	})
 }
 
 // withOrdinals prefixes each option label with its 1-based position so users
