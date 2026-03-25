@@ -4,7 +4,6 @@
 package mcp_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -269,47 +268,58 @@ func TestGetHouseProfileToolEmpty(t *testing.T) {
 func TestServeStdio(t *testing.T) {
 	srv, _ := newTestServer(t)
 
-	// Build JSON-RPC messages: initialize then tools/list
 	initMsg := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}` + "\n"
 	listMsg := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}` + "\n"
 
 	stdinR, stdinW := io.Pipe()
-	var stdout bytes.Buffer
+	stdoutR, stdoutW := io.Pipe()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- srv.Serve(ctx, stdinR, &stdout)
+		errCh <- srv.Serve(ctx, stdinR, stdoutW)
 	}()
 
-	// Send initialize
+	decoder := json.NewDecoder(stdoutR)
+
+	// Send initialize, read response
 	_, err := stdinW.Write([]byte(initMsg))
 	require.NoError(t, err)
 
-	// Give server time to process
-	time.Sleep(100 * time.Millisecond)
+	var initResp json.RawMessage
+	require.NoError(t, decoder.Decode(&initResp))
 
-	// Send tools/list
+	// Send tools/list, read response
 	_, err = stdinW.Write([]byte(listMsg))
 	require.NoError(t, err)
 
-	// Give server time to respond
-	time.Sleep(100 * time.Millisecond)
+	var listResp struct {
+		Result struct {
+			Tools []struct {
+				Name string `json:"name"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	require.NoError(t, decoder.Decode(&listResp))
 
-	// Close stdin to trigger shutdown
+	toolNames := make([]string, 0, len(listResp.Result.Tools))
+	for _, tool := range listResp.Result.Tools {
+		toolNames = append(toolNames, tool.Name)
+	}
+	assert.Contains(t, toolNames, "query")
+	assert.Contains(t, toolNames, "get_schema")
+	assert.Contains(t, toolNames, "search_documents")
+	assert.Contains(t, toolNames, "get_maintenance_schedule")
+	assert.Contains(t, toolNames, "get_house_profile")
+
+	// Shut down
 	_ = stdinW.Close()
 	cancel()
 
-	// Wait for server to stop
-	<-errCh
-
-	// Verify output contains tool names
-	output := stdout.String()
-	assert.Contains(t, output, "query")
-	assert.Contains(t, output, "get_schema")
-	assert.Contains(t, output, "search_documents")
-	assert.Contains(t, output, "get_maintenance_schedule")
-	assert.Contains(t, output, "get_house_profile")
+	serveErr := <-errCh
+	if serveErr != nil {
+		assert.ErrorIs(t, serveErr, context.Canceled)
+	}
 }
