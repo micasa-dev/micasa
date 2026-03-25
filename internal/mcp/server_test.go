@@ -4,8 +4,10 @@
 package mcp_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"path/filepath"
 	"testing"
 	"time"
@@ -262,4 +264,52 @@ func TestGetHouseProfileToolEmpty(t *testing.T) {
 
 	result := callTool(t, srv, "get_house_profile", map[string]any{})
 	assert.True(t, result.IsError)
+}
+
+func TestServeStdio(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	// Build JSON-RPC messages: initialize then tools/list
+	initMsg := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}` + "\n"
+	listMsg := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}` + "\n"
+
+	stdinR, stdinW := io.Pipe()
+	var stdout bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Serve(ctx, stdinR, &stdout)
+	}()
+
+	// Send initialize
+	_, err := stdinW.Write([]byte(initMsg))
+	require.NoError(t, err)
+
+	// Give server time to process
+	time.Sleep(100 * time.Millisecond)
+
+	// Send tools/list
+	_, err = stdinW.Write([]byte(listMsg))
+	require.NoError(t, err)
+
+	// Give server time to respond
+	time.Sleep(100 * time.Millisecond)
+
+	// Close stdin to trigger shutdown
+	_ = stdinW.Close()
+	cancel()
+
+	// Wait for server to stop
+	<-errCh
+
+	// Verify output contains tool names
+	output := stdout.String()
+	assert.Contains(t, output, "query")
+	assert.Contains(t, output, "get_schema")
+	assert.Contains(t, output, "search_documents")
+	assert.Contains(t, output, "get_maintenance_schedule")
+	assert.Contains(t, output, "get_house_profile")
 }

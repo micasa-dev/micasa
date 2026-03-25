@@ -4,7 +4,9 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
+	"io"
 
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
@@ -43,7 +45,16 @@ func (s *Server) Tools() []mcpserver.ServerTool {
 	return tools
 }
 
-// ServeStdio runs the MCP server over stdin/stdout.
+// Serve runs the MCP server over the given reader/writer pair.
+func (s *Server) Serve(ctx context.Context, stdin io.Reader, stdout io.Writer) error {
+	stdio := mcpserver.NewStdioServer(s.mcpSrv)
+	if err := stdio.Listen(ctx, stdin, stdout); err != nil {
+		return fmt.Errorf("serve mcp: %w", err)
+	}
+	return nil
+}
+
+// ServeStdio runs the MCP server over os.Stdin/os.Stdout.
 func (s *Server) ServeStdio() error {
 	if err := mcpserver.ServeStdio(s.mcpSrv); err != nil {
 		return fmt.Errorf("serve stdio: %w", err)
