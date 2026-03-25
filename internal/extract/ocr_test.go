@@ -4,7 +4,6 @@
 package extract
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -273,7 +272,7 @@ func TestImageOCRExtractor_UnsupportedMIME(t *testing.T) {
 func TestOCRExtractor_EmptyData(t *testing.T) {
 	t.Parallel()
 	ext := &PDFOCRExtractor{}
-	src, err := ext.Extract(context.Background(), nil)
+	src, err := ext.Extract(t.Context(), nil)
 	require.NoError(t, err)
 	assert.Empty(t, src.Text)
 }
@@ -291,7 +290,7 @@ func TestPDFOCR_Integration(t *testing.T) {
 	}
 
 	ext := &PDFOCRExtractor{MaxPages: 20}
-	src, err := ext.Extract(context.Background(), data)
+	src, err := ext.Extract(t.Context(), data)
 	require.NoError(t, err)
 	// The sample PDF has digital text, so tesseract should find something.
 	assert.NotEmpty(t, src.Text)
@@ -314,7 +313,7 @@ func TestImageOCR_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	ext := &ImageOCRExtractor{}
-	src, err := ext.Extract(context.Background(), data)
+	src, err := ext.Extract(t.Context(), data)
 	require.NoError(t, err)
 	assert.NotEmpty(t, src.Text)
 	assert.NotEmpty(t, src.Data)

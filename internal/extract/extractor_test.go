@@ -4,7 +4,6 @@
 package extract
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -61,7 +60,7 @@ func TestPlainTextExtractor_Available(t *testing.T) {
 func TestPlainTextExtractor_Extract(t *testing.T) {
 	t.Parallel()
 	ext := &PlainTextExtractor{}
-	src, err := ext.Extract(context.Background(), []byte("  hello   world  "))
+	src, err := ext.Extract(t.Context(), []byte("  hello   world  "))
 	require.NoError(t, err)
 	assert.Equal(t, "plaintext", src.Tool)
 	assert.Equal(t, "hello world", src.Text)
@@ -71,7 +70,7 @@ func TestPlainTextExtractor_Extract(t *testing.T) {
 func TestPDFTextExtractor_Extract_EmptyData(t *testing.T) {
 	t.Parallel()
 	ext := &PDFTextExtractor{}
-	src, err := ext.Extract(context.Background(), nil)
+	src, err := ext.Extract(t.Context(), nil)
 	require.NoError(t, err)
 	assert.Empty(t, src.Tool)
 	assert.Empty(t, src.Text)
@@ -80,7 +79,7 @@ func TestPDFTextExtractor_Extract_EmptyData(t *testing.T) {
 func TestPlainTextExtractor_Extract_EmptyData(t *testing.T) {
 	t.Parallel()
 	ext := &PlainTextExtractor{}
-	src, err := ext.Extract(context.Background(), nil)
+	src, err := ext.Extract(t.Context(), nil)
 	require.NoError(t, err)
 	assert.Empty(t, src.Tool)
 	assert.Empty(t, src.Text)
@@ -89,7 +88,7 @@ func TestPlainTextExtractor_Extract_EmptyData(t *testing.T) {
 func TestImageOCRExtractor_Extract_EmptyData(t *testing.T) {
 	t.Parallel()
 	ext := &ImageOCRExtractor{}
-	src, err := ext.Extract(context.Background(), nil)
+	src, err := ext.Extract(t.Context(), nil)
 	require.NoError(t, err)
 	assert.Empty(t, src.Tool)
 	assert.Empty(t, src.Text)
@@ -98,7 +97,7 @@ func TestImageOCRExtractor_Extract_EmptyData(t *testing.T) {
 func TestPDFOCRExtractor_Extract_EmptyData(t *testing.T) {
 	t.Parallel()
 	ext := &PDFOCRExtractor{}
-	src, err := ext.Extract(context.Background(), nil)
+	src, err := ext.Extract(t.Context(), nil)
 	require.NoError(t, err)
 	assert.Empty(t, src.Tool)
 	assert.Empty(t, src.Text)
@@ -285,7 +284,7 @@ func TestPDFTextExtractor_Extract(t *testing.T) {
 	}
 
 	ext := &PDFTextExtractor{}
-	src, err := ext.Extract(context.Background(), data)
+	src, err := ext.Extract(t.Context(), data)
 	require.NoError(t, err)
 	assert.Equal(t, "pdftotext", src.Tool)
 	assert.Contains(t, src.Text, "Invoice")
@@ -305,7 +304,7 @@ func TestPDFOCRExtractor_Extract(t *testing.T) {
 	}
 
 	ext := &PDFOCRExtractor{MaxPages: 5}
-	src, err := ext.Extract(context.Background(), data)
+	src, err := ext.Extract(t.Context(), data)
 	require.NoError(t, err)
 	assert.Equal(t, "tesseract", src.Tool)
 	assert.NotEmpty(t, src.Text)
@@ -325,7 +324,7 @@ func TestImageOCRExtractor_Extract(t *testing.T) {
 	}
 
 	ext := &ImageOCRExtractor{}
-	src, err := ext.Extract(context.Background(), data)
+	src, err := ext.Extract(t.Context(), data)
 	require.NoError(t, err)
 	assert.Equal(t, "tesseract", src.Tool)
 	assert.NotEmpty(t, src.Text)

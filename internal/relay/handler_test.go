@@ -230,7 +230,7 @@ func TestTwoDeviceSync(t *testing.T) {
 	})
 	require.NoError(t, err)
 	// Register via store directly (no HTTP endpoint exposed in MVP).
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: hhResp.HouseholdID,
 		Name:        "test-laptop",
 		PublicKey:   regBody,
@@ -274,7 +274,7 @@ func TestPullPagination(t *testing.T) {
 	tokenA := hhResp.DeviceToken
 
 	// Register device B.
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: hhResp.HouseholdID,
 		Name:        "device-b",
 	})
@@ -828,7 +828,7 @@ func TestRevokeDevice(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	// Register a second device.
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: hh.HouseholdID,
 		Name:        "device-b",
 	})
@@ -990,7 +990,7 @@ func TestPushReturns402WhenSubscriptionCanceled(t *testing.T) {
 
 	// Set subscription to canceled.
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_123", sync.SubscriptionCanceled,
+		t.Context(), hh.HouseholdID, "sub_123", sync.SubscriptionCanceled,
 	))
 
 	op := sync.Envelope{
@@ -1019,7 +1019,7 @@ func TestPullReturns402WhenSubscriptionCanceled(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_456", sync.SubscriptionCanceled,
+		t.Context(), hh.HouseholdID, "sub_456", sync.SubscriptionCanceled,
 	))
 
 	rec := httptest.NewRecorder()
@@ -1036,7 +1036,7 @@ func TestPushSucceedsWhenSubscriptionActive(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_789", sync.SubscriptionActive,
+		t.Context(), hh.HouseholdID, "sub_789", sync.SubscriptionActive,
 	))
 
 	op := sync.Envelope{
@@ -1089,7 +1089,7 @@ func TestPushReturns402WhenSubscriptionPastDue(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_pd", sync.SubscriptionPastDue,
+		t.Context(), hh.HouseholdID, "sub_pd", sync.SubscriptionPastDue,
 	))
 
 	op := sync.Envelope{
@@ -1127,7 +1127,7 @@ func TestStripeWebhookUpdatesSubscription(t *testing.T) {
 	// Create household and set an initial subscription.
 	hh := createTestHousehold(t, h)
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_webhook_1", sync.SubscriptionActive,
+		t.Context(), hh.HouseholdID, "sub_webhook_1", sync.SubscriptionActive,
 	))
 
 	// Send a subscription.deleted webhook event.
@@ -1147,7 +1147,7 @@ func TestStripeWebhookUpdatesSubscription(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	// Verify household subscription status updated.
-	household, err := store.GetHousehold(context.Background(), hh.HouseholdID)
+	household, err := store.GetHousehold(t.Context(), hh.HouseholdID)
 	require.NoError(t, err)
 	assert.Equal(t, sync.SubscriptionCanceled, household.StripeStatus)
 }
@@ -1245,7 +1245,7 @@ func TestStatusEndpoint(t *testing.T) {
 
 	// Set subscription status.
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_status", sync.SubscriptionActive,
+		t.Context(), hh.HouseholdID, "sub_status", sync.SubscriptionActive,
 	))
 
 	// Push an op to increment ops count.
@@ -1461,7 +1461,7 @@ func TestBlobSubscriptionGating(t *testing.T) {
 
 	// Cancel subscription.
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_blob", sync.SubscriptionCanceled,
+		t.Context(), hh.HouseholdID, "sub_blob", sync.SubscriptionCanceled,
 	))
 
 	rec := httptest.NewRecorder()
@@ -1728,7 +1728,7 @@ func TestSelfHostedSubscriptionBypass(t *testing.T) {
 
 	// Set subscription to canceled — cloud mode would return 402.
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(),
+		t.Context(),
 		hh.HouseholdID,
 		"sub_test",
 		"canceled",
@@ -1812,7 +1812,7 @@ func TestSelfHostedIntegration(t *testing.T) {
 
 	// Cancel subscription — self-hosted should still work.
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(),
+		t.Context(),
 		hh.HouseholdID,
 		"sub_test",
 		"canceled",
@@ -2043,7 +2043,7 @@ func createTestHouseholdDirect(
 	ms *MemStore,
 ) sync.CreateHouseholdResponse {
 	t.Helper()
-	resp, err := ms.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+	resp, err := ms.CreateHousehold(t.Context(), sync.CreateHouseholdRequest{
 		DeviceName: "test-desktop",
 		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
@@ -2388,11 +2388,11 @@ func TestCompleteKeyExchangeStoreError(t *testing.T) {
 	hh := createTestHouseholdDirect(t, ms)
 
 	// Set up an exchange via the underlying MemStore.
-	invite, err := ms.CreateInvite(context.Background(), hh.HouseholdID, hh.DeviceID)
+	invite, err := ms.CreateInvite(t.Context(), hh.HouseholdID, hh.DeviceID)
 	require.NoError(t, err)
 
 	joinResp, err := ms.StartJoin(
-		context.Background(),
+		t.Context(),
 		hh.HouseholdID,
 		invite.Code,
 		sync.JoinRequest{
@@ -2428,7 +2428,7 @@ func TestRevokeDeviceWrongHousehold(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	// Register a second device to revoke.
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: hh.HouseholdID,
 		Name:        "device-b",
 	})
@@ -2456,7 +2456,7 @@ func TestRevokeDeviceStoreError(t *testing.T) {
 	hh := createTestHouseholdDirect(t, ms)
 
 	// Register a second device.
-	regResp, err := ms.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	regResp, err := ms.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: hh.HouseholdID,
 		Name:        "device-b",
 	})
@@ -2856,7 +2856,7 @@ func TestStripeWebhookUpdateSubscriptionError(t *testing.T) {
 	// Create a household and set a subscription.
 	hh := createTestHouseholdDirect(t, ms)
 	require.NoError(t, ms.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_fail_update", sync.SubscriptionActive,
+		t.Context(), hh.HouseholdID, "sub_fail_update", sync.SubscriptionActive,
 	))
 
 	// Inject error on UpdateSubscription.
@@ -2924,7 +2924,7 @@ func TestPullReturns402WhenSubscriptionPastDue(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_pull_pd", sync.SubscriptionPastDue,
+		t.Context(), hh.HouseholdID, "sub_pull_pd", sync.SubscriptionPastDue,
 	))
 
 	rec := httptest.NewRecorder()
@@ -2942,7 +2942,7 @@ func TestPullSucceedsWhenSubscriptionActive(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_pull_ok", sync.SubscriptionActive,
+		t.Context(), hh.HouseholdID, "sub_pull_ok", sync.SubscriptionActive,
 	))
 
 	rec := httptest.NewRecorder()
@@ -2976,7 +2976,7 @@ func TestBlobGetReturns402WhenSubscriptionPastDue(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_blob_pd", sync.SubscriptionPastDue,
+		t.Context(), hh.HouseholdID, "sub_blob_pd", sync.SubscriptionPastDue,
 	))
 
 	rec := httptest.NewRecorder()

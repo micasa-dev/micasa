@@ -171,7 +171,7 @@ func TestSyncIntegrationPushesLocalOps(t *testing.T) {
 	require.NoError(t, err)
 
 	resp, err := ms.CreateHousehold(
-		context.Background(),
+		t.Context(),
 		sync.CreateHouseholdRequest{
 			DeviceName: "test-device",
 			PublicKey:  make([]byte, 32),
@@ -221,7 +221,7 @@ func TestSyncIntegrationPushesLocalOps(t *testing.T) {
 		key:         key,
 	}
 	m.syncEngine = engine
-	m.syncCtx, m.syncCancel = context.WithCancel(context.Background())
+	m.syncCtx, m.syncCancel = context.WithCancel(t.Context())
 	t.Cleanup(m.syncCancel)
 
 	// Mark any pre-existing oplog entries as synced so they don't
@@ -248,7 +248,7 @@ func TestSyncIntegrationPushesLocalOps(t *testing.T) {
 	require.NotEmpty(t, unsynced, "vendor create should produce unsynced ops")
 
 	// 5. Run sync — this pushes the local ops to the relay.
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.Pushed, "should push the vendor insert")
 	assert.Zero(t, result.Pulled, "nothing to pull from empty relay")

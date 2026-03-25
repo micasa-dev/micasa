@@ -4,7 +4,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -29,7 +28,7 @@ func TestHelperProcess(_ *testing.T) {
 func fakeExitError(t *testing.T) *exec.ExitError {
 	t.Helper()
 	cmd := exec.CommandContext( //nolint:gosec // test helper re-execs itself
-		context.Background(),
+		t.Context(),
 		os.Args[0],
 		"-test.run=^TestHelperProcess$",
 	)

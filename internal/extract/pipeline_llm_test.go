@@ -4,7 +4,6 @@
 package extract
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -62,7 +61,7 @@ func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 	}
 
 	docText := "GARCIA PLUMBING LLC\nInvoice #1234\nDate: March 15, 2025\nTotal: $1,500.00"
-	r := p.Run(context.Background(), []byte(docText), "invoice.txt", "text/plain")
+	r := p.Run(t.Context(), []byte(docText), "invoice.txt", "text/plain")
 
 	require.NoError(t, r.Err)
 	assert.Equal(t, docText, r.Text())
@@ -87,7 +86,7 @@ func TestPipeline_LLMServerDown(t *testing.T) {
 	require.NoError(t, err)
 
 	p := &Pipeline{LLMClient: client}
-	r := p.Run(context.Background(), []byte("Some invoice text"), "invoice.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("Some invoice text"), "invoice.txt", "text/plain")
 
 	// Text extraction succeeded.
 	assert.Equal(t, "Some invoice text", r.Text())
@@ -113,7 +112,7 @@ func TestPipeline_LLMGarbageResponse(t *testing.T) {
 	require.NoError(t, err)
 
 	p := &Pipeline{LLMClient: client}
-	r := p.Run(context.Background(), []byte("invoice text"), "doc.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("invoice text"), "doc.txt", "text/plain")
 
 	assert.Equal(t, "invoice text", r.Text())
 	assert.False(t, r.LLMUsed)
@@ -137,7 +136,7 @@ func TestPipeline_LLMSkippedWithoutText(t *testing.T) {
 	require.NoError(t, err)
 
 	p := &Pipeline{LLMClient: client}
-	r := p.Run(context.Background(), []byte{0xFF, 0xD8}, "photo.bin", "application/octet-stream")
+	r := p.Run(t.Context(), []byte{0xFF, 0xD8}, "photo.bin", "application/octet-stream")
 
 	require.NoError(t, r.Err)
 	assert.Empty(t, r.Text())
@@ -153,7 +152,7 @@ func TestPipeline_LLMForbiddenAction(t *testing.T) {
 	_, client := newTestLLMServer(t, opsJSON)
 
 	p := &Pipeline{LLMClient: client, DocID: "1"}
-	r := p.Run(context.Background(), []byte("some text"), "doc.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("some text"), "doc.txt", "text/plain")
 
 	assert.False(t, r.LLMUsed)
 	assert.Empty(t, r.Operations)
@@ -169,7 +168,7 @@ func TestPipeline_LLMForbiddenTable(t *testing.T) {
 	_, client := newTestLLMServer(t, opsJSON)
 
 	p := &Pipeline{LLMClient: client, DocID: "1"}
-	r := p.Run(context.Background(), []byte("some text"), "doc.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("some text"), "doc.txt", "text/plain")
 
 	assert.False(t, r.LLMUsed)
 	assert.Empty(t, r.Operations)

@@ -4,7 +4,6 @@
 package extract
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,7 +15,7 @@ import (
 func TestPipeline_EmptyData(t *testing.T) {
 	t.Parallel()
 	p := &Pipeline{}
-	r := p.Run(context.Background(), nil, "empty.pdf", "application/pdf")
+	r := p.Run(t.Context(), nil, "empty.pdf", "application/pdf")
 	assert.Empty(t, r.Text())
 	assert.Empty(t, r.Operations)
 	assert.False(t, r.HasSource("tesseract"))
@@ -27,7 +26,7 @@ func TestPipeline_EmptyData(t *testing.T) {
 func TestPipeline_PlainText(t *testing.T) {
 	t.Parallel()
 	p := &Pipeline{}
-	r := p.Run(context.Background(), []byte("Hello, world!"), "readme.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("Hello, world!"), "readme.txt", "text/plain")
 	assert.Equal(t, "Hello, world!", r.Text())
 	assert.True(t, r.HasSource("plaintext"))
 	assert.Empty(t, r.Operations)
@@ -40,7 +39,7 @@ func TestPipeline_UnsupportedMIME(t *testing.T) {
 	t.Parallel()
 	p := &Pipeline{}
 	// application/octet-stream: no text extraction, no OCR, no LLM.
-	r := p.Run(context.Background(), []byte{0xFF, 0xD8}, "blob.bin", "application/octet-stream")
+	r := p.Run(t.Context(), []byte{0xFF, 0xD8}, "blob.bin", "application/octet-stream")
 	assert.Empty(t, r.Text())
 	assert.NoError(t, r.Err)
 }
@@ -58,7 +57,7 @@ func TestPipeline_ImageOCR(t *testing.T) {
 	}
 
 	p := &Pipeline{}
-	r := p.Run(context.Background(), data, "invoice.png", "image/png")
+	r := p.Run(t.Context(), data, "invoice.png", "image/png")
 	require.NoError(t, r.Err)
 	assert.True(t, r.HasSource("tesseract"), "image should trigger OCR")
 	assert.NotEmpty(t, r.Text())
@@ -77,7 +76,7 @@ func TestPipeline_PDFTextExtraction(t *testing.T) {
 	}
 
 	p := &Pipeline{}
-	r := p.Run(context.Background(), data, "sample.pdf", "application/pdf")
+	r := p.Run(t.Context(), data, "sample.pdf", "application/pdf")
 	require.NoError(t, r.Err)
 	pdfSrc := r.SourceByTool("pdftotext")
 	require.NotNil(t, pdfSrc, "pdftotext should extract text")
@@ -90,7 +89,7 @@ func TestPipeline_PDFTextExtraction(t *testing.T) {
 func TestPipeline_NoLLMClient(t *testing.T) {
 	t.Parallel()
 	p := &Pipeline{LLMClient: nil}
-	r := p.Run(context.Background(), []byte("some extracted text"), "doc.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("some extracted text"), "doc.txt", "text/plain")
 	assert.Equal(t, "some extracted text", r.Text())
 	assert.False(t, r.LLMUsed)
 	assert.Empty(t, r.Operations)
@@ -113,7 +112,7 @@ func TestPipeline_OCRIntegration(t *testing.T) {
 
 	// Both pdftotext and OCR should run for PDFs.
 	p := &Pipeline{Extractors: DefaultExtractors(5, 0, true)}
-	r := p.Run(context.Background(), data, "sample.pdf", "application/pdf")
+	r := p.Run(t.Context(), data, "sample.pdf", "application/pdf")
 	require.NoError(t, r.Err)
 	assert.True(t, r.HasSource("tesseract"), "OCR always runs for PDFs")
 	pdfSrc := r.SourceByTool("pdftotext")
@@ -142,7 +141,7 @@ func TestPipeline_MixedPDF(t *testing.T) {
 	}
 
 	p := &Pipeline{Extractors: DefaultExtractors(5, 0, true)}
-	r := p.Run(context.Background(), data, "mixed-inspection.pdf", "application/pdf")
+	r := p.Run(t.Context(), data, "mixed-inspection.pdf", "application/pdf")
 	require.NoError(t, r.Err)
 
 	// Page 1 is digital text -- pdftotext should extract it.
@@ -164,7 +163,7 @@ func TestPipeline_NilExtractorsDefault(t *testing.T) {
 	t.Parallel()
 	p := &Pipeline{}
 	// Nil extractors falls back to DefaultExtractors(0, 0).
-	r := p.Run(context.Background(), []byte("text"), "doc.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("text"), "doc.txt", "text/plain")
 	require.NoError(t, r.Err)
 	assert.True(t, r.HasSource("plaintext"))
 }
@@ -179,7 +178,7 @@ func TestPipeline_SchemaContext(t *testing.T) {
 		},
 	}
 	// Without LLM client, schema context is loaded but not used.
-	r := p.Run(context.Background(), []byte("invoice text"), "inv.txt", "text/plain")
+	r := p.Run(t.Context(), []byte("invoice text"), "inv.txt", "text/plain")
 	assert.Equal(t, "invoice text", r.Text())
 	assert.Empty(t, r.Operations)
 }

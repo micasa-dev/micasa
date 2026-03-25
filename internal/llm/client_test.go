@@ -56,7 +56,7 @@ func TestPingSuccess(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	err := client.Ping(context.Background())
+	err := client.Ping(t.Context())
 	assert.NoError(t, err)
 }
 
@@ -68,7 +68,7 @@ func TestPingModelNotFound(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	err := client.Ping(context.Background())
+	err := client.Ping(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not available")
 }
@@ -76,7 +76,7 @@ func TestPingModelNotFound(t *testing.T) {
 func TestPingServerDown(t *testing.T) {
 	t.Parallel()
 	client := newTestClient(t, "http://127.0.0.1:1/v1", "qwen3")
-	err := client.Ping(context.Background())
+	err := client.Ping(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot reach")
 }
@@ -89,7 +89,7 @@ func TestPingAnthropicNoOp(t *testing.T) {
 		"anthropic", "http://localhost:8080", "claude-sonnet-4-5-latest", "test-key", testTimeout,
 	)
 	require.NoError(t, err)
-	assert.NoError(t, client.Ping(context.Background()))
+	assert.NoError(t, client.Ping(t.Context()))
 }
 
 func TestChatCompleteSuccess(t *testing.T) {
@@ -100,7 +100,7 @@ func TestChatCompleteSuccess(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	result, err := client.ChatComplete(context.Background(), []Message{
+	result, err := client.ChatComplete(t.Context(), []Message{
 		{Role: "user", Content: "how many projects?"},
 	})
 	require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestChatCompleteWithJSONSchema(t *testing.T) {
 		"required":   []any{"ok"},
 	}
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	result, err := client.ChatComplete(context.Background(), []Message{
+	result, err := client.ChatComplete(t.Context(), []Message{
 		{Role: "user", Content: "extract"},
 	}, WithJSONSchema("test_schema", schema))
 	require.NoError(t, err)
@@ -160,7 +160,7 @@ func TestChatCompleteWithoutJSONSchema(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	result, err := client.ChatComplete(context.Background(), []Message{
+	result, err := client.ChatComplete(t.Context(), []Message{
 		{Role: "user", Content: "hi"},
 	})
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestChatCompleteServerError(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	_, err := client.ChatComplete(context.Background(), []Message{
+	_, err := client.ChatComplete(t.Context(), []Message{
 		{Role: "user", Content: "hi"},
 	})
 	assert.Error(t, err)
@@ -191,7 +191,7 @@ func TestChatCompleteEmptyChoices(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	_, err := client.ChatComplete(context.Background(), []Message{
+	_, err := client.ChatComplete(t.Context(), []Message{
 		{Role: "user", Content: "hi"},
 	})
 	require.Error(t, err)
@@ -230,7 +230,7 @@ func TestListModelsSuccess(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	models, err := client.ListModels(context.Background())
+	models, err := client.ListModels(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, []string{"qwen3:latest", "llama3:8b", "mistral:7b"}, models)
 }
@@ -238,7 +238,7 @@ func TestListModelsSuccess(t *testing.T) {
 func TestListModelsServerDown(t *testing.T) {
 	t.Parallel()
 	client := newTestClient(t, "http://127.0.0.1:1/v1", "qwen3")
-	_, err := client.ListModels(context.Background())
+	_, err := client.ListModels(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot reach")
 }
@@ -251,7 +251,7 @@ func TestListModelsEmpty(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	models, err := client.ListModels(context.Background())
+	models, err := client.ListModels(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, models)
 }
@@ -329,7 +329,7 @@ func TestChatStreamSuccess(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	ch, err := client.ChatStream(context.Background(), []Message{
+	ch, err := client.ChatStream(t.Context(), []Message{
 		{Role: "user", Content: "hi"},
 	})
 	require.NoError(t, err)
@@ -364,7 +364,7 @@ func TestChatStreamCancellation(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
 	ch, err := client.ChatStream(ctx, []Message{
 		{Role: "user", Content: "hi"},
@@ -390,7 +390,7 @@ func TestChatStreamServerError(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	ch, err := client.ChatStream(context.Background(), []Message{
+	ch, err := client.ChatStream(t.Context(), []Message{
 		{Role: "user", Content: "hi"},
 	})
 	if err != nil {
@@ -424,7 +424,7 @@ func TestPingModelNotFoundCloud(t *testing.T) {
 		providerName: "openai",
 		model:        "gpt-4o",
 	}
-	err = client.Ping(context.Background())
+	err = client.Ping(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not available")
 	assert.Contains(t, err.Error(), "check the model name")
@@ -456,7 +456,7 @@ func TestPingModelNotFoundLlamacpp(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	err := client.Ping(context.Background())
+	err := client.Ping(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not available")
 }
@@ -471,7 +471,7 @@ func TestPingMatchesModelPrefix(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "qwen3")
-	assert.NoError(t, client.Ping(context.Background()))
+	assert.NoError(t, client.Ping(t.Context()))
 }
 
 // TestCreateProviderAllSupported verifies that every documented provider
@@ -663,7 +663,7 @@ func TestChatCompleteWithThinking(t *testing.T) {
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
 	client.SetThinking("medium")
-	result, err := client.ChatComplete(context.Background(), []Message{
+	result, err := client.ChatComplete(t.Context(), []Message{
 		{Role: "user", Content: "think hard"},
 	})
 	require.NoError(t, err)
@@ -698,7 +698,7 @@ func TestChatStreamMidStreamDisconnect(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	ch, err := client.ChatStream(context.Background(), []Message{
+	ch, err := client.ChatStream(t.Context(), []Message{
 		{Role: "user", Content: "hi"},
 	})
 	require.NoError(t, err)
@@ -728,7 +728,7 @@ func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // cancel immediately
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
@@ -819,7 +819,7 @@ func TestNewClientOllamaCustomBaseURL(t *testing.T) {
 
 	c, err := NewClient("ollama", srv.URL, "qwen3", "", testTimeout)
 	require.NoError(t, err)
-	assert.NoError(t, c.Ping(context.Background()))
+	assert.NoError(t, c.Ping(t.Context()))
 }
 
 // mockModelLister is a minimal anyllm.ModelLister for synctest-based timeout
@@ -864,7 +864,7 @@ func TestPingTimesOutAtQuickOpTimeout(t *testing.T) {
 		client := &Client{provider: mock, providerName: "mock", model: "m"}
 
 		start := time.Now()
-		err := client.Ping(context.Background())
+		err := client.Ping(t.Context())
 
 		elapsed := time.Since(start)
 		require.Error(t, err)
@@ -946,7 +946,7 @@ func TestHTTPStreamingSurvivesPastQuickOpTimeout(t *testing.T) {
 		}()
 
 		ch, err := client.ChatStream(
-			context.Background(),
+			t.Context(),
 			[]Message{{Role: "user", Content: "hi"}},
 		)
 		require.NoError(t, err)
@@ -998,7 +998,7 @@ func TestHTTPResponseTimeoutKillsHungStream(t *testing.T) {
 
 		start := time.Now()
 		ch, err := client.ChatStream(
-			context.Background(),
+			t.Context(),
 			[]Message{{Role: "user", Content: "hi"}},
 		)
 		require.NoError(t, err)

@@ -4,7 +4,6 @@
 package data
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"os"
@@ -2464,7 +2463,7 @@ func TestPragmasSurvivePoolRecycling(t *testing.T) {
 	// each checkout, exercising the pragma connector hook.
 	sqlDB.SetMaxIdleConns(0)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	for range 3 {
 		conn, err := sqlDB.Conn(ctx)
 		require.NoError(t, err)

@@ -5,7 +5,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -24,7 +23,7 @@ func TestQuery_Identity(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, "."))
+	require.NoError(t, cfg.Query(t.Context(), &buf, "."))
 	assert.Contains(t, buf.String(), "[chat.llm]")
 	assert.Contains(t, buf.String(), "model =")
 }
@@ -33,7 +32,7 @@ func TestQuery_IdentityEmpty(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, ""))
+	require.NoError(t, cfg.Query(t.Context(), &buf, ""))
 	assert.Contains(t, buf.String(), "[chat.llm]")
 }
 
@@ -41,7 +40,7 @@ func TestQuery_IdentityWhitespace(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, "  .  "))
+	require.NoError(t, cfg.Query(t.Context(), &buf, "  .  "))
 	assert.Contains(t, buf.String(), "[chat.llm]")
 }
 
@@ -49,7 +48,7 @@ func TestQuery_Scalar(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, ".chat.llm.model"))
+	require.NoError(t, cfg.Query(t.Context(), &buf, ".chat.llm.model"))
 	got := strings.TrimSpace(buf.String())
 	assert.NotEmpty(t, got)
 	assert.NotContains(t, got, `"`)
@@ -59,7 +58,7 @@ func TestQuery_NullKey(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, ".nonexistent"))
+	require.NoError(t, cfg.Query(t.Context(), &buf, ".nonexistent"))
 	assert.Equal(t, "null\n", buf.String())
 }
 
@@ -67,7 +66,7 @@ func TestQuery_Keys(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, ".chat.llm | keys"))
+	require.NoError(t, cfg.Query(t.Context(), &buf, ".chat.llm | keys"))
 	assert.Contains(t, buf.String(), `"model"`)
 }
 
@@ -75,7 +74,7 @@ func TestQuery_InvalidFilter(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	err := cfg.Query(context.Background(), &buf, ".[invalid")
+	err := cfg.Query(t.Context(), &buf, ".[invalid")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parse filter")
 }
@@ -85,7 +84,7 @@ func TestQuery_OverlongFilter(t *testing.T) {
 	var buf bytes.Buffer
 	cfg := testConfig()
 	long := strings.Repeat("x", maxFilterLen+1)
-	err := cfg.Query(context.Background(), &buf, long)
+	err := cfg.Query(t.Context(), &buf, long)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "filter too long")
 }
@@ -94,14 +93,14 @@ func TestQuery_HaltZero(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, "halt"))
+	require.NoError(t, cfg.Query(t.Context(), &buf, "halt"))
 }
 
 func TestQuery_HaltError(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	err := cfg.Query(context.Background(), &buf, `halt_error(1)`)
+	err := cfg.Query(t.Context(), &buf, `halt_error(1)`)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "halted with exit status 1")
 }
@@ -111,7 +110,7 @@ func TestQuery_APIKeyStripped(t *testing.T) {
 	var buf bytes.Buffer
 	cfg := testConfig()
 	cfg.Chat.LLM.APIKey = "secret-key"
-	require.NoError(t, cfg.Query(context.Background(), &buf, ".chat.llm.api_key"))
+	require.NoError(t, cfg.Query(t.Context(), &buf, ".chat.llm.api_key"))
 	assert.Equal(t, "null\n", buf.String())
 }
 
@@ -119,7 +118,7 @@ func TestQuery_Section(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	cfg := testConfig()
-	require.NoError(t, cfg.Query(context.Background(), &buf, ".chat.llm"))
+	require.NoError(t, cfg.Query(t.Context(), &buf, ".chat.llm"))
 	s := buf.String()
 	assert.Contains(t, s, "model =")
 	assert.NotContains(t, s, "api_key")

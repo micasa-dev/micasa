@@ -4,7 +4,6 @@
 package relay
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -48,7 +47,7 @@ func openTestPgStore(t *testing.T) *PgStore {
 
 func TestPgStoreCreateHouseholdAndAuth(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Test Desktop",
@@ -70,7 +69,7 @@ func TestPgStoreCreateHouseholdAndAuth(t *testing.T) {
 
 func TestPgStoreInvalidTokenFails(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := store.AuthenticateDevice(ctx, "not-a-valid-token")
 	require.Error(t, err)
@@ -79,7 +78,7 @@ func TestPgStoreInvalidTokenFails(t *testing.T) {
 
 func TestPgStorePushPull(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -130,7 +129,7 @@ func TestPgStorePushPull(t *testing.T) {
 
 func TestPgStorePullHasMorePagination(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -159,7 +158,7 @@ func TestPgStorePullHasMorePagination(t *testing.T) {
 
 func TestPgStoreInviteJoinFlow(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	hhResp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -221,7 +220,7 @@ func TestPgStoreInviteJoinFlow(t *testing.T) {
 
 func TestPgStoreRevokeDevice(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -252,7 +251,7 @@ func TestPgStoreRevokeDevice(t *testing.T) {
 
 func TestPgStoreBlobOperations(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -304,7 +303,7 @@ func TestPgStoreBlobOperations(t *testing.T) {
 
 func TestPgStoreSubscriptionFlow(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -329,7 +328,7 @@ func TestPgStoreSubscriptionFlow(t *testing.T) {
 
 func TestPgStoreOpsCount(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -356,7 +355,7 @@ func TestPgStoreOpsCount(t *testing.T) {
 
 func TestPgStoreMaxActiveInvites(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",
@@ -377,7 +376,7 @@ func TestPgStoreMaxActiveInvites(t *testing.T) {
 
 func TestPgStoreWrongHouseholdInvite(t *testing.T) {
 	store := openTestPgStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp1, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
 		DeviceName: "Desktop",

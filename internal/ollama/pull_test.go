@@ -31,7 +31,7 @@ func TestPullModelSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner, err := PullModel(context.Background(), srv.URL, "qwen3")
+	scanner, err := PullModel(t.Context(), srv.URL, "qwen3")
 	require.NoError(t, err)
 
 	chunk, err := scanner.Next()
@@ -60,7 +60,7 @@ func TestPullModelSuccess(t *testing.T) {
 
 func TestPullModelServerDown(t *testing.T) {
 	t.Parallel()
-	_, err := PullModel(context.Background(), "http://127.0.0.1:1", "qwen3")
+	_, err := PullModel(t.Context(), "http://127.0.0.1:1", "qwen3")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot reach")
 	assert.Contains(t, err.Error(), "ollama serve")
@@ -74,7 +74,7 @@ func TestPullModelServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := PullModel(context.Background(), srv.URL, "nonexistent")
+	_, err := PullModel(t.Context(), srv.URL, "nonexistent")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pull failed (404)")
 	assert.Contains(t, err.Error(), "model not found")
@@ -89,7 +89,7 @@ func TestPullModelTrailingSlash(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner, err := PullModel(context.Background(), srv.URL+"/", "model")
+	scanner, err := PullModel(t.Context(), srv.URL+"/", "model")
 	require.NoError(t, err)
 
 	chunk, err := scanner.Next()
@@ -107,7 +107,7 @@ func TestPullScannerSkipsBlankLines(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner, err := PullModel(context.Background(), srv.URL, "model")
+	scanner, err := PullModel(t.Context(), srv.URL, "model")
 	require.NoError(t, err)
 
 	chunk, err := scanner.Next()
@@ -129,7 +129,7 @@ func TestPullScannerSkipsMalformedJSON(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner, err := PullModel(context.Background(), srv.URL, "model")
+	scanner, err := PullModel(t.Context(), srv.URL, "model")
 	require.NoError(t, err)
 
 	chunk, err := scanner.Next()
@@ -145,7 +145,7 @@ func TestPullChunkErrorField(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner, err := PullModel(context.Background(), srv.URL, "model")
+	scanner, err := PullModel(t.Context(), srv.URL, "model")
 	require.NoError(t, err)
 
 	chunk, err := scanner.Next()
@@ -157,7 +157,7 @@ func TestPullChunkErrorField(t *testing.T) {
 
 func TestPullModelCancelledContext(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	_, err := PullModel(ctx, "http://localhost:11434", "model")

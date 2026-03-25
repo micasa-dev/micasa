@@ -19,7 +19,7 @@ import (
 func TestExtractWithProgress_EmptyData(t *testing.T) {
 	t.Parallel()
 	ch := ExtractWithProgress(
-		context.Background(),
+		t.Context(),
 		nil,
 		"application/pdf",
 		DefaultExtractors(20, 0, true),
@@ -38,7 +38,7 @@ func TestExtractWithProgress_EmptyData(t *testing.T) {
 func TestExtractWithProgress_EmptyImage(t *testing.T) {
 	t.Parallel()
 	ch := ExtractWithProgress(
-		context.Background(),
+		t.Context(),
 		nil,
 		"image/png",
 		DefaultExtractors(20, 0, true),
@@ -54,7 +54,7 @@ func TestExtractWithProgress_EmptyImage(t *testing.T) {
 // is the path hit when the user quits the app mid-extraction.
 func TestExtractWithProgress_ContextCancelled(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // cancel immediately
 
 	ch := ExtractWithProgress(
@@ -89,7 +89,7 @@ func TestExtractWithProgress_Image_Integration(t *testing.T) {
 	}
 
 	ch := ExtractWithProgress(
-		context.Background(),
+		t.Context(),
 		data,
 		"image/png",
 		DefaultExtractors(20, 0, true),
@@ -129,7 +129,7 @@ func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 	}
 
 	ch := ExtractWithProgress(
-		context.Background(),
+		t.Context(),
 		data,
 		"application/pdf",
 		DefaultExtractors(5, 0, true),

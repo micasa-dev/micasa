@@ -4,7 +4,6 @@
 package sync_test
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http/httptest"
@@ -27,7 +26,7 @@ func setupTestRelay(t *testing.T) (*httptest.Server, *relay.MemStore, string) {
 	t.Cleanup(srv.Close)
 
 	// Create a household + device.
-	resp, err := store.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+	resp, err := store.CreateHousehold(t.Context(), sync.CreateHouseholdRequest{
 		DeviceName: "test-device",
 		PublicKey:  []byte("test-key-32-bytes-of-padding!!!!"),
 	})
@@ -54,21 +53,21 @@ func TestClientPushAndPull(t *testing.T) {
 		DeviceID:  "dev-a",
 		CreatedAt: time.Now(),
 	}}
-	pushResp, err := clientA.Push(context.Background(), ops)
+	pushResp, err := clientA.Push(t.Context(), ops)
 	require.NoError(t, err)
 	require.Len(t, pushResp.Confirmed, 1)
 	assert.Equal(t, int64(1), pushResp.Confirmed[0].Seq)
 
 	// Register device B and pull.
-	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(t.Context(), tokenA)
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})
 	require.NoError(t, err)
 
 	clientB := sync.NewClient(srv.URL, regResp.DeviceToken, key)
-	pullResult, err := clientB.Pull(context.Background(), 0, 100)
+	pullResult, err := clientB.Pull(t.Context(), 0, 100)
 	require.NoError(t, err)
 	require.Len(t, pullResult.Ops, 1)
 
@@ -97,19 +96,19 @@ func TestClientEncryptionRoundTrip(t *testing.T) {
 		CreatedAt: time.Now(),
 	}}
 
-	_, err = clientA.Push(context.Background(), ops)
+	_, err = clientA.Push(t.Context(), ops)
 	require.NoError(t, err)
 
 	// Device B pulls and decrypts.
-	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(t.Context(), tokenA)
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})
 	require.NoError(t, err)
 
 	clientB := sync.NewClient(srv.URL, regResp.DeviceToken, key)
-	pullResult, err := clientB.Pull(context.Background(), 0, 100)
+	pullResult, err := clientB.Pull(t.Context(), 0, 100)
 	require.NoError(t, err)
 	require.Len(t, pullResult.Ops, 1)
 
@@ -136,11 +135,11 @@ func TestClientWrongKeyCannotDecrypt(t *testing.T) {
 		DeviceID:  "dev-a",
 		CreatedAt: time.Now(),
 	}}
-	_, err = clientA.Push(context.Background(), ops)
+	_, err = clientA.Push(t.Context(), ops)
 	require.NoError(t, err)
 
-	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(t.Context(), tokenA)
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})
@@ -148,7 +147,7 @@ func TestClientWrongKeyCannotDecrypt(t *testing.T) {
 
 	// Device B uses wrong key.
 	clientB := sync.NewClient(srv.URL, regResp.DeviceToken, keyB)
-	_, err = clientB.Pull(context.Background(), 0, 100)
+	_, err = clientB.Pull(t.Context(), 0, 100)
 	assert.Error(t, err, "decryption with wrong key should fail")
 }
 
@@ -171,20 +170,20 @@ func TestClientHandlesTrailingSlashInBaseURL(t *testing.T) {
 		DeviceID:  "dev-a",
 		CreatedAt: time.Now(),
 	}}
-	pushResp, err := clientA.Push(context.Background(), ops)
+	pushResp, err := clientA.Push(t.Context(), ops)
 	require.NoError(t, err)
 	require.Len(t, pushResp.Confirmed, 1)
 
 	// Pull should also work.
-	devAResp, _ := store.AuthenticateDevice(context.Background(), tokenA)
-	regResp, err := store.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	devAResp, _ := store.AuthenticateDevice(t.Context(), tokenA)
+	regResp, err := store.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: devAResp.HouseholdID,
 		Name:        "device-b",
 	})
 	require.NoError(t, err)
 
 	clientB := sync.NewClient(srv.URL+"/", regResp.DeviceToken, key)
-	pullResult, err := clientB.Pull(context.Background(), 0, 100)
+	pullResult, err := clientB.Pull(t.Context(), 0, 100)
 	require.NoError(t, err)
 	require.Len(t, pullResult.Ops, 1)
 }

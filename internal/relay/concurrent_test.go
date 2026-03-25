@@ -5,7 +5,6 @@ package relay
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -99,7 +98,7 @@ func TestConcurrentPutBlobRespectsQuota(t *testing.T) {
 
 	// Activate subscription so the blob endpoint accepts requests.
 	require.NoError(t, store.UpdateSubscription(
-		context.Background(), hh.HouseholdID, "sub_concurrent_test", "active",
+		t.Context(), hh.HouseholdID, "sub_concurrent_test", "active",
 	))
 
 	// Build goroutines distinct blobs and their real SHA-256 hashes.
@@ -126,7 +125,7 @@ func TestConcurrentPutBlobRespectsQuota(t *testing.T) {
 			defer wg.Done()
 			url := "/blobs/" + hh.HouseholdID + "/" + blobs[idx].hash
 			req := httptest.NewRequestWithContext(
-				context.Background(),
+				t.Context(),
 				"PUT",
 				url,
 				bytes.NewReader(blobs[idx].data),
@@ -165,7 +164,7 @@ func TestConcurrentPutBlobRespectsQuota(t *testing.T) {
 	)
 
 	// Verify stored bytes never exceeded quota.
-	used, err := store.BlobUsage(context.Background(), hh.HouseholdID)
+	used, err := store.BlobUsage(t.Context(), hh.HouseholdID)
 	require.NoError(t, err)
 	assert.LessOrEqual(t, used, quota, "stored bytes must not exceed quota")
 }

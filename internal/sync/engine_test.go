@@ -37,7 +37,7 @@ func setupEngineRelay(
 	key, err := crypto.GenerateHouseholdKey()
 	require.NoError(t, err)
 
-	resp, err := ms.CreateHousehold(context.Background(), sync.CreateHouseholdRequest{
+	resp, err := ms.CreateHousehold(t.Context(), sync.CreateHouseholdRequest{
 		DeviceName: "test-device",
 		PublicKey:  make([]byte, 32),
 	})
@@ -86,7 +86,7 @@ func seedRelayOps(
 	t.Helper()
 
 	// Register a second device to act as the remote sender.
-	regResp, err := ms.RegisterDevice(context.Background(), sync.RegisterDeviceRequest{
+	regResp, err := ms.RegisterDevice(t.Context(), sync.RegisterDeviceRequest{
 		HouseholdID: householdID,
 		Name:        "remote-device",
 		PublicKey:   make([]byte, 32),
@@ -114,7 +114,7 @@ func seedRelayOps(
 		}
 	}
 
-	pushResp, err := remoteClient.Push(context.Background(), ops)
+	pushResp, err := remoteClient.Push(t.Context(), ops)
 	require.NoError(t, err)
 	return len(pushResp.Confirmed)
 }
@@ -141,7 +141,7 @@ func TestEngineSyncPullsThenPushes(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	// Should have pulled the 3 remote ops.
@@ -167,7 +167,7 @@ func TestEngineSyncCancelledContext(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // cancel immediately
 
 	_, err := engine.Sync(ctx)
@@ -189,12 +189,12 @@ func TestEngineSyncReadsLastSeqFromStore(t *testing.T) {
 	engine := sync.NewEngine(store, client, householdID)
 
 	// First sync: should pull all 5.
-	result1, err := engine.Sync(context.Background())
+	result1, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 5, result1.Pulled)
 
 	// Second sync: last_seq was updated, so nothing new to pull.
-	result2, err := engine.Sync(context.Background())
+	result2, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 0, result2.Pulled, "second sync should pull nothing (already seen)")
 }
@@ -210,7 +210,7 @@ func TestEngineSyncEmptyIsNoop(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Zero(t, result.Pulled)
@@ -247,7 +247,7 @@ func TestEngineSyncUploadsBlobForDocument(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, result.Pushed, "document insert op should be pushed")
@@ -255,7 +255,7 @@ func TestEngineSyncUploadsBlobForDocument(t *testing.T) {
 	assert.Zero(t, result.BlobErrs)
 
 	// Verify the blob is actually on the relay.
-	exists, err := client.HasBlob(context.Background(), householdID, checksum)
+	exists, err := client.HasBlob(t.Context(), householdID, checksum)
 	require.NoError(t, err)
 	assert.True(t, exists, "blob should exist on relay after upload")
 }
@@ -274,7 +274,7 @@ func TestEngineSyncSkipsBlobUploadWhenAlreadyOnRelay(t *testing.T) {
 
 	// Pre-upload the blob so the relay already has it.
 	client := sync.NewClient(srv.URL, token, key)
-	require.NoError(t, client.UploadBlob(context.Background(), householdID, checksum, blobData))
+	require.NoError(t, client.UploadBlob(t.Context(), householdID, checksum, blobData))
 
 	// Create the document locally.
 	docID := uid.New()
@@ -290,7 +290,7 @@ func TestEngineSyncSkipsBlobUploadWhenAlreadyOnRelay(t *testing.T) {
 
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, result.Pushed, "op should be pushed")
@@ -339,7 +339,7 @@ func TestEngineSyncSkipsBlobUploadForDocumentWithoutData(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	// The op was pushed but blob upload should be skipped (nil Data).
@@ -368,7 +368,7 @@ func TestEngineSyncSkipsBlobUploadForNonDocumentOps(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, result.Pushed)
@@ -389,7 +389,7 @@ func TestEngineSyncDownloadsPendingBlobs(t *testing.T) {
 	// Upload a blob to the relay directly.
 	blobData := []byte("remote blob content to fetch")
 	checksum := fmt.Sprintf("%x", sha256.Sum256(blobData))
-	require.NoError(t, client.UploadBlob(context.Background(), householdID, checksum, blobData))
+	require.NoError(t, client.UploadBlob(t.Context(), householdID, checksum, blobData))
 
 	// Create a local document with a checksum but no data, simulating a
 	// document record that arrived via sync without the blob payload.
@@ -406,7 +406,7 @@ func TestEngineSyncDownloadsPendingBlobs(t *testing.T) {
 
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, result.BlobsDown, "should have downloaded 1 blob")
@@ -435,7 +435,7 @@ func TestEngineSyncDownloadsMultiplePendingBlobs(t *testing.T) {
 	for i := range n {
 		content := []byte(fmt.Sprintf("blob content number %d", i))
 		checksum := fmt.Sprintf("%x", sha256.Sum256(content))
-		require.NoError(t, client.UploadBlob(context.Background(), householdID, checksum, content))
+		require.NoError(t, client.UploadBlob(t.Context(), householdID, checksum, content))
 
 		docID := uid.New()
 		require.NoError(t, store.GormDB().Create(&data.Document{
@@ -454,7 +454,7 @@ func TestEngineSyncDownloadsMultiplePendingBlobs(t *testing.T) {
 
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, n, result.BlobsDown, "should download all pending blobs")
@@ -489,7 +489,7 @@ func TestEngineSyncNoPendingBlobsIsNoop(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Zero(t, result.BlobsDown, "no pending blobs to download")
@@ -527,7 +527,7 @@ func TestEngineSyncBlobUploadAndDownloadSameCycle(t *testing.T) {
 	downloadChecksum := fmt.Sprintf("%x", sha256.Sum256(downloadData))
 	require.NoError(
 		t,
-		client.UploadBlob(context.Background(), householdID, downloadChecksum, downloadData),
+		client.UploadBlob(t.Context(), householdID, downloadChecksum, downloadData),
 	)
 	downloadDocID := uid.New()
 	require.NoError(t, store.GormDB().Create(&data.Document{
@@ -542,7 +542,7 @@ func TestEngineSyncBlobUploadAndDownloadSameCycle(t *testing.T) {
 
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, result.BlobsUp, "should upload 1 blob")
@@ -550,7 +550,7 @@ func TestEngineSyncBlobUploadAndDownloadSameCycle(t *testing.T) {
 	assert.Zero(t, result.BlobErrs)
 
 	// Verify the uploaded blob is on the relay.
-	exists, err := client.HasBlob(context.Background(), householdID, uploadChecksum)
+	exists, err := client.HasBlob(t.Context(), householdID, uploadChecksum)
 	require.NoError(t, err)
 	assert.True(t, exists)
 
@@ -582,7 +582,7 @@ func TestEngineSyncBlobDownloadCountsErrorForMissingRemoteBlob(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Zero(t, result.BlobsDown, "download should not succeed")
@@ -607,7 +607,7 @@ func TestEngineSyncBlobUploadSkipsDocWithoutBlobRef(t *testing.T) {
 	client := sync.NewClient(srv.URL, token, key)
 	engine := sync.NewEngine(store, client, householdID)
 
-	result, err := engine.Sync(context.Background())
+	result, err := engine.Sync(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, result.Pushed, "document insert op should be pushed")

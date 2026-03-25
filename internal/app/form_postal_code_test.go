@@ -4,7 +4,6 @@
 package app
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -311,7 +310,7 @@ func TestPostalCodeAutofillDoesNotOverwriteExistingValues(t *testing.T) {
 	values.State = "XX"
 
 	cmd := lookupPostalCodeCmd(
-		context.Background(),
+		t.Context(),
 		m.addressClient,
 		m.addressBaseURL,
 		m.addressCountry,

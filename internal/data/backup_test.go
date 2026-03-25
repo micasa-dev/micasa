@@ -4,7 +4,6 @@
 package data
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +18,7 @@ func TestBackupCreatesValidCopy(t *testing.T) {
 	store := newTestStoreWithDemoData(t, testSeed)
 
 	destPath := filepath.Join(t.TempDir(), "backup.db")
-	require.NoError(t, store.Backup(context.Background(), destPath))
+	require.NoError(t, store.Backup(t.Context(), destPath))
 
 	// Open the backup and verify row counts match the source.
 	backup, err := Open(destPath)
@@ -64,7 +63,7 @@ func TestBackupDestAlreadyExists(t *testing.T) {
 	destPath := filepath.Join(t.TempDir(), "existing.db")
 	require.NoError(t, os.WriteFile(destPath, []byte("placeholder"), 0o600))
 
-	err := store.Backup(context.Background(), destPath)
+	err := store.Backup(t.Context(), destPath)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "backup")
 }
@@ -80,7 +79,7 @@ func TestBackupMemoryDB(t *testing.T) {
 	require.NoError(t, store.SeedDemoDataFrom(fake.New(testSeed)))
 
 	destPath := filepath.Join(t.TempDir(), "mem-backup.db")
-	require.NoError(t, store.Backup(context.Background(), destPath))
+	require.NoError(t, store.Backup(t.Context(), destPath))
 
 	// Verify the backup is a valid database with the expected tables.
 	backup, err := Open(destPath)

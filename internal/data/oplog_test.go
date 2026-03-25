@@ -4,7 +4,6 @@
 package data
 
 import (
-	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -295,7 +294,7 @@ func TestOplogFailsWithoutDeviceIDCell(t *testing.T) {
 
 	// Create a raw GORM session without the device ID cell in context.
 	// This simulates code that bypasses Store and uses gorm.DB directly.
-	rawDB := store.db.WithContext(context.Background())
+	rawDB := store.db.WithContext(t.Context())
 	v := &Vendor{Name: "No Cell Vendor"}
 	err := rawDB.Create(v).Error
 	require.Error(t, err)
@@ -308,7 +307,7 @@ func TestOplogSyncApplyingSuppressesWrites(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	ctx := WithSyncApplying(context.Background())
+	ctx := WithSyncApplying(t.Context())
 	v := &Vendor{Name: "Remote Vendor"}
 	require.NoError(t, store.db.WithContext(ctx).Create(v).Error)
 
@@ -326,7 +325,7 @@ func TestOplogSyncApplyingSuppressesSoftDelete(t *testing.T) {
 
 	before := oplogCount(t, store, TableVendors, v.ID)
 
-	ctx := WithSyncApplying(context.Background())
+	ctx := WithSyncApplying(t.Context())
 	db := store.db.WithContext(ctx)
 	require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
 		return softDeleteWith(tx, &Vendor{}, DeletionEntityVendor, v.ID)
@@ -345,7 +344,7 @@ func TestOplogSyncApplyingSuppressesUpdate(t *testing.T) {
 
 	before := oplogCount(t, store, TableVendors, v.ID)
 
-	ctx := WithSyncApplying(context.Background())
+	ctx := WithSyncApplying(t.Context())
 	require.NoError(
 		t,
 		updateByIDWith(store.db.WithContext(ctx), TableVendors, &Vendor{}, v.ID, map[string]any{

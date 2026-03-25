@@ -29,7 +29,7 @@ func TestLookupValidPostalCode(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	result, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", "90210")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Equal(t, "Beverly Hills", result.City)
@@ -43,7 +43,7 @@ func TestLookupUnknownPostalCode(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "00000")
+	result, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", "00000")
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
@@ -56,7 +56,7 @@ func TestLookupTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
 	result, err := Lookup(ctx, srv.Client(), srv.URL, "us", "90210")
@@ -72,7 +72,7 @@ func TestLookupMalformedJSON(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	result, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", "90210")
 	require.Error(t, err)
 	assert.Nil(t, result)
 }
@@ -93,7 +93,7 @@ func TestLookupMultiplePlacesUsesFirst(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "02134")
+	result, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", "02134")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Equal(t, "Allston", result.City)
@@ -107,7 +107,7 @@ func TestLookupUnexpectedStatusCode(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	result, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", "90210")
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "unexpected status 500")
@@ -116,7 +116,7 @@ func TestLookupUnexpectedStatusCode(t *testing.T) {
 func TestLookupRejectsInvalidPostalCodeCharacters(t *testing.T) {
 	t.Parallel()
 	for _, code := range []string{"../us", "90210?q=1", "90210#frag", "hello\nworld"} {
-		result, err := Lookup(context.Background(), &http.Client{}, "http://unused", "us", code)
+		result, err := Lookup(t.Context(), &http.Client{}, "http://unused", "us", code)
 		require.Error(t, err, "expected error for postal code %q", code)
 		assert.Contains(t, err.Error(), "invalid postal code character")
 		assert.Nil(t, result)
@@ -136,7 +136,7 @@ func TestLookupAcceptsValidPostalCodeFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, code := range []string{"90210", "SW1A 1AA", "H0H-0H0", "1010"} {
-		result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", code)
+		result, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", code)
 		require.NoError(t, err, "unexpected error for postal code %q", code)
 		require.NotNil(t, result, "unexpected nil result for postal code %q", code)
 	}
@@ -153,7 +153,7 @@ func TestLookupSetsUserAgent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "90210")
+	_, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", "90210")
 	require.NoError(t, err)
 	assert.True(t, called.Load(), "handler was never invoked")
 }
@@ -166,7 +166,7 @@ func TestLookupEmptyPlaces(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := Lookup(context.Background(), srv.Client(), srv.URL, "us", "99999")
+	result, err := Lookup(t.Context(), srv.Client(), srv.URL, "us", "99999")
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
