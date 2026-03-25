@@ -315,6 +315,18 @@ func (s *Store) IsMicasaDB() (bool, error) {
 	return count == 3, nil
 }
 
+func (s *Store) SetQueryOnly() error {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return fmt.Errorf("get sql.DB for query_only: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	if err := s.db.Exec("PRAGMA query_only = ON").Error; err != nil {
+		return fmt.Errorf("set query_only pragma: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) AutoMigrate() error {
 	if err := migrateIntToStringIDs(s.db); err != nil {
 		return fmt.Errorf("pre-migrate int-to-string IDs: %w", err)

@@ -36,7 +36,7 @@
           inherit version;
           src = ./.;
           subPackages = [ "cmd/micasa" ];
-          vendorHash = "sha256-iuJXYQsoYPBS5duDGEMKpAbpgdXRYFJqGvyLwf0FsWg=";
+          vendorHash = "sha256-Lqp6u9FdKDDFATGd2a7sKjT6lJ4rUpDzGaoiG0f18Rc=";
           env.CGO_ENABLED = 0;
           preCheck = ''
             export HOME="$(mktemp -d)"
