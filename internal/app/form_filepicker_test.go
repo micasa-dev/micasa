@@ -208,6 +208,54 @@ func TestFilePickerTitleShowsCurrentDir(t *testing.T) {
 		"title should update to show the parent directory")
 }
 
+// TestSyncPickerDescriptionHidden verifies that syncPickerDescription sets the
+// description to a struck-through "hidden" label when ShowHidden is false.
+func TestSyncPickerDescriptionHidden(t *testing.T) {
+	fp := huh.NewFilePicker().ShowHidden(false)
+	syncPickerDescription(fp)
+	desc := filePickerDescription(fp)
+	assert.Contains(t, desc, "\x1b[9m",
+		"description should use strikethrough for hidden label when ShowHidden is false")
+}
+
+// TestSyncPickerDescriptionShowing verifies that syncPickerDescription sets the
+// description without strikethrough when ShowHidden is true.
+func TestSyncPickerDescriptionShowing(t *testing.T) {
+	fp := huh.NewFilePicker().ShowHidden(true)
+	syncPickerDescription(fp)
+	desc := filePickerDescription(fp)
+	assert.NotContains(t, desc, "\x1b[9m",
+		"description should not use strikethrough for hidden label when ShowHidden is true")
+}
+
+// TestSyncPickerTitleShowsDir verifies that syncPickerTitle sets the title to
+// include the base label and a dimmed directory suffix.
+func TestSyncPickerTitleShowsDir(t *testing.T) {
+	dir := t.TempDir()
+	const baseLabel = "Attach file"
+	fp := huh.NewFilePicker().Key(baseLabel).CurrentDirectory(dir)
+	syncPickerTitle(fp)
+	title := filePickerTitle(fp)
+	assert.Contains(t, title, baseLabel,
+		"title should contain the base label")
+	assert.Contains(t, title, shortenHome(dir),
+		"title should contain the directory path")
+}
+
+// TestSyncPickerTitleNoOpWhenKeyEmpty verifies that syncPickerTitle is a no-op
+// when the picker has no Key set (base label is empty).
+func TestSyncPickerTitleNoOpWhenKeyEmpty(t *testing.T) {
+	dir := t.TempDir()
+	// No Key set -- base label is empty.
+	fp := huh.NewFilePicker().CurrentDirectory(dir)
+	// Set an initial title so we can detect if it was changed.
+	fp.Title("initial")
+	syncPickerTitle(fp)
+	title := filePickerTitle(fp)
+	assert.Equal(t, "initial", title,
+		"syncPickerTitle should be a no-op when Key is empty")
+}
+
 func TestQuickDocumentCtrlSSavesWithoutExtraction(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "invoice.txt"), []byte("hello"), 0o600))

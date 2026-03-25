@@ -37,6 +37,9 @@ const (
 	zoneExtTab = "ext-tab-"
 	zoneExtRow = "ext-row-"
 	zoneExtCol = "ext-col-"
+
+	// Batch document staging overlay: each staged file row.
+	zoneBatchFile = "batch-file-"
 )
 
 // handleMouseClick dispatches click events to the appropriate handler.
@@ -283,6 +286,17 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 		for i := range tree.previewGroups {
 			if m.zones.Get(fmt.Sprintf("%s%d", zoneOpsTab, i)).InBounds(msg) {
 				tree.previewTab = i
+				return m, nil
+			}
+		}
+	}
+
+	// Batch document staging overlay: click on a staged file row selects it.
+	if bd := m.batchDoc; bd != nil && bd.phase == batchPhaseStaging {
+		for i := range bd.files {
+			if m.zones.Get(fmt.Sprintf("%s%d", zoneBatchFile, i)).InBounds(msg) {
+				bd.cursor = i
+				bd.focus = batchFocusList
 				return m, nil
 			}
 		}

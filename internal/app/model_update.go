@@ -86,6 +86,8 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.handleExtractionLLMChunk(typed)
 	case extractionLLMPingMsg:
 		return m, m.handleExtractionLLMPing(typed)
+	case batchExtractionDoneMsg:
+		return m, m.handleBatchExtractionDone(typed)
 	case modelsListMsg:
 		// Feed the extraction model picker first if it's waiting.
 		if ex := m.ex.extraction; ex != nil && ex.modelPicker != nil && ex.modelPicker.Loading {

@@ -38,6 +38,7 @@ func (m *Model) buildView() string {
 		{m.opsTree != nil, m.buildOpsTreeOverlay},
 		{m.columnFinder != nil, m.buildColumnFinderOverlay},
 		{m.docSearch != nil, m.buildDocSearchOverlay},
+		{m.batchDoc != nil, m.buildBatchDocOverlay},
 		{m.ex.extraction != nil && m.ex.extraction.Visible, m.buildExtractionOverlay},
 		{m.chat != nil && m.chat.Visible, m.buildChatOverlay},
 		{m.helpViewport != nil, m.buildHelpOverlay},
@@ -278,6 +279,15 @@ func (m *Model) tabUnderline() string {
 func (m *Model) statusView() string {
 	if m.inlineInput != nil {
 		return m.withPullProgress(m.inlineInputStatusView())
+	}
+	if m.confirm == confirmBatchDiscard {
+		prompt := m.styles.FormDirty().Render("Discard staged files?")
+		hints := joinWithSeparator(
+			m.helpSeparator(),
+			m.helpItem(keyY, "discard"),
+			m.helpItem(keyN, "keep"),
+		)
+		return m.withPullProgress(prompt + "  " + hints)
 	}
 	if m.confirm == confirmHardDelete {
 		entity := "incident"
