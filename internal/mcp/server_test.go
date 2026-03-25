@@ -79,3 +79,31 @@ func TestQueryToolInvalidSQL(t *testing.T) {
 	})
 	assert.True(t, result.IsError)
 }
+
+func TestGetSchemaTool(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	result := callTool(t, srv, "get_schema", map[string]any{})
+	require.False(t, result.IsError)
+
+	raw, err := json.Marshal(result.Content)
+	require.NoError(t, err)
+	output := string(raw)
+	assert.Contains(t, output, "vendors")
+	assert.Contains(t, output, "projects")
+}
+
+func TestGetSchemaToolFiltered(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	result := callTool(t, srv, "get_schema", map[string]any{
+		"tables": []any{"vendors"},
+	})
+	require.False(t, result.IsError)
+
+	raw, err := json.Marshal(result.Content)
+	require.NoError(t, err)
+	output := string(raw)
+	assert.Contains(t, output, "vendors")
+	assert.NotContains(t, output, "projects")
+}

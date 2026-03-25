@@ -27,6 +27,20 @@ func (s *Server) registerTools() {
 		),
 		s.handleQuery,
 	)
+
+	s.mcpSrv.AddTool(
+		mcpgo.NewTool("get_schema",
+			mcpgo.WithDescription(
+				"Get database schema: table names, column definitions, and DDL. "+
+					"Use this to understand the database structure before writing SQL "+
+					"queries with the query tool.",
+			),
+			mcpgo.WithArray("tables",
+				mcpgo.Description("Filter to specific table names. Returns all tables if empty."),
+			),
+		),
+		s.handleGetSchema,
+	)
 }
 
 type queryResult struct {
@@ -51,6 +65,69 @@ func (s *Server) handleQuery(
 	b, err := json.Marshal(queryResult{Columns: cols, Rows: rows})
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("marshal result: %v", err)), nil
+	}
+	return mcpgo.NewToolResultText(string(b)), nil
+}
+
+type schemaColumn struct {
+	Name      string  `json:"name"`
+	Type      string  `json:"type"`
+	NotNull   bool    `json:"not_null"`
+	DfltValue *string `json:"default_value,omitempty"`
+	PK        bool    `json:"primary_key"`
+}
+
+type tableSchema struct {
+	Name    string         `json:"name"`
+	DDL     string         `json:"ddl"`
+	Columns []schemaColumn `json:"columns"`
+}
+
+func (s *Server) handleGetSchema(
+	_ context.Context,
+	req mcpgo.CallToolRequest,
+) (*mcpgo.CallToolResult, error) {
+	tables := req.GetStringSlice("tables", nil)
+
+	if len(tables) == 0 {
+		var err error
+		tables, err = s.store.TableNames()
+		if err != nil {
+			return mcpgo.NewToolResultError(fmt.Sprintf("list tables: %v", err)), nil
+		}
+	}
+
+	ddlMap, err := s.store.TableDDL(tables...)
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("get DDL: %v", err)), nil
+	}
+
+	result := make([]tableSchema, 0, len(tables))
+	for _, name := range tables {
+		cols, err := s.store.TableColumns(name)
+		if err != nil {
+			return mcpgo.NewToolResultError(fmt.Sprintf("columns for %s: %v", name, err)), nil
+		}
+		sc := make([]schemaColumn, 0, len(cols))
+		for _, c := range cols {
+			sc = append(sc, schemaColumn{
+				Name:      c.Name,
+				Type:      c.Type,
+				NotNull:   c.NotNull,
+				DfltValue: c.DfltValue,
+				PK:        c.PK > 0,
+			})
+		}
+		result = append(result, tableSchema{
+			Name:    name,
+			DDL:     ddlMap[name],
+			Columns: sc,
+		})
+	}
+
+	b, err := json.Marshal(result)
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("marshal schema: %v", err)), nil
 	}
 	return mcpgo.NewToolResultText(string(b)), nil
 }
