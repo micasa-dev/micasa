@@ -122,27 +122,31 @@ type tableSchema struct {
 	Columns []schemaColumn `json:"columns"`
 }
 
+type schemaResult struct {
+	Tables []tableSchema `json:"tables"`
+}
+
 func (s *Server) handleGetSchema(
 	_ context.Context,
 	req mcpgo.CallToolRequest,
 ) (*mcpgo.CallToolResult, error) {
-	tables := req.GetStringSlice("tables", nil)
+	tableNames := req.GetStringSlice("tables", nil)
 
-	if len(tables) == 0 {
+	if len(tableNames) == 0 {
 		var err error
-		tables, err = s.store.TableNames()
+		tableNames, err = s.store.TableNames()
 		if err != nil {
 			return mcpgo.NewToolResultError(fmt.Sprintf("list tables: %v", err)), nil
 		}
 	}
 
-	ddlMap, err := s.store.TableDDL(tables...)
+	ddlMap, err := s.store.TableDDL(tableNames...)
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("get DDL: %v", err)), nil
 	}
 
-	result := make([]tableSchema, 0, len(tables))
-	for _, name := range tables {
+	tables := make([]tableSchema, 0, len(tableNames))
+	for _, name := range tableNames {
 		cols, err := s.store.TableColumns(name)
 		if err != nil {
 			return mcpgo.NewToolResultError(fmt.Sprintf("columns for %s: %v", name, err)), nil
@@ -157,14 +161,14 @@ func (s *Server) handleGetSchema(
 				PK:        c.PK > 0,
 			})
 		}
-		result = append(result, tableSchema{
+		tables = append(tables, tableSchema{
 			Name:    name,
 			DDL:     ddlMap[name],
 			Columns: sc,
 		})
 	}
 
-	b, err := json.Marshal(result)
+	b, err := json.Marshal(schemaResult{Tables: tables})
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("marshal schema: %v", err)), nil
 	}
@@ -239,13 +243,13 @@ func (s *Server) handleGetMaintenanceSchedule(
 	now := time.Now()
 	out := make([]maintenanceScheduleItem, 0, len(items))
 	for _, item := range items {
-		overdue := false
-		if item.DueDate != nil {
-			overdue = item.DueDate.Before(now)
-		} else if item.LastServicedAt != nil && item.IntervalMonths > 0 {
-			due := item.LastServicedAt.AddDate(0, item.IntervalMonths, 0)
-			overdue = due.Before(now)
+		due := item.DueDate
+		if due == nil && item.LastServicedAt != nil && item.IntervalMonths > 0 {
+			d := item.LastServicedAt.AddDate(0, item.IntervalMonths, 0)
+			due = &d
 		}
+
+		overdue := due != nil && due.Before(now)
 
 		var applianceName string
 		if item.ApplianceID != nil {
@@ -259,7 +263,7 @@ func (s *Server) handleGetMaintenanceSchedule(
 			Season:         item.Season,
 			LastServicedAt: item.LastServicedAt,
 			IntervalMonths: item.IntervalMonths,
-			DueDate:        item.DueDate,
+			DueDate:        due,
 			Overdue:        overdue,
 			ApplianceName:  applianceName,
 		})
