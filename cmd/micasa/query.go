@@ -59,14 +59,17 @@ func runQuery(w io.Writer, store *data.Store, sql string, asJSON bool) error {
 func writeQueryText(w io.Writer, columns []string, rows [][]string) error {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	if _, err := fmt.Fprintln(tw, strings.Join(columns, "\t")); err != nil {
-		return err
+		return fmt.Errorf("write header: %w", err)
 	}
 	for _, row := range rows {
 		if _, err := fmt.Fprintln(tw, strings.Join(row, "\t")); err != nil {
-			return err
+			return fmt.Errorf("write row: %w", err)
 		}
 	}
-	return tw.Flush()
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("flush output: %w", err)
+	}
+	return nil
 }
 
 func writeQueryJSON(w io.Writer, columns []string, rows [][]string) error {
@@ -80,5 +83,8 @@ func writeQueryJSON(w io.Writer, columns []string, rows [][]string) error {
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(out)
+	if err := enc.Encode(out); err != nil {
+		return fmt.Errorf("encode JSON: %w", err)
+	}
+	return nil
 }

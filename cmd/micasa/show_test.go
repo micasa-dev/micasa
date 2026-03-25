@@ -381,7 +381,7 @@ func TestShowQuotesJSON(t *testing.T) {
 	require.Len(t, result, 1)
 	assert.Equal(t, "Fence Install", result[0]["project"])
 	assert.Equal(t, "FencePro", result[0]["vendor"])
-	assert.Equal(t, float64(320000), result[0]["total_cents"])
+	assert.InDelta(t, float64(320000), result[0]["total_cents"], 0.1)
 	assert.NotEmpty(t, result[0]["id"])
 }
 
@@ -440,7 +440,7 @@ func TestShowMaintenanceJSON(t *testing.T) {
 	assert.Equal(t, "Clean gutters", result[0]["name"])
 	assert.Equal(t, cats[0].Name, result[0]["category"])
 	assert.Equal(t, "fall", result[0]["season"])
-	assert.Equal(t, float64(12), result[0]["interval_months"])
+	assert.InDelta(t, float64(12), result[0]["interval_months"], 0.1)
 	assert.NotEmpty(t, result[0]["id"])
 }
 
@@ -569,7 +569,7 @@ func TestShowDocumentsJSON(t *testing.T) {
 	assert.Equal(t, "appliance", result[0]["entity_kind"])
 	assert.Equal(t, "app-001", result[0]["entity_id"])
 	assert.Equal(t, "image/png", result[0]["mime_type"])
-	assert.Equal(t, float64(51200), result[0]["size_bytes"])
+	assert.InDelta(t, float64(51200), result[0]["size_bytes"], 0.1)
 	assert.NotEmpty(t, result[0]["id"])
 }
 
@@ -757,7 +757,8 @@ func TestShowAllJSON(t *testing.T) {
 	vendors, ok := result["vendors"].([]any)
 	require.True(t, ok)
 	require.Len(t, vendors, 1)
-	vendor := vendors[0].(map[string]any)
+	vendor, ok2 := vendors[0].(map[string]any)
+	require.True(t, ok2)
 	assert.Equal(t, "Test Vendor", vendor["name"])
 }
 
