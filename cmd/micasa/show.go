@@ -45,6 +45,87 @@ func fmtFloat(f float64) string {
 	return fmt.Sprintf("%.1f", f)
 }
 
+// showCol defines a column for tabular text output of an entity.
+type showCol[T any] struct {
+	header string
+	value  func(T) string
+}
+
+// showEntity renders a slice of entities as either a text table or JSON array.
+func showEntity[T any](
+	w io.Writer,
+	header string,
+	items []T,
+	cols []showCol[T],
+	toMap func(T) map[string]any,
+	asJSON bool,
+) error {
+	if asJSON {
+		return writeJSON(w, items, toMap)
+	}
+	return writeTable(w, header, items, cols)
+}
+
+func writeTable[T any](w io.Writer, header string, items []T, cols []showCol[T]) error {
+	if len(items) == 0 {
+		return nil
+	}
+	if _, err := fmt.Fprintf(w, "=== %s ===\n", header); err != nil {
+		return fmt.Errorf("write header: %w", err)
+	}
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+
+	// header row
+	hdrs := make([]string, len(cols))
+	for i, c := range cols {
+		hdrs[i] = c.header
+	}
+	if _, err := fmt.Fprintln(tw, strings.Join(hdrs, "\t")); err != nil {
+		return fmt.Errorf("write column headers: %w", err)
+	}
+
+	for _, item := range items {
+		vals := make([]string, len(cols))
+		for i, c := range cols {
+			vals[i] = c.value(item)
+		}
+		if _, err := fmt.Fprintln(tw, strings.Join(vals, "\t")); err != nil {
+			return fmt.Errorf("write row: %w", err)
+		}
+	}
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("flush table: %w", err)
+	}
+	return nil
+}
+
+func writeJSON[T any](w io.Writer, items []T, toMap func(T) map[string]any) error {
+	out := make([]map[string]any, len(items))
+	for i, item := range items {
+		out[i] = toMap(item)
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		return fmt.Errorf("encode JSON: %w", err)
+	}
+	return nil
+}
+
+func fmtStr(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
+}
+
+func fmtDateVal(t time.Time) string {
+	if t.IsZero() {
+		return "-"
+	}
+	return t.Format("2006-01-02")
+}
+
 // --- show command ---
 
 func newShowCmd() *cobra.Command {
@@ -64,9 +145,37 @@ appliances, incidents, documents, all.`,
 	cmd.PersistentFlags().BoolVar(&jsonFlag, "json", false, "Output as JSON")
 	cmd.PersistentFlags().BoolVar(&deletedFlag, "deleted", false, "Include soft-deleted rows")
 
-	cmd.AddCommand(newShowHouseCmd(&jsonFlag, &deletedFlag))
+	cmd.AddCommand(
+		newShowHouseCmd(&jsonFlag, &deletedFlag),
+		newShowEntityCmd("projects", "Show projects", &jsonFlag, &deletedFlag, showProjects),
+		newShowEntityCmd("vendors", "Show vendors", &jsonFlag, &deletedFlag, showVendors),
+		newShowEntityCmd("appliances", "Show appliances", &jsonFlag, &deletedFlag, showAppliances),
+		newShowEntityCmd("incidents", "Show incidents", &jsonFlag, &deletedFlag, showIncidents),
+	)
 
 	return cmd
+}
+
+func newShowEntityCmd(
+	name, short string,
+	jsonFlag, deletedFlag *bool,
+	showFn func(io.Writer, *data.Store, bool, bool) error,
+) *cobra.Command {
+	return &cobra.Command{
+		Use:           name + " [database-path]",
+		Short:         short,
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := openExisting(dbPathFromEnvOrArg(args))
+			if err != nil {
+				return err
+			}
+			defer func() { _ = store.Close() }()
+			return showFn(cmd.OutOrStdout(), store, *jsonFlag, *deletedFlag)
+		},
+	}
 }
 
 func newShowHouseCmd(jsonFlag, deletedFlag *bool) *cobra.Command {
@@ -94,10 +203,18 @@ var validEntities = []string{
 	"appliances", "incidents", "documents", "all",
 }
 
-func runShow(w io.Writer, store *data.Store, entity string, asJSON, _ bool) error {
+func runShow(w io.Writer, store *data.Store, entity string, asJSON, includeDeleted bool) error {
 	switch entity {
 	case "house":
 		return showHouse(w, store, asJSON)
+	case "projects":
+		return showProjects(w, store, asJSON, includeDeleted)
+	case "vendors":
+		return showVendors(w, store, asJSON, includeDeleted)
+	case "appliances":
+		return showAppliances(w, store, asJSON, includeDeleted)
+	case "incidents":
+		return showIncidents(w, store, asJSON, includeDeleted)
 	default:
 		return fmt.Errorf("unknown entity %q; valid entities: %s",
 			entity, strings.Join(validEntities, ", "))
@@ -202,4 +319,144 @@ func showHouseJSON(w io.Writer, h data.HouseProfile) error {
 		return fmt.Errorf("encode house JSON: %w", err)
 	}
 	return nil
+}
+
+// --- projects ---
+
+var projectCols = []showCol[data.Project]{
+	{"TITLE", func(p data.Project) string { return fmtStr(p.Title) }},
+	{"TYPE", func(p data.Project) string { return fmtStr(p.ProjectType.Name) }},
+	{"STATUS", func(p data.Project) string { return fmtStr(p.Status) }},
+	{"START", func(p data.Project) string { return fmtDate(p.StartDate) }},
+	{"END", func(p data.Project) string { return fmtDate(p.EndDate) }},
+	{"BUDGET", func(p data.Project) string { return fmtMoney(p.BudgetCents) }},
+	{"ACTUAL", func(p data.Project) string { return fmtMoney(p.ActualCents) }},
+	{"DESCRIPTION", func(p data.Project) string { return fmtStr(p.Description) }},
+}
+
+func projectToMap(p data.Project) map[string]any {
+	return map[string]any{
+		"id":           p.ID,
+		"title":        p.Title,
+		"project_type": p.ProjectType.Name,
+		"status":       p.Status,
+		"start_date":   p.StartDate,
+		"end_date":     p.EndDate,
+		"budget_cents": p.BudgetCents,
+		"actual_cents": p.ActualCents,
+		"description":  p.Description,
+	}
+}
+
+func showProjects(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListProjects(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list projects: %w", err)
+	}
+	return showEntity(w, "PROJECTS", items, projectCols, projectToMap, asJSON)
+}
+
+// --- vendors ---
+
+var vendorCols = []showCol[data.Vendor]{
+	{"NAME", func(v data.Vendor) string { return fmtStr(v.Name) }},
+	{"CONTACT", func(v data.Vendor) string { return fmtStr(v.ContactName) }},
+	{"EMAIL", func(v data.Vendor) string { return fmtStr(v.Email) }},
+	{"PHONE", func(v data.Vendor) string { return fmtStr(v.Phone) }},
+	{"WEBSITE", func(v data.Vendor) string { return fmtStr(v.Website) }},
+}
+
+func vendorToMap(v data.Vendor) map[string]any {
+	return map[string]any{
+		"id":           v.ID,
+		"name":         v.Name,
+		"contact_name": v.ContactName,
+		"email":        v.Email,
+		"phone":        v.Phone,
+		"website":      v.Website,
+		"notes":        v.Notes,
+	}
+}
+
+func showVendors(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListVendors(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list vendors: %w", err)
+	}
+	return showEntity(w, "VENDORS", items, vendorCols, vendorToMap, asJSON)
+}
+
+// --- appliances ---
+
+var applianceCols = []showCol[data.Appliance]{
+	{"NAME", func(a data.Appliance) string { return fmtStr(a.Name) }},
+	{"BRAND", func(a data.Appliance) string { return fmtStr(a.Brand) }},
+	{"MODEL", func(a data.Appliance) string { return fmtStr(a.ModelNumber) }},
+	{"SERIAL", func(a data.Appliance) string { return fmtStr(a.SerialNumber) }},
+	{"LOCATION", func(a data.Appliance) string { return fmtStr(a.Location) }},
+	{"PURCHASED", func(a data.Appliance) string { return fmtDate(a.PurchaseDate) }},
+	{"WARRANTY", func(a data.Appliance) string { return fmtDate(a.WarrantyExpiry) }},
+	{"COST", func(a data.Appliance) string { return fmtMoney(a.CostCents) }},
+}
+
+func applianceToMap(a data.Appliance) map[string]any {
+	return map[string]any{
+		"id":              a.ID,
+		"name":            a.Name,
+		"brand":           a.Brand,
+		"model_number":    a.ModelNumber,
+		"serial_number":   a.SerialNumber,
+		"location":        a.Location,
+		"purchase_date":   a.PurchaseDate,
+		"warranty_expiry": a.WarrantyExpiry,
+		"cost_cents":      a.CostCents,
+		"notes":           a.Notes,
+	}
+}
+
+func showAppliances(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListAppliances(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list appliances: %w", err)
+	}
+	return showEntity(w, "APPLIANCES", items, applianceCols, applianceToMap, asJSON)
+}
+
+// --- incidents ---
+
+var incidentCols = []showCol[data.Incident]{
+	{"TITLE", func(i data.Incident) string { return fmtStr(i.Title) }},
+	{"STATUS", func(i data.Incident) string { return fmtStr(i.Status) }},
+	{"SEVERITY", func(i data.Incident) string { return fmtStr(i.Severity) }},
+	{"NOTICED", func(i data.Incident) string { return fmtDateVal(i.DateNoticed) }},
+	{"RESOLVED", func(i data.Incident) string { return fmtDate(i.DateResolved) }},
+	{"LOCATION", func(i data.Incident) string { return fmtStr(i.Location) }},
+	{"COST", func(i data.Incident) string { return fmtMoney(i.CostCents) }},
+	{"APPLIANCE", func(i data.Incident) string { return fmtStr(i.Appliance.Name) }},
+	{"VENDOR", func(i data.Incident) string { return fmtStr(i.Vendor.Name) }},
+}
+
+func incidentToMap(i data.Incident) map[string]any {
+	return map[string]any{
+		"id":            i.ID,
+		"title":         i.Title,
+		"status":        i.Status,
+		"severity":      i.Severity,
+		"date_noticed":  i.DateNoticed,
+		"date_resolved": i.DateResolved,
+		"location":      i.Location,
+		"cost_cents":    i.CostCents,
+		"appliance":     i.Appliance.Name,
+		"vendor":        i.Vendor.Name,
+		"description":   i.Description,
+		"notes":         i.Notes,
+	}
+}
+
+func showIncidents(w io.Writer, store *data.Store, asJSON, includeDeleted bool) error {
+	items, err := store.ListIncidents(includeDeleted)
+	if err != nil {
+		return fmt.Errorf("list incidents: %w", err)
+	}
+	return showEntity(w, "INCIDENTS", items, incidentCols, incidentToMap, asJSON)
 }
