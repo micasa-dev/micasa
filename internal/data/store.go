@@ -315,6 +315,10 @@ func (s *Store) IsMicasaDB() (bool, error) {
 	return count == 3, nil
 }
 
+func (s *Store) SetQueryOnly() error {
+	return s.db.Exec("PRAGMA query_only = ON").Error
+}
+
 func (s *Store) AutoMigrate() error {
 	if err := migrateIntToStringIDs(s.db); err != nil {
 		return fmt.Errorf("pre-migrate int-to-string IDs: %w", err)
