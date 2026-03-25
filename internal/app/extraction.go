@@ -1540,7 +1540,7 @@ func (m *Model) buildExtractionPipelineOverlay(
 	if ex.modelPicker != nil {
 		filterLine := m.styles.HeaderHint().Render("model ") +
 			m.styles.Base().Render(ex.modelFilter) +
-			m.styles.BlinkCursor().Render("\u2588")
+			m.styles.BlinkCursor().Render("│")
 		list := m.renderModelCompleterFor(ex.modelPicker, ex.modelFilter, innerW)
 		pickerSection = filterLine + "\n" + list
 	}
