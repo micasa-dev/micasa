@@ -107,3 +107,37 @@ func TestGetSchemaToolFiltered(t *testing.T) {
 	assert.Contains(t, output, "vendors")
 	assert.NotContains(t, output, "projects")
 }
+
+func TestSearchDocumentsTool(t *testing.T) {
+	srv, store := newTestServer(t)
+
+	require.NoError(t, store.SetMaxDocumentSize(1<<20))
+
+	doc := &data.Document{
+		Title:         "HVAC Manual",
+		FileName:      "hvac.pdf",
+		MIMEType:      "application/pdf",
+		SizeBytes:     100,
+		Data:          []byte("dummy"),
+		ExtractedText: "furnace maintenance guide",
+	}
+	require.NoError(t, store.CreateDocument(doc))
+
+	result := callTool(t, srv, "search_documents", map[string]any{
+		"query": "furnace",
+	})
+	require.False(t, result.IsError)
+
+	raw, err := json.Marshal(result.Content)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "HVAC Manual")
+}
+
+func TestSearchDocumentsToolEmpty(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	result := callTool(t, srv, "search_documents", map[string]any{
+		"query": "nonexistent",
+	})
+	assert.False(t, result.IsError)
+}

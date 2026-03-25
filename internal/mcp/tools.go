@@ -29,6 +29,22 @@ func (s *Server) registerTools() {
 	)
 
 	s.mcpSrv.AddTool(
+		mcpgo.NewTool("search_documents",
+			mcpgo.WithDescription(
+				"Full-text search over documents stored in micasa. Searches title, "+
+					"notes, and extracted text using FTS5. Returns ranked results with "+
+					"contextual snippets. Simple queries get automatic prefix matching. "+
+					"Max 50 results.",
+			),
+			mcpgo.WithString("query",
+				mcpgo.Description("Search query text"),
+				mcpgo.Required(),
+			),
+		),
+		s.handleSearchDocuments,
+	)
+
+	s.mcpSrv.AddTool(
 		mcpgo.NewTool("get_schema",
 			mcpgo.WithDescription(
 				"Get database schema: table names, column definitions, and DDL. "+
@@ -128,6 +144,50 @@ func (s *Server) handleGetSchema(
 	b, err := json.Marshal(result)
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("marshal schema: %v", err)), nil
+	}
+	return mcpgo.NewToolResultText(string(b)), nil
+}
+
+type documentResult struct {
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	FileName   string `json:"file_name"`
+	EntityKind string `json:"entity_kind"`
+	EntityID   string `json:"entity_id"`
+	Snippet    string `json:"snippet"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
+func (s *Server) handleSearchDocuments(
+	_ context.Context,
+	req mcpgo.CallToolRequest,
+) (*mcpgo.CallToolResult, error) {
+	query, err := req.RequireString("query")
+	if err != nil {
+		return mcpgo.NewToolResultError(err.Error()), nil
+	}
+
+	results, err := s.store.SearchDocuments(query)
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("search failed: %v", err)), nil
+	}
+
+	out := make([]documentResult, 0, len(results))
+	for _, r := range results {
+		out = append(out, documentResult{
+			ID:         r.ID,
+			Title:      r.Title,
+			FileName:   r.FileName,
+			EntityKind: r.EntityKind,
+			EntityID:   r.EntityID,
+			Snippet:    r.Snippet,
+			UpdatedAt:  r.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	b, err := json.Marshal(out)
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("marshal results: %v", err)), nil
 	}
 	return mcpgo.NewToolResultText(string(b)), nil
 }
