@@ -63,13 +63,10 @@ func (s *Store) RestoreQuote(id string) error {
 	if err := s.db.Unscoped().First(&quote, "id = ?", id).Error; err != nil {
 		return err
 	}
-	if err := s.checkParentsAlive([]parentCheck{
+	return s.restoreWithParentChecks(&Quote{}, DeletionEntityQuote, id, []parentCheck{
 		{&Project{}, &quote.ProjectID, "project"},
 		{&Vendor{}, &quote.VendorID, "vendor"},
-	}); err != nil {
-		return err
-	}
-	return s.restoreEntity(&Quote{}, DeletionEntityQuote, id)
+	})
 }
 
 // ListQuotesByProject returns all quotes for a specific project.

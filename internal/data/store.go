@@ -499,6 +499,21 @@ func (s *Store) restoreEntity(model any, entity string, id string) error {
 	})
 }
 
+// restoreWithParentChecks validates that all parent FKs are alive, then
+// restores the entity. It deduplicates the check-parents → restore pattern
+// used by RestoreQuote, RestoreMaintenance, and similar simple restore methods.
+func (s *Store) restoreWithParentChecks(
+	model any,
+	entity string,
+	id string,
+	checks []parentCheck,
+) error {
+	if err := s.checkParentsAlive(checks); err != nil {
+		return err
+	}
+	return s.restoreEntity(model, entity, id)
+}
+
 func (s *Store) LastDeletion(entity string) (DeletionRecord, error) {
 	var record DeletionRecord
 	err := s.db.

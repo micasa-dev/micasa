@@ -128,10 +128,12 @@ func (s *Store) RestoreMaintenance(id string) error {
 	if err := s.db.Unscoped().First(&item, "id = ?", id).Error; err != nil {
 		return err
 	}
-	if err := s.checkParentsAlive([]parentCheck{
-		{&Appliance{}, item.ApplianceID, "appliance"},
-	}); err != nil {
-		return err
-	}
-	return s.restoreEntity(&MaintenanceItem{}, DeletionEntityMaintenance, id)
+	return s.restoreWithParentChecks(
+		&MaintenanceItem{},
+		DeletionEntityMaintenance,
+		id,
+		[]parentCheck{
+			{&Appliance{}, item.ApplianceID, "appliance"},
+		},
+	)
 }
