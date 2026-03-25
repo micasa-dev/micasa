@@ -20,7 +20,7 @@ import (
 func TestProjectHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := projectHandler{}
+	h := newProjectHandler()
 
 	// Create a project via form data.
 	m.fs.formData = &projectFormData{
@@ -60,7 +60,7 @@ func TestProjectHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 func TestProjectHandlerEditRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := projectHandler{}
+	h := newProjectHandler()
 
 	// Create.
 	m.fs.formData = &projectFormData{
@@ -200,7 +200,7 @@ func TestProjectStatusFilterToggleKeysReloadRows(t *testing.T) {
 func TestApplianceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := applianceHandler{}
+	h := newApplianceHandler()
 
 	m.fs.formData = &applianceFormData{Name: "Washer"}
 	require.NoError(t, h.SubmitForm(m))
@@ -222,7 +222,7 @@ func TestApplianceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 func TestApplianceHandlerEditRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := applianceHandler{}
+	h := newApplianceHandler()
 
 	m.fs.formData = &applianceFormData{Name: "Dryer"}
 	require.NoError(t, h.SubmitForm(m))
@@ -252,7 +252,7 @@ func TestApplianceHandlerEditRoundTrip(t *testing.T) {
 func TestMaintenanceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := maintenanceHandler{}
+	h := newMaintenanceHandler()
 	cats, _ := m.store.MaintenanceCategories()
 
 	m.fs.formData = &maintenanceFormData{
@@ -283,7 +283,7 @@ func TestMaintenanceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 func TestVendorHandlerLoadAndSubmit(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := vendorHandler{}
+	h := newVendorHandler()
 
 	m.fs.formData = &vendorFormData{
 		Name:  "Bob's Plumbing",
@@ -321,7 +321,7 @@ func TestVendorHandlerLoadAndSubmit(t *testing.T) {
 func TestQuoteHandlerRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := quoteHandler{}
+	h := newQuoteHandler()
 
 	// Need a project first.
 	types, _ := m.store.ProjectTypes()
@@ -373,7 +373,7 @@ func TestServiceLogHandlerRoundTrip(t *testing.T) {
 	items, _ := m.store.ListMaintenance(false)
 	maintID := items[0].ID
 
-	h := serviceLogHandler{maintenanceItemID: maintID}
+	h := newServiceLogHandler(maintID)
 
 	m.fs.formData = &serviceLogFormData{
 		MaintenanceItemID: maintID,
@@ -462,7 +462,7 @@ func TestServiceLogFormSyncsLastServiced(t *testing.T) {
 func TestProjectHandlerSyncFixedValues(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := projectHandler{}
+	h := newProjectHandler()
 	specs := []columnSpec{
 		{Title: "Type"},
 		{Title: "Status"},
@@ -475,7 +475,7 @@ func TestProjectHandlerSyncFixedValues(t *testing.T) {
 func TestMaintenanceHandlerSyncFixedValues(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := maintenanceHandler{}
+	h := newMaintenanceHandler()
 	specs := []columnSpec{
 		{Title: "Category"},
 		{Title: "Season"},
@@ -496,7 +496,7 @@ func TestMaintenanceHandlerSyncFixedValues(t *testing.T) {
 func TestMaintenanceHandlerCreateWithSeasonRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := maintenanceHandler{}
+	h := newMaintenanceHandler()
 	cats, _ := m.store.MaintenanceCategories()
 
 	m.fs.formData = &maintenanceFormData{
@@ -517,7 +517,7 @@ func TestMaintenanceHandlerCreateWithSeasonRoundTrip(t *testing.T) {
 func TestMaintenanceHandlerEditSeasonRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := maintenanceHandler{}
+	h := newMaintenanceHandler()
 	cats, _ := m.store.MaintenanceCategories()
 
 	m.fs.formData = &maintenanceFormData{
@@ -637,7 +637,7 @@ func TestVendorJobsInlineEditItemShowsStatusMessage(t *testing.T) {
 func TestIncidentHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := incidentHandler{}
+	h := newIncidentHandler()
 
 	m.fs.formData = &incidentFormData{
 		Title:       "Broken window",
@@ -674,7 +674,7 @@ func TestIncidentHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 func TestIncidentHandlerEditRoundTrip(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := incidentHandler{}
+	h := newIncidentHandler()
 
 	m.fs.formData = &incidentFormData{
 		Title:       "Water stain",
@@ -709,7 +709,7 @@ func TestIncidentHandlerEditRoundTrip(t *testing.T) {
 func TestIncidentHandlerSyncFixedValues(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := incidentHandler{}
+	h := newIncidentHandler()
 	specs := []columnSpec{
 		{Title: "ID"},
 		{Title: "Title"},
@@ -768,7 +768,7 @@ func TestIncidentTabShowsDeletedByDefault(t *testing.T) {
 func TestIncidentDeleteSetsResolvedStatus(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := incidentHandler{}
+	h := newIncidentHandler()
 
 	m.fs.formData = &incidentFormData{
 		Title:       "Flickering light",
@@ -799,7 +799,7 @@ func TestIncidentDeleteSetsResolvedStatus(t *testing.T) {
 func TestIncidentRestorePreservesPreviousStatus(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := incidentHandler{}
+	h := newIncidentHandler()
 
 	m.fs.formData = &incidentFormData{
 		Title:       "Active repair",
@@ -923,7 +923,7 @@ func TestIncidentHardDeleteUserFlow(t *testing.T) {
 func TestIncidentStatusResolvedViaFormSoftDeletes(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := incidentHandler{}
+	h := newIncidentHandler()
 
 	// Create an incident.
 	m.fs.formData = &incidentFormData{
@@ -971,7 +971,7 @@ func TestIncidentHardDeleteOnlyWorksOnIncidents(t *testing.T) {
 		Title:         "Paint fence",
 		ProjectTypeID: m.projectTypes[0].ID,
 	}
-	require.NoError(t, projectHandler{}.SubmitForm(m))
+	require.NoError(t, newProjectHandler().SubmitForm(m))
 
 	m.active = tabIndex(tabProjects)
 	require.NoError(t, m.reloadActiveTab())

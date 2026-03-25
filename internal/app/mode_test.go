@@ -608,7 +608,7 @@ func TestDeleteAutoShowsDeletedAndRestoreWorks(t *testing.T) {
 	m := newTestModelWithStore(t)
 
 	// Create a vendor (no FK children to block deletion).
-	h := vendorHandler{}
+	h := newVendorHandler()
 	m.fs.formData = &vendorFormData{Name: "Test Vendor", Phone: "555-0000"}
 	require.NoError(t, h.SubmitForm(m))
 
@@ -649,7 +649,7 @@ func TestDeleteRespectsExplicitHideDeleted(t *testing.T) {
 	m := newTestModelWithStore(t)
 
 	// Create a vendor.
-	h := vendorHandler{}
+	h := newVendorHandler()
 	m.fs.formData = &vendorFormData{Name: "Test Vendor", Phone: "555-0000"}
 	require.NoError(t, h.SubmitForm(m))
 

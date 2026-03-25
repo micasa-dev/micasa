@@ -148,7 +148,7 @@ func TestHandlerForFormKindFindsDetailHandler(t *testing.T) {
 
 func TestServiceLogHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := serviceLogHandler{maintenanceItemID: "01JTEST00000000000000005"}
+	h := newServiceLogHandler("01JTEST00000000000000005")
 	assert.Equal(t, formServiceLog, h.FormKind())
 }
 
@@ -902,7 +902,7 @@ func TestApplianceDocumentHandlerFormKind(t *testing.T) {
 
 func TestDocumentHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := documentHandler{}
+	h := newDocumentHandler()
 	assert.Equal(t, formDocument, h.FormKind())
 }
 

@@ -83,12 +83,53 @@ func fetchDocCounts(store *data.Store, kind string, ids []string) map[string]int
 }
 
 // ---------------------------------------------------------------------------
+// baseHandler holds the function fields common to all concrete handlers,
+// removing 6 one-liner delegation methods from each type.
+// It does NOT implement Load or SyncFixedValues -- those stay on each
+// concrete handler.
+// ---------------------------------------------------------------------------
+
+type baseHandler struct {
+	kind         FormKind
+	deleteFn     func(*data.Store, string) error
+	restoreFn    func(*data.Store, string) error
+	startAddFn   func(*Model) error
+	startEditFn  func(*Model, string) error
+	inlineEditFn func(*Model, string, int) error
+	submitFormFn func(*Model) error
+}
+
+func (b baseHandler) FormKind() FormKind                      { return b.kind }
+func (b baseHandler) Delete(s *data.Store, id string) error   { return b.deleteFn(s, id) }
+func (b baseHandler) Restore(s *data.Store, id string) error  { return b.restoreFn(s, id) }
+func (b baseHandler) StartAddForm(m *Model) error             { return b.startAddFn(m) }
+func (b baseHandler) StartEditForm(m *Model, id string) error { return b.startEditFn(m, id) }
+func (b baseHandler) InlineEdit(m *Model, id string, col int) error {
+	return b.inlineEditFn(m, id, col)
+}
+func (b baseHandler) SubmitForm(m *Model) error { return b.submitFormFn(m) }
+
+// ---------------------------------------------------------------------------
 // projectHandler
 // ---------------------------------------------------------------------------
 
-type projectHandler struct{}
+type projectHandler struct {
+	baseHandler
+}
 
-func (projectHandler) FormKind() FormKind { return formProject }
+func newProjectHandler() projectHandler {
+	return projectHandler{baseHandler{
+		kind:        formProject,
+		deleteFn:    (*data.Store).DeleteProject,
+		restoreFn:   (*data.Store).RestoreProject,
+		startAddFn:  func(m *Model) error { m.startProjectForm(); return nil },
+		startEditFn: (*Model).startEditProjectForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditProject(id, projectCol(col))
+		},
+		submitFormFn: (*Model).submitProjectForm,
+	}}
+}
 
 func (projectHandler) Load(
 	store *data.Store,
@@ -105,31 +146,6 @@ func (projectHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (projectHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteProject(id)
-}
-
-func (projectHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreProject(id)
-}
-
-func (projectHandler) StartAddForm(m *Model) error {
-	m.startProjectForm()
-	return nil
-}
-
-func (projectHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditProjectForm(id)
-}
-
-func (projectHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditProject(id, projectCol(col))
-}
-
-func (projectHandler) SubmitForm(m *Model) error {
-	return m.submitProjectForm()
-}
-
 func (projectHandler) SyncFixedValues(m *Model, specs []columnSpec) {
 	typeNames := make([]string, len(m.projectTypes))
 	for i, pt := range m.projectTypes {
@@ -142,9 +158,23 @@ func (projectHandler) SyncFixedValues(m *Model, specs []columnSpec) {
 // quoteHandler
 // ---------------------------------------------------------------------------
 
-type quoteHandler struct{}
+type quoteHandler struct {
+	baseHandler
+}
 
-func (quoteHandler) FormKind() FormKind { return formQuote }
+func newQuoteHandler() quoteHandler {
+	return quoteHandler{baseHandler{
+		kind:        formQuote,
+		deleteFn:    (*data.Store).DeleteQuote,
+		restoreFn:   (*data.Store).RestoreQuote,
+		startAddFn:  (*Model).startQuoteForm,
+		startEditFn: (*Model).startEditQuoteForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditQuote(id, quoteCol(col))
+		},
+		submitFormFn: (*Model).submitQuoteForm,
+	}}
+}
 
 func (quoteHandler) Load(
 	store *data.Store,
@@ -160,39 +190,29 @@ func (quoteHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (quoteHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteQuote(id)
-}
-
-func (quoteHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreQuote(id)
-}
-
-func (quoteHandler) StartAddForm(m *Model) error {
-	return m.startQuoteForm()
-}
-
-func (quoteHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditQuoteForm(id)
-}
-
-func (quoteHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditQuote(id, quoteCol(col))
-}
-
-func (quoteHandler) SubmitForm(m *Model) error {
-	return m.submitQuoteForm()
-}
-
 func (quoteHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
 
 // ---------------------------------------------------------------------------
 // maintenanceHandler
 // ---------------------------------------------------------------------------
 
-type maintenanceHandler struct{}
+type maintenanceHandler struct {
+	baseHandler
+}
 
-func (maintenanceHandler) FormKind() FormKind { return formMaintenance }
+func newMaintenanceHandler() maintenanceHandler {
+	return maintenanceHandler{baseHandler{
+		kind:        formMaintenance,
+		deleteFn:    (*data.Store).DeleteMaintenance,
+		restoreFn:   (*data.Store).RestoreMaintenance,
+		startAddFn:  (*Model).startMaintenanceForm,
+		startEditFn: (*Model).startEditMaintenanceForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditMaintenance(id, maintenanceCol(col))
+		},
+		submitFormFn: (*Model).submitMaintenanceForm,
+	}}
+}
 
 func (maintenanceHandler) Load(
 	store *data.Store,
@@ -207,30 +227,6 @@ func (maintenanceHandler) Load(
 	docCounts := fetchDocCounts(store, data.DocumentEntityMaintenance, ids)
 	rows, meta, cellRows := maintenanceRows(items, logCounts, docCounts)
 	return rows, meta, cellRows, nil
-}
-
-func (maintenanceHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteMaintenance(id)
-}
-
-func (maintenanceHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreMaintenance(id)
-}
-
-func (maintenanceHandler) StartAddForm(m *Model) error {
-	return m.startMaintenanceForm()
-}
-
-func (maintenanceHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditMaintenanceForm(id)
-}
-
-func (maintenanceHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditMaintenance(id, maintenanceCol(col))
-}
-
-func (maintenanceHandler) SubmitForm(m *Model) error {
-	return m.submitMaintenanceForm()
 }
 
 func (maintenanceHandler) SyncFixedValues(m *Model, specs []columnSpec) {
@@ -251,9 +247,23 @@ func (maintenanceHandler) SyncFixedValues(m *Model, specs []columnSpec) {
 // applianceHandler
 // ---------------------------------------------------------------------------
 
-type applianceHandler struct{}
+type applianceHandler struct {
+	baseHandler
+}
 
-func (applianceHandler) FormKind() FormKind { return formAppliance }
+func newApplianceHandler() applianceHandler {
+	return applianceHandler{baseHandler{
+		kind:        formAppliance,
+		deleteFn:    (*data.Store).DeleteAppliance,
+		restoreFn:   (*data.Store).RestoreAppliance,
+		startAddFn:  func(m *Model) error { m.startApplianceForm(); return nil },
+		startEditFn: (*Model).startEditApplianceForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditAppliance(id, applianceCol(col))
+		},
+		submitFormFn: (*Model).submitApplianceForm,
+	}}
+}
 
 func (applianceHandler) Load(
 	store *data.Store,
@@ -276,40 +286,29 @@ func (applianceHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (applianceHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteAppliance(id)
-}
-
-func (applianceHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreAppliance(id)
-}
-
-func (applianceHandler) StartAddForm(m *Model) error {
-	m.startApplianceForm()
-	return nil
-}
-
-func (applianceHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditApplianceForm(id)
-}
-
-func (applianceHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditAppliance(id, applianceCol(col))
-}
-
-func (applianceHandler) SubmitForm(m *Model) error {
-	return m.submitApplianceForm()
-}
-
 func (applianceHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
 
 // ---------------------------------------------------------------------------
 // incidentHandler
 // ---------------------------------------------------------------------------
 
-type incidentHandler struct{}
+type incidentHandler struct {
+	baseHandler
+}
 
-func (incidentHandler) FormKind() FormKind { return formIncident }
+func newIncidentHandler() incidentHandler {
+	return incidentHandler{baseHandler{
+		kind:        formIncident,
+		deleteFn:    (*data.Store).DeleteIncident,
+		restoreFn:   (*data.Store).RestoreIncident,
+		startAddFn:  (*Model).startIncidentForm,
+		startEditFn: (*Model).startEditIncidentForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditIncident(id, incidentCol(col))
+		},
+		submitFormFn: (*Model).submitIncidentForm,
+	}}
+}
 
 func (incidentHandler) Load(
 	store *data.Store,
@@ -323,30 +322,6 @@ func (incidentHandler) Load(
 	docCounts := fetchDocCounts(store, data.DocumentEntityIncident, ids)
 	rows, meta, cellRows := incidentRows(items, docCounts, store.Currency())
 	return rows, meta, cellRows, nil
-}
-
-func (incidentHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteIncident(id)
-}
-
-func (incidentHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreIncident(id)
-}
-
-func (incidentHandler) StartAddForm(m *Model) error {
-	return m.startIncidentForm()
-}
-
-func (incidentHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditIncidentForm(id)
-}
-
-func (incidentHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditIncident(id, incidentCol(col))
-}
-
-func (incidentHandler) SubmitForm(m *Model) error {
-	return m.submitIncidentForm()
 }
 
 func (incidentHandler) SyncFixedValues(_ *Model, specs []columnSpec) {
@@ -422,7 +397,7 @@ func skipColEdit(parent TabHandler, skipAt int) func(*Model, string, int) error 
 // ---------------------------------------------------------------------------
 
 func newApplianceMaintenanceHandler(applianceID string) scopedHandler {
-	parent := maintenanceHandler{}
+	parent := newMaintenanceHandler()
 	return scopedHandler{
 		TabHandler: parent,
 		loadFn: func(store *data.Store, showDeleted bool) ([]table.Row, []rowMeta, [][]cell, error) {
@@ -446,10 +421,28 @@ func newApplianceMaintenanceHandler(applianceID string) scopedHandler {
 // ---------------------------------------------------------------------------
 
 type serviceLogHandler struct {
+	baseHandler
 	maintenanceItemID string
 }
 
-func (h serviceLogHandler) FormKind() FormKind { return formServiceLog }
+func newServiceLogHandler(maintenanceItemID string) serviceLogHandler {
+	return serviceLogHandler{
+		baseHandler: baseHandler{
+			kind:      formServiceLog,
+			deleteFn:  (*data.Store).DeleteServiceLog,
+			restoreFn: (*data.Store).RestoreServiceLog,
+			startAddFn: func(m *Model) error {
+				return m.startServiceLogForm(maintenanceItemID)
+			},
+			startEditFn: (*Model).startEditServiceLogForm,
+			inlineEditFn: func(m *Model, id string, col int) error {
+				return m.inlineEditServiceLog(id, serviceLogCol(col))
+			},
+			submitFormFn: (*Model).submitServiceLogForm,
+		},
+		maintenanceItemID: maintenanceItemID,
+	}
+}
 
 func (h serviceLogHandler) Load(
 	store *data.Store,
@@ -465,39 +458,29 @@ func (h serviceLogHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (h serviceLogHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteServiceLog(id)
-}
-
-func (h serviceLogHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreServiceLog(id)
-}
-
-func (h serviceLogHandler) StartAddForm(m *Model) error {
-	return m.startServiceLogForm(h.maintenanceItemID)
-}
-
-func (h serviceLogHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditServiceLogForm(id)
-}
-
-func (h serviceLogHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditServiceLog(id, serviceLogCol(col))
-}
-
-func (h serviceLogHandler) SubmitForm(m *Model) error {
-	return m.submitServiceLogForm()
-}
-
 func (serviceLogHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
 
 // ---------------------------------------------------------------------------
 // vendorHandler
 // ---------------------------------------------------------------------------
 
-type vendorHandler struct{}
+type vendorHandler struct {
+	baseHandler
+}
 
-func (vendorHandler) FormKind() FormKind { return formVendor }
+func newVendorHandler() vendorHandler {
+	return vendorHandler{baseHandler{
+		kind:        formVendor,
+		deleteFn:    (*data.Store).DeleteVendor,
+		restoreFn:   (*data.Store).RestoreVendor,
+		startAddFn:  func(m *Model) error { m.startVendorForm(); return nil },
+		startEditFn: (*Model).startEditVendorForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditVendor(id, vendorCol(col))
+		},
+		submitFormFn: (*Model).submitVendorForm,
+	}}
+}
 
 func (vendorHandler) Load(
 	store *data.Store,
@@ -515,35 +498,10 @@ func (vendorHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (vendorHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteVendor(id)
-}
-
-func (vendorHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreVendor(id)
-}
-
-func (vendorHandler) StartAddForm(m *Model) error {
-	m.startVendorForm()
-	return nil
-}
-
-func (vendorHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditVendorForm(id)
-}
-
-func (vendorHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditVendor(id, vendorCol(col))
-}
-
-func (vendorHandler) SubmitForm(m *Model) error {
-	return m.submitVendorForm()
-}
-
 func (vendorHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
 
 func newVendorQuoteHandler(vendorID string) scopedHandler {
-	parent := quoteHandler{}
+	parent := newQuoteHandler()
 	return scopedHandler{
 		TabHandler: parent,
 		loadFn: func(store *data.Store, showDeleted bool) ([]table.Row, []rowMeta, [][]cell, error) {
@@ -561,7 +519,7 @@ func newVendorQuoteHandler(vendorID string) scopedHandler {
 }
 
 func newVendorJobsHandler(vendorID string) scopedHandler {
-	parent := serviceLogHandler{}
+	parent := newServiceLogHandler("")
 	return scopedHandler{
 		TabHandler: parent,
 		loadFn: func(store *data.Store, showDeleted bool) ([]table.Row, []rowMeta, [][]cell, error) {
@@ -595,7 +553,7 @@ func newVendorJobsHandler(vendorID string) scopedHandler {
 }
 
 func newProjectQuoteHandler(projectID string) scopedHandler {
-	parent := quoteHandler{}
+	parent := newQuoteHandler()
 	return scopedHandler{
 		TabHandler: parent,
 		loadFn: func(store *data.Store, showDeleted bool) ([]table.Row, []rowMeta, [][]cell, error) {
@@ -616,9 +574,25 @@ func newProjectQuoteHandler(projectID string) scopedHandler {
 // documentHandler -- top-level handler for the Documents tab.
 // ---------------------------------------------------------------------------
 
-type documentHandler struct{}
+type documentHandler struct {
+	baseHandler
+}
 
-func (documentHandler) FormKind() FormKind { return formDocument }
+func newDocumentHandler() documentHandler {
+	return documentHandler{baseHandler{
+		kind:      formDocument,
+		deleteFn:  (*data.Store).DeleteDocument,
+		restoreFn: (*data.Store).RestoreDocument,
+		startAddFn: func(m *Model) error {
+			return m.startDocumentForm("")
+		},
+		startEditFn: (*Model).startEditDocumentForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditDocument(id, documentCol(col))
+		},
+		submitFormFn: (*Model).submitDocumentForm,
+	}}
+}
 
 func (documentHandler) Load(
 	store *data.Store,
@@ -633,34 +607,10 @@ func (documentHandler) Load(
 	return rows, meta, cellRows, nil
 }
 
-func (documentHandler) Delete(store *data.Store, id string) error {
-	return store.DeleteDocument(id)
-}
-
-func (documentHandler) Restore(store *data.Store, id string) error {
-	return store.RestoreDocument(id)
-}
-
-func (documentHandler) StartAddForm(m *Model) error {
-	return m.startDocumentForm("")
-}
-
-func (documentHandler) StartEditForm(m *Model, id string) error {
-	return m.startEditDocumentForm(id)
-}
-
-func (documentHandler) InlineEdit(m *Model, id string, col int) error {
-	return m.inlineEditDocument(id, documentCol(col))
-}
-
-func (documentHandler) SubmitForm(m *Model) error {
-	return m.submitDocumentForm()
-}
-
 func (documentHandler) SyncFixedValues(_ *Model, _ []columnSpec) {}
 
 func newEntityDocumentHandler(entityKind string, entityID string) scopedHandler {
-	parent := documentHandler{}
+	parent := newDocumentHandler()
 	return scopedHandler{
 		TabHandler: parent,
 		loadFn: func(store *data.Store, showDeleted bool) ([]table.Row, []rowMeta, [][]cell, error) {

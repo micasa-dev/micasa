@@ -1258,7 +1258,7 @@ var (
 		tabKind: tabMaintenance,
 		subName: "Service Log",
 		specs:   serviceLogColumnSpecs,
-		handler: func(id string) TabHandler { return serviceLogHandler{maintenanceItemID: id} },
+		handler: func(id string) TabHandler { return newServiceLogHandler(id) },
 		breadcrumb: func(m *Model, parentName string) string {
 			// When drilled from the top-level Maintenance tab, the breadcrumb
 			// starts with "Maintenance"; when nested (e.g. Appliances > … >

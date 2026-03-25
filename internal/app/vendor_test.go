@@ -87,14 +87,14 @@ func TestVendorRowsDocCount(t *testing.T) {
 
 func TestVendorHandlerFormKind(t *testing.T) {
 	t.Parallel()
-	h := vendorHandler{}
+	h := newVendorHandler()
 	assert.Equal(t, formVendor, h.FormKind())
 }
 
 func TestVendorHandlerDeleteRestore(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	h := vendorHandler{}
+	h := newVendorHandler()
 	require.NoError(t, m.store.CreateVendor(&data.Vendor{Name: "Test Co"}))
 	vendors, _ := m.store.ListVendors(false)
 	id := vendors[0].ID

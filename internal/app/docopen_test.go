@@ -135,7 +135,7 @@ func TestIsDocumentTab(t *testing.T) {
 		},
 		{
 			name: "non-document tab",
-			tab:  &Tab{Kind: tabAppliances, Handler: applianceHandler{}},
+			tab:  &Tab{Kind: tabAppliances, Handler: newApplianceHandler()},
 			want: false,
 		},
 		{
