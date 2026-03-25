@@ -51,11 +51,6 @@ Use `/fix-ci` to diagnose and fix each failing job.
 
 1. `git push --force-with-lease`
 2. Wait for CI: `gh pr checks --watch --fail-fast`
-3. **Wait for Copilot's review.** Copilot typically takes 5-12 minutes
-   after a push. Poll unresolved threads every 90s (up to 25 min). The
-   first poll that returns results means Copilot has posted -- loop
-   back to 2a. If 25 min pass with zero unresolved threads, Copilot
-   either found nothing or didn't run -- exit the loop.
 
 ## 3. Update PR description
 
