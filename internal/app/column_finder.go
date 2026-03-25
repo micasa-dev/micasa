@@ -174,13 +174,7 @@ func (m *Model) buildColumnFinderOverlay() string {
 		return ""
 	}
 
-	contentW := 40
-	if m.effectiveWidth()-12 < contentW {
-		contentW = m.effectiveWidth() - 12
-	}
-	if contentW < 20 {
-		contentW = 20
-	}
+	contentW := max(20, min(40, m.effectiveWidth()-12))
 	innerW := contentW - appStyles.OverlayBox().GetHorizontalFrameSize()
 
 	var b strings.Builder
@@ -199,26 +193,22 @@ func (m *Model) buildColumnFinderOverlay() string {
 	b.WriteString(prompt + " " + queryText)
 	b.WriteString("\n\n")
 
-	// Match list.
+	// Match list — fixed height to prevent layout jitter.
+	maxVisible := min(10, len(cf.All))
+
 	if len(cf.Matches) == 0 {
 		b.WriteString(m.styles.Empty().Render("No matching columns"))
+		// Pad remaining lines.
+		for i := 1; i < maxVisible; i++ {
+			b.WriteString("\n")
+		}
 	} else {
-		// Show up to 10 matches, centered around the cursor.
-		maxVisible := 10
-		if maxVisible > len(cf.Matches) {
-			maxVisible = len(cf.Matches)
-		}
-		start := cf.Cursor - maxVisible/2
-		if start < 0 {
-			start = 0
-		}
-		end := start + maxVisible
+		visible := min(maxVisible, len(cf.Matches))
+		start := max(0, cf.Cursor-visible/2)
+		end := start + visible
 		if end > len(cf.Matches) {
 			end = len(cf.Matches)
-			start = end - maxVisible
-			if start < 0 {
-				start = 0
-			}
+			start = max(0, end-visible)
 		}
 
 		for i := start; i < end; i++ {
@@ -247,6 +237,11 @@ func (m *Model) buildColumnFinderOverlay() string {
 			if i < end-1 {
 				b.WriteString("\n")
 			}
+		}
+
+		// Pad to stable height.
+		for i := visible; i < maxVisible; i++ {
+			b.WriteString("\n")
 		}
 	}
 

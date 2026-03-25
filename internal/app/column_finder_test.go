@@ -4,6 +4,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -276,6 +277,31 @@ func TestHandleColumnFinderKey_Navigation(t *testing.T) {
 	// Should clamp at top.
 	m.handleColumnFinderKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, cf.Cursor)
+}
+
+func TestBuildColumnFinderOverlay_StableHeight(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.width = 80
+	m.height = 40
+	m.openColumnFinder()
+	cf := m.columnFinder
+	require.True(t, len(cf.All) > 2, "need >2 columns to test narrowing")
+
+	// Render with all matches visible.
+	allMatchesView := m.buildColumnFinderOverlay()
+	allLines := strings.Count(allMatchesView, "\n")
+
+	// Type a character to narrow matches.
+	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 's', Text: "s"})
+	require.True(t, len(cf.Matches) < len(cf.All),
+		"typing 's' should narrow matches")
+
+	narrowView := m.buildColumnFinderOverlay()
+	narrowLines := strings.Count(narrowView, "\n")
+
+	assert.Equal(t, allLines, narrowLines,
+		"overlay height should remain stable when matches narrow")
 }
 
 func TestBuildColumnFinderOverlay_ShowsColumns(t *testing.T) {
