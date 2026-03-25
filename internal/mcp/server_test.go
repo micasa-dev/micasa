@@ -177,3 +177,29 @@ func TestGetMaintenanceScheduleTool(t *testing.T) {
 	assert.Contains(t, output, "Replace furnace filter")
 	assert.Contains(t, output, `\"overdue\":true`)
 }
+
+func TestGetHouseProfileTool(t *testing.T) {
+	srv, store := newTestServer(t)
+
+	profile := data.HouseProfile{
+		Nickname:   "Lake House",
+		PostalCode: "90210",
+	}
+	require.NoError(t, store.CreateHouseProfile(profile))
+
+	result := callTool(t, srv, "get_house_profile", map[string]any{})
+	require.False(t, result.IsError)
+
+	raw, err := json.Marshal(result.Content)
+	require.NoError(t, err)
+	output := string(raw)
+	assert.Contains(t, output, "Lake House")
+	assert.Contains(t, output, "90210")
+}
+
+func TestGetHouseProfileToolEmpty(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	result := callTool(t, srv, "get_house_profile", map[string]any{})
+	assert.True(t, result.IsError)
+}

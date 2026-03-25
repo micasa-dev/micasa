@@ -69,6 +69,17 @@ func (s *Server) registerTools() {
 		),
 		s.handleGetMaintenanceSchedule,
 	)
+
+	s.mcpSrv.AddTool(
+		mcpgo.NewTool("get_house_profile",
+			mcpgo.WithDescription(
+				"Get the house profile including address, property characteristics "+
+					"(year built, square footage, bedrooms, bathrooms), construction "+
+					"details (foundation, roof, wiring), and insurance/HOA information.",
+			),
+		),
+		s.handleGetHouseProfile,
+	)
 }
 
 type queryResult struct {
@@ -257,6 +268,22 @@ func (s *Server) handleGetMaintenanceSchedule(
 	b, err := json.Marshal(out)
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("marshal schedule: %v", err)), nil
+	}
+	return mcpgo.NewToolResultText(string(b)), nil
+}
+
+func (s *Server) handleGetHouseProfile(
+	_ context.Context,
+	_ mcpgo.CallToolRequest,
+) (*mcpgo.CallToolResult, error) {
+	profile, err := s.store.HouseProfile()
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("no house profile configured: %v", err)), nil
+	}
+
+	b, err := json.Marshal(profile)
+	if err != nil {
+		return mcpgo.NewToolResultError(fmt.Sprintf("marshal profile: %v", err)), nil
 	}
 	return mcpgo.NewToolResultText(string(b)), nil
 }
