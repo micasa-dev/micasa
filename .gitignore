@@ -34,9 +34,10 @@ vendor
 *.sqlite-shm
 *.sqlite-wal
 
-# SQLite WAL/SHM artifacts (catches DBs without standard extensions)
-*-shm
-*-wal
+# roborev version DB (SQLite without standard extension)
+version
+version-shm
+version-wal
 
 # GoReleaser
 dist/
