@@ -61,13 +61,13 @@ func (n *jsonTreeNode) isExpandable() bool {
 
 // opsTreeState holds the state for the interactive JSON tree overlay.
 type opsTreeState struct {
-	root          []*jsonTreeNode // single-element: the "operations" wrapper
-	cursor        int             // index into visibleNodes()
-	expanded      map[string]bool // keyed by node path
-	docTitle      string          // document title shown in overlay header
-	maxNodes      int             // total node count when fully expanded (for stable viewport)
-	previewGroups []previewTableGroup
-	previewTab    int
+	root          []*jsonTreeNode     // single-element: the "operations" wrapper
+	cursor        int                 // index into visibleNodes()
+	expanded      map[string]bool     // keyed by node path
+	docTitle      string              // document title shown in overlay header
+	maxNodes      int                 // total node count when fully expanded (for stable viewport)
+	previewGroups []previewTableGroup // grouped extraction ops for table preview
+	previewTab    int                 // active tab index into previewGroups
 }
 
 // visibleNodes returns the flattened list of currently visible tree nodes,
