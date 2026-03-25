@@ -21,6 +21,9 @@ import (
 // Zone ID prefix for clickable tree nodes (expand/collapse toggle).
 const zoneOpsNode = "ops-node-"
 
+// Zone ID prefix for clickable table preview tabs.
+const zoneOpsTab = "ops-tab-"
+
 // Box-drawing characters for tree rendering (eza --tree style).
 const (
 	treeBranch = "├─ "
@@ -439,13 +442,62 @@ func (m *Model) buildOpsTreeOverlay() string {
 		b.WriteString("\n")
 	}
 
+	// Table preview section.
+	if groups := tree.previewGroups; len(groups) > 0 {
+		// Divider.
+		b.WriteString(appStyles.TextDim().Render(strings.Repeat(symHLine, innerW)))
+		b.WriteString("\n")
+
+		// Tab bar (only if multiple groups).
+		if len(groups) > 1 {
+			tabParts := make([]string, 0, len(groups)*2)
+			for i, g := range groups {
+				var rendered string
+				if i == tree.previewTab {
+					rendered = m.styles.TabActive().Render(g.name)
+				} else {
+					rendered = m.styles.TabInactive().Render(g.name)
+				}
+				tabParts = append(tabParts, m.zones.Mark(
+					fmt.Sprintf("%s%d", zoneOpsTab, i), rendered,
+				))
+				if i < len(groups)-1 {
+					tabParts = append(tabParts, "   ")
+				}
+			}
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, tabParts...))
+			b.WriteString("\n")
+			b.WriteString(m.styles.TabUnderline().Render(
+				strings.Repeat(symHLineHeavy, innerW),
+			))
+			b.WriteString("\n")
+		}
+
+		// Active table (non-interactive, dimmed).
+		tabIdx := tree.previewTab
+		if tabIdx >= len(groups) {
+			tabIdx = 0
+		}
+		g := groups[tabIdx]
+		sep := m.styles.TableSeparator().Render(" " + symVLine + " ")
+		divSep := m.styles.TableSeparator().Render(symHLine + symCross + symHLine)
+		sepW := lipgloss.Width(sep)
+		tableStr := m.renderPreviewTable(g, innerW, sepW, sep, divSep, false)
+		b.WriteString(appStyles.TextDim().Render(tableStr))
+		b.WriteString("\n")
+	}
+
 	b.WriteString("\n")
-	hints := joinWithSeparator(m.helpSeparator(),
+	hintParts := []string{
 		m.helpItem(keyJ+"/"+keyK, "nav"),
 		m.helpItem(symReturn, "toggle"),
 		m.helpItem(keyH, "collapse"),
-		m.helpItem(keyEsc, "close"),
-	)
+	}
+	if len(tree.previewGroups) > 1 {
+		hintParts = append(hintParts, m.helpItem(keyB+"/"+keyF, "tabs"))
+	}
+	hintParts = append(hintParts, m.helpItem(keyEsc, "close"))
+	hints := joinWithSeparator(m.helpSeparator(), hintParts...)
 	b.WriteString(hints)
 
 	return m.styles.OverlayBox().

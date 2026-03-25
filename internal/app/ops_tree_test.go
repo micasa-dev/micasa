@@ -451,3 +451,88 @@ func TestOpsTreeCollapseNestedContainer(t *testing.T) {
 	assert.False(t, m.opsTree.expanded["operations.0.data"], "h should collapse data node")
 	assert.Equal(t, 4, m.opsTree.cursor, "cursor stays on data node")
 }
+
+func TestOpsTreeTablePreviewRendersInView(t *testing.T) {
+	t.Parallel()
+	m := newOpsTreeModel(t)
+
+	tab := m.effectiveTab()
+	tab.ColCursor = int(documentColOps)
+	sendKey(m, "enter")
+	require.NotNil(t, m.opsTree)
+	require.NotEmpty(t, m.opsTree.previewGroups)
+
+	view := m.buildView()
+
+	// Table preview should show column headers from the vendor preview.
+	assert.Contains(t, view, "Name")
+	assert.Contains(t, view, "Email")
+	assert.Contains(t, view, "Phone")
+
+	// And the data values.
+	assert.Contains(t, view, "Garcia Plumbing")
+	assert.Contains(t, view, "info@garcia.com")
+	assert.Contains(t, view, "555-1234")
+}
+
+func TestOpsTreeNoTablePreviewForUnknownTables(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	// Ops targeting a table with no previewColumns mapping.
+	unknownOps := []byte(`[{"action":"create","table":"unknown_table","data":{"foo":"bar"}}]`)
+	doc := &data.Document{
+		Title:         "Unknown Table Doc",
+		FileName:      "unknown.pdf",
+		MIMEType:      "application/pdf",
+		ExtractionOps: unknownOps,
+	}
+	require.NoError(t, m.store.CreateDocument(doc))
+
+	m.active = tabIndex(tabDocuments)
+	require.NoError(t, m.reloadTab(m.effectiveTab()))
+
+	tab := m.effectiveTab()
+	tab.ColCursor = int(documentColOps)
+	sendKey(m, "enter")
+	require.NotNil(t, m.opsTree)
+
+	// previewGroups should be empty since unknown_table has no column defs.
+	assert.Empty(t, m.opsTree.previewGroups)
+
+	// Should still render without crashing.
+	view := m.buildView()
+	assert.Contains(t, view, "operations")
+}
+
+func TestOpsTreeSingleGroupNoTabBar(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	// Single-table ops (vendors only).
+	singleOps := []byte(
+		`[{"action":"create","table":"vendors","data":{"name":"Solo Vendor","email":"solo@test.com"}}]`,
+	)
+	doc := &data.Document{
+		Title:         "Single Table Doc",
+		FileName:      "single.pdf",
+		MIMEType:      "application/pdf",
+		ExtractionOps: singleOps,
+	}
+	require.NoError(t, m.store.CreateDocument(doc))
+
+	m.active = tabIndex(tabDocuments)
+	require.NoError(t, m.reloadTab(m.effectiveTab()))
+
+	tab := m.effectiveTab()
+	tab.ColCursor = int(documentColOps)
+	sendKey(m, "enter")
+	require.NotNil(t, m.opsTree)
+	require.Len(t, m.opsTree.previewGroups, 1)
+
+	view := m.buildView()
+	// Should show the table data but no tab bar.
+	assert.Contains(t, view, "Solo Vendor")
+	// b/f hint should not appear for single group.
+	assert.NotContains(t, view, "tabs")
+}
