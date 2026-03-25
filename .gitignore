@@ -34,10 +34,9 @@ vendor
 *.sqlite-shm
 *.sqlite-wal
 
-# roborev version DB (SQLite without standard extension)
-version
-version-shm
-version-wal
+# SQLite WAL/SHM sidecar files
+*-shm
+*-wal
 
 # GoReleaser
 dist/
