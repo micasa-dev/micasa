@@ -419,10 +419,35 @@ func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
 	return nil
 }
 
+// opsTreeContentWidth returns the content width for the ops tree overlay,
+// widened to fit preview tables when present.
+func (m *Model) opsTreeContentWidth() int {
+	screenW := m.effectiveWidth() - 8
+
+	// Start with the standard overlay width.
+	w := m.overlayContentWidth()
+
+	// Widen to fit the widest preview table if groups exist.
+	if tree := m.opsTree; tree != nil && len(tree.previewGroups) > 0 {
+		sep := m.styles.TableSeparator().Render(" " + symVLine + " ")
+		sepW := lipgloss.Width(sep)
+		frameW := m.styles.OverlayBox().GetHorizontalFrameSize()
+		needed := previewNaturalWidth(tree.previewGroups, sepW, m.cur.Symbol()) + frameW
+		if needed > w {
+			w = needed
+		}
+	}
+
+	if w > screenW {
+		w = screenW
+	}
+	return w
+}
+
 // buildOpsTreeOverlay renders the ops tree overlay.
 func (m *Model) buildOpsTreeOverlay() string {
 	tree := m.opsTree
-	contentW := m.overlayContentWidth()
+	contentW := m.opsTreeContentWidth()
 	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
 
 	var b strings.Builder
