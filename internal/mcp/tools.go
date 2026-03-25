@@ -90,7 +90,7 @@ type queryResult struct {
 }
 
 func (s *Server) handleQuery(
-	_ context.Context,
+	ctx context.Context,
 	req mcpgo.CallToolRequest,
 ) (*mcpgo.CallToolResult, error) {
 	sql, err := req.RequireString("sql")
@@ -98,7 +98,7 @@ func (s *Server) handleQuery(
 		return mcpgo.NewToolResultError(err.Error()), nil
 	}
 
-	cols, rows, err := s.store.ReadOnlyQuery(sql)
+	cols, rows, err := s.store.ReadOnlyQuery(ctx, sql)
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("query failed: %v", err)), nil
 	}
