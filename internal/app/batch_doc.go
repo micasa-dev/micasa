@@ -79,15 +79,19 @@ type batchDocState struct {
 type batchExtractionDoneMsg struct {
 	fileIdx int
 	result  *extract.Result
-	err     error // non-nil if the pipeline itself errored (not result.Err)
 }
 
 // batchDocOverlay implements the overlay interface for the batch doc staging overlay.
 type batchDocOverlay struct{ m *Model }
 
-func (o batchDocOverlay) isVisible() bool                       { return o.m.batchDoc != nil }
-func (o batchDocOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd { return o.m.handleBatchDocKey(key) }
-func (o batchDocOverlay) hidesMainKeys() bool                   { return true }
+func (o batchDocOverlay) isVisible() bool { return o.m.batchDoc != nil }
+
+func (o batchDocOverlay) handleKey(
+	key tea.KeyPressMsg,
+) tea.Cmd {
+	return o.m.handleBatchDocKey(key)
+}
+func (o batchDocOverlay) hidesMainKeys() bool { return true }
 
 // closeBatchDocOverlay cancels any running extraction and nils the overlay.
 func (m *Model) closeBatchDocOverlay() {
@@ -419,7 +423,7 @@ func (m *Model) batchDocHasValidFiles() bool {
 func (m *Model) startBatchExtraction() tea.Cmd {
 	bd := m.batchDoc
 	//nolint:gosec // cancel stored in bd.cancelFn, called on esc or overlay close
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(m.lifecycleCtx())
 	bd.ctx = ctx
 	bd.cancelFn = cancel
 
@@ -488,10 +492,6 @@ func (m *Model) handleBatchExtractionDone(msg batchExtractionDoneMsg) tea.Cmd {
 			}
 		}
 	}
-	if msg.err != nil {
-		sf.ExtractErr = msg.err
-	}
-
 	// Release file data.
 	sf.Data = nil
 
