@@ -304,7 +304,7 @@ func TestBuildColumnFinderOverlay_StableHeight(t *testing.T) {
 	m.height = 40
 	m.openColumnFinder()
 	cf := m.columnFinder
-	require.True(t, len(cf.All) > 2, "need >2 columns to test narrowing")
+	require.Greater(t, len(cf.All), 2, "need >2 columns to test narrowing")
 
 	// Render with all matches visible.
 	allMatchesView := m.buildColumnFinderOverlay()
@@ -312,7 +312,7 @@ func TestBuildColumnFinderOverlay_StableHeight(t *testing.T) {
 
 	// Type a character to narrow matches.
 	m.handleColumnFinderKey(tea.KeyPressMsg{Code: 's', Text: "s"})
-	require.True(t, len(cf.Matches) < len(cf.All),
+	require.Less(t, len(cf.Matches), len(cf.All),
 		"typing 's' should narrow matches")
 
 	narrowView := m.buildColumnFinderOverlay()
