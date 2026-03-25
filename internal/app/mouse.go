@@ -278,6 +278,14 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		}
+
+		// Ops tree tab clicks: switch preview tab.
+		for i := range tree.previewGroups {
+			if m.zones.Get(fmt.Sprintf("%s%d", zoneOpsTab, i)).InBounds(msg) {
+				tree.previewTab = i
+				return m, nil
+			}
+		}
 	}
 
 	// Extraction preview clicks: tab switch, row select, column select.

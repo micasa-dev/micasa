@@ -4,6 +4,7 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -562,6 +563,30 @@ func TestOpsTreeTabSwitchBF(t *testing.T) {
 	// b at 0 should clamp (no wrap).
 	sendKey(m, "b")
 	assert.Equal(t, 0, m.opsTree.previewTab)
+}
+
+func TestOpsTreeMouseClickTab(t *testing.T) {
+	t.Parallel()
+	m := newMultiTableOpsTreeModel(t)
+
+	tab := m.effectiveTab()
+	tab.ColCursor = int(documentColOps)
+	sendKey(m, "enter")
+	require.NotNil(t, m.opsTree)
+	require.GreaterOrEqual(t, len(m.opsTree.previewGroups), 2)
+
+	// Render twice to populate zones (mark pass + scan pass).
+	m.View()
+	m.View()
+
+	// Click on second tab.
+	z := m.zones.Get(fmt.Sprintf("%s%d", zoneOpsTab, 1))
+	if z == nil || z.IsZero() {
+		t.Skip("ops tab zone not rendered (terminal too small)")
+	}
+	sendClick(m, z.StartX, z.StartY)
+
+	assert.Equal(t, 1, m.opsTree.previewTab)
 }
 
 func TestOpsTreeSingleGroupNoTabBar(t *testing.T) {
