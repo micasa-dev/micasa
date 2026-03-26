@@ -1,0 +1,10 @@
+# Copyright 2026 Phillip Cloud
+# Licensed under the Apache License, Version 2.0
+
+# Test overlay: exposes Postgres on host port 5432 for integration tests.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
