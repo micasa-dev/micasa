@@ -17,11 +17,14 @@ const (
 	// maxActiveInvites is the maximum number of active invites per household.
 	maxActiveInvites = 3
 
+	// inviteExpiry is how long an invite code remains valid.
+	inviteExpiry = 4 * time.Hour
+
 	// keyExchangeExpiry bounds how long a key exchange record is valid.
 	// After this duration, GetKeyExchangeResult returns not-found and
 	// GetPendingExchanges filters the record out. Limits the window
 	// during which encrypted credentials sit on the relay.
-	keyExchangeExpiry = 1 * time.Hour
+	keyExchangeExpiry = 15 * time.Minute
 )
 
 // Store defines the persistence interface for the relay server.

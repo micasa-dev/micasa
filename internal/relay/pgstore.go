@@ -348,7 +348,7 @@ func (s *PgStore) CreateInvite(
 		return sync.InviteCode{}, err
 	}
 
-	expiresAt := time.Now().Add(24 * time.Hour)
+	expiresAt := time.Now().Add(inviteExpiry)
 	var result sync.InviteCode
 
 	// Wrap count + create in a transaction. Lock the household row with

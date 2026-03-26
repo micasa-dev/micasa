@@ -486,12 +486,16 @@ func runProInvite(dbPath string) error {
 	// Compound code: HOUSEHOLD_ID.CODE
 	compoundCode := deps.device.HouseholdID + "." + invite.Code
 	fmt.Printf("%s\n", compoundCode)
-	fmt.Fprintf(
-		os.Stderr,
-		"expires: %s\n",
-		invite.ExpiresAt.Format(time.RFC3339),
+
+	remaining := time.Until(invite.ExpiresAt).Truncate(time.Minute)
+	fmt.Fprintf(os.Stderr,
+		"on the other device, run: micasa pro join %s\n"+
+			"code expires in %s (at %s)\n"+
+			"waiting for joiner...\n",
+		compoundCode,
+		remaining,
+		invite.ExpiresAt.Local().Format("3:04 PM"),
 	)
-	fmt.Fprintf(os.Stderr, "waiting for joiner...\n")
 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()

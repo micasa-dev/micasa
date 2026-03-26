@@ -264,7 +264,7 @@ func (m *MemStore) CreateInvite(
 		code:         code,
 		householdID:  householdID,
 		inviterDevID: deviceID,
-		expiresAt:    time.Now().Add(24 * time.Hour),
+		expiresAt:    time.Now().Add(inviteExpiry),
 		maxAttempts:  maxInviteAttempts,
 	}
 
