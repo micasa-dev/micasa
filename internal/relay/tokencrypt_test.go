@@ -81,3 +81,50 @@ func TestEncryptProducesDifferentCiphertexts(t *testing.T) {
 
 	assert.NotEqual(t, enc1, enc2, "different nonces should produce different ciphertexts")
 }
+
+func TestEncryptDecryptEmptyPlaintext(t *testing.T) {
+	t.Parallel()
+	key := testEncryptionKey(t)
+
+	encrypted, err := encryptToken(key, "")
+	require.NoError(t, err)
+	assert.NotEmpty(t, encrypted)
+
+	decrypted, err := decryptToken(key, encrypted)
+	require.NoError(t, err)
+	assert.Equal(t, "", decrypted)
+}
+
+func TestDecryptEmptyStringFails(t *testing.T) {
+	t.Parallel()
+	key := testEncryptionKey(t)
+
+	_, err := decryptToken(key, "")
+	assert.Error(t, err)
+}
+
+func TestDecryptInvalidBase64Fails(t *testing.T) {
+	t.Parallel()
+	key := testEncryptionKey(t)
+
+	_, err := decryptToken(key, "not-valid-base64!!!")
+	assert.Error(t, err)
+}
+
+func TestEncryptWithNilKeyFails(t *testing.T) {
+	t.Parallel()
+
+	_, err := encryptToken(nil, "token")
+	assert.Error(t, err)
+}
+
+func TestDecryptWithNilKeyFails(t *testing.T) {
+	t.Parallel()
+	key := testEncryptionKey(t)
+
+	encrypted, err := encryptToken(key, "token")
+	require.NoError(t, err)
+
+	_, err = decryptToken(nil, encrypted)
+	assert.Error(t, err)
+}
