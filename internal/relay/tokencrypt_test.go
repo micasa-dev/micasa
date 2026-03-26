@@ -6,6 +6,7 @@ package relay
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -92,7 +93,7 @@ func TestEncryptDecryptEmptyPlaintext(t *testing.T) {
 
 	decrypted, err := decryptToken(key, encrypted)
 	require.NoError(t, err)
-	assert.Equal(t, "", decrypted)
+	assert.Empty(t, decrypted)
 }
 
 func TestDecryptEmptyStringFails(t *testing.T) {
@@ -183,17 +184,20 @@ func TestEncryptDecryptVariousLengths(t *testing.T) {
 	key := testEncryptionKey(t)
 
 	for _, length := range []int{1, 15, 16, 17, 31, 32, 33, 64, 128, 256, 1024} {
-		plaintext := string(make([]byte, length))
-		for i := range plaintext {
-			// Fill with printable chars to make a realistic token.
-			plaintext = plaintext[:i] + string(rune('a'+i%26)) + plaintext[i+1:]
-		}
+		t.Run(fmt.Sprintf("len_%d", length), func(t *testing.T) {
+			t.Parallel()
+			buf := make([]byte, length)
+			for i := range buf {
+				buf[i] = 'a' + byte(i%26)
+			}
+			plaintext := string(buf)
 
-		encrypted, err := encryptToken(key, plaintext)
-		require.NoError(t, err, "encrypt length %d", length)
+			encrypted, err := encryptToken(key, plaintext)
+			require.NoError(t, err)
 
-		decrypted, err := decryptToken(key, encrypted)
-		require.NoError(t, err, "decrypt length %d", length)
-		assert.Equal(t, plaintext, decrypted, "round-trip length %d", length)
+			decrypted, err := decryptToken(key, encrypted)
+			require.NoError(t, err)
+			assert.Equal(t, plaintext, decrypted)
+		})
 	}
 }

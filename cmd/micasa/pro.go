@@ -488,12 +488,23 @@ func runProInvite(dbPath string) error {
 	fmt.Printf("%s\n", compoundCode)
 
 	remaining := time.Until(invite.ExpiresAt).Truncate(time.Minute)
+	h := int(remaining.Hours())
+	m := int(remaining.Minutes()) % 60
+	var dur string
+	switch {
+	case h > 0 && m > 0:
+		dur = fmt.Sprintf("%dh%dm", h, m)
+	case h > 0:
+		dur = fmt.Sprintf("%dh", h)
+	default:
+		dur = fmt.Sprintf("%dm", m)
+	}
 	fmt.Fprintf(os.Stderr,
 		"on the other device, run: micasa pro join %s\n"+
 			"code expires in %s (at %s)\n"+
 			"waiting for joiner...\n",
 		compoundCode,
-		remaining,
+		dur,
 		invite.ExpiresAt.Local().Format("3:04 PM"),
 	)
 

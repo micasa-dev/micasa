@@ -90,14 +90,14 @@ func TestParseEncryptionKey(t *testing.T) {
 	t.Run("empty returns error", func(t *testing.T) {
 		t.Parallel()
 		_, err := parseEncryptionKey("")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "required")
 	})
 
 	t.Run("wrong length", func(t *testing.T) {
 		t.Parallel()
 		_, err := parseEncryptionKey("deadbeef")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "64")
 	})
 

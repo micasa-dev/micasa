@@ -5,9 +5,8 @@ description = "Run your own sync relay with Docker Compose."
 linkTitle = "Self-Hosting"
 +++
 
-micasa pro syncs your household data across machines through an encrypted
-relay. You can use the managed relay at `relay.micasa.dev`, or run your
-own — same code, same binary.
+micasa syncs your household data across machines through an encrypted
+relay. Run your own with [Docker Compose](https://docs.docker.com/compose/).
 
 ## What you need
 
@@ -115,7 +114,7 @@ All configuration is via environment variables in `.env`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SELF_HOSTED` | `true` | Must be `true`. Disables Stripe and subscription checks. |
+| `SELF_HOSTED` | `true` | Must be `true` for self-hosted deployments. |
 | `POSTGRES_PASSWORD` | *(required)* | PostgreSQL password. |
 | `RELAY_ENCRYPTION_KEY` | *(required)* | 32-byte hex key for encrypting device tokens at rest. Generate with `openssl rand -hex 32`. |
 | `BLOB_QUOTA_BYTES` | `0` (unlimited) | Per-household blob storage limit in bytes. `0` means no limit. |
@@ -156,13 +155,3 @@ docker compose up -d --build
 ```
 
 The relay runs database migrations automatically on startup.
-
-## Differences from managed relay
-
-| | Managed (`relay.micasa.dev`) | Self-hosted |
-|---|---|---|
-| **Subscription** | Required | Not required |
-| **Blob quota** | 1 GB per household | Configurable (default unlimited) |
-| **TLS** | Included | Bring your own (Caddy overlay included) |
-| **Maintenance** | We handle it | You handle it |
-| **Code** | Identical | Identical |

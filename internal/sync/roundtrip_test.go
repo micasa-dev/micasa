@@ -210,14 +210,7 @@ func compareProjects(t *testing.T, a, b *data.Store) {
 	sortByID(projA, func(p data.Project) string { return p.ID })
 	sortByID(projB, func(p data.Project) string { return p.ID })
 
-	require.Equal(
-		t,
-		len(projA),
-		len(projB),
-		"projects: row count mismatch (A=%d, B=%d)",
-		len(projA),
-		len(projB),
-	)
+	require.Len(t, projB, len(projA), "projects: row count mismatch")
 	for i := range projA {
 		pa, pb := projA[i], projB[i]
 		assert.Equal(t, pa.ID, pb.ID, "projects[%d]: ID", i)
@@ -245,14 +238,7 @@ func compareMaintenanceItems(t *testing.T, a, b *data.Store) {
 	sortByID(miA, func(m data.MaintenanceItem) string { return m.ID })
 	sortByID(miB, func(m data.MaintenanceItem) string { return m.ID })
 
-	require.Equal(
-		t,
-		len(miA),
-		len(miB),
-		"maintenance_items: row count mismatch (A=%d, B=%d)",
-		len(miA),
-		len(miB),
-	)
+	require.Len(t, miB, len(miA), "maintenance_items: row count mismatch")
 	for i := range miA {
 		ma, mb := miA[i], miB[i]
 		assert.Equal(t, ma.ID, mb.ID, "maintenance_items[%d]: ID", i)
@@ -295,14 +281,7 @@ func compareServiceLogEntries(t *testing.T, a, b *data.Store) {
 	sortByID(slA, func(s data.ServiceLogEntry) string { return s.ID })
 	sortByID(slB, func(s data.ServiceLogEntry) string { return s.ID })
 
-	require.Equal(
-		t,
-		len(slA),
-		len(slB),
-		"service_log_entries: row count mismatch (A=%d, B=%d)",
-		len(slA),
-		len(slB),
-	)
+	require.Len(t, slB, len(slA), "service_log_entries: row count mismatch")
 	for i := range slA {
 		sa, sb := slA[i], slB[i]
 		assert.Equal(t, sa.ID, sb.ID, "service_log_entries[%d]: ID", i)
@@ -333,14 +312,7 @@ func compareAppliances(t *testing.T, a, b *data.Store) {
 	sortByID(appA, func(a data.Appliance) string { return a.ID })
 	sortByID(appB, func(a data.Appliance) string { return a.ID })
 
-	require.Equal(
-		t,
-		len(appA),
-		len(appB),
-		"appliances: row count mismatch (A=%d, B=%d)",
-		len(appA),
-		len(appB),
-	)
+	require.Len(t, appB, len(appA), "appliances: row count mismatch")
 	for i := range appA {
 		aa, ab := appA[i], appB[i]
 		assert.Equal(t, aa.ID, ab.ID, "appliances[%d]: ID", i)
@@ -369,14 +341,7 @@ func compareIncidents(t *testing.T, a, b *data.Store) {
 	sortByID(incA, func(i data.Incident) string { return i.ID })
 	sortByID(incB, func(i data.Incident) string { return i.ID })
 
-	require.Equal(
-		t,
-		len(incA),
-		len(incB),
-		"incidents: row count mismatch (A=%d, B=%d)",
-		len(incA),
-		len(incB),
-	)
+	require.Len(t, incB, len(incA), "incidents: row count mismatch")
 	for i := range incA {
 		ia, ib := incA[i], incB[i]
 		assert.Equal(t, ia.ID, ib.ID, "incidents[%d]: ID", i)
@@ -465,14 +430,7 @@ func compareDocuments(t *testing.T, a, b *data.Store) {
 	sortByID(docA, func(d data.Document) string { return d.ID })
 	sortByID(docB, func(d data.Document) string { return d.ID })
 
-	require.Equal(
-		t,
-		len(docA),
-		len(docB),
-		"documents: row count mismatch (A=%d, B=%d)",
-		len(docA),
-		len(docB),
-	)
+	require.Len(t, docB, len(docA), "documents: row count mismatch")
 	for i := range docA {
 		da, db := docA[i], docB[i]
 		assert.Equal(t, da.ID, db.ID, "documents[%d]: ID", i)
