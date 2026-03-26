@@ -23,6 +23,7 @@
     }
   }
   </script>
+  <script src="{{ "js/theme.js" | relURL }}"></script>
 </head>
 <body>
 
@@ -172,21 +173,52 @@ document.addEventListener('click', function(e) {
 
 <script type="module">
 import mermaid from 'mermaid';
-mermaid.initialize({
-  startOnLoad: true,
-  theme: 'base',
-  themeVariables: {
-    fontFamily: '"Source Serif 4", Georgia, serif',
-    fontSize: '14px',
-    primaryColor: '#f0ebe4',
-    primaryBorderColor: '#c05e3c',
-    primaryTextColor: '#2d2a26',
-    lineColor: '#9e958a',
-    secondaryColor: '#faf6f1',
-    tertiaryColor: '#faf6f1'
+
+function getMermaidTheme() {
+  var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: dark ? {
+      fontFamily: '"Source Serif 4", Georgia, serif',
+      fontSize: '14px',
+      primaryColor: '#3d3730',
+      primaryBorderColor: '#d4764e',
+      primaryTextColor: '#e8ddd0',
+      lineColor: '#706760',
+      secondaryColor: '#242019',
+      tertiaryColor: '#242019'
+    } : {
+      fontFamily: '"Source Serif 4", Georgia, serif',
+      fontSize: '14px',
+      primaryColor: '#f0ebe4',
+      primaryBorderColor: '#c05e3c',
+      primaryTextColor: '#2d2a26',
+      lineColor: '#9e958a',
+      secondaryColor: '#faf6f1',
+      tertiaryColor: '#faf6f1'
+    }
+  };
+}
+
+mermaid.initialize(getMermaidTheme());
+mermaid.run();
+
+document.addEventListener('theme-changed', async function () {
+  mermaid.initialize(getMermaidTheme());
+  var els = document.querySelectorAll('.mermaid[data-processed]');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    var source = el.getAttribute('data-original-source');
+    if (!source) continue;
+    el.removeAttribute('data-processed');
+    el.innerHTML = source;
   }
+  await mermaid.run();
 });
 </script>
+
+{{ partial "theme-toggle.html" . }}
 
 </body>
 </html>

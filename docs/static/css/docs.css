@@ -125,7 +125,7 @@ body {
 .search-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(45, 42, 38, 0.5);
+  background: var(--overlay-bg);
   z-index: 500;
   display: none;
   align-items: flex-start;
@@ -165,7 +165,7 @@ body {
   background: var(--cream);
   border: 1px solid var(--rule);
   border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 40px var(--shadow-color);
   padding: 1.5rem;
 
   --pagefind-ui-primary: var(--terracotta);
@@ -564,8 +564,8 @@ pre {
 }
 
 .docs-main pre {
-  background: var(--charcoal);
-  color: #e8e2da;
+  background: var(--code-bg);
+  color: var(--code-text);
   padding: 1.25rem 1.5rem;
   border-radius: 8px;
   overflow-x: auto;
@@ -727,7 +727,7 @@ h2:hover .badge-experimental .badge-label {
   height: auto;
   border-radius: 8px;
   margin: 1rem 0 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px var(--shadow-color);
 }
 
 /* ── Prev / Next navigation ────────────────────────────────── */

@@ -1,7 +1,7 @@
 /* Copyright 2026 Phillip Cloud */
 /* Licensed under the Apache License, Version 2.0 */
 
-/* Shared palette -- imported by website.css, docs.css, and blog.css */
+/* Shared palette and theme-toggle styles -- imported by website.css, docs.css, and blog.css */
 
 :root {
   --cream: #faf6f1;
@@ -13,4 +13,98 @@
   --sage: #6b8f71;
   --warm-gray: #9e958a;
   --rule: #d9d2c9;
+  --code-bg: #2d2a26;
+  --code-text: #e8e2da;
+  --shadow-color: rgba(45, 42, 38, 0.12);
+  --overlay-bg: rgba(45, 42, 38, 0.5);
+}
+
+[data-theme="dark"] {
+  --cream: #242019;
+  --linen: #1c1916;
+  --charcoal: #e8ddd0;
+  --charcoal-soft: #a89e91;
+  --terracotta: #d4764e;
+  --terracotta-dark: #e0835a;
+  --sage: #7fa882;
+  --warm-gray: #706760;
+  --rule: #3d3730;
+  --code-bg: #1c1916;
+  --code-text: #e8ddd0;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+}
+
+/* --- Theme toggle (shared across all pages) --- */
+
+.theme-toggle {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 400;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 0;
+  color: var(--warm-gray);
+  transition: color 0.15s;
+}
+
+.theme-toggle:hover {
+  color: var(--charcoal);
+}
+
+.theme-house {
+  display: block;
+}
+
+.sun-group {
+  transform-origin: 18px 27px;
+  animation: sun-drift 1s ease-in-out forwards;
+  transition: opacity 0.4s;
+}
+
+@keyframes sun-drift {
+  0% { transform: scale(1); }
+  100% { transform: translate(-10.8px, -21px) scale(0.45); }
+}
+
+[data-theme="dark"] .sun-group {
+  animation: none;
+  opacity: 0;
+}
+
+.moon-group {
+  transform: translateY(-14px);
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) 0.15s, opacity 0.4s 0.15s;
+}
+
+[data-theme="dark"] .moon-group {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+
+.sky-stars { opacity: 0; transition: opacity 0.5s; }
+[data-theme="dark"] .sky-stars { opacity: 1; }
+
+.star { opacity: 0.2; }
+.star-1 { animation: twinkle 2s ease-in-out infinite; }
+.star-2 { animation: twinkle 2s ease-in-out 0.5s infinite; }
+.star-3 { animation: twinkle 2s ease-in-out 1s infinite; }
+.star-4 { animation: twinkle 2s ease-in-out 1.5s infinite; }
+.star-5 { animation: twinkle 2s ease-in-out 0.8s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sun-group { animation: none; opacity: 0; transition: none; }
+  .moon-group { transition: none; }
+  .sky-stars { transition: none; }
+  .star { animation: none; }
 }

@@ -17,6 +17,7 @@
   <link rel="alternate" type="application/rss+xml" title="micasa blog" href="{{ "blog/index.xml" | relURL }}">
   <link rel="stylesheet" href="{{ "css/blog.css" | relURL }}">
   <link rel="stylesheet" href="{{ "css/syntax.css" | relURL }}">
+  <script src="{{ "js/theme.js" | relURL }}"></script>
 </head>
 <body>
 
@@ -40,6 +41,8 @@
   <a href="https://github.com/micasa-dev/micasa">GitHub</a> &middot;
   <a href="https://github.com/micasa-dev/micasa/blob/main/LICENSE">Apache-2.0</a>
 </footer>
+
+{{ partial "theme-toggle.html" . }}
 
 </body>
 </html>

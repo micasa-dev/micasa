@@ -233,7 +233,7 @@ body {
   height: auto;
   border-radius: 8px;
   margin: 1rem 0 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px var(--shadow-color);
 }
 
 /* Code */
@@ -262,8 +262,8 @@ kbd {
 }
 
 .blog-post-body pre {
-  background: var(--charcoal);
-  color: #e8e2da;
+  background: var(--code-bg);
+  color: var(--code-text);
   padding: 1.25rem 1.5rem;
   border-radius: 8px;
   overflow-x: auto;

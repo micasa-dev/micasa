@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ "css/fonts.css" | relURL }}">
   <link rel="stylesheet" href="{{ "css/website.css" | relURL }}">
   <link rel="preload" as="video" type="video/webm" href="{{ "videos/demo.webm" | relURL }}">
+  <script src="{{ "js/theme.js" | relURL }}"></script>
 </head>
 <body>
 
@@ -175,5 +176,7 @@ micasa --print-path   # show where the database lives</code></pre>
 <script src="{{ "js/house-crumble.js" | relURL }}"></script>
 <script src="{{ "js/chimney-smoke.js" | relURL }}"></script>
 <script src="{{ "js/testimonials.js" | relURL }}"></script>
+
+{{ partial "theme-toggle.html" . }}
 </body>
 </html>

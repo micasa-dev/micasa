@@ -241,7 +241,7 @@
       el.style.position = 'absolute';
       el.style.left = `${centerX + rand(-0.6, 0.6) * houseRect.width}px`;
       el.style.top = `${groundY}px`;
-      el.style.color = '#9e958a';
+      el.style.color = getComputedStyle(document.documentElement).getPropertyValue('--warm-gray').trim();
       el.style.fontSize = `${rand(0.6, 1.0)}em`;
       el.style.opacity = '0';
       scene.appendChild(el);

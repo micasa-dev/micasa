@@ -95,8 +95,8 @@ code {
 }
 
 pre {
-  background: var(--charcoal);
-  color: #e8e2da;
+  background: var(--code-bg);
+  color: var(--code-text);
   padding: 1.25rem 1.5rem;
   border-radius: 8px;
   overflow-x: auto;
@@ -293,7 +293,7 @@ section + section {
   max-width: 100%;
   width: 100%;
   border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(45, 42, 38, 0.12);
+  box-shadow: 0 4px 24px var(--shadow-color);
 }
 
 /* --- Pitch --- */
