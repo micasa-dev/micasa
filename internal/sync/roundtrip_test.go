@@ -60,7 +60,7 @@ func TestSyncRoundTrip(t *testing.T) {
 
 	resultA, err := engineA.Sync(ctx)
 	require.NoError(t, err)
-	require.Greater(t, resultA.Pushed, 0, "device A should push demo data ops")
+	require.Positive(t, resultA.Pushed, "device A should push demo data ops")
 
 	// --- 5. Register device B on the relay ---
 	kpB, err := crypto.GenerateDeviceKeyPair()
@@ -85,7 +85,7 @@ func TestSyncRoundTrip(t *testing.T) {
 
 	resultB, err := engineB.Sync(ctx)
 	require.NoError(t, err)
-	require.Greater(t, resultB.Pulled, 0, "device B should pull ops from device A")
+	require.Positive(t, resultB.Pulled, "device B should pull ops from device A")
 
 	// --- 8. Compare every entity table between A and B ---
 	compareHouseProfiles(t, storeA, storeB)
@@ -146,7 +146,7 @@ func compareHouseProfiles(t *testing.T, a, b *data.Store) {
 	assert.Equal(t, hpA.SquareFeet, hpB.SquareFeet, "house_profiles: SquareFeet")
 	assert.Equal(t, hpA.LotSquareFeet, hpB.LotSquareFeet, "house_profiles: LotSquareFeet")
 	assert.Equal(t, hpA.Bedrooms, hpB.Bedrooms, "house_profiles: Bedrooms")
-	assert.Equal(t, hpA.Bathrooms, hpB.Bathrooms, "house_profiles: Bathrooms")
+	assert.InDelta(t, hpA.Bathrooms, hpB.Bathrooms, 0.01, "house_profiles: Bathrooms")
 	assert.Equal(t, hpA.FoundationType, hpB.FoundationType, "house_profiles: FoundationType")
 	assert.Equal(t, hpA.WiringType, hpB.WiringType, "house_profiles: WiringType")
 	assert.Equal(t, hpA.RoofType, hpB.RoofType, "house_profiles: RoofType")
@@ -174,7 +174,7 @@ func compareProjectTypes(t *testing.T, a, b *data.Store) {
 	require.NoError(t, a.GormDB().Order("id").Find(&ptA).Error)
 	require.NoError(t, b.GormDB().Order("id").Find(&ptB).Error)
 
-	require.Equal(t, len(ptA), len(ptB), "project_types: row count mismatch")
+	require.Len(t, ptB, len(ptA), "project_types: row count mismatch")
 	for i := range ptA {
 		assert.Equal(t, ptA[i].ID, ptB[i].ID, "project_types[%d]: ID", i)
 		assert.Equal(t, ptA[i].Name, ptB[i].Name, "project_types[%d]: Name", i)
@@ -190,7 +190,7 @@ func compareMaintenanceCategories(t *testing.T, a, b *data.Store) {
 	require.NoError(t, a.GormDB().Order("id").Find(&mcA).Error)
 	require.NoError(t, b.GormDB().Order("id").Find(&mcB).Error)
 
-	require.Equal(t, len(mcA), len(mcB), "maintenance_categories: row count mismatch")
+	require.Len(t, mcB, len(mcA), "maintenance_categories: row count mismatch")
 	for i := range mcA {
 		assert.Equal(t, mcA[i].ID, mcB[i].ID, "maintenance_categories[%d]: ID", i)
 		assert.Equal(t, mcA[i].Name, mcB[i].Name, "maintenance_categories[%d]: Name", i)
@@ -408,7 +408,7 @@ func compareVendors(t *testing.T, a, b *data.Store) {
 	sortByID(vA, func(v data.Vendor) string { return v.ID })
 	sortByID(vB, func(v data.Vendor) string { return v.ID })
 
-	require.Equal(t, len(vA), len(vB), "vendors: row count mismatch (A=%d, B=%d)", len(vA), len(vB))
+	require.Len(t, vB, len(vA), "vendors: row count mismatch")
 	for i := range vA {
 		va, vb := vA[i], vB[i]
 		assert.Equal(t, va.ID, vb.ID, "vendors[%d]: ID", i)
@@ -434,7 +434,7 @@ func compareQuotes(t *testing.T, a, b *data.Store) {
 	sortByID(qA, func(q data.Quote) string { return q.ID })
 	sortByID(qB, func(q data.Quote) string { return q.ID })
 
-	require.Equal(t, len(qA), len(qB), "quotes: row count mismatch (A=%d, B=%d)", len(qA), len(qB))
+	require.Len(t, qB, len(qA), "quotes: row count mismatch")
 	for i := range qA {
 		qa, qb := qA[i], qB[i]
 		assert.Equal(t, qa.ID, qb.ID, "quotes[%d]: ID", i)

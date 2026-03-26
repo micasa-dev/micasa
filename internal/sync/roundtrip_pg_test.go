@@ -66,7 +66,7 @@ func TestSyncRoundTripPgStore(t *testing.T) {
 
 	resultA, err := engineA.Sync(ctx)
 	require.NoError(t, err)
-	require.Greater(t, resultA.Pushed, 0, "device A should push demo data ops")
+	require.Positive(t, resultA.Pushed, "device A should push demo data ops")
 
 	// --- 5. Register device B on the relay ---
 	kpB, err := crypto.GenerateDeviceKeyPair()
@@ -91,7 +91,7 @@ func TestSyncRoundTripPgStore(t *testing.T) {
 
 	resultB, err := engineB.Sync(ctx)
 	require.NoError(t, err)
-	require.Greater(t, resultB.Pulled, 0, "device B should pull ops from device A")
+	require.Positive(t, resultB.Pulled, "device B should pull ops from device A")
 
 	// --- 8. Compare every entity table between A and B ---
 	compareHouseProfiles(t, storeA, storeB)
