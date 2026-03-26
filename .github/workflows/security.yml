@@ -128,37 +128,25 @@ jobs:
     concurrency:
       group: security-secrets-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-    env:
-      CGO_ENABLED: "0"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
         with:
           egress-policy: block
           disable-telemetry: true
-          disable-sudo-and-containers: true
           allowed-endpoints: >
-            api.github.com:443
+            ghcr.io:443
             github.com:443
-            proxy.golang.org:443
-            release-assets.githubusercontent.com:443
-            storage.googleapis.com:443
-            sum.golang.org:443
+            pkg-containers.githubusercontent.com:443
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+      - uses: trufflesecurity/trufflehog@6c05c4a00b91aa542267d8e32a8254774799d68d # v3.93.8
         with:
-          go-version: "1.26"
-
-      - name: Install trufflehog
-        run: go install github.com/trufflesecurity/trufflehog/v3@v3.94.1
-
-      - name: Run trufflehog
-        run: trufflehog git file://. --only-verified --fail --no-update --github-actions
+          extra_args: --only-verified
 
   codeql:
     name: CodeQL (Go)
