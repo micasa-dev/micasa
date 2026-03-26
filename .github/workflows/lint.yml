@@ -56,28 +56,40 @@ jobs:
     concurrency:
       group: lint-deadcode-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    env:
+      CGO_ENABLED: "0"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
         with:
           egress-policy: block
           disable-telemetry: true
+          disable-sudo-and-containers: true
           allowed-endpoints: >
             api.github.com:443
-            cache.nixos.org:443
             github.com:443
             proxy.golang.org:443
-            releases.nixos.org:443
+            release-assets.githubusercontent.com:443
             storage.googleapis.com:443
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26"
+
+      - name: Install deadcode
+        run: go install golang.org/x/tools/cmd/deadcode@v0.43.0
 
       - name: Run deadcode
-        run: nix run '.#deadcode'
+        run: |
+          output=$(deadcode -test ./...)
+          if [ -n "$output" ]; then
+            echo "$output"
+            exit 1
+          fi
 
   golangci-lint:
     name: Lint
@@ -87,28 +99,33 @@ jobs:
     concurrency:
       group: lint-golangci-lint-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    env:
+      CGO_ENABLED: "0"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
         with:
           egress-policy: block
           disable-telemetry: true
+          disable-sudo-and-containers: true
           allowed-endpoints: >
             api.github.com:443
-            cache.nixos.org:443
             github.com:443
+            objects.githubusercontent.com:443
             proxy.golang.org:443
-            releases.nixos.org:443
+            release-assets.githubusercontent.com:443
             storage.googleapis.com:443
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26"
 
       - name: Run golangci-lint
-        run: nix run '.#golangci-lint'
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
 
   pre-commit:
     name: Pre-commit
