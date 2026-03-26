@@ -5,7 +5,7 @@
   description = "micasa Go development environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
+    nixpkgs.url = "github:NixOS/nixpkgs/2d6af1fa6349e4c3accef90d7e356d4300ce221c"; # nixos-unstable-small 2026-03-26
     flake-utils.url = "github:numtide/flake-utils";
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
@@ -36,7 +36,7 @@
           inherit version;
           src = ./.;
           subPackages = [ "cmd/micasa" ];
-          vendorHash = "sha256-Lqp6u9FdKDDFATGd2a7sKjT6lJ4rUpDzGaoiG0f18Rc=";
+          vendorHash = "sha256-I4EUIFGbJ9Q3IUFKlF+YiJF84fDiIfXbUQMiDntENZU=";
           env.CGO_ENABLED = 0;
           preCheck = ''
             export HOME="$(mktemp -d)"

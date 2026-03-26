@@ -74,7 +74,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@1ca7d21a94afc7c957383a2d217460d980de4934 # v31.10.1
+      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
 
       - name: Run govulncheck
         run: nix run '.#govulncheck'
@@ -104,7 +104,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@1ca7d21a94afc7c957383a2d217460d980de4934 # v31.10.1
+      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
 
       - name: Run osv-scanner
         run: nix run '.#osv-scanner'
@@ -133,7 +133,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: trufflesecurity/trufflehog@6c05c4a00b91aa542267d8e32a8254774799d68d # v3.93.8
+      - uses: trufflesecurity/trufflehog@586f66d7886cd0b037c7c245d4a6e34ef357ab10 # v3.94.1
         with:
           extra_args: --only-verified
 
@@ -171,7 +171,7 @@ jobs:
           go-version: "1.26"
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
+        uses: github/codeql-action/init@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
         with:
           languages: go
           build-mode: manual
@@ -180,7 +180,7 @@ jobs:
         run: go build ./...
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
+        uses: github/codeql-action/analyze@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
 
   result:
     name: Security Result

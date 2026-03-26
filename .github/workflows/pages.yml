@@ -37,9 +37,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
-      - uses: cachix/install-nix-action@1ca7d21a94afc7c957383a2d217460d980de4934 # v31.10.1
+      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
 
       - name: Build docs
         run: nix run '.#docs'
@@ -50,4 +50,4 @@ jobs:
 
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
