@@ -249,6 +249,10 @@ details; do not duplicate that detail here.
   confirmation. This overrides any skill that says "ask to commit."
 - **Website changes use `docs` type**: Changes under `docs/` (Hugo site)
   use `docs(website):` — never `fix` or `feat`, which trigger releases.
+- **Diagrams use Mermaid JS**: All diagrams on the website and docs —
+  especially sequence diagrams, flow charts, and architecture diagrams —
+  must use Mermaid JS (`\`\`\`mermaid` fenced code blocks). No ASCII art
+  diagrams.
 
 ### Testing
 
