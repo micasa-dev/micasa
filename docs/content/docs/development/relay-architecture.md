@@ -78,15 +78,15 @@ sequenceDiagram
     participant R as Relay
     participant J as Joiner
 
-    I->>R: POST /invite
+    I->>R: POST /households/{id}/invite
     R-->>I: invite code
 
     Note over I,J: share code out-of-band
 
-    J->>R: POST /join (code)
+    J->>R: POST /households/{id}/join (code)
     R-->>J: exchange ID
 
-    I->>R: GET /pending-exchanges
+    I->>R: GET /households/{id}/pending-exchanges
     R-->>I: joiner public key
 
     I->>R: POST /key-exchange/complete (encrypted household key)
@@ -187,11 +187,11 @@ sequenceDiagram
 
     rect rgb(240, 235, 228)
     Note over A,B: Key exchange
-    A->>R: POST /invite
+    A->>R: POST /households/{id}/invite
     R-->>A: invite code (4h expiry)
-    B->>R: POST /join (invite code + public key)
+    B->>R: POST /households/{id}/join (invite code + public key)
     R-->>B: exchange ID
-    A->>R: GET /pending-exchanges
+    A->>R: GET /households/{id}/pending-exchanges
     R-->>A: joiner public key
     A->>A: box.Seal(hhKey, joinerPubKey)
     A->>R: POST /key-exchange/complete
