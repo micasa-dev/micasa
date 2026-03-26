@@ -3374,41 +3374,6 @@ func TestHardDeleteIncidentWritesOplogForDetachedDocuments(t *testing.T) {
 	assert.True(t, foundIncDelete, "oplog should have delete entry for hard-deleted incident")
 }
 
-func TestDocumentExistsByChecksum(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	types, _ := s.ProjectTypes()
-	proj := Project{Title: "Roof", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned}
-	require.NoError(t, s.CreateProject(&proj))
-	projects, _ := s.ListProjects(false)
-	projID := projects[0].ID
-
-	doc := Document{
-		Title:          "invoice",
-		FileName:       "invoice.pdf",
-		EntityKind:     DocumentEntityProject,
-		EntityID:       projID,
-		MIMEType:       "application/pdf",
-		SizeBytes:      100,
-		ChecksumSHA256: "abc123deadbeef",
-		Data:           []byte("fake"),
-	}
-	require.NoError(t, s.CreateDocument(&doc))
-
-	// Same entity, same checksum → true.
-	exists, err := s.DocumentExistsByChecksum(DocumentEntityProject, projID, "abc123deadbeef")
-	require.NoError(t, err)
-	assert.True(t, exists)
-	// Same entity, different checksum → false.
-	exists, err = s.DocumentExistsByChecksum(DocumentEntityProject, projID, "different")
-	require.NoError(t, err)
-	assert.False(t, exists)
-	// Different entity kind, same checksum → false.
-	exists, err = s.DocumentExistsByChecksum(DocumentEntityAppliance, projID, "abc123deadbeef")
-	require.NoError(t, err)
-	assert.False(t, exists)
-}
-
 func TestHardDeleteSoftDeletedIncident(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)

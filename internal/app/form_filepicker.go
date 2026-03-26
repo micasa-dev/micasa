@@ -43,12 +43,6 @@ func filePickerShowHidden(field huh.Field) bool {
 	return sh.Bool()
 }
 
-// syncPickerDescription updates fp's description to reflect its current
-// ShowHidden state.
-func syncPickerDescription(fp *huh.FilePicker) {
-	fp.Description(filePickerDesc(filePickerShowHidden(fp)))
-}
-
 // syncFilePickerDescription updates the focused FilePicker's description to
 // reflect the current ShowHidden state. No-op if the focused field is not a
 // *huh.FilePicker.
@@ -61,7 +55,7 @@ func syncFilePickerDescription(form *huh.Form) {
 	if !ok {
 		return
 	}
-	syncPickerDescription(fp)
+	fp.Description(filePickerDesc(filePickerShowHidden(fp)))
 }
 
 // filePickerCurrentDir returns the bubbles filepicker's CurrentDirectory from
@@ -111,23 +105,6 @@ func filePickerTitle(field huh.Field) string {
 	return t.String()
 }
 
-// syncPickerTitle updates fp's title to show the current directory (dimmed,
-// ~ abbreviated) next to the base label stored in the picker's Key. No-op
-// when Key or CurrentDirectory is empty.
-func syncPickerTitle(fp *huh.FilePicker) {
-	dir := filePickerCurrentDir(fp)
-	if dir == "" {
-		return
-	}
-	base := fp.GetKey()
-	if base == "" {
-		return
-	}
-	// SGR 22 cancels bold from the outer Title style; lipgloss Bold(false)
-	// alone doesn't emit it when nested inside a pre-bolded string.
-	fp.Title(base + " \x1b[22m" + dimPath.Render("in "+shortenHome(dir)))
-}
-
 // syncFilePickerTitle updates the focused FilePicker's title to show the
 // current directory (dimmed, ~ abbreviated) next to the base label. The base
 // label is stored in the field's Key. No-op if the focused field is not a
@@ -141,5 +118,15 @@ func syncFilePickerTitle(form *huh.Form) {
 	if !ok {
 		return
 	}
-	syncPickerTitle(fp)
+	dir := filePickerCurrentDir(fp)
+	if dir == "" {
+		return
+	}
+	base := fp.GetKey()
+	if base == "" {
+		return
+	}
+	// SGR 22 cancels bold from the outer Title style; lipgloss Bold(false)
+	// alone doesn't emit it when nested inside a pre-bolded string.
+	fp.Title(base + " \x1b[22m" + dimPath.Render("in "+shortenHome(dir)))
 }

@@ -49,7 +49,6 @@ const (
 	confirmHardDelete                  // permanent incident deletion (y/n)
 	confirmFormDiscard                 // discard dirty form changes, stay in app
 	confirmFormQuitDiscard             // discard dirty form changes and quit
-	confirmBatchDiscard                // discard staged files in batch overlay
 )
 
 // isFormConfirm reports whether the confirmation is a form-related dialog.
@@ -264,7 +263,6 @@ type statusMsg struct {
 type detailContext struct {
 	ParentTabIndex int
 	ParentRowID    string
-	EntityKind     string // set for document detail views; the entity kind of the parent row
 	Breadcrumb     string
 	Tab            Tab
 	Mutated        bool // true when any CUD operation occurred in this detail

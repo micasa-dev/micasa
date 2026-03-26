@@ -53,19 +53,6 @@ func (s *Store) ListDocumentsByEntity(
 	})
 }
 
-// DocumentExistsByChecksum reports whether a document with the given SHA256
-// checksum already exists for the specified entity.
-func (s *Store) DocumentExistsByChecksum(entityKind, entityID, checksum string) (bool, error) {
-	var count int64
-	if err := s.db.Model(&Document{}).
-		Where(ColEntityKind+" = ? AND "+ColEntityID+" = ? AND "+ColChecksumSHA256+" = ?",
-			entityKind, entityID, checksum).
-		Count(&count).Error; err != nil {
-		return false, fmt.Errorf("check document checksum: %w", err)
-	}
-	return count > 0, nil
-}
-
 // CountDocumentsByEntity counts non-deleted documents grouped by entity_id
 // where entity_kind matches. Uses a custom query because documents use
 // two-column polymorphic keys that countByFK can't handle.

@@ -319,11 +319,10 @@ func (m *Model) handleEditKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 		return m.formInitCmd(), true
 	case keyShiftA:
 		if tab := m.effectiveTab(); tab != nil && tab.Kind == tabDocuments {
-			var entity entityRef
-			if dc := m.detail(); dc != nil && dc.EntityKind != "" {
-				entity = entityRef{Kind: dc.EntityKind, ID: dc.ParentRowID}
+			if err := m.startQuickDocumentForm(); err != nil {
+				m.setStatusError(err.Error())
 			}
-			return m.startBatchDocOverlay(entity), true
+			return m.formInitCmd(), true
 		}
 		return nil, false
 	case keyE:

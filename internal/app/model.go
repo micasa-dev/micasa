@@ -139,8 +139,6 @@ const (
 	symEmDash    = "\u2014" // —
 	symInfinity  = "\u221E" // ∞
 	symMiddleDot = "\u00b7" // ·
-	symCheck     = "\u2713" // ✓
-	symX         = "\u2717" // ✗
 )
 
 // Key bindings for help viewport (g/G for top/bottom are not in the
@@ -186,7 +184,6 @@ type Model struct {
 	chatCfg               chatConfig
 	filePickerDir         string // starting directory for document file picker
 	ex                    extractState
-	batchDoc              *batchDocState // non-nil when batch upload overlay is active
 	pull                  pullState
 	chat                  *chatState // non-nil when chat overlay is open
 	styles                *Styles
@@ -1433,7 +1430,6 @@ func (o inlineInputOverlay) hidesMainKeys() bool { return false }
 func (m *Model) overlays() []overlay {
 	return []overlay{
 		helpOverlay{m},
-		batchDocOverlay{m},
 		extractionOverlay{m},
 		chatOverlay{m},
 		notePreviewOverlay{m},
