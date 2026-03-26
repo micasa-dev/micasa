@@ -4,9 +4,18 @@
 (() => {
   var stored = localStorage.getItem('theme');
   var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  if (stored === 'dark' || (!stored && prefersDark)) {
+  var isDark = stored === 'dark' || (!stored && prefersDark);
+  if (isDark) {
     document.documentElement.setAttribute('data-theme', 'dark');
   }
+
+  // Skip sun animation on page navigation within the same mode.
+  // Click toggles always replay by removing sun-played first.
+  try {
+    if (!isDark && sessionStorage.getItem('theme-seen') === 'light') {
+      document.documentElement.classList.add('sun-played');
+    }
+  } catch (_) {}
 
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     if (localStorage.getItem('theme')) return;
@@ -14,20 +23,16 @@
       document.documentElement.setAttribute('data-theme', 'dark');
     } else {
       document.documentElement.removeAttribute('data-theme');
+      document.documentElement.classList.remove('sun-played');
     }
     document.dispatchEvent(new CustomEvent('theme-changed'));
   });
 
-  try {
-    if (sessionStorage.getItem('sun-played')) {
-      document.documentElement.classList.add('sun-played');
-    }
-  } catch (_) { /* storage unavailable */ }
-
   window.toggleTheme = () => {
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (isDark) {
+    var wasDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (wasDark) {
       document.documentElement.removeAttribute('data-theme');
+      document.documentElement.classList.remove('sun-played');
       localStorage.setItem('theme', 'light');
     } else {
       document.documentElement.setAttribute('data-theme', 'dark');
@@ -38,8 +43,8 @@
 
   document.addEventListener('animationend', (e) => {
     if (e.animationName === 'sun-drift') {
-      try { sessionStorage.setItem('sun-played', '1'); } catch (_) { /* storage unavailable */ }
       document.documentElement.classList.add('sun-played');
+      try { sessionStorage.setItem('theme-seen', 'light'); } catch (_) {}
     }
   });
 })();
