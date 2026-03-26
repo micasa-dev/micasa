@@ -34,14 +34,14 @@ Devices authenticate with bearer tokens. The flow:
 
 Tokens are generated as 256-bit random hex strings. Only the
 SHA-256 hash is stored server-side — the raw token lives on the
-device in `~/.local/share/micasa/secrets/`.
+device in the local secrets directory.
 
 ## Encryption layers
 
-### Household data (NaCl secretbox)
+### Household data ([NaCl secretbox](https://nacl.cr.yp.to/secretbox.html))
 
 All sync data is end-to-end encrypted with a per-household key
-using NaCl secretbox (XSalsa20-Poly1305). The relay never sees
+using [NaCl secretbox](https://nacl.cr.yp.to/secretbox.html) ([XSalsa20-Poly1305](https://en.wikipedia.org/wiki/Salsa20#XSalsa20_with_Poly1305)). The relay never sees
 plaintext — it stores and serves ciphertext.
 
 ```mermaid
@@ -56,11 +56,11 @@ sequenceDiagram
     B->>B: secretbox.Open(op, hhKey)
 ```
 
-### Device tokens at rest (AES-256-GCM)
+### Device tokens at rest ([AES-256-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode))
 
 During the key exchange (join flow), a device token is temporarily
 stored on the relay so the joining device can retrieve it. This
-token is encrypted at rest with a server-side AES-256-GCM key
+token is encrypted at rest with a server-side [AES-256-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode) key
 (`RELAY_ENCRYPTION_KEY`) and scrubbed after first retrieval.
 
 ### Webhook signatures (HMAC-SHA256)
@@ -170,7 +170,7 @@ sequenceDiagram
     A->>A: GenerateHouseholdKey()
     A->>R: POST /households (public key)
     R-->>A: household ID + device token
-    A->>A: save keys to ~/secrets/
+    A->>A: save keys to secrets directory
     end
 
     Note over A: User adds data (projects, maintenance, etc.)
