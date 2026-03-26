@@ -1,8 +1,8 @@
 +++
-title = "Relay Architecture"
+title = "Encrypted Relay"
 weight = 3
 description = "How the sync relay works: store interface, auth, encryption, key exchange."
-linkTitle = "Relay Architecture"
+linkTitle = "Encrypted Relay"
 +++
 
 The relay is a standalone HTTP server that mediates encrypted sync
