@@ -12,7 +12,7 @@
   // Skip sun animation on page navigation within the same mode.
   // Click toggles always replay by removing sun-played first.
   try {
-    if (!isDark && sessionStorage.getItem('theme-seen') === 'light') {
+    if (!isDark && sessionStorage.getItem('sun-light-seen')) {
       document.documentElement.classList.add('sun-played');
     }
   } catch (_) {}
@@ -44,7 +44,7 @@
   document.addEventListener('animationend', (e) => {
     if (e.animationName === 'sun-drift') {
       document.documentElement.classList.add('sun-played');
-      try { sessionStorage.setItem('theme-seen', 'light'); } catch (_) {}
+      try { sessionStorage.setItem('sun-light-seen', '1'); } catch (_) {}
     }
   });
 })();

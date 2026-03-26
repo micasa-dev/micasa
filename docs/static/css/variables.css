@@ -17,6 +17,7 @@
   --code-text: #e8e2da;
   --shadow-color: rgba(45, 42, 38, 0.12);
   --overlay-bg: rgba(45, 42, 38, 0.5);
+  --sun-final: translate(-10.8px, -21px) scale(0.45);
 }
 
 [data-theme="dark"] {
@@ -59,20 +60,15 @@
   display: block;
 }
 
-.theme-toggle {
-  --sun-final: translate(-10.8px, -21px) scale(0.45);
-}
-
 .sun-group {
   transform-origin: 18px 27px;
   animation: sun-drift 1s ease-in-out forwards;
   transition: opacity 0.4s;
 }
 
-/* Keep 100% in sync with --sun-final (keyframes can't resolve element-scoped vars) */
 @keyframes sun-drift {
   0% { transform: scale(1); }
-  100% { transform: translate(-10.8px, -21px) scale(0.45); }
+  100% { transform: var(--sun-final); }
 }
 
 [data-theme="dark"] .sun-group {
