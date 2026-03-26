@@ -62,7 +62,6 @@ jobs:
         with:
           egress-policy: block
           disable-telemetry: true
-          disable-sudo-and-containers: true
           allowed-endpoints: >
             api.github.com:443
             cache.nixos.org:443
@@ -95,7 +94,6 @@ jobs:
         with:
           egress-policy: block
           disable-telemetry: true
-          disable-sudo-and-containers: true
           allowed-endpoints: >
             api.github.com:443
             api.osv.dev:443
