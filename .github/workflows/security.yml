@@ -156,7 +156,7 @@ jobs:
         run: go install github.com/trufflesecurity/trufflehog/v3@v3.94.1
 
       - name: Run trufflehog
-        run: trufflehog git file://. --only-verified --fail --no-update
+        run: trufflehog git file://. --only-verified --fail --no-update --github-actions
 
   codeql:
     name: CodeQL (Go)
