@@ -6,7 +6,7 @@ linkTitle = "Self-Hosting"
 +++
 
 micasa pro syncs your household data across machines through an encrypted
-relay. You can use the managed relay at `relay.micasa.run`, or run your
+relay. You can use the managed relay at `relay.micasa.dev`, or run your
 own — same code, same binary.
 
 ## What you need
@@ -63,7 +63,7 @@ curl http://localhost:8080/health
 On each machine, initialize with your relay URL:
 
 ```sh
-micasa pro host --relay-url http://your-server:8080
+micasa pro init --relay-url http://your-server:8080
 ```
 
 On the first machine this creates a new household. On additional
@@ -106,7 +106,7 @@ Caddy on 443.
 Connect micasa using the HTTPS URL:
 
 ```sh
-micasa pro host --relay-url https://sync.example.com
+micasa pro init --relay-url https://sync.example.com
 ```
 
 ## Configuration
@@ -159,7 +159,7 @@ The relay runs database migrations automatically on startup.
 
 ## Differences from managed relay
 
-| | Managed (`relay.micasa.run`) | Self-hosted |
+| | Managed (`relay.micasa.dev`) | Self-hosted |
 |---|---|---|
 | **Subscription** | Required | Not required |
 | **Blob quota** | 1 GB per household | Configurable (default unlimited) |

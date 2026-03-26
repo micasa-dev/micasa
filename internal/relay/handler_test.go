@@ -3011,3 +3011,50 @@ func TestRequireSubscriptionGetHouseholdError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal error")
 }
+
+func TestUpdateCustomerID(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	ctx := context.Background()
+
+	hh, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
+		DeviceName: "test",
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, store.UpdateCustomerID(ctx, hh.HouseholdID, "cus_test123"))
+
+	got, err := store.GetHousehold(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	require.NotNil(t, got.StripeCustomerID)
+	assert.Equal(t, "cus_test123", *got.StripeCustomerID)
+}
+
+func TestHouseholdByCustomer(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	ctx := context.Background()
+
+	hh, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
+		DeviceName: "test",
+		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, store.UpdateCustomerID(ctx, hh.HouseholdID, "cus_lookup"))
+
+	got, err := store.HouseholdByCustomer(ctx, "cus_lookup")
+	require.NoError(t, err)
+	assert.Equal(t, hh.HouseholdID, got.ID)
+}
+
+func TestHouseholdByCustomerNotFound(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	ctx := context.Background()
+
+	_, err := store.HouseholdByCustomer(ctx, "cus_nonexistent")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cus_nonexistent")
+}
