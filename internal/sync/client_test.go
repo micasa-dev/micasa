@@ -21,6 +21,7 @@ import (
 func setupTestRelay(t *testing.T) (*httptest.Server, *relay.MemStore, string) {
 	t.Helper()
 	store := relay.NewMemStore()
+	store.SetEncryptionKey([]byte("test-encryption-key-exactly-32b!"))
 	handler := relay.NewHandler(store, slog.Default())
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)

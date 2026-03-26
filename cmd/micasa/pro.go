@@ -333,8 +333,8 @@ func runProStatus(dbPath string) error {
 		"storage:   %s\n",
 		formatStorageUsage(status.BlobStorage.UsedBytes, status.BlobStorage.QuotaBytes),
 	)
-	if status.StripeStatus != "" {
-		fmt.Printf("plan:      %s\n", status.StripeStatus)
+	if status.StripeStatus != nil && *status.StripeStatus != "" {
+		fmt.Printf("plan:      %s\n", *status.StripeStatus)
 	}
 
 	// Show unsynced local ops count.

@@ -116,6 +116,12 @@ type Store interface {
 		subscriptionID string,
 	) (sync.Household, error)
 
+	// UpdateCustomerID sets the Stripe customer ID for a household.
+	UpdateCustomerID(ctx context.Context, householdID, customerID string) error
+
+	// HouseholdByCustomer finds a household by its Stripe customer ID.
+	HouseholdByCustomer(ctx context.Context, customerID string) (sync.Household, error)
+
 	// OpsCount returns the total number of ops stored for a household.
 	OpsCount(ctx context.Context, householdID string) (int64, error)
 
@@ -134,6 +140,10 @@ type Store interface {
 
 	// BlobUsage returns the total bytes used by blobs for a household.
 	BlobUsage(ctx context.Context, householdID string) (int64, error)
+
+	// SetEncryptionKey sets the AES-256-GCM key used to encrypt device
+	// tokens at rest during key exchanges. Must be exactly 32 bytes.
+	SetEncryptionKey(key []byte)
 
 	// Close releases any resources held by the store.
 	Close() error

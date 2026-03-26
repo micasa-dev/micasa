@@ -171,7 +171,7 @@ func (h *Handler) requireSubscription(next authenticatedHandler) authenticatedHa
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
-		if hh.StripeStatus != "" && hh.StripeStatus != sync.SubscriptionActive {
+		if hh.StripeStatus != nil && *hh.StripeStatus != sync.SubscriptionActive {
 			writeError(w, http.StatusPaymentRequired, "subscription inactive")
 			return
 		}

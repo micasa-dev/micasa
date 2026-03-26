@@ -44,15 +44,20 @@ const (
 	SubscriptionActive   = "active"
 	SubscriptionPastDue  = "past_due"
 	SubscriptionCanceled = "canceled"
+	SubscriptionLifetime = "lifetime"
 )
 
 // Household represents a sync household on the relay.
 type Household struct {
 	ID                   string    `json:"id"`
 	CreatedAt            time.Time `json:"created_at"`
-	StripeSubscriptionID string    `json:"stripe_subscription_id,omitempty"`
-	StripeStatus         string    `json:"stripe_status,omitempty"`
+	StripeCustomerID     *string   `json:"stripe_customer_id,omitempty"`
+	StripeSubscriptionID *string   `json:"stripe_subscription_id,omitempty"`
+	StripeStatus         *string   `json:"stripe_status,omitempty"`
 }
+
+// StrPtr returns a pointer to s. Convenience for setting *string fields.
+func StrPtr(s string) *string { return &s }
 
 // BlobStorage reports blob storage usage for a household.
 type BlobStorage struct {
@@ -66,7 +71,7 @@ type StatusResponse struct {
 	HouseholdID  string      `json:"household_id"`
 	Devices      []Device    `json:"devices"`
 	OpsCount     int64       `json:"ops_count"`
-	StripeStatus string      `json:"stripe_status"`
+	StripeStatus *string     `json:"stripe_status"`
 	BlobStorage  BlobStorage `json:"blob_storage"`
 }
 

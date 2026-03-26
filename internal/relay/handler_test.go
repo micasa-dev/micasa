@@ -25,8 +25,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// defaultTestEncryptionKey is a fixed 32-byte key for tests.
+var defaultTestEncryptionKey = []byte("test-encryption-key-exactly-32b!")
+
 func newTestHandler() (*Handler, *MemStore) {
 	store := NewMemStore()
+	store.SetEncryptionKey(defaultTestEncryptionKey)
 	log := slog.Default()
 	return NewHandler(store, log), store
 }
@@ -1115,6 +1119,7 @@ func TestPushReturns402WhenSubscriptionPastDue(t *testing.T) {
 
 func newTestHandlerWithWebhook(secret string) (*Handler, *MemStore) {
 	store := NewMemStore()
+	store.SetEncryptionKey(defaultTestEncryptionKey)
 	log := slog.Default()
 	return NewHandler(store, log, WithWebhookSecret(secret)), store
 }
@@ -1149,7 +1154,8 @@ func TestStripeWebhookUpdatesSubscription(t *testing.T) {
 	// Verify household subscription status updated.
 	household, err := store.GetHousehold(t.Context(), hh.HouseholdID)
 	require.NoError(t, err)
-	assert.Equal(t, sync.SubscriptionCanceled, household.StripeStatus)
+	require.NotNil(t, household.StripeStatus)
+	assert.Equal(t, sync.SubscriptionCanceled, *household.StripeStatus)
 }
 
 func TestStripeWebhookRejectsInvalidSignature(t *testing.T) {
@@ -1277,7 +1283,8 @@ func TestStatusEndpoint(t *testing.T) {
 	assert.Equal(t, hh.HouseholdID, status.HouseholdID)
 	assert.Len(t, status.Devices, 1)
 	assert.Equal(t, int64(1), status.OpsCount)
-	assert.Equal(t, sync.SubscriptionActive, status.StripeStatus)
+	require.NotNil(t, status.StripeStatus)
+	assert.Equal(t, sync.SubscriptionActive, *status.StripeStatus)
 }
 
 func TestStatusRequiresAuth(t *testing.T) {

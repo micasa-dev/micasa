@@ -30,15 +30,16 @@ func newCryptoToken() string {
 
 // MemStore is an in-memory implementation of Store for testing.
 type MemStore struct {
-	mu         gosync.Mutex
-	ops        []sync.Envelope
-	households map[string]sync.Household
-	devices    map[string]deviceRecord
-	tokenIndex map[string]string // sha256(raw_token) hex -> device_id
-	seqs       map[string]int64  // household_id -> last_seq
-	invites    map[string]*inviteRecord
-	exchanges  map[string]*keyExchangeRecord
-	blobs      map[string]map[string][]byte // household_id -> hash -> data
+	mu            gosync.Mutex
+	encryptionKey []byte
+	ops           []sync.Envelope
+	households    map[string]sync.Household
+	devices       map[string]deviceRecord
+	tokenIndex    map[string]string // sha256(raw_token) hex -> device_id
+	seqs          map[string]int64  // household_id -> last_seq
+	invites       map[string]*inviteRecord
+	exchanges     map[string]*keyExchangeRecord
+	blobs         map[string]map[string][]byte // household_id -> hash -> data
 }
 
 type deviceRecord struct {
@@ -81,6 +82,13 @@ func NewMemStore() *MemStore {
 		exchanges:  make(map[string]*keyExchangeRecord),
 		blobs:      make(map[string]map[string][]byte),
 	}
+}
+
+func (m *MemStore) SetEncryptionKey(key []byte) {
+	if len(key) != 32 {
+		panic(fmt.Sprintf("encryption key must be exactly 32 bytes, got %d", len(key)))
+	}
+	m.encryptionKey = key
 }
 
 func (m *MemStore) Push(_ context.Context, ops []sync.Envelope) ([]sync.PushConfirmation, error) {
@@ -366,6 +374,10 @@ func (m *MemStore) CompleteKeyExchange(
 	if err != nil {
 		return err
 	}
+	encToken, err := encryptToken(m.encryptionKey, token)
+	if err != nil {
+		return fmt.Errorf("encrypt device token: %w", err)
+	}
 
 	dev := sync.Device{
 		ID:          devID,
@@ -379,7 +391,7 @@ func (m *MemStore) CompleteKeyExchange(
 
 	ex.encryptedKey = encryptedKey
 	ex.deviceID = devID
-	ex.deviceToken = token
+	ex.deviceToken = encToken
 	ex.completed = true
 
 	// Consume the invite code.
@@ -420,11 +432,16 @@ func (m *MemStore) GetKeyExchangeResult(
 		)
 	}
 
+	plainToken, err := decryptToken(m.encryptionKey, ex.deviceToken)
+	if err != nil {
+		return sync.KeyExchangeResult{}, fmt.Errorf("decrypt device token: %w", err)
+	}
+
 	result := sync.KeyExchangeResult{
 		Ready:                 true,
 		EncryptedHouseholdKey: ex.encryptedKey,
 		DeviceID:              ex.deviceID,
-		DeviceToken:           ex.deviceToken,
+		DeviceToken:           plainToken,
 	}
 
 	// Single-use: clear credentials after first retrieval so they
@@ -500,8 +517,8 @@ func (m *MemStore) UpdateSubscription(
 	if !ok {
 		return fmt.Errorf("household %s not found", householdID)
 	}
-	hh.StripeSubscriptionID = subscriptionID
-	hh.StripeStatus = status
+	hh.StripeSubscriptionID = &subscriptionID
+	hh.StripeStatus = &status
 	m.households[householdID] = hh
 	return nil
 }
@@ -514,7 +531,7 @@ func (m *MemStore) HouseholdBySubscription(
 	defer m.mu.Unlock()
 
 	for _, hh := range m.households {
-		if hh.StripeSubscriptionID == subscriptionID {
+		if hh.StripeSubscriptionID != nil && *hh.StripeSubscriptionID == subscriptionID {
 			return hh, nil
 		}
 	}
@@ -522,6 +539,38 @@ func (m *MemStore) HouseholdBySubscription(
 		"no household with subscription %s",
 		subscriptionID,
 	)
+}
+
+func (m *MemStore) UpdateCustomerID(
+	_ context.Context,
+	householdID, customerID string,
+) error {
+	if customerID == "" {
+		return fmt.Errorf("customer ID must not be empty")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	hh, ok := m.households[householdID]
+	if !ok {
+		return fmt.Errorf("household %q not found", householdID)
+	}
+	hh.StripeCustomerID = &customerID
+	m.households[householdID] = hh
+	return nil
+}
+
+func (m *MemStore) HouseholdByCustomer(
+	_ context.Context,
+	customerID string,
+) (sync.Household, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, hh := range m.households {
+		if hh.StripeCustomerID != nil && *hh.StripeCustomerID == customerID {
+			return hh, nil
+		}
+	}
+	return sync.Household{}, fmt.Errorf("no household with customer %q", customerID)
 }
 
 func (m *MemStore) OpsCount(

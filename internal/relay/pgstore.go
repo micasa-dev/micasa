@@ -19,7 +19,8 @@ import (
 
 // PgStore implements the relay Store interface backed by Postgres via GORM.
 type PgStore struct {
-	db *gorm.DB
+	db            *gorm.DB
+	encryptionKey []byte
 }
 
 // Compile-time interface check.
@@ -30,8 +31,9 @@ var _ Store = (*PgStore)(nil)
 type pgHousehold struct {
 	ID                   string    `gorm:"primaryKey"`
 	SeqCounter           int64     `gorm:"not null;default:0"`
-	StripeSubscriptionID string    `gorm:"column:stripe_subscription_id"`
-	StripeStatus         string    `gorm:"column:stripe_status"`
+	StripeCustomerID     *string   `gorm:"column:stripe_customer_id"`
+	StripeSubscriptionID *string   `gorm:"column:stripe_subscription_id"`
+	StripeStatus         *string   `gorm:"column:stripe_status"`
 	CreatedAt            time.Time `gorm:"not null;autoCreateTime"`
 }
 
@@ -115,6 +117,13 @@ func NewPgStore(db *gorm.DB) *PgStore {
 	return &PgStore{db: db}
 }
 
+func (s *PgStore) SetEncryptionKey(key []byte) {
+	if len(key) != 32 {
+		panic(fmt.Sprintf("encryption key must be exactly 32 bytes, got %d", len(key)))
+	}
+	s.encryptionKey = key
+}
+
 // pgModels is the canonical list of GORM models managed by PgStore.
 // Used by AutoMigrate and tests to avoid maintaining parallel lists.
 var pgModels = []any{
@@ -128,7 +137,20 @@ var pgModels = []any{
 
 // AutoMigrate creates/updates the database schema.
 func (s *PgStore) AutoMigrate() error {
-	return s.db.AutoMigrate(pgModels...)
+	if err := s.db.AutoMigrate(pgModels...); err != nil {
+		return err
+	}
+	// Partial unique index: only enforce uniqueness for non-empty customer IDs.
+	// GORM's uniqueIndex tag creates an unconditional index which conflicts
+	// when multiple households have empty stripe_customer_id.
+	if err := s.db.Exec(`DROP INDEX IF EXISTS idx_households_stripe_customer_id`).Error; err != nil {
+		return err
+	}
+	return s.db.Exec(`
+		CREATE UNIQUE INDEX idx_households_stripe_customer_id
+		ON households (stripe_customer_id)
+		WHERE stripe_customer_id IS NOT NULL
+	`).Error
 }
 
 func (s *PgStore) Push(ctx context.Context, ops []sync.Envelope) ([]sync.PushConfirmation, error) {
@@ -496,6 +518,10 @@ func (s *PgStore) CompleteKeyExchange(
 		if err != nil {
 			return err
 		}
+		encToken, err := encryptToken(s.encryptionKey, token)
+		if err != nil {
+			return fmt.Errorf("encrypt device token: %w", err)
+		}
 
 		dev := pgDevice{
 			ID:          devID,
@@ -510,7 +536,7 @@ func (s *PgStore) CompleteKeyExchange(
 
 		ex.EncryptedHouseholdKey = encryptedKey
 		ex.DeviceID = devID
-		ex.DeviceToken = token
+		ex.DeviceToken = encToken
 		ex.Completed = true
 		if err := tx.Save(&ex).Error; err != nil {
 			return fmt.Errorf("complete exchange: %w", err)
@@ -562,11 +588,16 @@ func (s *PgStore) GetKeyExchangeResult(
 			)
 		}
 
+		plainToken, err := decryptToken(s.encryptionKey, ex.DeviceToken)
+		if err != nil {
+			return fmt.Errorf("decrypt device token: %w", err)
+		}
+
 		result = sync.KeyExchangeResult{
 			Ready:                 true,
 			EncryptedHouseholdKey: ex.EncryptedHouseholdKey,
 			DeviceID:              ex.DeviceID,
-			DeviceToken:           ex.DeviceToken,
+			DeviceToken:           plainToken,
 		}
 
 		// Single-use: clear credentials atomically within this transaction.
@@ -643,8 +674,8 @@ func (s *PgStore) UpdateSubscription(
 	result := s.db.WithContext(ctx).Model(&pgHousehold{}).
 		Where("id = ?", householdID).
 		Updates(map[string]any{
-			"stripe_subscription_id": subscriptionID,
-			"stripe_status":          status,
+			"stripe_subscription_id": &subscriptionID,
+			"stripe_status":          &status,
 		})
 	if result.Error != nil {
 		return fmt.Errorf("update subscription: %w", result.Error)
@@ -670,6 +701,43 @@ func (s *PgStore) HouseholdBySubscription(
 		return sync.Household{}, fmt.Errorf("find household by subscription: %w", err)
 	}
 	return pgHouseholdToSync(hh), nil
+}
+
+func (s *PgStore) UpdateCustomerID(
+	ctx context.Context,
+	householdID, customerID string,
+) error {
+	if customerID == "" {
+		return fmt.Errorf("customer ID must not be empty")
+	}
+	result := s.db.WithContext(ctx).
+		Model(&pgHousehold{}).
+		Where("id = ?", householdID).
+		Update("stripe_customer_id", &customerID)
+	if result.Error != nil {
+		return fmt.Errorf("update customer ID: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("household %q not found", householdID)
+	}
+	return nil
+}
+
+func (s *PgStore) HouseholdByCustomer(
+	ctx context.Context,
+	customerID string,
+) (sync.Household, error) {
+	var h pgHousehold
+	err := s.db.WithContext(ctx).
+		Where("stripe_customer_id = ?", customerID).
+		First(&h).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return sync.Household{}, fmt.Errorf("no household with customer %q", customerID)
+		}
+		return sync.Household{}, fmt.Errorf("household by customer %q: %w", customerID, err)
+	}
+	return pgHouseholdToSync(h), nil
 }
 
 func (s *PgStore) OpsCount(ctx context.Context, householdID string) (int64, error) {
@@ -802,6 +870,7 @@ func pgHouseholdToSync(h pgHousehold) sync.Household {
 	return sync.Household{
 		ID:                   h.ID,
 		CreatedAt:            h.CreatedAt,
+		StripeCustomerID:     h.StripeCustomerID,
 		StripeSubscriptionID: h.StripeSubscriptionID,
 		StripeStatus:         h.StripeStatus,
 	}
