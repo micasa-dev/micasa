@@ -228,11 +228,17 @@ jobs:
         with:
           go-version: "1.26"
 
-      - name: Test relay and sync (with Postgres)
+      - name: Test relay (with Postgres)
         env:
           CGO_ENABLED: "1"
           RELAY_POSTGRES_DSN: "postgres://micasa:testpass@localhost:5432/micasa_test?sslmode=disable"
-        run: go test -race -shuffle on -timeout 5m ./internal/relay/ ./internal/sync/
+        run: go test -race -shuffle on -timeout 5m ./internal/relay/
+
+      - name: Test sync round-trip (with Postgres)
+        env:
+          CGO_ENABLED: "1"
+          RELAY_POSTGRES_DSN: "postgres://micasa:testpass@localhost:5432/micasa_test?sslmode=disable"
+        run: go test -race -shuffle on -timeout 5m -run TestSyncRoundTripPgStore ./internal/sync/
 
   benchmarks:
     name: Benchmarks (smoke)
