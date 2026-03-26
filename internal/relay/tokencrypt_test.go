@@ -128,3 +128,72 @@ func TestDecryptWithNilKeyFails(t *testing.T) {
 	_, err = decryptToken(nil, encrypted)
 	assert.Error(t, err)
 }
+
+// Confidentiality: ciphertext must not contain the plaintext.
+func TestEncryptedOutputDoesNotContainPlaintext(t *testing.T) {
+	t.Parallel()
+	key := testEncryptionKey(t)
+	plaintext := "super-secret-device-token-12345"
+
+	encrypted, err := encryptToken(key, plaintext)
+	require.NoError(t, err)
+
+	// Check both the base64 output and the decoded bytes.
+	assert.NotContains(t, encrypted, plaintext)
+	decoded, err := base64.StdEncoding.DecodeString(encrypted)
+	require.NoError(t, err)
+	assert.NotContains(t, string(decoded), plaintext)
+}
+
+// Integrity: flipping a single bit in the ciphertext must fail.
+func TestDecryptSingleBitFlipFails(t *testing.T) {
+	t.Parallel()
+	key := testEncryptionKey(t)
+
+	encrypted, err := encryptToken(key, "token-for-bitflip")
+	require.NoError(t, err)
+
+	data, err := base64.StdEncoding.DecodeString(encrypted)
+	require.NoError(t, err)
+
+	// Flip one bit in the middle of the ciphertext (past the nonce).
+	mid := len(data)/2 + 6 // well into the ciphertext portion
+	data[mid] ^= 0x01
+	_, err = decryptToken(key, base64.StdEncoding.EncodeToString(data))
+	assert.Error(t, err)
+}
+
+// Failed decryption must not return partial plaintext.
+func TestDecryptFailureReturnsEmptyString(t *testing.T) {
+	t.Parallel()
+	key1 := testEncryptionKey(t)
+	key2 := testEncryptionKey(t)
+
+	encrypted, err := encryptToken(key1, "secret-data")
+	require.NoError(t, err)
+
+	result, err := decryptToken(key2, encrypted)
+	require.Error(t, err)
+	assert.Empty(t, result, "failed decryption must not leak partial plaintext")
+}
+
+// Various plaintext lengths to exercise padding/block boundaries.
+func TestEncryptDecryptVariousLengths(t *testing.T) {
+	t.Parallel()
+	key := testEncryptionKey(t)
+
+	for _, length := range []int{1, 15, 16, 17, 31, 32, 33, 64, 128, 256, 1024} {
+		plaintext := string(make([]byte, length))
+		for i := range plaintext {
+			// Fill with printable chars to make a realistic token.
+			plaintext = plaintext[:i] + string(rune('a'+i%26)) + plaintext[i+1:]
+		}
+
+		encrypted, err := encryptToken(key, plaintext)
+		require.NoError(t, err, "encrypt length %d", length)
+
+		decrypted, err := decryptToken(key, encrypted)
+		require.NoError(t, err, "decrypt length %d", length)
+		assert.Equal(t, plaintext, decrypted, "round-trip length %d", length)
+	}
+}
