@@ -76,3 +76,6 @@ dev.md
 .claude/settings.local.json
 .claude/worktrees
 .claude/*.lock
+
+# Superpowers brainstorm artifacts
+.superpowers/

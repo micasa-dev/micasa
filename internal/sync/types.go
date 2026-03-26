@@ -56,9 +56,6 @@ type Household struct {
 	StripeStatus         *string   `json:"stripe_status,omitempty"`
 }
 
-// StrPtr returns a pointer to s. Convenience for setting *string fields.
-func StrPtr(s string) *string { return &s }
-
 // BlobStorage reports blob storage usage for a household.
 type BlobStorage struct {
 	UsedBytes int64 `json:"used_bytes"`
