@@ -59,6 +59,10 @@
   display: block;
 }
 
+.theme-toggle {
+  --sun-final: translate(-10.8px, -21px) scale(0.45);
+}
+
 .sun-group {
   transform-origin: 18px 27px;
   animation: sun-drift 1s ease-in-out forwards;
@@ -67,7 +71,7 @@
 
 @keyframes sun-drift {
   0% { transform: scale(1); }
-  100% { transform: translate(-10.8px, -21px) scale(0.45); }
+  100% { transform: var(--sun-final); }
 }
 
 [data-theme="dark"] .sun-group {
@@ -102,8 +106,18 @@
 .star-4 { animation: twinkle 2s ease-in-out 1.5s infinite; }
 .star-5 { animation: twinkle 2s ease-in-out 0.8s infinite; }
 
+.sun-played .sun-group {
+  animation: none;
+  transform: var(--sun-final);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sun-group { animation: none; opacity: 0; transition: none; }
+  .sun-group {
+    animation: none;
+    transform: var(--sun-final);
+    transition: none;
+  }
+  [data-theme="dark"] .sun-group { opacity: 0; }
   .moon-group { transition: none; }
   .sky-stars { transition: none; }
   .star { animation: none; }

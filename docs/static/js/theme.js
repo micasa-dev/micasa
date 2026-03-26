@@ -18,6 +18,12 @@
     document.dispatchEvent(new CustomEvent('theme-changed'));
   });
 
+  try {
+    if (sessionStorage.getItem('sun-played')) {
+      document.documentElement.classList.add('sun-played');
+    }
+  } catch (_) { /* storage unavailable */ }
+
   window.toggleTheme = () => {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     if (isDark) {
@@ -29,4 +35,11 @@
     }
     document.dispatchEvent(new CustomEvent('theme-changed'));
   };
+
+  document.addEventListener('animationend', (e) => {
+    if (e.animationName === 'sun-drift') {
+      try { sessionStorage.setItem('sun-played', '1'); } catch (_) { /* storage unavailable */ }
+      document.documentElement.classList.add('sun-played');
+    }
+  });
 })();
