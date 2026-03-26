@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -47,6 +48,13 @@ func main() {
 		store = relay.NewMemStore()
 		log.Info("using in-memory store (no DATABASE_URL set)")
 	}
+
+	encKey, err := parseEncryptionKey(os.Getenv("RELAY_ENCRYPTION_KEY"))
+	if err != nil {
+		log.Error("startup configuration error", "error", err)
+		os.Exit(1)
+	}
+	store.SetEncryptionKey(encKey)
 
 	webhookSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
 	selfHosted, err := resolveRelayMode(os.Getenv("SELF_HOSTED"), webhookSecret)
@@ -128,6 +136,27 @@ func resolveRelayMode(selfHostedEnv, webhookSecret string) (bool, error) {
 		)
 	}
 	return selfHosted, nil
+}
+
+// parseEncryptionKey decodes a hex-encoded 32-byte AES-256 key.
+// Returns an error if the key is missing, malformed, or the wrong length.
+func parseEncryptionKey(hexKey string) ([]byte, error) {
+	if hexKey == "" {
+		return nil, fmt.Errorf(
+			"RELAY_ENCRYPTION_KEY is required; generate one with: openssl rand -hex 32",
+		)
+	}
+	key, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, fmt.Errorf("invalid RELAY_ENCRYPTION_KEY: %w", err)
+	}
+	if len(key) != 32 {
+		return nil, fmt.Errorf(
+			"RELAY_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes), got %d chars",
+			len(hexKey),
+		)
+	}
+	return key, nil
 }
 
 // parseBlobQuota parses the BLOB_QUOTA_BYTES env var. Returns the mode

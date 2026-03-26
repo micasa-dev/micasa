@@ -93,6 +93,9 @@ func SecretsDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve secrets directory: %w", err)
 	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", fmt.Errorf("create secrets directory: %w", err)
+	}
 	return dir, nil
 }
 

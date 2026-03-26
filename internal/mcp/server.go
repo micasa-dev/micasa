@@ -30,11 +30,6 @@ func NewServer(store *data.Store) *Server {
 	return s
 }
 
-// MCPServer returns the underlying mcp-go server for direct access.
-func (s *Server) MCPServer() *mcpserver.MCPServer {
-	return s.mcpSrv
-}
-
 // Tools returns all registered server tools for use with mcptest.
 func (s *Server) Tools() []mcpserver.ServerTool {
 	listed := s.mcpSrv.ListTools()

@@ -76,6 +76,40 @@ func TestResolveRelayMode(t *testing.T) {
 	}
 }
 
+func TestParseEncryptionKey(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid 64 hex chars", func(t *testing.T) {
+		t.Parallel()
+		h := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+		key, err := parseEncryptionKey(h)
+		require.NoError(t, err)
+		assert.Len(t, key, 32)
+	})
+
+	t.Run("empty returns error", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseEncryptionKey("")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "required")
+	})
+
+	t.Run("wrong length", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseEncryptionKey("deadbeef")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "64")
+	})
+
+	t.Run("invalid hex", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseEncryptionKey(
+			"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+		)
+		assert.Error(t, err)
+	})
+}
+
 func TestParseBlobQuota(t *testing.T) {
 	t.Parallel()
 

@@ -41,6 +41,7 @@ func openTestPgStore(t *testing.T) *PgStore {
 		require.NoError(t, db.Exec("TRUNCATE "+tabler.TableName()+" CASCADE").Error)
 	}
 
+	store.SetEncryptionKey(defaultTestEncryptionKey)
 	t.Cleanup(func() { _ = store.Close() })
 	return store
 }
@@ -317,8 +318,10 @@ func TestPgStoreSubscriptionFlow(t *testing.T) {
 	// Get household shows subscription.
 	hh, err := store.GetHousehold(ctx, resp.HouseholdID)
 	require.NoError(t, err)
-	assert.Equal(t, "sub_123", hh.StripeSubscriptionID)
-	assert.Equal(t, "active", hh.StripeStatus)
+	require.NotNil(t, hh.StripeSubscriptionID)
+	assert.Equal(t, "sub_123", *hh.StripeSubscriptionID)
+	require.NotNil(t, hh.StripeStatus)
+	assert.Equal(t, "active", *hh.StripeStatus)
 
 	// Find by subscription.
 	hh2, err := store.HouseholdBySubscription(ctx, "sub_123")

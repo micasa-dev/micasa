@@ -243,7 +243,11 @@
             trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
             export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
             export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
-            deadcode -test ./...
+            output=$(deadcode -generated -test "$@" ./...)
+            if [ -n "$output" ]; then
+              echo "$output"
+              exit 1
+            fi
           '';
         };
 

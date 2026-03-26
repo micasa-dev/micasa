@@ -34,8 +34,9 @@ type runOpts struct {
 
 // demoOpts holds flags for the demo subcommand.
 type demoOpts struct {
-	dbPath string
-	years  int
+	dbPath   string
+	years    int
+	seedOnly bool
 }
 
 // backupOpts holds flags for the backup subcommand.
@@ -116,6 +117,23 @@ type seedOpts struct {
 	years int
 }
 
+// seedStore seeds demo data into a store based on the seed options.
+func seedStore(store *data.Store, seed *seedOpts) error {
+	if seed == nil {
+		return nil
+	}
+	if seed.years > 0 {
+		if _, err := store.SeedScaledData(seed.years); err != nil {
+			return fmt.Errorf("seed scaled data: %w", err)
+		}
+	} else {
+		if err := store.SeedDemoData(); err != nil {
+			return fmt.Errorf("seed demo data: %w", err)
+		}
+	}
+	return nil
+}
+
 func launchTUI(dbPath string, seed *seedOpts) error {
 	store, err := data.Open(dbPath)
 	if err != nil {
@@ -127,29 +145,8 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 	if err := store.SeedDefaults(); err != nil {
 		return fmt.Errorf("seed defaults: %w", err)
 	}
-	if seed != nil {
-		if seed.years > 0 {
-			summary, err := store.SeedScaledData(seed.years)
-			if err != nil {
-				return fmt.Errorf("seed scaled data: %w", err)
-			}
-			fmt.Fprintf(
-				os.Stderr,
-				"seeded %d years: %d vendors, %d projects, %d appliances, %d maintenance, %d service logs, %d quotes, %d documents\n",
-				seed.years,
-				summary.Vendors,
-				summary.Projects,
-				summary.Appliances,
-				summary.Maintenance,
-				summary.ServiceLogs,
-				summary.Quotes,
-				summary.Documents,
-			)
-		} else {
-			if err := store.SeedDemoData(); err != nil {
-				return fmt.Errorf("seed demo data: %w", err)
-			}
-		}
+	if err := seedStore(store, seed); err != nil {
+		return err
 	}
 
 	cfg, err := config.Load()
@@ -268,6 +265,8 @@ func newDemoCmd() *cobra.Command {
 
 	cmd.Flags().
 		IntVar(&opts.years, "years", 0, "Generate N years of simulated home ownership data")
+	cmd.Flags().
+		BoolVar(&opts.seedOnly, "seed-only", false, "Seed data and exit without launching the TUI")
 
 	return cmd
 }
@@ -285,9 +284,31 @@ func runDemo(opts *demoOpts) error {
 	if opts.years < 0 {
 		return fmt.Errorf("--years must be non-negative")
 	}
+	if opts.seedOnly {
+		return runSeedOnly(opts)
+	}
 	// Non-nil seedOpts always triggers demo seeding; years==0 seeds the
 	// small fixed demo, years>0 seeds N years of scaled data.
 	return launchTUI(opts.resolveDBPath(), &seedOpts{years: opts.years})
+}
+
+func runSeedOnly(opts *demoOpts) error {
+	dbPath := opts.resolveDBPath()
+	if dbPath == ":memory:" {
+		return fmt.Errorf("--seed-only requires a database path")
+	}
+	store, err := data.Open(dbPath)
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	defer func() { _ = store.Close() }()
+	if err := store.AutoMigrate(); err != nil {
+		return fmt.Errorf("migrate database: %w", err)
+	}
+	if err := store.SeedDefaults(); err != nil {
+		return fmt.Errorf("seed defaults: %w", err)
+	}
+	return seedStore(store, &seedOpts{years: opts.years})
 }
 
 func newBackupCmd() *cobra.Command {

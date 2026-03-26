@@ -25,6 +25,7 @@ services:
       SELF_HOSTED: "true"
       PORT: "8080"
       BLOB_QUOTA_BYTES: ${BLOB_QUOTA_BYTES:-}
+      RELAY_ENCRYPTION_KEY: ${RELAY_ENCRYPTION_KEY}
     ports:
       - "8080:8080"
     depends_on:

@@ -179,16 +179,23 @@ jobs:
         run: go test -shuffle on -timeout 5m ./...
 
   pgtest:
-    name: Postgres Integration
+    name: Postgres Integration (${{ matrix.variant }})
     needs: changes
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - variant: debian
+            image: postgres@sha256:b994732fcf33f73776c65d3a5bf1f80c00120ba5007e8ab90307b1a743c1fc16 # 17
+          - variant: alpine
+            image: postgres@sha256:6f30057d31f5861b66f3545d4821f987aacf1dd920765f0acadea0c58ff975b1 # 17-alpine
     concurrency:
-      group: ci-pgtest-${{ github.ref }}
+      group: ci-pgtest-${{ matrix.variant }}-${{ github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     services:
       postgres:
-        image: postgres:17
+        image: ${{ matrix.image }}
         env:
           POSTGRES_USER: micasa
           POSTGRES_PASSWORD: testpass
@@ -226,6 +233,12 @@ jobs:
           CGO_ENABLED: "1"
           RELAY_POSTGRES_DSN: "postgres://micasa:testpass@localhost:5432/micasa_test?sslmode=disable"
         run: go test -race -shuffle on -timeout 5m ./internal/relay/
+
+      - name: Test sync round-trip (with Postgres)
+        env:
+          CGO_ENABLED: "1"
+          RELAY_POSTGRES_DSN: "postgres://micasa:testpass@localhost:5432/micasa_test?sslmode=disable"
+        run: go test -race -shuffle on -timeout 5m -run TestSyncRoundTripPgStore ./internal/sync/
 
   benchmarks:
     name: Benchmarks (smoke)
