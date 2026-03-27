@@ -208,8 +208,17 @@ details; do not duplicate that detail here.
 - **Dynamic store paths**: Use
   `nix build '.#micasa' --print-out-paths --no-link` at runtime. Never
   hardcode `/nix/store/...` hashes.
-- **Use `writeShellApplication`** not `writeShellScriptBin` for Nix shell
-  scripts. Use **`pkgs.python3.pkgs`** not `pkgs.python3Packages`.
+- **Always `writeShellApplication`**: Never use `writeShellScript` or
+  `writeShellScriptBin`. `writeShellApplication` sets `set -euo pipefail`,
+  validates syntax at build time, and supports `runtimeInputs`.
+- **Nix executable references**: Never hardcode store paths like
+  `${pkgs.coreutils}/bin/head`. For packages shipping a single binary, use
+  `${pkgs.lib.getExe pkgs.gnused}`. For multi-binary packages, use
+  `${pkgs.lib.getExe' pkgs.coreutils "head"}`. Alternatively, for common
+  multi-binary packages like `coreutils`, prefer adding them to
+  `runtimeInputs` in `writeShellApplication` instead of referencing
+  individual binaries.
+- Use **`pkgs.python3.pkgs`** not `pkgs.python3Packages`.
 - **Nix package mappings**: `benchstat` is in `nixpkgs#goperf`.
 - **Run Python through Nix**: If Nix is available, always run Python via
   `nix run 'nixpkgs#python3' -- <script.py> [args...]`. Never use a bare
