@@ -29,19 +29,7 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [
-            (final: prev: {
-              govulncheck = prev.writeShellApplication {
-                name = "govulncheck";
-                runtimeInputs = [
-                  prev.govulncheck
-                  final.go_1_26
-                  prev.jq
-                  prev.ripgrep
-                ];
-                runtimeEnv.CGO_ENABLED = "0";
-                text = builtins.readFile ./nix/govulncheck.bash;
-              };
-            })
+            (import ./nix/overlay.nix)
           ];
         };
         go = pkgs.go_1_26;
@@ -120,7 +108,7 @@
             deadcode-check = {
               enable = false; # CI-only job
               name = "deadcode";
-              entry = "${lib.getExe run-deadcode}";
+              entry = "${lib.getExe pkgs.deadcode}";
               files = "\\.go$";
               language = "system";
               pass_filenames = false;
@@ -138,7 +126,7 @@
             osv-scanner = {
               enable = false; # CI-only job
               name = "osv-scanner";
-              entry = "${lib.getExe run-osv-scanner}";
+              entry = "${lib.getExe pkgs.osv-scanner}";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -170,64 +158,6 @@
         # Hack Nerd Font renders correctly and includes icon glyphs.
         vhsFontsConf = pkgs.makeFontsConf {
           fontDirectories = [ "${pkgs.nerd-fonts.hack}/share/fonts/truetype" ];
-        };
-
-        deadcode = buildGoModule {
-          pname = "deadcode";
-          version = "0.43.0";
-          src = pkgs.fetchFromGitHub {
-            owner = "golang";
-            repo = "tools";
-            rev = "v0.43.0";
-            hash = "sha256-A4c+/kWJQ6/3dIu8lR/NW9HUvsrIVs255lPfBYWK3tE=";
-          };
-          subPackages = [ "cmd/deadcode" ];
-          vendorHash = "sha256-+tJs+0exGSauZr7PBuXf0htoiLST5GVMiP2lEFpd4A4=";
-          doCheck = false;
-        };
-
-        run-deadcode = pkgs.writeShellApplication {
-          name = "run-deadcode";
-          runtimeInputs = [
-            deadcode
-            go
-          ];
-          runtimeEnv.CGO_ENABLED = "0";
-          text = ''
-            _tmpdir=$(mktemp -d -t micasa-deadcode-XXXXXX)
-            trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
-            export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
-            export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
-            output=$(deadcode -generated -test "$@" ./...)
-            if [ -n "$output" ]; then
-              echo "$output"
-              exit 1
-            fi
-          '';
-        };
-
-        run-osv-scanner = pkgs.writeShellApplication {
-          name = "run-osv-scanner";
-          runtimeInputs = [ pkgs.osv-scanner ];
-          text = ''
-            osv-scanner scan --config osv-scanner.toml --no-ignore --no-call-analysis=go --recursive .
-          '';
-        };
-
-        run-golangci-lint = pkgs.writeShellApplication {
-          name = "run-golangci-lint";
-          runtimeInputs = [
-            pkgs.golangci-lint
-            go
-          ];
-          runtimeEnv.CGO_ENABLED = "0";
-          text = ''
-            _tmpdir=$(mktemp -d -t micasa-golangci-lint-XXXXXX)
-            trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
-            export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
-            export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
-            golangci-lint run ./...
-          '';
         };
 
         goModTidyCheck = pkgs.writeShellApplication {
@@ -344,7 +274,7 @@
               pkgs.gopls
               pkgs.goreleaser
               pkgs.govulncheck
-              deadcode
+              pkgs.deadcode
               pkgs.nodejs
               pkgs.jq
               pkgs.glow
@@ -484,10 +414,11 @@
               gen-mixed-pdf
             '';
           };
-          inherit
-            run-deadcode
-            run-osv-scanner
-            run-golangci-lint
+          inherit (pkgs)
+            deadcode
+            golangci-lint
+            govulncheck
+            osv-scanner
             ;
           coverage = pkgs.writeShellApplication {
             name = "coverage";
@@ -552,14 +483,10 @@
             gen-scanned-pdf = app (pkg "gen-scanned-pdf") "Generate scanned-invoice.pdf test fixture";
             gen-mixed-pdf = app (pkg "gen-mixed-pdf") "Generate mixed-inspection.pdf test fixture";
             gen-testdata = app (pkg "gen-testdata") "Generate all test document fixtures";
-            deadcode = app (pkg "run-deadcode") "Run whole-program dead code analysis";
-            govulncheck = {
-              type = "app";
-              program = "${lib.getExe pkgs.govulncheck}";
-              meta.description = "Check for known Go vulnerabilities with call-graph analysis";
-            };
-            osv-scanner = app (pkg "run-osv-scanner") "Scan for known vulnerabilities";
-            golangci-lint = app (pkg "run-golangci-lint") "Run golangci-lint";
+            deadcode = app pkgs.deadcode "Run whole-program dead code analysis";
+            govulncheck = app pkgs.govulncheck "Check for known Go vulnerabilities with call-graph analysis";
+            osv-scanner = app pkgs.osv-scanner "Scan for known vulnerabilities";
+            golangci-lint = app pkgs.golangci-lint "Run golangci-lint";
             pre-commit = app (pkg "run-pre-commit") "Run all pre-commit hooks";
           };
 
