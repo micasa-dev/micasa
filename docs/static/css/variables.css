@@ -59,6 +59,10 @@
   background: var(--toggle-bg-hover);
 }
 
+.moon-y circle:last-child {
+  transition: fill 0.15s;
+}
+
 .theme-toggle:hover .moon-y circle:last-child {
   fill: var(--toggle-bg-hover);
 }
