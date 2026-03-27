@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/fang/v2"
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,14 +31,20 @@ func TestMain(m *testing.M) {
 }
 
 // executeCLI runs the CLI in-process with the given args and returns
-// captured stdout and any error.
-func executeCLI(args ...string) (string, error) {
+// captured stdout, stderr, and any error.
+func executeCLI(args ...string) (string, string, error) {
 	root := newRootCmd()
-	var buf bytes.Buffer
-	root.SetOut(&buf)
+	var stdout, stderr bytes.Buffer
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
 	root.SetArgs(args)
-	err := root.Execute()
-	return buf.String(), err
+	err := fang.Execute(
+		context.Background(),
+		root,
+		fang.WithVersion(versionString()),
+		fang.WithColorSchemeFunc(wongColorScheme),
+	)
+	return stdout.String(), stderr.String(), err
 }
 
 // testBin is a lazily-built binary for the few tests that need subprocess
@@ -146,9 +153,9 @@ func TestVersion_DevShowsCommitHash(t *testing.T) {
 	out, err := verCmd.Output()
 	require.NoError(t, err, "--version failed")
 	got := strings.TrimSpace(string(out))
-	// Built inside a git repo: expect a hex hash, possibly with -dirty.
+	// Built inside a git repo: expect a hex hash somewhere, possibly with -dirty.
 	assert.NotEqual(t, "dev", got, "expected commit hash, got bare dev")
-	assert.Regexp(t, `^[0-9a-f]+(-dirty)?$`, got, "expected hex hash, got %q", got)
+	assert.Regexp(t, `[0-9a-f]{7,}(-dirty)?`, got, "expected hex hash somewhere in %q", got)
 }
 
 func TestVersion_Injected(t *testing.T) {
@@ -164,7 +171,7 @@ func TestConfigCmd(t *testing.T) {
 
 	t.Run("GetScalar", func(t *testing.T) {
 		t.Parallel()
-		out, err := executeCLI("config", "get", ".chat.llm.model")
+		out, _, err := executeCLI("config", "get", ".chat.llm.model")
 		require.NoError(t, err)
 		got := strings.TrimSpace(out)
 		assert.NotEmpty(t, got)
@@ -173,7 +180,7 @@ func TestConfigCmd(t *testing.T) {
 
 	t.Run("GetSection", func(t *testing.T) {
 		t.Parallel()
-		out, err := executeCLI("config", "get", ".chat.llm")
+		out, _, err := executeCLI("config", "get", ".chat.llm")
 		require.NoError(t, err)
 		assert.Contains(t, out, "model =")
 		assert.Contains(t, out, "provider =")
@@ -182,21 +189,21 @@ func TestConfigCmd(t *testing.T) {
 
 	t.Run("GetNull", func(t *testing.T) {
 		t.Parallel()
-		out, err := executeCLI("config", "get", ".bogus")
+		out, _, err := executeCLI("config", "get", ".bogus")
 		require.NoError(t, err)
 		assert.Equal(t, "null\n", out)
 	})
 
 	t.Run("GetKeys", func(t *testing.T) {
 		t.Parallel()
-		out, err := executeCLI("config", "get", ".chat.llm | keys")
+		out, _, err := executeCLI("config", "get", ".chat.llm | keys")
 		require.NoError(t, err)
 		assert.Contains(t, out, `"model"`)
 	})
 
 	t.Run("GetDefaultShowConfig", func(t *testing.T) {
 		t.Parallel()
-		out, err := executeCLI("config", "get")
+		out, _, err := executeCLI("config", "get")
 		require.NoError(t, err)
 		assert.Contains(t, out, "[chat.llm]")
 		assert.Contains(t, out, "model =")
@@ -204,7 +211,7 @@ func TestConfigCmd(t *testing.T) {
 
 	t.Run("GetDefaultViaConfig", func(t *testing.T) {
 		t.Parallel()
-		out, err := executeCLI("config")
+		out, _, err := executeCLI("config")
 		require.NoError(t, err)
 		assert.Contains(t, out, "[chat.llm]")
 		assert.Contains(t, out, "model =")
@@ -244,7 +251,7 @@ func TestCompletionCmd(t *testing.T) {
 	for _, shell := range []string{"bash", "zsh", "fish"} {
 		t.Run(shell, func(t *testing.T) {
 			t.Parallel()
-			out, err := executeCLI("completion", shell)
+			out, _, err := executeCLI("completion", shell)
 			require.NoError(t, err)
 			assert.NotEmpty(t, out)
 			assert.Contains(t, out, "micasa", "completion script should reference the app name")
@@ -272,7 +279,7 @@ func TestBackupCmd(t *testing.T) {
 		t.Parallel()
 		src := createTestDB(t)
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		out, err := executeCLI("backup", "--source", src, dest)
+		out, _, err := executeCLI("backup", "--source", src, dest)
 		require.NoError(t, err)
 
 		got := strings.TrimSpace(out)
@@ -285,7 +292,7 @@ func TestBackupCmd(t *testing.T) {
 	t.Run("DefaultDest", func(t *testing.T) {
 		t.Parallel()
 		src := createTestDB(t)
-		out, err := executeCLI("backup", "--source", src)
+		out, _, err := executeCLI("backup", "--source", src)
 		require.NoError(t, err)
 
 		wantPath, absErr := filepath.Abs(src + ".backup")
@@ -312,7 +319,7 @@ func TestBackupCmd(t *testing.T) {
 		t.Parallel()
 		src := createTestDB(t)
 		dest := filepath.Join(t.TempDir(), "valid-backup.db")
-		_, err := executeCLI("backup", "--source", src, dest)
+		_, _, err := executeCLI("backup", "--source", src, dest)
 		require.NoError(t, err)
 
 		backup, openErr := data.Open(dest)
@@ -323,7 +330,7 @@ func TestBackupCmd(t *testing.T) {
 	t.Run("MemorySourceRejected", func(t *testing.T) {
 		t.Parallel()
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		_, err := executeCLI("backup", "--source", ":memory:", dest)
+		_, _, err := executeCLI("backup", "--source", ":memory:", dest)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "in-memory")
 	})
@@ -334,7 +341,7 @@ func TestBackupCmd(t *testing.T) {
 		dest := filepath.Join(t.TempDir(), "existing.db")
 		require.NoError(t, os.WriteFile(dest, []byte("x"), 0o600))
 
-		_, err := executeCLI("backup", "--source", src, dest)
+		_, _, err := executeCLI("backup", "--source", src, dest)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "already exists")
 	})
@@ -342,7 +349,7 @@ func TestBackupCmd(t *testing.T) {
 	t.Run("SourceNotFound", func(t *testing.T) {
 		t.Parallel()
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		_, err := executeCLI("backup", "--source", "/nonexistent/path.db", dest)
+		_, _, err := executeCLI("backup", "--source", "/nonexistent/path.db", dest)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "not found")
 	})
@@ -350,7 +357,7 @@ func TestBackupCmd(t *testing.T) {
 	t.Run("InvalidDestPath", func(t *testing.T) {
 		t.Parallel()
 		src := createTestDB(t)
-		_, err := executeCLI("backup", "--source", src, "file:///tmp/backup.db?mode=rwc")
+		_, _, err := executeCLI("backup", "--source", src, "file:///tmp/backup.db?mode=rwc")
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "invalid destination")
 	})
@@ -364,7 +371,7 @@ func TestBackupCmd(t *testing.T) {
 		require.NoError(t, otherStore.Close())
 
 		dest := filepath.Join(t.TempDir(), "backup.db")
-		_, err = executeCLI("backup", "--source", src, dest)
+		_, _, err = executeCLI("backup", "--source", src, dest)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "not a micasa database")
 	})
