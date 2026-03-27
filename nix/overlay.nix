@@ -34,7 +34,7 @@ in
         go
       ];
       runtimeEnv.CGO_ENABLED = "0";
-      text = builtins.readFile ./deadcode.bash;
+      text = builtins.readFile ./scripts/deadcode.bash;
     };
 
   golangci-lint = prev.writeShellApplication {
@@ -44,7 +44,7 @@ in
       go
     ];
     runtimeEnv.CGO_ENABLED = "0";
-    text = builtins.readFile ./golangci-lint.bash;
+    text = builtins.readFile ./scripts/golangci-lint.bash;
   };
 
   govulncheck = prev.writeShellApplication {
@@ -56,12 +56,12 @@ in
       prev.ripgrep
     ];
     runtimeEnv.CGO_ENABLED = "0";
-    text = builtins.readFile ./govulncheck.bash;
+    text = builtins.readFile ./scripts/govulncheck.bash;
   };
 
   osv-scanner = prev.writeShellApplication {
     name = "osv-scanner";
     runtimeInputs = [ prev.osv-scanner ];
-    text = builtins.readFile ./osv-scanner.bash;
+    text = builtins.readFile ./scripts/osv-scanner.bash;
   };
 }

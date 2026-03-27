@@ -59,7 +59,7 @@
             pkgs.gnused
             pkgs.gnugrep
           ];
-          text = builtins.readFile ./nix/license-check.bash;
+          text = builtins.readFile ./nix/scripts/license-check.bash;
         };
 
         preCommit = git-hooks.lib.${system}.run {
@@ -284,7 +284,7 @@
               pkgs.hugo
               pkgs.pagefind
             ];
-            text = builtins.readFile ./nix/docs-build.bash;
+            text = builtins.readFile ./nix/scripts/docs-build.bash;
           };
           site = pkgs.writeShellApplication {
             name = "micasa-website";
@@ -292,7 +292,7 @@
               pkgs.hugo
               pkgs.pagefind
             ];
-            text = builtins.readFile ./nix/docs-serve.bash;
+            text = builtins.readFile ./nix/scripts/docs-serve.bash;
           };
           # Records any VHS tape to WebM
           record-tape = pkgs.writeShellApplication {
@@ -305,7 +305,7 @@
             runtimeEnv = {
               FONTCONFIG_FILE = "${vhsFontsConf}";
             };
-            text = builtins.readFile ./nix/record-tape.bash;
+            text = builtins.readFile ./nix/scripts/record-tape.bash;
           };
           record-demo = pkgs.writeShellApplication {
             name = "record-demo";
@@ -330,7 +330,7 @@
             runtimeEnv = {
               FONTCONFIG_FILE = "${vhsFontsConf}";
             };
-            text = builtins.readFile ./nix/capture-one.bash;
+            text = builtins.readFile ./nix/scripts/capture-one.bash;
           };
 
           # Captures VHS tapes in parallel: capture-screenshots [name ...]
@@ -340,7 +340,7 @@
               self.packages.${system}.capture-one
               pkgs.fd
             ];
-            text = builtins.readFile ./nix/capture-screenshots.bash;
+            text = builtins.readFile ./nix/scripts/capture-screenshots.bash;
           };
           # Records all animated demo tapes (using-*, extraction) in parallel
           record-animated = pkgs.writeShellApplication {
