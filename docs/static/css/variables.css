@@ -19,6 +19,7 @@
   --overlay-bg: rgba(45, 42, 38, 0.5);
   --toggle-bg: var(--linen);
   --toggle-bg-hover: #e8e2da;
+  --toggle-hover-speed: 0.15s;
 }
 
 [data-theme="dark"] {
@@ -52,7 +53,7 @@
   padding: 3px;
   cursor: pointer;
   line-height: 0;
-  transition: background-color 0.15s;
+  transition: background-color var(--toggle-hover-speed);
 }
 
 .theme-toggle:hover {
@@ -60,7 +61,7 @@
 }
 
 .moon-y circle:last-child {
-  transition: fill 0.15s;
+  transition: fill var(--toggle-hover-speed);
 }
 
 .theme-toggle:hover .moon-y circle:last-child {
