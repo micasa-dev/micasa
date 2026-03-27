@@ -36,7 +36,7 @@
   --shadow-color: rgba(0, 0, 0, 0.3);
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --toggle-bg: #342f29;
-  --toggle-bg-hover: #3d3730;
+  --toggle-bg-hover: var(--rule);
 }
 
 /* --- Theme toggle (shared across all pages) --- */

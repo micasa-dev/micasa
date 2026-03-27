@@ -78,9 +78,8 @@ Replace the `.theme-toggle` and `.theme-toggle:hover` blocks:
   background: var(--toggle-bg);
   border: none;
   border-radius: 6px;
-  padding: 4px;
+  padding: 3px;
   cursor: pointer;
-  line-height: 0;
   transition: background-color 0.15s;
 }
 
@@ -223,7 +222,7 @@ Replace the entire file with this structure. Key changes:
 {{- /* Licensed under the Apache License, Version 2.0 */ -}}
 
 <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-  <svg class="theme-house" viewBox="0 0 40 32" width="36" height="28" aria-hidden="true">
+  <svg class="theme-house" viewBox="0 0 40 32" width="30" height="24" aria-hidden="true">
     <g class="sky-stars">
       <circle class="star star-1" cx="4" cy="4" r="0.6" fill="var(--charcoal)"/>
       <circle class="star star-2" cx="15" cy="2" r="0.4" fill="var(--charcoal)"/>
