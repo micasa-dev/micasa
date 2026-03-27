@@ -424,23 +424,7 @@
               pkgs.hugo
               pkgs.pagefind
             ];
-            text = ''
-              mkdir -p docs/static/images docs/static/videos
-              cp images/favicon.svg docs/static/images/favicon.svg
-              cp videos/demo.webm docs/static/videos/demo.webm
-              rm -rf website
-              hugo --source docs --destination ../website \
-                --minify \
-                --gc \
-                --noBuildLock \
-                --noChmod \
-                --noTimes \
-                --printPathWarnings \
-                --panicOnWarning
-              pagefind --site website \
-                --quiet \
-                --force-language en
-            '';
+            text = builtins.readFile ./nix/docs-build.bash;
           };
           site = pkgs.writeShellApplication {
             name = "micasa-website";
@@ -448,24 +432,7 @@
               pkgs.hugo
               pkgs.pagefind
             ];
-            text = ''
-              mkdir -p docs/static/images docs/static/videos
-              cp images/favicon.svg docs/static/images/favicon.svg
-              cp videos/demo.webm docs/static/videos/demo.webm
-
-              # Build once to generate the pagefind index, then copy it
-              # into docs/static/ so hugo server serves it as a static asset.
-              _tmpsite=$(mktemp -d)
-              hugo --source docs --destination "$_tmpsite" --buildDrafts --buildFuture --minify --noBuildLock --quiet
-              pagefind --site "$_tmpsite" --quiet
-              rm -rf docs/static/pagefind
-              cp -r "$_tmpsite/pagefind" docs/static/pagefind
-              rm -rf "$_tmpsite"
-
-              _port=$((RANDOM % 10000 + 30000))
-              printf 'http://localhost:%s\n' "$_port"
-              exec hugo server --source docs --buildDrafts --buildFuture --disableFastRender --noHTTPCache --port "$_port" --bind 0.0.0.0 &>/dev/null
-            '';
+            text = builtins.readFile ./nix/docs-serve.bash;
           };
           # Records any VHS tape to WebM
           record-tape = pkgs.writeShellApplication {
@@ -478,23 +445,7 @@
             runtimeEnv = {
               FONTCONFIG_FILE = "${vhsFontsConf}";
             };
-            text = ''
-              if [[ $# -ne 1 ]]; then
-                echo "usage: record-tape <tape-file>" >&2
-                exit 1
-              fi
-
-              tape="$1"
-
-              webm_path=$(grep -m1 '^Output ' "$tape" | awk '{print $2}')
-              if [[ -z "$webm_path" || "$webm_path" != *.webm ]]; then
-                echo "error: tape must contain an Output directive ending in .webm" >&2
-                exit 1
-              fi
-
-              mkdir -p "$(dirname "$webm_path")"
-              vhs "$tape"
-            '';
+            text = builtins.readFile ./nix/record-tape.bash;
           };
           record-demo = pkgs.writeShellApplication {
             name = "record-demo";
@@ -519,25 +470,7 @@
             runtimeEnv = {
               FONTCONFIG_FILE = "${vhsFontsConf}";
             };
-            text = ''
-              if [[ $# -ne 1 ]]; then
-                echo "usage: capture-one <tape-file>" >&2
-                exit 1
-              fi
-
-              tape="$1"
-              name="$(basename "$tape" .tape)"
-              OUT="docs/static/images"
-              mkdir -p "$OUT"
-
-              vhs "$tape"
-
-              # Extract last frame from WebM as lossless WebP
-              ffmpeg -y -sseof -0.04 -i "$OUT/$name.webm" -frames:v 1 -c:v libwebp -lossless 1 "$OUT/$name.webp"
-              rm -f "$OUT/$name.webm"
-
-              echo "$name -> $OUT/$name.webp"
-            '';
+            text = builtins.readFile ./nix/capture-one.bash;
           };
 
           # Captures VHS tapes in parallel: capture-screenshots [name ...]
@@ -547,21 +480,7 @@
               self.packages.${system}.capture-one
               pkgs.fd
             ];
-            text = ''
-              TAPES="docs/tapes"
-
-              if [[ $# -gt 0 ]]; then
-                for name in "$@"; do
-                  capture-one "$TAPES/$name.tape" &
-                done
-                wait
-                exit
-              fi
-
-              # All tapes in parallel (skip demo, using-*, and extraction animated tapes)
-              fd -e tape --exclude demo.tape --exclude 'using-*.tape' --exclude extraction.tape . "$TAPES" \
-                -x capture-one {}
-            '';
+            text = builtins.readFile ./nix/capture-screenshots.bash;
           };
           # Records all animated demo tapes (using-*, extraction) in parallel
           record-animated = pkgs.writeShellApplication {
