@@ -59,6 +59,10 @@
   background: var(--toggle-bg-hover);
 }
 
+.theme-toggle:hover .moon-y circle:last-child {
+  fill: var(--toggle-bg-hover);
+}
+
 .theme-house {
   display: block;
 }
