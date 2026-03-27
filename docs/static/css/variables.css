@@ -39,7 +39,6 @@
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --toggle-bg: #342f29;
   --toggle-bg-hover: var(--rule);
-  --cloud: #b8b0a5;
 }
 
 /* --- Theme toggle (shared across all pages) --- */
