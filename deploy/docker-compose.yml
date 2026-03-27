@@ -24,7 +24,7 @@ services:
       DATABASE_URL: postgres://micasa:${POSTGRES_PASSWORD}@postgres:5432/micasa?sslmode=disable
       SELF_HOSTED: "true"
       PORT: "8080"
-      BLOB_QUOTA_BYTES: ${BLOB_QUOTA_BYTES:-}
+      BLOB_QUOTA: ${BLOB_QUOTA:-}
       RELAY_ENCRYPTION_KEY: ${RELAY_ENCRYPTION_KEY}
     ports:
       - "8080:8080"
