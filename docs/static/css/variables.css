@@ -20,6 +20,7 @@
   --toggle-bg: var(--linen);
   --toggle-bg-hover: #e8e2da;
   --toggle-hover-speed: 0.15s;
+  --cloud: #b8b0a5;
 }
 
 [data-theme="dark"] {
@@ -38,6 +39,7 @@
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --toggle-bg: #342f29;
   --toggle-bg-hover: var(--rule);
+  --cloud: #b8b0a5;
 }
 
 /* --- Theme toggle (shared across all pages) --- */
@@ -132,12 +134,32 @@
 .star-4 { animation: twinkle 2s ease-in-out 1.5s infinite; }
 .star-5 { animation: twinkle 2s ease-in-out 0.8s infinite; }
 
+/* --- Cloud (light mode only) --- */
+
+@keyframes cloud-drift {
+  from { transform: translateX(-16px); }
+  to { transform: translateX(52px); }
+}
+
+@keyframes cloud-bob {
+  0%, 100% { transform: translateY(-5px); }
+  50% { transform: translateY(5px); }
+}
+
+.sky-clouds { transition: opacity 0.5s; }
+[data-theme="dark"] .sky-clouds { opacity: 0; }
+
+.cloud-drift { animation: cloud-drift 28s linear infinite; }
+.cloud-bob { animation: cloud-bob 131s linear infinite; }
+
 /* --- Reduced motion --- */
 
 @media (prefers-reduced-motion: reduce) {
   .sun-x, .sun-y, .moon-x, .moon-y { transition: none; }
-  .sky-stars { transition: none; }
+  .sky-stars, .sky-clouds { transition: none; }
   .star { animation: none; }
+  .cloud-drift { animation: none; transform: translateX(18px); }
+  .cloud-bob { animation: none; }
   [data-theme="dark"] .sun-y { opacity: 0; }
   .moon-y { opacity: 0; }
   [data-theme="dark"] .moon-y { opacity: 1; }
