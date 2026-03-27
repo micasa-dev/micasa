@@ -2,7 +2,7 @@
 {{- /* Licensed under the Apache License, Version 2.0 */ -}}
 
 <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-  <svg class="theme-house" viewBox="0 0 40 32" width="36" height="28" aria-hidden="true">
+  <svg class="theme-house" viewBox="0 0 40 32" width="30" height="24" aria-hidden="true">
     <g class="sky-stars">
       <circle class="star star-1" cx="4" cy="4" r="0.6" fill="var(--charcoal)"/>
       <circle class="star star-2" cx="15" cy="2" r="0.4" fill="var(--charcoal)"/>
@@ -10,14 +10,20 @@
       <circle class="star star-4" cx="8" cy="11" r="0.35" fill="var(--charcoal)"/>
       <circle class="star star-5" cx="33" cy="9" r="0.3" fill="var(--charcoal)"/>
     </g>
-    <g class="sun-group">
-      <circle cx="20" cy="31" r="13" fill="var(--terracotta)" opacity="0.35"/>
-      <circle cx="20" cy="31" r="9" fill="var(--terracotta)" opacity="0.55"/>
+    <g transform="translate(20,32) scale(0.7) translate(-16,-28)">
+      {{- partial "house-shape.html" (dict "fill" "var(--charcoal-soft)" "door" "var(--toggle-bg)") -}}
     </g>
-    <path class="house-body" fill-rule="evenodd" d="M20,14 L11,22 L13,22 L13,32 L27,32 L27,22 L29,22 Z M18,26 L22,26 L22,32 L18,32 Z" fill="var(--charcoal-soft)"/>
-    <g class="moon-group">
-      <circle cx="8" cy="7" r="3.5" fill="var(--charcoal)"/>
-      <circle cx="9.8" cy="5.5" r="2.8" fill="var(--cream)"/>
+    <g class="sun-x">
+      <g class="sun-y">
+        <circle cx="30" cy="8" r="5" fill="var(--terracotta)" opacity="0.35"/>
+        <circle cx="30" cy="8" r="3.2" fill="var(--terracotta)" opacity="0.55"/>
+      </g>
+    </g>
+    <g class="moon-x">
+      <g class="moon-y">
+        <circle cx="10" cy="8" r="3.5" fill="var(--charcoal)"/>
+        <circle cx="11.8" cy="6.5" r="2.8" fill="var(--toggle-bg)"/>
+      </g>
     </g>
   </svg>
 </button>

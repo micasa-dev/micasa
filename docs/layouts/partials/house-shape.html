@@ -1,0 +1,8 @@
+{{- /* Copyright 2026 Phillip Cloud */ -}}
+{{- /* Licensed under the Apache License, Version 2.0 */ -}}
+
+{{- /* Canonical house shape -- used by sidebar and theme toggle.
+       viewBox assumed: 0 0 32 32, center-bottom at (16, 28).
+       Callers set .fill and .door fill colors. */ -}}
+<polygon points="16,4 2,16 6,16 6,28 26,28 26,16 30,16" fill="{{ .fill }}"/>
+<rect x="13" y="19" width="6" height="9" fill="{{ .door }}"/>

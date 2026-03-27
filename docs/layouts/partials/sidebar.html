@@ -7,8 +7,7 @@
     <a class="sidebar-brand-link" href="/">micasa<span class="dot">.</span></a>
     <a class="sidebar-house" href="{{ $docs.RelPermalink }}" title="Docs">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="18" height="18">
-        <polygon points="16,4 2,16 6,16 6,28 26,28 26,16 30,16" fill="currentColor"/>
-        <rect x="13" y="19" width="6" height="9" fill="var(--cream, #faf6f1)"/>
+        {{- partial "house-shape.html" (dict "fill" "currentColor" "door" "var(--cream, #faf6f1)") -}}
       </svg>
     </a>
   </div>

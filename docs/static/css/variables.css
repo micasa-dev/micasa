@@ -17,7 +17,8 @@
   --code-text: #e8e2da;
   --shadow-color: rgba(45, 42, 38, 0.12);
   --overlay-bg: rgba(45, 42, 38, 0.5);
-  --sun-final: translate(-10.8px, -21px) scale(0.45);
+  --toggle-bg: var(--linen);
+  --toggle-bg-hover: #e8e2da;
 }
 
 [data-theme="dark"] {
@@ -34,6 +35,8 @@
   --code-text: #e8ddd0;
   --shadow-color: rgba(0, 0, 0, 0.3);
   --overlay-bg: rgba(0, 0, 0, 0.5);
+  --toggle-bg: #342f29;
+  --toggle-bg-hover: #3d3730;
 }
 
 /* --- Theme toggle (shared across all pages) --- */
@@ -43,55 +46,72 @@
   bottom: 1rem;
   right: 1rem;
   z-index: 400;
-  background: none;
+  background: var(--toggle-bg);
   border: none;
-  padding: 0;
+  border-radius: 6px;
+  padding: 3px;
   cursor: pointer;
   line-height: 0;
-  color: var(--warm-gray);
-  transition: color 0.15s;
+  transition: background-color 0.15s;
 }
 
 .theme-toggle:hover {
-  color: var(--charcoal);
+  background: var(--toggle-bg-hover);
 }
 
 .theme-house {
   display: block;
 }
 
-.sun-group {
-  transform-origin: 18px 27px;
-  animation: sun-drift 1s ease-in-out forwards;
-  transition: opacity 0.4s;
+/* --- Sun arc: rests upper-right in light, hides behind house in dark --- */
+
+.sun-x {
+  transition: transform 0.6s ease-out;
 }
 
-@keyframes sun-drift {
-  0% { transform: scale(1); }
-  100% { transform: var(--sun-final); }
+.sun-y {
+  transition: transform 0.6s ease-in, opacity 0.4s ease-in;
 }
 
-[data-theme="dark"] .sun-group {
-  animation: none;
+[data-theme="dark"] .sun-x {
+  transform: translateX(-10px);
+}
+
+[data-theme="dark"] .sun-y {
+  transform: translateY(22px);
   opacity: 0;
 }
 
-.moon-group {
-  transform: translateY(-14px);
-  opacity: 0;
-  transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) 0.15s, opacity 0.4s 0.15s;
+/* --- Moon arc: rests upper-left in dark, hides behind house in light --- */
+
+.moon-x {
+  transform: translateX(10px);
+  transition: transform 0.6s ease-out;
 }
 
-[data-theme="dark"] .moon-group {
+.moon-y {
+  transform: translateY(22px);
+  opacity: 0;
+  transition: transform 0.6s ease-in, opacity 0.4s ease-in;
+}
+
+[data-theme="dark"] .moon-x {
+  transform: translateX(0);
+  transition: transform 0.6s ease-out 0.15s;
+}
+
+[data-theme="dark"] .moon-y {
   transform: translateY(0);
   opacity: 1;
+  transition: transform 0.6s ease-out 0.15s, opacity 0.4s ease-out 0.15s;
 }
+
+/* --- Stars --- */
 
 @keyframes twinkle {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
 }
-
 
 .sky-stars { opacity: 0; transition: opacity 0.5s; }
 [data-theme="dark"] .sky-stars { opacity: 1; }
@@ -103,19 +123,13 @@
 .star-4 { animation: twinkle 2s ease-in-out 1.5s infinite; }
 .star-5 { animation: twinkle 2s ease-in-out 0.8s infinite; }
 
-.sun-played .sun-group {
-  animation: none;
-  transform: var(--sun-final);
-}
+/* --- Reduced motion --- */
 
 @media (prefers-reduced-motion: reduce) {
-  .sun-group {
-    animation: none;
-    transform: var(--sun-final);
-    transition: none;
-  }
-  [data-theme="dark"] .sun-group { opacity: 0; }
-  .moon-group { transition: none; }
+  .sun-x, .sun-y, .moon-x, .moon-y { transition: none; }
   .sky-stars { transition: none; }
   .star { animation: none; }
+  [data-theme="dark"] .sun-y { opacity: 0; }
+  .moon-y { opacity: 0; }
+  [data-theme="dark"] .moon-y { opacity: 1; }
 }
