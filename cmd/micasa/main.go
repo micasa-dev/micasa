@@ -15,7 +15,7 @@ import (
 	"runtime/debug"
 
 	tea "charm.land/bubbletea/v2"
-	_ "charm.land/fang/v2"
+	"charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/micasa-dev/micasa/internal/app"
 	"github.com/micasa-dev/micasa/internal/config"
@@ -51,14 +51,12 @@ func newRootCmd() *cobra.Command {
 	opts := &runOpts{}
 
 	root := &cobra.Command{
-		Use:   data.AppName + " [database-path]",
-		Short: "A terminal UI for tracking everything about your home",
-		Long:  "A terminal UI for tracking everything about your home.",
-		// Accept 0 or 1 positional args (optional database path).
+		Use:           data.AppName + " [database-path]",
+		Short:         "A terminal UI for tracking everything about your home",
+		Long:          "A terminal UI for tracking everything about your home.",
 		Args:          cobra.MaximumNArgs(1),
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		Version:       versionString(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				opts.dbPath = args[0]
@@ -66,9 +64,6 @@ func newRootCmd() *cobra.Command {
 			return runTUI(cmd.OutOrStdout(), opts)
 		},
 	}
-	root.SetVersionTemplate("{{.Version}}\n")
-	root.SetHelpFunc(styledHelp)
-	root.CompletionOptions.HiddenDefaultCmd = true
 
 	root.Flags().
 		BoolVar(&opts.printPath, "print-path", false, "Print the resolved database path and exit")
@@ -77,7 +72,6 @@ func newRootCmd() *cobra.Command {
 		newDemoCmd(),
 		newBackupCmd(),
 		newConfigCmd(),
-		newCompletionCmd(root),
 		newProCmd(),
 		newMCPCmd(),
 		newShowCmd(),
@@ -89,11 +83,16 @@ func newRootCmd() *cobra.Command {
 
 func main() {
 	root := newRootCmd()
-	if err := root.Execute(); err != nil {
+	if err := fang.Execute(
+		context.Background(),
+		root,
+		fang.WithVersion(versionString()),
+		fang.WithColorSchemeFunc(wongColorScheme),
+		fang.WithNotifySignal(os.Interrupt),
+	); err != nil {
 		if errors.Is(err, tea.ErrInterrupted) {
 			os.Exit(130)
 		}
-		fmt.Fprintf(os.Stderr, "%s: %v\n", data.AppName, err)
 		os.Exit(1)
 	}
 }
