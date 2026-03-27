@@ -91,9 +91,9 @@ import (
 func wongColorScheme(c lipgloss.LightDarkFunc) fang.ColorScheme {
 	blue := c(lipgloss.Color("#0072B2"), lipgloss.Color("#56B4E9"))
 	orange := c(lipgloss.Color("#D55E00"), lipgloss.Color("#E69F00"))
-	green := c(lipgloss.Color("#009E73"), lipgloss.Color("#009E73"))
-	purple := c(lipgloss.Color("#CC79A7"), lipgloss.Color("#CC79A7"))
-	vermillion := c(lipgloss.Color("#D55E00"), lipgloss.Color("#D55E00"))
+	green := c(lipgloss.Color("#007A5A"), lipgloss.Color("#009E73"))
+	purple := c(lipgloss.Color("#AA4499"), lipgloss.Color("#CC79A7"))
+	vermillion := c(lipgloss.Color("#CC3311"), lipgloss.Color("#D55E00"))
 	base := c(lipgloss.Color("#4B5563"), lipgloss.Color("#9CA3AF"))
 	dim := c(lipgloss.Color("#4B5563"), lipgloss.Color("#6B7280"))
 	cream := lipgloss.Color("#FFFAF1")

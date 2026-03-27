@@ -28,13 +28,13 @@ light/dark adaptive pairs:
 | Title            | `#0072B2` Blue  | `#56B4E9` Sky   |
 | Program name     | `#0072B2` Blue  | `#56B4E9` Sky   |
 | Command          | `#D55E00` Verm  | `#E69F00` Org   |
-| Flag             | `#009E73` BGrn  | `#009E73` BGrn  |
-| Quoted string    | `#CC79A7` RPur  | `#CC79A7` RPur  |
+| Flag             | `#007A5A` BGrn  | `#009E73` BGrn  |
+| Quoted string    | `#AA4499` RPur  | `#CC79A7` RPur  |
 | Argument / Base  | `#4B5563`       | `#9CA3AF`       |
 | Dimmed / Comment | `#4B5563`       | `#6B7280`       |
 | Flag default     | `#4B5563`       | `#6B7280`       |
 | Error header fg  | `#FFFAF1` cream | `#FFFAF1` cream |
-| Error header bg  | `#D55E00` Verm  | `#D55E00` Verm  |
+| Error header bg  | `#CC3311` Verm  | `#D55E00` Verm  |
 | Codeblock bg     | `#F1EFEF`       | `#2F2E36`       |
 
 ## Changes
@@ -87,19 +87,14 @@ light/dark adaptive pairs:
 
 **`cmd/micasa/main_test.go`**
 
-- `executeCLI` continues to use `root.Execute()` for non-fang tests (config,
-  backup, path resolution). These test business logic, not CLI chrome.
-- Add `executeFang` helper that wraps with `fang.Execute()` for tests that need
-  fang behavior.
-- `TestCompletionCmd`: update to use fang's completion subcommand structure
-  (`completion bash`, `completion zsh`, `completion fish` still works --- fang
-  uses cobra's built-in completion which supports the same shells plus
-  powershell).
-- `TestVersion_DevShowsCommitHash`: may need regex update since fang appends
-  `(commit)` format when it detects a commit hash via `debug.ReadBuildInfo()`.
-  Since we pass `WithVersion(versionString())` which already includes the hash
-  in dev mode, and we don't pass `WithCommit()`, fang won't append anything
-  extra. Test should still pass as-is.
+- `executeCLI` updated in-place to use `fang.Execute()` with `WithVersion` and
+  `WithColorSchemeFunc`. Returns `(stdout, stderr, error)` instead of
+  `(stdout, error)` since fang writes styled errors to stderr.
+- All call sites updated for the 3-value return.
+- `TestCompletionCmd`: works as-is --- fang uses cobra's built-in completion
+  which supports bash, zsh, fish, and powershell.
+- `TestVersion_DevShowsCommitHash`: regex loosened to `[0-9a-f]{7,}(-dirty)?`
+  (non-anchored) since fang prefixes version with the program name.
 
 ### Add
 
