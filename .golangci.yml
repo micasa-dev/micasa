@@ -50,7 +50,6 @@ linters:
 
     goconst:
       min-occurrences: 5
-      ignore-tests: true
 
     revive:
       enable-default-rules: true
@@ -90,3 +89,7 @@ linters:
       - linters: [gosec]
         path: _test\.go
         text: "G204|G704"
+
+      # goconst: repeated strings in tests are fine
+      - linters: [goconst]
+        path: _test\.go

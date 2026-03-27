@@ -25,7 +25,13 @@
     // flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        inherit (nixpkgs) lib;
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [
+            (import ./nix/overlay.nix)
+          ];
+        };
         go = pkgs.go_1_26;
         version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ./VERSION);
 
@@ -46,85 +52,22 @@
           ];
         };
 
-        licenseCheck = pkgs.writeShellScript "license-check" ''
-          head=${pkgs.coreutils}/bin/head
-          sed=${pkgs.gnused}/bin/sed
-          grep=${pkgs.gnugrep}/bin/grep
-          basename=${pkgs.coreutils}/bin/basename
-          date=${pkgs.coreutils}/bin/date
-
-          year=$($date +%Y)
-          owner="Phillip Cloud"
-          spdx="Licensed under the Apache License, Version 2.0"
-
-          comment_prefix() {
-            case "$1" in
-              *.go|go.mod|*.js) echo "//" ;;
-              *.nix|*.yml|*.yaml|*.sh|.envrc|.gitignore) echo "#" ;;
-              *.md)         echo "md" ;;
-              *)            echo "#" ;;
-            esac
-          }
-
-          status=0
-          for f in "$@"; do
-            name=$($basename "$f")
-            pfx=$(comment_prefix "$name")
-
-            if [ "$pfx" = "md" ]; then
-              line1="<!-- Copyright $year $owner -->"
-              line2="<!-- $spdx -->"
-              year_pat="<!-- Copyright [0-9]\{4\} $owner -->"
-            else
-              line1="$pfx Copyright $year $owner"
-              line2="$pfx $spdx"
-              year_pat="$pfx Copyright [0-9]\{4\} $owner"
-            fi
-
-            first=$($head -n1 "$f")
-
-            # Shebang-aware: if first line is #!, check lines 2-3 instead
-            if echo "$first" | $grep -q '^#!'; then
-              check1=$($sed -n '2p' "$f")
-              check2=$($sed -n '3p' "$f")
-              insert_line=1  # insert after line 1 (the shebang)
-            else
-              check1="$first"
-              check2=$($sed -n '2p' "$f")
-              insert_line=0  # insert before line 1
-            fi
-
-            # Already correct
-            if [ "$check1" = "$line1" ] && [ "$check2" = "$line2" ]; then
-              continue
-            fi
-
-            # Header present with stale year -- bump it
-            if echo "$check1" | $grep -q "^$year_pat$" \
-               && [ "$check2" = "$line2" ]; then
-              $sed -i "s|$year_pat|$line1|" "$f"
-              echo "bumped year in $f"
-              continue
-            fi
-
-            # No header -- insert it
-            if [ "$insert_line" -eq 0 ]; then
-              $sed -i "1i\\$line1\n$line2\n" "$f"
-            else
-              $sed -i "1a\\$line1\n$line2" "$f"
-            fi
-            echo "added license header to $f"
-            status=1
-          done
-          exit $status
-        '';
+        licenseCheck = pkgs.writeShellApplication {
+          name = "license-check";
+          runtimeInputs = [
+            pkgs.coreutils
+            pkgs.gnused
+            pkgs.gnugrep
+          ];
+          text = builtins.readFile ./nix/scripts/license-check.bash;
+        };
 
         preCommit = git-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
             golines = {
               enable = true;
-              settings.flags = "--base-formatter=${pkgs.gofumpt}/bin/gofumpt " + "--max-len=100";
+              settings.flags = "--base-formatter=${lib.getExe pkgs.gofumpt} " + "--max-len=100";
             };
             nixfmt.enable = true;
             golangci-lint = {
@@ -142,7 +85,7 @@
             license-header = {
               enable = true;
               name = "license-header";
-              entry = "${licenseCheck}";
+              entry = "${lib.getExe licenseCheck}";
               files = "\\.(go|nix|ya?ml|sh|md|js)$|^\\.envrc$|\\.gitignore$|^go\\.mod$";
               excludes = [
                 "LICENSE"
@@ -157,7 +100,7 @@
             go-mod-tidy = {
               enable = true;
               name = "go-mod-tidy";
-              entry = "${goModTidyCheck}/bin/go-mod-tidy-check";
+              entry = "${lib.getExe goModTidyCheck}";
               files = "\\.go$|^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -165,7 +108,7 @@
             deadcode-check = {
               enable = false; # CI-only job
               name = "deadcode";
-              entry = "${run-deadcode}/bin/run-deadcode";
+              entry = "${lib.getExe pkgs.deadcode}";
               files = "\\.go$";
               language = "system";
               pass_filenames = false;
@@ -174,7 +117,7 @@
             govulncheck = {
               enable = false; # CI-only job
               name = "govulncheck";
-              entry = "${run-govulncheck}/bin/run-govulncheck";
+              entry = "${lib.getExe pkgs.govulncheck}";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -183,7 +126,7 @@
             osv-scanner = {
               enable = false; # CI-only job
               name = "osv-scanner";
-              entry = "${run-osv-scanner}/bin/run-osv-scanner";
+              entry = "${lib.getExe pkgs.osv-scanner}";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -192,7 +135,7 @@
             go-generate-check = {
               enable = true;
               name = "go-generate-check";
-              entry = "${goGenerateCheck}/bin/go-generate-check";
+              entry = "${lib.getExe goGenerateCheck}";
               files = "^internal/(data/(models|cmd/genmeta/main)|app/(coldefs|cmd/gencolumns/main))\\.go$";
               language = "system";
               pass_filenames = false;
@@ -201,7 +144,7 @@
             vendor-hash-check = {
               enable = true;
               name = "vendor-hash-check";
-              entry = "${vendorHashCheck}/bin/vendor-hash-check";
+              entry = "${lib.getExe vendorHashCheck}";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -215,104 +158,6 @@
         # Hack Nerd Font renders correctly and includes icon glyphs.
         vhsFontsConf = pkgs.makeFontsConf {
           fontDirectories = [ "${pkgs.nerd-fonts.hack}/share/fonts/truetype" ];
-        };
-
-        deadcode = buildGoModule {
-          pname = "deadcode";
-          version = "0.43.0";
-          src = pkgs.fetchFromGitHub {
-            owner = "golang";
-            repo = "tools";
-            rev = "v0.43.0";
-            hash = "sha256-A4c+/kWJQ6/3dIu8lR/NW9HUvsrIVs255lPfBYWK3tE=";
-          };
-          subPackages = [ "cmd/deadcode" ];
-          vendorHash = "sha256-+tJs+0exGSauZr7PBuXf0htoiLST5GVMiP2lEFpd4A4=";
-          doCheck = false;
-        };
-
-        run-deadcode = pkgs.writeShellApplication {
-          name = "run-deadcode";
-          runtimeInputs = [
-            deadcode
-            go
-          ];
-          runtimeEnv.CGO_ENABLED = "0";
-          text = ''
-            _tmpdir=$(mktemp -d -t micasa-deadcode-XXXXXX)
-            trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
-            export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
-            export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
-            output=$(deadcode -generated -test "$@" ./...)
-            if [ -n "$output" ]; then
-              echo "$output"
-              exit 1
-            fi
-          '';
-        };
-
-        run-govulncheck = pkgs.writeShellApplication {
-          name = "run-govulncheck";
-          runtimeInputs = [
-            pkgs.govulncheck
-            go
-            pkgs.jq
-            pkgs.ripgrep
-          ];
-          runtimeEnv.CGO_ENABLED = "0";
-          text = ''
-            _tmpdir=$(mktemp -d -t micasa-govulncheck-XXXXXX)
-            trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
-            export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
-            export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
-
-            exclude_file=".govulncheck-exclude"
-            raw=$(govulncheck -format json ./... 2>&1) || true
-            found=$(echo "$raw" | jq -r 'select(.finding) | select(.finding.trace[0].function) | .finding.osv' | sort -u)
-
-            if [ -z "$found" ]; then
-              exit 0
-            fi
-
-            excluded=""
-            if [ -f "$exclude_file" ]; then
-              excluded=$(rg -oN 'GO-[0-9]+-[0-9]+' "$exclude_file" | sort -u)
-            fi
-
-            new=$(comm -23 <(echo "$found") <(echo "$excluded"))
-
-            if [ -z "$new" ]; then
-              exit 0
-            fi
-
-            echo "govulncheck: unexcluded vulnerabilities found:"
-            echo "$new"
-            exit 1
-          '';
-        };
-
-        run-osv-scanner = pkgs.writeShellApplication {
-          name = "run-osv-scanner";
-          runtimeInputs = [ pkgs.osv-scanner ];
-          text = ''
-            osv-scanner scan --config osv-scanner.toml --no-ignore --no-call-analysis=go --recursive .
-          '';
-        };
-
-        run-golangci-lint = pkgs.writeShellApplication {
-          name = "run-golangci-lint";
-          runtimeInputs = [
-            pkgs.golangci-lint
-            go
-          ];
-          runtimeEnv.CGO_ENABLED = "0";
-          text = ''
-            _tmpdir=$(mktemp -d -t micasa-golangci-lint-XXXXXX)
-            trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
-            export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
-            export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
-            golangci-lint run ./...
-          '';
         };
 
         goModTidyCheck = pkgs.writeShellApplication {
@@ -370,17 +215,9 @@
           name = "relnotes";
           runtimeInputs = [
             pkgs.nodejs
-            pkgs.glow
-            pkgs.ncurses
-            pkgs.less
           ];
           text = ''
-            notes=$(npx -y -p conventional-changelog-cli -- conventional-changelog --config ./.conventionalcommits.js --tag-prefix v)
-            if [[ -n "$notes" ]] && [[ -t 1 ]]; then
-              echo "$notes" | glow --width "$(tput cols)" - | less -FRX
-            else
-              echo "$notes"
-            fi
+            npx -y -p conventional-changelog-cli -- conventional-changelog --config ./.conventionalcommits.js --tag-prefix v
           '';
         };
 
@@ -425,8 +262,11 @@
               pkgs.tesseract
               pkgs.poppler-utils
               pkgs.imagemagick
+              pkgs.golangci-lint
               pkgs.gopls
               pkgs.goreleaser
+              pkgs.govulncheck
+              pkgs.deadcode
               pkgs.nodejs
               pkgs.jq
               pkgs.glow
@@ -444,23 +284,7 @@
               pkgs.hugo
               pkgs.pagefind
             ];
-            text = ''
-              mkdir -p docs/static/images docs/static/videos
-              cp images/favicon.svg docs/static/images/favicon.svg
-              cp videos/demo.webm docs/static/videos/demo.webm
-              rm -rf website
-              hugo --source docs --destination ../website \
-                --minify \
-                --gc \
-                --noBuildLock \
-                --noChmod \
-                --noTimes \
-                --printPathWarnings \
-                --panicOnWarning
-              pagefind --site website \
-                --quiet \
-                --force-language en
-            '';
+            text = builtins.readFile ./nix/scripts/docs-build.bash;
           };
           site = pkgs.writeShellApplication {
             name = "micasa-website";
@@ -468,24 +292,7 @@
               pkgs.hugo
               pkgs.pagefind
             ];
-            text = ''
-              mkdir -p docs/static/images docs/static/videos
-              cp images/favicon.svg docs/static/images/favicon.svg
-              cp videos/demo.webm docs/static/videos/demo.webm
-
-              # Build once to generate the pagefind index, then copy it
-              # into docs/static/ so hugo server serves it as a static asset.
-              _tmpsite=$(mktemp -d)
-              hugo --source docs --destination "$_tmpsite" --buildDrafts --buildFuture --minify --noBuildLock --quiet
-              pagefind --site "$_tmpsite" --quiet
-              rm -rf docs/static/pagefind
-              cp -r "$_tmpsite/pagefind" docs/static/pagefind
-              rm -rf "$_tmpsite"
-
-              _port=$((RANDOM % 10000 + 30000))
-              printf 'http://localhost:%s\n' "$_port"
-              exec hugo server --source docs --buildDrafts --buildFuture --disableFastRender --noHTTPCache --port "$_port" --bind 0.0.0.0 &>/dev/null
-            '';
+            text = builtins.readFile ./nix/scripts/docs-serve.bash;
           };
           # Records any VHS tape to WebM
           record-tape = pkgs.writeShellApplication {
@@ -498,23 +305,7 @@
             runtimeEnv = {
               FONTCONFIG_FILE = "${vhsFontsConf}";
             };
-            text = ''
-              if [[ $# -ne 1 ]]; then
-                echo "usage: record-tape <tape-file>" >&2
-                exit 1
-              fi
-
-              tape="$1"
-
-              webm_path=$(grep -m1 '^Output ' "$tape" | awk '{print $2}')
-              if [[ -z "$webm_path" || "$webm_path" != *.webm ]]; then
-                echo "error: tape must contain an Output directive ending in .webm" >&2
-                exit 1
-              fi
-
-              mkdir -p "$(dirname "$webm_path")"
-              vhs "$tape"
-            '';
+            text = builtins.readFile ./nix/scripts/record-tape.bash;
           };
           record-demo = pkgs.writeShellApplication {
             name = "record-demo";
@@ -539,25 +330,7 @@
             runtimeEnv = {
               FONTCONFIG_FILE = "${vhsFontsConf}";
             };
-            text = ''
-              if [[ $# -ne 1 ]]; then
-                echo "usage: capture-one <tape-file>" >&2
-                exit 1
-              fi
-
-              tape="$1"
-              name="$(basename "$tape" .tape)"
-              OUT="docs/static/images"
-              mkdir -p "$OUT"
-
-              vhs "$tape"
-
-              # Extract last frame from WebM as lossless WebP
-              ffmpeg -y -sseof -0.04 -i "$OUT/$name.webm" -frames:v 1 -c:v libwebp -lossless 1 "$OUT/$name.webp"
-              rm -f "$OUT/$name.webm"
-
-              echo "$name -> $OUT/$name.webp"
-            '';
+            text = builtins.readFile ./nix/scripts/capture-one.bash;
           };
 
           # Captures VHS tapes in parallel: capture-screenshots [name ...]
@@ -567,21 +340,7 @@
               self.packages.${system}.capture-one
               pkgs.fd
             ];
-            text = ''
-              TAPES="docs/tapes"
-
-              if [[ $# -gt 0 ]]; then
-                for name in "$@"; do
-                  capture-one "$TAPES/$name.tape" &
-                done
-                wait
-                exit
-              fi
-
-              # All tapes in parallel (skip demo, using-*, and extraction animated tapes)
-              fd -e tape --exclude demo.tape --exclude 'using-*.tape' --exclude extraction.tape . "$TAPES" \
-                -x capture-one {}
-            '';
+            text = builtins.readFile ./nix/scripts/capture-screenshots.bash;
           };
           # Records all animated demo tapes (using-*, extraction) in parallel
           record-animated = pkgs.writeShellApplication {
@@ -647,11 +406,11 @@
               gen-mixed-pdf
             '';
           };
-          inherit
-            run-deadcode
-            run-govulncheck
-            run-osv-scanner
-            run-golangci-lint
+          inherit (pkgs)
+            deadcode
+            golangci-lint
+            govulncheck
+            osv-scanner
             ;
           coverage = pkgs.writeShellApplication {
             name = "coverage";
@@ -700,27 +459,27 @@
         apps =
           let
             app = drv: desc: flake-utils.lib.mkApp { inherit drv; } // { meta.description = desc; };
-            pkg = name: self.packages.${system}.${name};
+            p = self.packages.${system};
           in
           {
             default = app micasa "Terminal UI for home maintenance";
-            site = app (pkg "site") "Start local Hugo dev server";
-            record-tape = app (pkg "record-tape") "Record a VHS tape to WebM";
-            record-demo = app (pkg "record-demo") "Record the main demo tape";
-            capture-one = app (pkg "capture-one") "Capture a VHS tape screenshot";
-            capture-screenshots = app (pkg "capture-screenshots") "Capture all VHS screenshots in parallel";
-            record-animated = app (pkg "record-animated") "Record all animated demo tapes";
-            gen-sample-pdf = app (pkg "gen-sample-pdf") "Generate sample.pdf test fixture";
-            gen-invoice-png = app (pkg "gen-invoice-png") "Generate invoice.png test fixture";
-            gen-sample-text-png = app (pkg "gen-sample-text-png") "Generate sample-text.png test fixture";
-            gen-scanned-pdf = app (pkg "gen-scanned-pdf") "Generate scanned-invoice.pdf test fixture";
-            gen-mixed-pdf = app (pkg "gen-mixed-pdf") "Generate mixed-inspection.pdf test fixture";
-            gen-testdata = app (pkg "gen-testdata") "Generate all test document fixtures";
-            deadcode = app (pkg "run-deadcode") "Run whole-program dead code analysis";
-            govulncheck = app (pkg "run-govulncheck") "Check for known Go vulnerabilities with call-graph analysis";
-            osv-scanner = app (pkg "run-osv-scanner") "Scan for known vulnerabilities";
-            golangci-lint = app (pkg "run-golangci-lint") "Run golangci-lint";
-            pre-commit = app (pkg "run-pre-commit") "Run all pre-commit hooks";
+            site = app p.site "Start local Hugo dev server";
+            record-tape = app p.record-tape "Record a VHS tape to WebM";
+            record-demo = app p.record-demo "Record the main demo tape";
+            capture-one = app p.capture-one "Capture a VHS tape screenshot";
+            capture-screenshots = app p.capture-screenshots "Capture all VHS screenshots in parallel";
+            record-animated = app p.record-animated "Record all animated demo tapes";
+            gen-sample-pdf = app p.gen-sample-pdf "Generate sample.pdf test fixture";
+            gen-invoice-png = app p.gen-invoice-png "Generate invoice.png test fixture";
+            gen-sample-text-png = app p.gen-sample-text-png "Generate sample-text.png test fixture";
+            gen-scanned-pdf = app p.gen-scanned-pdf "Generate scanned-invoice.pdf test fixture";
+            gen-mixed-pdf = app p.gen-mixed-pdf "Generate mixed-inspection.pdf test fixture";
+            gen-testdata = app p.gen-testdata "Generate all test document fixtures";
+            deadcode = app p.deadcode "Run whole-program dead code analysis";
+            govulncheck = app p.govulncheck "Check for known Go vulnerabilities with call-graph analysis";
+            osv-scanner = app p.osv-scanner "Scan for known vulnerabilities";
+            golangci-lint = app p.golangci-lint "Run golangci-lint";
+            pre-commit = app p.run-pre-commit "Run all pre-commit hooks";
           };
 
         formatter = pkgs.nixpkgs-fmt;
