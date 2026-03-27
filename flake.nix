@@ -215,17 +215,9 @@
           name = "relnotes";
           runtimeInputs = [
             pkgs.nodejs
-            pkgs.glow
-            pkgs.ncurses
-            pkgs.less
           ];
           text = ''
-            notes=$(npx -y -p conventional-changelog-cli -- conventional-changelog --config ./.conventionalcommits.js --tag-prefix v)
-            if [[ -n "$notes" ]] && [[ -t 1 ]]; then
-              echo "$notes" | glow --width "$(tput cols)" - | less -FRX
-            else
-              echo "$notes"
-            fi
+            npx -y -p conventional-changelog-cli -- conventional-changelog --config ./.conventionalcommits.js --tag-prefix v
           '';
         };
 
@@ -467,27 +459,27 @@
         apps =
           let
             app = drv: desc: flake-utils.lib.mkApp { inherit drv; } // { meta.description = desc; };
-            pkg = name: self.packages.${system}.${name};
+            p = self.packages.${system};
           in
           {
             default = app micasa "Terminal UI for home maintenance";
-            site = app (pkg "site") "Start local Hugo dev server";
-            record-tape = app (pkg "record-tape") "Record a VHS tape to WebM";
-            record-demo = app (pkg "record-demo") "Record the main demo tape";
-            capture-one = app (pkg "capture-one") "Capture a VHS tape screenshot";
-            capture-screenshots = app (pkg "capture-screenshots") "Capture all VHS screenshots in parallel";
-            record-animated = app (pkg "record-animated") "Record all animated demo tapes";
-            gen-sample-pdf = app (pkg "gen-sample-pdf") "Generate sample.pdf test fixture";
-            gen-invoice-png = app (pkg "gen-invoice-png") "Generate invoice.png test fixture";
-            gen-sample-text-png = app (pkg "gen-sample-text-png") "Generate sample-text.png test fixture";
-            gen-scanned-pdf = app (pkg "gen-scanned-pdf") "Generate scanned-invoice.pdf test fixture";
-            gen-mixed-pdf = app (pkg "gen-mixed-pdf") "Generate mixed-inspection.pdf test fixture";
-            gen-testdata = app (pkg "gen-testdata") "Generate all test document fixtures";
-            deadcode = app pkgs.deadcode "Run whole-program dead code analysis";
-            govulncheck = app pkgs.govulncheck "Check for known Go vulnerabilities with call-graph analysis";
-            osv-scanner = app pkgs.osv-scanner "Scan for known vulnerabilities";
-            golangci-lint = app pkgs.golangci-lint "Run golangci-lint";
-            pre-commit = app (pkg "run-pre-commit") "Run all pre-commit hooks";
+            site = app p.site "Start local Hugo dev server";
+            record-tape = app p.record-tape "Record a VHS tape to WebM";
+            record-demo = app p.record-demo "Record the main demo tape";
+            capture-one = app p.capture-one "Capture a VHS tape screenshot";
+            capture-screenshots = app p.capture-screenshots "Capture all VHS screenshots in parallel";
+            record-animated = app p.record-animated "Record all animated demo tapes";
+            gen-sample-pdf = app p.gen-sample-pdf "Generate sample.pdf test fixture";
+            gen-invoice-png = app p.gen-invoice-png "Generate invoice.png test fixture";
+            gen-sample-text-png = app p.gen-sample-text-png "Generate sample-text.png test fixture";
+            gen-scanned-pdf = app p.gen-scanned-pdf "Generate scanned-invoice.pdf test fixture";
+            gen-mixed-pdf = app p.gen-mixed-pdf "Generate mixed-inspection.pdf test fixture";
+            gen-testdata = app p.gen-testdata "Generate all test document fixtures";
+            deadcode = app p.deadcode "Run whole-program dead code analysis";
+            govulncheck = app p.govulncheck "Check for known Go vulnerabilities with call-graph analysis";
+            osv-scanner = app p.osv-scanner "Scan for known vulnerabilities";
+            golangci-lint = app p.golangci-lint "Run golangci-lint";
+            pre-commit = app p.run-pre-commit "Run all pre-commit hooks";
           };
 
         formatter = pkgs.nixpkgs-fmt;
