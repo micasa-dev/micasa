@@ -131,10 +131,34 @@ func TestParseBlobQuota(t *testing.T) {
 			want:       0,
 		},
 		{
-			name:       "explicit value",
+			name:       "raw bytes value",
 			envVal:     "5368709120",
 			selfHosted: false,
 			want:       5368709120,
+		},
+		{
+			name:       "human-readable GB",
+			envVal:     "5GB",
+			selfHosted: false,
+			want:       5_000_000_000,
+		},
+		{
+			name:       "human-readable GiB",
+			envVal:     "5GiB",
+			selfHosted: false,
+			want:       5 * 1024 * 1024 * 1024,
+		},
+		{
+			name:       "human-readable MB",
+			envVal:     "500MB",
+			selfHosted: false,
+			want:       500_000_000,
+		},
+		{
+			name:       "human-readable with space",
+			envVal:     "1 GB",
+			selfHosted: false,
+			want:       1_000_000_000,
 		},
 		{
 			name:       "explicit zero",
@@ -143,12 +167,7 @@ func TestParseBlobQuota(t *testing.T) {
 			want:       0,
 		},
 		{
-			name:    "negative",
-			envVal:  "-1",
-			wantErr: true,
-		},
-		{
-			name:    "non-integer",
+			name:    "completely invalid",
 			envVal:  "abc",
 			wantErr: true,
 		},

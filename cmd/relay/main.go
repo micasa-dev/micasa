@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	humanize "github.com/dustin/go-humanize"
 	"github.com/micasa-dev/micasa/internal/relay"
 )
 
@@ -63,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	blobQuota, err := parseBlobQuota(os.Getenv("BLOB_QUOTA_BYTES"), selfHosted)
+	blobQuota, err := parseBlobQuota(os.Getenv("BLOB_QUOTA"), selfHosted)
 	if err != nil {
 		log.Error("startup configuration error", "error", err)
 		os.Exit(1)
@@ -159,9 +161,9 @@ func parseEncryptionKey(hexKey string) ([]byte, error) {
 	return key, nil
 }
 
-// parseBlobQuota parses the BLOB_QUOTA_BYTES env var. Returns the mode
-// default when envVal is empty. Returns an error for negative or
-// non-integer values.
+// parseBlobQuota parses the BLOB_QUOTA env var. Accepts human-readable
+// sizes (e.g. "5GB", "500MB") via go-humanize, as well as raw byte
+// counts. Returns the mode default when envVal is empty.
 func parseBlobQuota(envVal string, selfHosted bool) (int64, error) {
 	if envVal == "" {
 		if selfHosted {
@@ -169,12 +171,16 @@ func parseBlobQuota(envVal string, selfHosted bool) (int64, error) {
 		}
 		return relay.DefaultBlobQuota, nil
 	}
-	n, err := strconv.ParseInt(envVal, 10, 64)
+	n, err := humanize.ParseBytes(envVal)
 	if err != nil {
-		return 0, fmt.Errorf("invalid BLOB_QUOTA_BYTES %q: %w", envVal, err)
+		return 0, fmt.Errorf("invalid BLOB_QUOTA %q: %w", envVal, err)
 	}
-	if n < 0 {
-		return 0, fmt.Errorf("BLOB_QUOTA_BYTES must be non-negative, got %d", n)
+	if n > math.MaxInt64 {
+		return 0, fmt.Errorf(
+			"BLOB_QUOTA %q exceeds maximum (%d bytes)",
+			envVal,
+			int64(math.MaxInt64),
+		)
 	}
-	return n, nil
+	return int64(n), nil
 }
