@@ -428,6 +428,8 @@
               pkgs.golangci-lint
               pkgs.gopls
               pkgs.goreleaser
+              pkgs.govulncheck
+              deadcode
               pkgs.nodejs
               pkgs.jq
               pkgs.glow
