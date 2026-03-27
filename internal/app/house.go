@@ -19,7 +19,7 @@ func (m *Model) houseView() string {
 		content := lipgloss.JoinVertical(
 			lipgloss.Left,
 			joinInline(
-				m.styles.HeaderTitle().Render("House"),
+				m.houseTitle(),
 				m.styles.HeaderBadge().Render("setup"),
 				m.keycap("H"),
 			),
@@ -33,8 +33,15 @@ func (m *Model) houseView() string {
 	return m.zones.Mark(zoneHouse, m.headerBox(m.houseCollapsed()))
 }
 
+func (m *Model) houseTitle() string {
+	if m.hasActiveOverlay() {
+		return m.styles.AccentOutline().Render("House")
+	}
+	return m.styles.HeaderTitle().Render("House")
+}
+
 func (m *Model) houseCollapsed() string {
-	title := m.styles.HeaderTitle().Render("House")
+	title := m.houseTitle()
 	badge := m.styles.HeaderBadge().Render("▸")
 	sep := m.styles.HeaderHint().Render(" · ")
 	hint := m.styles.HeaderHint()
@@ -50,7 +57,7 @@ func (m *Model) houseCollapsed() string {
 }
 
 func (m *Model) houseExpanded() string {
-	title := m.styles.HeaderTitle().Render("House")
+	title := m.houseTitle()
 	badge := m.styles.HeaderBadge().Render("▾")
 	hint := m.styles.HeaderHint()
 	val := m.styles.HeaderValue()

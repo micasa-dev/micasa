@@ -210,11 +210,16 @@ func (m *Model) tabsLocked() bool {
 
 func (m *Model) tabsView() string {
 	pinned := m.tabsLocked()
+	dimmed := m.hasActiveOverlay()
 	parts := make([]string, 0, len(m.tabs)*2)
 	for i, tab := range m.tabs {
 		var rendered string
 		if i == m.active {
-			rendered = m.styles.TabActive().Render(tab.Name)
+			if dimmed {
+				rendered = m.styles.AccentOutline().Render(tab.Name)
+			} else {
+				rendered = m.styles.TabActive().Render(tab.Name)
+			}
 		} else if pinned {
 			rendered = m.styles.TabLocked().Render(tab.Name)
 		} else {

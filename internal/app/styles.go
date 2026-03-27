@@ -57,6 +57,7 @@ type Styles struct {
 	keycap           lipgloss.Style
 	tabInactive      lipgloss.Style
 	tabLocked        lipgloss.Style
+	accentOutline    lipgloss.Style
 	tableSelected    lipgloss.Style
 	modeEdit         lipgloss.Style
 	dashSectionWarn  lipgloss.Style
@@ -189,6 +190,9 @@ func DefaultStyles(isDark bool) *Styles {
 			Foreground(textDim).
 			Padding(0, 1).
 			Strikethrough(true),
+		accentOutline: lipgloss.NewStyle().
+			Foreground(accent).
+			Padding(0, 1),
 		tableSelected: lipgloss.NewStyle().
 			Background(surface).
 			Bold(true),
@@ -388,6 +392,7 @@ func (s *Styles) Keycap() lipgloss.Style           { return s.keycap }
 func (s *Styles) KeycapLight() lipgloss.Style      { return s.fgAccentBold }
 func (s *Styles) TabInactive() lipgloss.Style      { return s.tabInactive }
 func (s *Styles) TabLocked() lipgloss.Style        { return s.tabLocked }
+func (s *Styles) AccentOutline() lipgloss.Style    { return s.accentOutline }
 func (s *Styles) TableSelected() lipgloss.Style    { return s.tableSelected }
 func (s *Styles) ModeEdit() lipgloss.Style         { return s.modeEdit }
 func (s *Styles) DashSectionWarn() lipgloss.Style  { return s.dashSectionWarn }

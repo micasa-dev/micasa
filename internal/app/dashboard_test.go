@@ -100,6 +100,45 @@ func TestDashboardToggle(t *testing.T) {
 	assert.False(t, m.showDashboard)
 }
 
+func TestDashboardActiveTabUsesOutlineNotFill(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+
+	// Normal: active tab uses accent pill (has sky blue background).
+	normal := m.tabsView()
+	assert.Contains(t, normal, "48;2;86;180;233",
+		"active tab should have sky blue bg normally")
+
+	// With dashboard: active tab should drop the filled bg so it
+	// remains readable when dimBackground applies ANSI faint (#833).
+	m.showDashboard = true
+	m.dash.data = nonEmptyDashboard()
+	require.True(t, m.dashboardVisible())
+	dimmed := m.tabsView()
+	assert.NotContains(t, dimmed, "48;2;86;180;233",
+		"active tab should not have filled bg when overlay is active")
+	assert.Contains(t, dimmed, "38;2;86;180;233",
+		"active tab should use sky blue foreground as outline when overlay is active")
+}
+
+func TestDashboardHouseTitleUsesOutlineNotFill(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	// Normal: house title uses accent pill (has sky blue bg).
+	normal := m.houseView()
+	assert.Contains(t, normal, "48;2;86;180;233",
+		"house title should have sky blue bg normally")
+
+	// With dashboard.
+	m.showDashboard = true
+	m.dash.data = nonEmptyDashboard()
+	require.True(t, m.dashboardVisible())
+	dimmed := m.houseView()
+	assert.NotContains(t, dimmed, "48;2;86;180;233",
+		"house title should not have filled bg when overlay is active")
+}
+
 func TestDashboardPreservesDrilldown(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
