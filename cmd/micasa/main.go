@@ -15,6 +15,7 @@ import (
 	"runtime/debug"
 
 	tea "charm.land/bubbletea/v2"
+	_ "charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/micasa-dev/micasa/internal/app"
 	"github.com/micasa-dev/micasa/internal/config"
