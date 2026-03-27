@@ -25,6 +25,7 @@
     // flake-utils.lib.eachDefaultSystem (
       system:
       let
+        inherit (nixpkgs) lib;
         pkgs = import nixpkgs {
           inherit system;
           overlays = [
@@ -78,7 +79,7 @@
           hooks = {
             golines = {
               enable = true;
-              settings.flags = "--base-formatter=${pkgs.gofumpt}/bin/gofumpt " + "--max-len=100";
+              settings.flags = "--base-formatter=${lib.getExe pkgs.gofumpt} " + "--max-len=100";
             };
             nixfmt.enable = true;
             golangci-lint = {
@@ -96,7 +97,7 @@
             license-header = {
               enable = true;
               name = "license-header";
-              entry = "${licenseCheck}/bin/license-check";
+              entry = "${lib.getExe licenseCheck}";
               files = "\\.(go|nix|ya?ml|sh|md|js)$|^\\.envrc$|\\.gitignore$|^go\\.mod$";
               excludes = [
                 "LICENSE"
@@ -111,7 +112,7 @@
             go-mod-tidy = {
               enable = true;
               name = "go-mod-tidy";
-              entry = "${goModTidyCheck}/bin/go-mod-tidy-check";
+              entry = "${lib.getExe goModTidyCheck}";
               files = "\\.go$|^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -119,7 +120,7 @@
             deadcode-check = {
               enable = false; # CI-only job
               name = "deadcode";
-              entry = "${run-deadcode}/bin/run-deadcode";
+              entry = "${lib.getExe run-deadcode}";
               files = "\\.go$";
               language = "system";
               pass_filenames = false;
@@ -128,7 +129,7 @@
             govulncheck = {
               enable = false; # CI-only job
               name = "govulncheck";
-              entry = "${pkgs.govulncheck}/bin/govulncheck";
+              entry = "${lib.getExe pkgs.govulncheck}";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -137,7 +138,7 @@
             osv-scanner = {
               enable = false; # CI-only job
               name = "osv-scanner";
-              entry = "${run-osv-scanner}/bin/run-osv-scanner";
+              entry = "${lib.getExe run-osv-scanner}";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -146,7 +147,7 @@
             go-generate-check = {
               enable = true;
               name = "go-generate-check";
-              entry = "${goGenerateCheck}/bin/go-generate-check";
+              entry = "${lib.getExe goGenerateCheck}";
               files = "^internal/(data/(models|cmd/genmeta/main)|app/(coldefs|cmd/gencolumns/main))\\.go$";
               language = "system";
               pass_filenames = false;
@@ -155,7 +156,7 @@
             vendor-hash-check = {
               enable = true;
               name = "vendor-hash-check";
-              entry = "${vendorHashCheck}/bin/vendor-hash-check";
+              entry = "${lib.getExe vendorHashCheck}";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -554,7 +555,7 @@
             deadcode = app (pkg "run-deadcode") "Run whole-program dead code analysis";
             govulncheck = {
               type = "app";
-              program = "${pkgs.govulncheck}/bin/govulncheck";
+              program = "${lib.getExe pkgs.govulncheck}";
               meta.description = "Check for known Go vulnerabilities with call-graph analysis";
             };
             osv-scanner = app (pkg "run-osv-scanner") "Scan for known vulnerabilities";
