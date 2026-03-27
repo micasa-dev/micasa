@@ -425,6 +425,7 @@
               pkgs.tesseract
               pkgs.poppler-utils
               pkgs.imagemagick
+              pkgs.golangci-lint
               pkgs.gopls
               pkgs.goreleaser
               pkgs.nodejs
