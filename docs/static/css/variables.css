@@ -17,7 +17,9 @@
   --code-text: #e8e2da;
   --shadow-color: rgba(45, 42, 38, 0.12);
   --overlay-bg: rgba(45, 42, 38, 0.5);
-  --sun-final: translate(-10.8px, -21px) scale(0.45);
+  --sun-final: translate(-10.8px, -21px) scale(0.45); /* removed in Task 3 */
+  --toggle-bg: var(--linen);
+  --toggle-bg-hover: #e8e2da;
 }
 
 [data-theme="dark"] {
@@ -34,6 +36,8 @@
   --code-text: #e8ddd0;
   --shadow-color: rgba(0, 0, 0, 0.3);
   --overlay-bg: rgba(0, 0, 0, 0.5);
+  --toggle-bg: #342f29;
+  --toggle-bg-hover: #3d3730;
 }
 
 /* --- Theme toggle (shared across all pages) --- */
@@ -43,17 +47,17 @@
   bottom: 1rem;
   right: 1rem;
   z-index: 400;
-  background: none;
+  background: var(--toggle-bg);
   border: none;
-  padding: 0;
+  border-radius: 6px;
+  padding: 4px;
   cursor: pointer;
   line-height: 0;
-  color: var(--warm-gray);
-  transition: color 0.15s;
+  transition: background-color 0.15s;
 }
 
 .theme-toggle:hover {
-  color: var(--charcoal);
+  background: var(--toggle-bg-hover);
 }
 
 .theme-house {
