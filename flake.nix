@@ -25,7 +25,52 @@
     // flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [
+            (final: prev: {
+              govulncheck = prev.writeShellApplication {
+                name = "govulncheck";
+                runtimeInputs = [
+                  prev.govulncheck
+                  final.go_1_26
+                  prev.jq
+                  prev.ripgrep
+                ];
+                runtimeEnv.CGO_ENABLED = "0";
+                text = ''
+                  _tmpdir=$(mktemp -d -t micasa-govulncheck-XXXXXX)
+                  trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
+                  export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
+                  export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
+
+                  exclude_file=".govulncheck-exclude"
+                  raw=$(command govulncheck -format json ./... 2>&1) || true
+                  found=$(echo "$raw" | jq -r 'select(.finding) | select(.finding.trace[0].function) | .finding.osv' | sort -u)
+
+                  if [ -z "$found" ]; then
+                    exit 0
+                  fi
+
+                  excluded=""
+                  if [ -f "$exclude_file" ]; then
+                    excluded=$(rg -oN 'GO-[0-9]+-[0-9]+' "$exclude_file" | sort -u)
+                  fi
+
+                  new=$(comm -23 <(echo "$found") <(echo "$excluded"))
+
+                  if [ -z "$new" ]; then
+                    exit 0
+                  fi
+
+                  echo "govulncheck: unexcluded vulnerabilities found:"
+                  echo "$new"
+                  exit 1
+                '';
+              };
+            })
+          ];
+        };
         go = pkgs.go_1_26;
         version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ./VERSION);
 
@@ -174,7 +219,7 @@
             govulncheck = {
               enable = false; # CI-only job
               name = "govulncheck";
-              entry = "${run-govulncheck}/bin/run-govulncheck";
+              entry = "${pkgs.govulncheck}/bin/govulncheck";
               files = "^go\\.(mod|sum)$";
               language = "system";
               pass_filenames = false;
@@ -248,46 +293,6 @@
               echo "$output"
               exit 1
             fi
-          '';
-        };
-
-        run-govulncheck = pkgs.writeShellApplication {
-          name = "run-govulncheck";
-          runtimeInputs = [
-            pkgs.govulncheck
-            go
-            pkgs.jq
-            pkgs.ripgrep
-          ];
-          runtimeEnv.CGO_ENABLED = "0";
-          text = ''
-            _tmpdir=$(mktemp -d -t micasa-govulncheck-XXXXXX)
-            trap 'chmod -R u+w "$_tmpdir" 2>/dev/null; rm -rf "$_tmpdir"' EXIT
-            export GOCACHE="''${GOCACHE:-$_tmpdir/gocache}"
-            export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
-
-            exclude_file=".govulncheck-exclude"
-            raw=$(govulncheck -format json ./... 2>&1) || true
-            found=$(echo "$raw" | jq -r 'select(.finding) | select(.finding.trace[0].function) | .finding.osv' | sort -u)
-
-            if [ -z "$found" ]; then
-              exit 0
-            fi
-
-            excluded=""
-            if [ -f "$exclude_file" ]; then
-              excluded=$(rg -oN 'GO-[0-9]+-[0-9]+' "$exclude_file" | sort -u)
-            fi
-
-            new=$(comm -23 <(echo "$found") <(echo "$excluded"))
-
-            if [ -z "$new" ]; then
-              exit 0
-            fi
-
-            echo "govulncheck: unexcluded vulnerabilities found:"
-            echo "$new"
-            exit 1
           '';
         };
 
@@ -652,7 +657,6 @@
           };
           inherit
             run-deadcode
-            run-govulncheck
             run-osv-scanner
             run-golangci-lint
             ;
@@ -720,7 +724,11 @@
             gen-mixed-pdf = app (pkg "gen-mixed-pdf") "Generate mixed-inspection.pdf test fixture";
             gen-testdata = app (pkg "gen-testdata") "Generate all test document fixtures";
             deadcode = app (pkg "run-deadcode") "Run whole-program dead code analysis";
-            govulncheck = app (pkg "run-govulncheck") "Check for known Go vulnerabilities with call-graph analysis";
+            govulncheck = {
+              type = "app";
+              program = "${pkgs.govulncheck}/bin/govulncheck";
+              meta.description = "Check for known Go vulnerabilities with call-graph analysis";
+            };
             osv-scanner = app (pkg "run-osv-scanner") "Scan for known vulnerabilities";
             golangci-lint = app (pkg "run-golangci-lint") "Run golangci-lint";
             pre-commit = app (pkg "run-pre-commit") "Run all pre-commit hooks";
