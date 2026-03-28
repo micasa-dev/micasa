@@ -318,10 +318,10 @@ func TestHelpToggle(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	sendKey(m, "?")
-	assert.NotNil(t, m.helpViewport)
+	assert.NotNil(t, m.helpState)
 	assert.Contains(t, m.buildView(), "Keyboard Shortcuts", "expected help visible after '?'")
 	sendKey(m, "?")
-	assert.Nil(t, m.helpViewport)
+	assert.Nil(t, m.helpState)
 	assert.NotContains(
 		t,
 		m.buildView(),
@@ -330,96 +330,81 @@ func TestHelpToggle(t *testing.T) {
 	)
 }
 
-func TestHelpViewportScrolling(t *testing.T) {
+func TestHelpSectionNavigation(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	sendKey(m, "?")
-	require.NotNil(t, m.helpViewport)
+	require.NotNil(t, m.helpState)
 	require.Contains(t, m.buildView(), "Keyboard Shortcuts", "expected help visible")
 
-	// Scroll down and verify offset moves.
+	sections := m.helpSections()
+	require.Greater(t, len(sections), 1, "need at least 2 sections for navigation test")
+
+	// Starts at section 0.
+	assert.Equal(t, 0, m.helpState.section)
+
+	// j moves to next section.
 	sendKey(m, "j")
-	if m.helpViewport.TotalLineCount() > m.helpViewport.Height() {
-		assert.NotZero(t, m.helpViewport.YOffset(), "expected viewport to scroll down on 'j'")
-	}
+	assert.Equal(t, 1, m.helpState.section)
 
-	// Scroll back up.
+	// k moves back up.
 	sendKey(m, "k")
-	assert.Equal(t, 0, m.helpViewport.YOffset(), "expected viewport at top after scrolling back up")
-
-	// Go to bottom with G.
-	sendKey(m, "G")
-	if m.helpViewport.TotalLineCount() > m.helpViewport.Height() {
-		assert.True(t, m.helpViewport.AtBottom(), "expected viewport at bottom after 'G'")
-	}
-
-	// Go to top with g.
-	sendKey(m, "g")
-	assert.True(t, m.helpViewport.AtTop(), "expected viewport at top after 'g'")
+	assert.Equal(t, 0, m.helpState.section)
 
 	// Esc dismisses.
 	sendKey(m, "esc")
-	assert.Nil(t, m.helpViewport)
+	assert.Nil(t, m.helpState)
 	assert.NotContains(t, m.buildView(), "Keyboard Shortcuts", "expected help hidden after esc")
 }
 
-func TestHelpOverlayFixedWidthOnScroll(t *testing.T) {
+func TestHelpOverlayFixedWidthAcrossSections(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
-	m.height = 20 // Small height forces scrolling.
 	sendKey(m, "?")
-	require.NotNil(t, m.helpViewport, "expected help visible")
-	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
-		t.Skip("help content fits without scrolling at this height")
-	}
+	require.NotNil(t, m.helpState, "expected help visible")
 
-	// Measure width at top.
-	widthAtTop := lipgloss.Width(m.helpView())
+	sections := m.helpSections()
+	require.Greater(t, len(sections), 1, "need multiple sections")
 
-	// Scroll to middle.
-	for range 5 {
-		sendKey(m, "j")
-	}
-	widthAtMiddle := lipgloss.Width(m.helpView())
+	// Measure width at first section.
+	widthAtFirst := lipgloss.Width(m.helpView())
 
-	// Scroll to bottom.
-	sendKey(m, "G")
-	widthAtBottom := lipgloss.Width(m.helpView())
+	// Move to a different section.
+	sendKey(m, "j")
+	widthAtSecond := lipgloss.Width(m.helpView())
 
-	assert.Equal(t, widthAtTop, widthAtMiddle, "help width changed from top to middle")
-	assert.Equal(t, widthAtTop, widthAtBottom, "help width changed from top to bottom")
+	assert.Equal(t, widthAtFirst, widthAtSecond,
+		"help overlay width should stay constant across sections")
 }
 
-func TestHelpScrollIndicatorChanges(t *testing.T) {
+func TestHelpSectionClampsBounds(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
-	m.height = 20
 	sendKey(m, "?")
-	require.NotNil(t, m.helpViewport, "expected help visible")
-	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
-		t.Skip("help content fits without scrolling at this height")
-	}
+	require.NotNil(t, m.helpState, "expected help visible")
 
-	viewAtTop := m.helpView()
-	assert.Contains(t, viewAtTop, "Top")
+	sections := m.helpSections()
 
-	sendKey(m, "G")
-	viewAtBottom := m.helpView()
-	assert.Contains(t, viewAtBottom, "Bot")
-
-	// Scroll back up one line from bottom -- should show percentage.
+	// k at section 0 stays at 0.
 	sendKey(m, "k")
-	viewAtMiddle := m.helpView()
-	assert.NotContains(t, viewAtMiddle, "Top")
-	assert.NotContains(t, viewAtMiddle, "Bot")
-	assert.Contains(t, viewAtMiddle, "%")
+	assert.Equal(t, 0, m.helpState.section, "k at top should stay at 0")
+
+	// Navigate to last section.
+	for range len(sections) - 1 {
+		sendKey(m, "j")
+	}
+	assert.Equal(t, len(sections)-1, m.helpState.section)
+
+	// j at last section stays at last.
+	sendKey(m, "j")
+	assert.Equal(t, len(sections)-1, m.helpState.section, "j at bottom should stay at last")
 }
 
 func TestHelpAbsorbsOtherKeys(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	sendKey(m, "?")
-	require.NotNil(t, m.helpViewport)
+	require.NotNil(t, m.helpState)
 	require.Contains(t, m.buildView(), "Keyboard Shortcuts", "expected help visible")
 
 	// Keys that would normally affect the model should be absorbed.
@@ -429,6 +414,85 @@ func TestHelpAbsorbsOtherKeys(t *testing.T) {
 	// the status bar should not show EDIT mode.
 	assert.Contains(t, m.buildView(), "Keyboard Shortcuts",
 		"'i' should not close help overlay")
+}
+
+func TestHelpTwoPaneClose(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+
+	// ? opens.
+	sendKey(m, "?")
+	require.NotNil(t, m.helpState, "? should open help")
+
+	// esc closes.
+	sendKey(m, "esc")
+	assert.Nil(t, m.helpState, "esc should close help")
+
+	// ? opens again, then ? closes (toggle).
+	sendKey(m, "?")
+	require.NotNil(t, m.helpState)
+	sendKey(m, "?")
+	assert.Nil(t, m.helpState, "? should toggle help closed")
+}
+
+func TestHelpRightPaneUpdatesOnSectionChange(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	sendKey(m, "?")
+	require.NotNil(t, m.helpState)
+
+	sections := m.helpSections()
+	require.Greater(t, len(sections), 1)
+
+	// Capture right pane content at section 0.
+	contentAtZero := m.helpState.viewport.View()
+
+	// Move to section 1.
+	sendKey(m, "j")
+	assert.Equal(t, 1, m.helpState.section)
+
+	// Right pane should show different content.
+	contentAtOne := m.helpState.viewport.View()
+	assert.NotEqual(t, contentAtZero, contentAtOne,
+		"right pane content should change when section changes")
+}
+
+func TestHelpTwoPaneShowsCursorIndicator(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	sendKey(m, "?")
+	require.NotNil(t, m.helpState)
+
+	view := m.helpView()
+	assert.Contains(t, view, symTriRightSm,
+		"help overlay should show cursor indicator")
+}
+
+func TestHelpTwoPaneShowsSectionNames(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	sendKey(m, "?")
+	require.NotNil(t, m.helpState)
+
+	view := m.helpView()
+	sections := m.helpSections()
+	for _, sec := range sections {
+		assert.Contains(t, view, sec.title,
+			"help overlay should show section name: "+sec.title)
+	}
+}
+
+func TestHelpTwoPaneShowsHintBar(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	sendKey(m, "?")
+	require.NotNil(t, m.helpState)
+
+	view := m.helpView()
+	assert.Contains(t, view, "sections",
+		"help overlay should show sections navigation hint")
+	assert.Contains(t, view, "close",
+		"help overlay should show close hint")
 }
 
 func TestDeleteRequiresEditMode(t *testing.T) {

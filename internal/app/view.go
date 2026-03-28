@@ -40,7 +40,7 @@ func (m *Model) buildView() string {
 		{m.docSearch != nil, m.buildDocSearchOverlay},
 		{m.ex.extraction != nil && m.ex.extraction.Visible, m.buildExtractionOverlay},
 		{m.chat != nil && m.chat.Visible, m.buildChatOverlay},
-		{m.helpViewport != nil, m.buildHelpOverlay},
+		{m.helpState != nil, m.buildHelpOverlay},
 	}
 
 	hasOverlay := false

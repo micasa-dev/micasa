@@ -1749,7 +1749,7 @@ func TestDispatchOverlayConsumesKeyMessages(t *testing.T) {
 
 	// Open help overlay.
 	sendKey(m, "?")
-	require.NotNil(t, m.helpViewport)
+	require.NotNil(t, m.helpState)
 
 	// Key messages should be consumed by the overlay.
 	cmd, handled := m.dispatchOverlay(keyPress("j"))

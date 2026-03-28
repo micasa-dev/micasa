@@ -140,12 +140,23 @@ const (
 	symMiddleDot = "\u00b7" // ·
 )
 
-// Key bindings for help viewport (g/G for top/bottom are not in the
-// default viewport keymap).
-var (
-	helpGotoTop    = key.NewBinding(key.WithKeys(keyG))
-	helpGotoBottom = key.NewBinding(key.WithKeys(keyShiftG))
-)
+// helpState groups all two-pane help overlay fields.
+type helpState struct {
+	section  int            // index of the currently selected section in the left pane
+	viewport viewport.Model // right-pane viewport showing entries for the selected section
+}
+
+// helpSection is a titled group of key bindings for the help overlay.
+type helpSection struct {
+	title   string
+	entries []helpEntry
+}
+
+// helpEntry is a single key-description pair within a help section.
+type helpEntry struct {
+	keys string
+	desc string
+}
 
 // pullState groups fields for an in-progress Ollama model pull.
 type pullState struct {
@@ -191,7 +202,7 @@ type Model struct {
 	detailStack           []*detailContext // drilldown stack; top is active detail view
 	width                 int
 	height                int
-	helpViewport          *viewport.Model
+	helpState             *helpState
 	showHouse             bool
 	showDashboard         bool
 	notePreview           *notePreviewState
@@ -1140,40 +1151,107 @@ func cloneFormData(d formData) formData {
 	return d
 }
 
-// openHelp creates a viewport sized to fit the terminal and populated with
-// the help content. The viewport handles scroll state and key delegation.
+// openHelp creates the two-pane help overlay. The left pane lists section
+// names with a cursor; the right pane is a viewport showing bindings for the
+// selected section. j/k navigate sections; the viewport scrolls independently.
 func (m *Model) openHelp() {
-	content := m.helpContent()
-	lines := strings.Split(content, "\n")
+	hs := &helpState{section: 0}
+	m.helpState = hs
+	m.updateHelpViewport()
+}
 
-	// Chrome: border (2) + padding (2) + gap + rule + hint (4) = 8 lines.
-	maxH := m.effectiveHeight() - 2
-	if maxH < 10 {
-		maxH = 10
-	}
-	viewH := maxH - 8
-	if viewH < 3 {
-		viewH = 3
-	}
-	// If content fits, no scrolling needed.
-	if len(lines) <= viewH {
-		viewH = len(lines)
+// updateHelpViewport rebuilds the right-pane viewport content for the
+// currently selected help section. Called on open and on section change.
+func (m *Model) updateHelpViewport() {
+	hs := m.helpState
+	if hs == nil {
+		return
 	}
 
-	// Lock width to the widest content line so the overlay never resizes.
-	maxW := 0
-	for _, line := range lines {
-		if w := lipgloss.Width(line); w > maxW {
-			maxW = w
+	sections := m.helpSections()
+	if hs.section >= len(sections) {
+		hs.section = len(sections) - 1
+	}
+
+	// Compute global max key width across ALL sections for consistent alignment.
+	globalMaxKeyW := 0
+	for _, sec := range sections {
+		for _, e := range sec.entries {
+			k := m.renderKeysLight(e.keys)
+			if w := lipgloss.Width(k); w > globalMaxKeyW {
+				globalMaxKeyW = w
+			}
 		}
 	}
 
-	vp := viewport.New(viewport.WithWidth(maxW), viewport.WithHeight(viewH))
+	// Render the selected section's entries.
+	sec := sections[hs.section]
+	sep := m.styles.TextDim().Render(symVLine)
+	var b strings.Builder
+	for i, e := range sec.entries {
+		keys := m.renderKeysLight(e.keys)
+		pad := strings.Repeat(" ", max(0, globalMaxKeyW-lipgloss.Width(keys)))
+		desc := m.styles.HeaderHint().Render(e.desc)
+		fmt.Fprintf(&b, "  %s%s %s %s", pad, keys, sep, desc)
+		if i < len(sec.entries)-1 {
+			b.WriteString("\n")
+		}
+	}
+	content := b.String()
+	lines := strings.Split(content, "\n")
+
+	// Overlay dimensions: 60% width x 70% height.
+	overlayW := m.effectiveWidth() * 60 / 100
+	if overlayW < 40 {
+		overlayW = 40
+	}
+	overlayH := m.effectiveHeight() * 70 / 100
+	if overlayH < 10 {
+		overlayH = 10
+	}
+
+	// Left pane: section names + cursor. Measure its width.
+	leftW := 0
+	for _, s := range sections {
+		// "  " prefix + cursor (2 chars) + title
+		w := lipgloss.Width("  " + symTriRightSm + " " + s.title)
+		if w > leftW {
+			leftW = w
+		}
+	}
+	leftW += 1 // trailing space
+
+	// Separator column: 3 chars (" | ").
+	sepW := 3
+
+	// Right pane width: overlay inner width minus border (2) minus padding (4) minus left minus sep.
+	// title (1 line) + gap (1 line) + bottom gap (2 lines) + rule (1) + hint (1) = 6 chrome lines.
+	rightW := overlayW - 2 - 4 - leftW - sepW
+	if rightW < 20 {
+		rightW = 20
+	}
+
+	// Right pane height: overlay inner minus title/gap/rule/hint chrome.
+	rightH := overlayH - 2 - 2 - 6 // border + padding + chrome
+	if rightH < 3 {
+		rightH = 3
+	}
+	if len(lines) < rightH {
+		rightH = len(lines)
+	}
+
+	vp := viewport.New(viewport.WithWidth(rightW), viewport.WithHeight(rightH))
 	vp.SetContent(content)
-	// Disable horizontal scroll to avoid conflicts with table navigation.
+	// Disable keys that conflict with section navigation (j/k/up/down)
+	// and horizontal scroll (h/l/left/right).
+	vp.KeyMap.Up.SetEnabled(false)
+	vp.KeyMap.Down.SetEnabled(false)
 	vp.KeyMap.Left.SetEnabled(false)
 	vp.KeyMap.Right.SetEnabled(false)
-	m.helpViewport = &vp
+	// Remap half-page to g/G for goto-top/goto-bottom within the section.
+	vp.KeyMap.HalfPageUp.SetKeys(keyG)
+	vp.KeyMap.HalfPageDown.SetKeys(keyShiftG)
+	hs.viewport = vp
 }
 
 func (m *Model) handleInlineInputKey(msg tea.KeyPressMsg) tea.Cmd {
@@ -1351,7 +1429,7 @@ type overlay interface {
 
 type helpOverlay struct{ m *Model }
 
-func (o helpOverlay) isVisible() bool                       { return o.m.helpViewport != nil }
+func (o helpOverlay) isVisible() bool                       { return o.m.helpState != nil }
 func (o helpOverlay) handleKey(key tea.KeyPressMsg) tea.Cmd { return o.m.helpOverlayKey(key) }
 func (o helpOverlay) hidesMainKeys() bool                   { return true }
 
@@ -1475,16 +1553,27 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 }
 
 func (m *Model) helpOverlayKey(msg tea.KeyPressMsg) tea.Cmd {
+	hs := m.helpState
+	if hs == nil {
+		return nil
+	}
 	switch {
 	case key.Matches(msg, m.keys.HelpClose):
-		m.helpViewport = nil
-	case key.Matches(msg, helpGotoTop):
-		m.helpViewport.GotoTop()
-	case key.Matches(msg, helpGotoBottom):
-		m.helpViewport.GotoBottom()
+		m.helpState = nil
+	case key.Matches(msg, m.keys.HelpSectionDown):
+		sections := m.helpSections()
+		if hs.section < len(sections)-1 {
+			hs.section++
+			m.updateHelpViewport()
+		}
+	case key.Matches(msg, m.keys.HelpSectionUp):
+		if hs.section > 0 {
+			hs.section--
+			m.updateHelpViewport()
+		}
 	default:
-		vp, _ := m.helpViewport.Update(msg)
-		m.helpViewport = &vp
+		vp, _ := hs.viewport.Update(msg)
+		hs.viewport = vp
 	}
 	return nil
 }

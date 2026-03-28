@@ -11,32 +11,24 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// helpContent generates the static help text (keyboard shortcuts).
-// Separated from rendering so it can be set once on the viewport.
-func (m *Model) helpContent() string {
-	type entry struct {
-		keys string
-		desc string
-	}
-	fromBinding := func(b key.Binding) entry {
+// helpSections returns the structured section data for the help overlay.
+// Each section groups related key bindings under a titled header.
+func (m *Model) helpSections() []helpSection {
+	fromBinding := func(b key.Binding) helpEntry {
 		h := b.Help()
-		return entry{keys: h.Key, desc: h.Desc}
+		return helpEntry{keys: h.Key, desc: h.Desc}
 	}
-
-	sections := []struct {
-		title   string
-		entries []entry
-	}{
+	return []helpSection{
 		{
 			title: "Global",
-			entries: []entry{
+			entries: []helpEntry{
 				fromBinding(m.keys.Cancel),
 				fromBinding(m.keys.Quit),
 			},
 		},
 		{
 			title: "Nav Mode",
-			entries: []entry{
+			entries: []helpEntry{
 				{keyJ + "/" + keyK + "/" + symUp + "/" + symDown, "rows"},
 				fromBinding(m.keys.ColLeft),
 				fromBinding(m.keys.ColStart),
@@ -66,7 +58,7 @@ func (m *Model) helpContent() string {
 		},
 		{
 			title: "Edit Mode",
-			entries: []entry{
+			entries: []helpEntry{
 				fromBinding(m.keys.Add),
 				fromBinding(m.keys.QuickAdd),
 				fromBinding(m.keys.EditCell),
@@ -81,7 +73,7 @@ func (m *Model) helpContent() string {
 		},
 		{
 			title: "Forms",
-			entries: []entry{
+			entries: []helpEntry{
 				fromBinding(m.keys.FormNextField),
 				fromBinding(m.keys.FormPrevField),
 				{"1-9", "jump to Nth option"},
@@ -93,7 +85,7 @@ func (m *Model) helpContent() string {
 		},
 		{
 			title: "Chat (" + keyAt + ")",
-			entries: []entry{
+			entries: []helpEntry{
 				fromBinding(m.keys.ChatSend),
 				fromBinding(m.keys.ChatToggleSQL),
 				fromBinding(m.keys.ChatHistoryUp),
@@ -101,6 +93,12 @@ func (m *Model) helpContent() string {
 			},
 		},
 	}
+}
+
+// helpContent generates the full help text as a single string.
+// Used by tests that check for specific content across all sections.
+func (m *Model) helpContent() string {
+	sections := m.helpSections()
 
 	// Pre-render all keycaps and find the global max width.
 	type renderedSection struct {
@@ -142,24 +140,89 @@ func (m *Model) helpContent() string {
 	return b.String()
 }
 
-// helpView renders the help overlay using a viewport for scrolling.
+// helpView renders the two-pane help overlay.
+// Left pane: section names with cursor. Right pane: viewport of bindings.
 func (m *Model) helpView() string {
-	vp := m.helpViewport
-	if vp == nil {
+	hs := m.helpState
+	if hs == nil {
 		return ""
 	}
 
-	content := vp.View()
-	contentW := vp.Width()
-	rule := m.scrollRule(contentW, vp.TotalLineCount(), vp.Height(),
-		vp.AtTop(), vp.AtBottom(), vp.ScrollPercent(), "─")
+	sections := m.helpSections()
 
-	hints := []string{m.helpItem(keyEsc, "close")}
-	if vp.TotalLineCount() > vp.Height() {
-		hints = append([]string{m.helpItem(keyJ+"/"+keyK, "scroll")}, hints...)
+	// Build left pane: section list with cursor indicator.
+	var leftLines []string
+	for i, sec := range sections {
+		cursor := "  "
+		if i == hs.section {
+			cursor = symTriRightSm + " "
+		}
+		line := cursor + m.styles.HeaderSection().Render(sec.title)
+		leftLines = append(leftLines, line)
 	}
-	closeHintStr := joinWithSeparator(m.helpSeparator(), hints...)
+
+	// Measure left pane width.
+	leftW := 0
+	for _, line := range leftLines {
+		if w := lipgloss.Width(line); w > leftW {
+			leftW = w
+		}
+	}
+
+	// Right pane content from viewport.
+	rightContent := hs.viewport.View()
+	rightLines := strings.Split(rightContent, "\n")
+	rightH := hs.viewport.Height()
+
+	// Pad both panes to the same height.
+	paneH := rightH
+	if len(leftLines) > paneH {
+		paneH = len(leftLines)
+	}
+	for len(leftLines) < paneH {
+		leftLines = append(leftLines, "")
+	}
+	for len(rightLines) < paneH {
+		rightLines = append(rightLines, "")
+	}
+
+	// Build combined pane rows with dim separator.
+	dimSep := m.styles.TextDim().Render(" " + symVLine + " ")
+	var paneRows []string
+	for i := range paneH {
+		left := leftLines[i]
+		leftPad := strings.Repeat(" ", max(0, leftW-lipgloss.Width(left)))
+		right := rightLines[i]
+		paneRows = append(paneRows, left+leftPad+dimSep+right)
+	}
+
+	// Title.
+	title := m.styles.HeaderTitle().Render(" Keyboard Shortcuts ")
+
+	// Compute full content width for scroll rule.
+	bodyStr := strings.Join(paneRows, "\n")
+	contentW := 0
+	for _, row := range paneRows {
+		if w := lipgloss.Width(row); w > contentW {
+			contentW = w
+		}
+	}
+	if w := lipgloss.Width(title); w > contentW {
+		contentW = w
+	}
+
+	// Scroll rule for the right pane.
+	vp := &hs.viewport
+	rule := m.scrollRule(contentW, vp.TotalLineCount(), vp.Height(),
+		vp.AtTop(), vp.AtBottom(), vp.ScrollPercent(), symHLine)
+
+	// Bottom hint bar.
+	hints := []string{
+		m.helpItem(keyJ+"/"+keyK, "sections"),
+		m.helpItem(keyEsc, "close"),
+	}
+	hintStr := joinWithSeparator(m.helpSeparator(), hints...)
 
 	return m.styles.OverlayBox().
-		Render(content + "\n\n" + rule + "\n" + closeHintStr)
+		Render(title + "\n\n" + bodyStr + "\n\n" + rule + "\n" + hintStr)
 }
