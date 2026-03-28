@@ -631,16 +631,21 @@ func TestStatusBarStableWidthWithFilters(t *testing.T) {
 	assert.Equal(t, beforeW, afterW, "status bar width should not change with filtering")
 }
 
-func TestStatusViewUsesMoreLabelWhenHintsCollapse(t *testing.T) {
+func TestStatusBarTruncatesHintsAtNarrowWidth(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.height = 40
-	// At very narrow width, the help hint compacts from "help" to "more".
-	// Add an enter hint to increase the hint count enough to trigger collapse.
-	m.width = 20
+
+	// At wide width, the "help" hint is visible.
+	m.width = 200
+	wideStatus := m.statusView()
+	require.Contains(t, wideStatus, "help")
+
+	// At narrow width, trailing hints (like "help") get truncated by
+	// help.ShortHelpView. The mode badge always remains.
+	m.width = 30
 	tab := m.activeTab()
 	require.NotNil(t, tab)
-	// Put cursor on a drilldown column to generate an enter hint.
 	for i, spec := range tab.Specs {
 		if spec.Kind == cellDrilldown {
 			tab.ColCursor = i
@@ -648,7 +653,9 @@ func TestStatusViewUsesMoreLabelWhenHintsCollapse(t *testing.T) {
 		}
 	}
 	status := m.statusView()
-	assert.Contains(t, status, "more", "expected collapsed hint label to include more")
+	assert.Contains(t, status, "NAV", "mode badge should remain at narrow width")
+	assert.NotContains(t, status, "help",
+		"trailing hints should be truncated at narrow width")
 }
 
 func TestHelpContentIncludesProjectStatusFilterShortcut(t *testing.T) {

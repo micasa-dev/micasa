@@ -423,3 +423,73 @@ func newAppKeyMap() AppKeyMap {
 		InlineCancel:  key.NewBinding(key.WithKeys(keyEsc)),
 	}
 }
+
+// ShortHelp returns context-dependent key bindings for the status bar hint
+// line, rendered by help.Model.ShortHelpView. The returned slice varies by
+// mode and current tab state.
+func (m *Model) ShortHelp() []key.Binding {
+	if m.mode == modeEdit {
+		return m.editModeShortHelp()
+	}
+	return m.normalModeShortHelp()
+}
+
+func (m *Model) normalModeShortHelp() []key.Binding {
+	var bindings []key.Binding
+
+	// Context-dependent action: what enter does on the current column.
+	if hint := m.enterHint(); hint != "" {
+		bindings = append(bindings, key.NewBinding(
+			key.WithKeys(keyEnter),
+			key.WithHelp(symReturn, hint),
+		))
+	}
+
+	bindings = append(bindings, m.keys.EnterEditMode)
+
+	if m.effectiveTab().isDocumentTab() {
+		bindings = append(bindings, m.keys.DocOpen, m.keys.DocSearch)
+	}
+	if m.llmClient != nil {
+		bindings = append(bindings, m.keys.Chat)
+	}
+
+	bindings = append(bindings, m.keys.Help)
+
+	if m.inDetail() {
+		bindings = append(bindings, m.keys.Escape)
+	}
+
+	return bindings
+}
+
+func (m *Model) editModeShortHelp() []key.Binding {
+	var bindings []key.Binding
+
+	// Add: on document tabs show a/A, otherwise just a.
+	if m.effectiveTab().isDocumentTab() {
+		bindings = append(bindings, key.NewBinding(
+			key.WithKeys(keyA, keyShiftA),
+			key.WithHelp(keyA+"/"+keyShiftA, "add"),
+		))
+	} else {
+		bindings = append(bindings, m.keys.Add)
+	}
+
+	// Edit: always show e/E with contextual hint.
+	bindings = append(bindings,
+		key.NewBinding(
+			key.WithKeys(keyE, keyShiftE),
+			key.WithHelp(keyE+"/"+keyShiftE, m.editHint()),
+		),
+		m.keys.Delete,
+	)
+
+	if m.effectiveTab().isDocumentTab() {
+		bindings = append(bindings, m.keys.DocOpen, m.keys.ReExtract)
+	}
+
+	bindings = append(bindings, m.keys.ExitEdit)
+
+	return bindings
+}
