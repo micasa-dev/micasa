@@ -6,51 +6,52 @@ package app
 import (
 	"time"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 )
 
 // handleDashboardKeys intercepts keys that belong to the dashboard (j/k
 // navigation, enter to jump) and blocks keys that affect backgrounded
 // widgets. Keys like D, b/f, ?, q fall through to the normal handlers.
-func (m *Model) handleDashboardKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
-	if key.String() != keyEnter {
+func (m *Model) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	if !key.Matches(msg, m.keys.DashJump) {
 		m.dash.flash = ""
 	}
-	switch key.String() {
-	case keyJ, keyDown:
+	switch {
+	case key.Matches(msg, m.keys.DashDown):
 		m.dashDown()
 		return nil, true
-	case keyK, keyUp:
+	case key.Matches(msg, m.keys.DashUp):
 		m.dashUp()
 		return nil, true
-	case keyShiftJ, keyShiftDown:
+	case key.Matches(msg, m.keys.DashNextSection):
 		m.dashNextSection()
 		return nil, true
-	case keyShiftK, keyShiftUp:
+	case key.Matches(msg, m.keys.DashPrevSection):
 		m.dashPrevSection()
 		return nil, true
-	case keyG:
+	case key.Matches(msg, m.keys.DashTop):
 		m.dashTop()
 		return nil, true
-	case keyShiftG:
+	case key.Matches(msg, m.keys.DashBottom):
 		m.dashBottom()
 		return nil, true
-	case keyE:
+	case key.Matches(msg, m.keys.DashToggle):
 		m.dashToggleCurrent()
 		return nil, true
-	case keyShiftE:
+	case key.Matches(msg, m.keys.DashToggleAll):
 		m.dashToggleAll()
 		return nil, true
-	case keyEnter:
+	case key.Matches(msg, m.keys.DashJump):
 		m.dashJump()
 		return nil, true
-	case keyTab:
+	case key.Matches(msg, m.keys.HouseToggle):
 		// Block house profile toggle on dashboard.
 		return nil, true
-	case keyH, keyL, keyLeft, keyRight:
+	case key.Matches(msg, m.keys.ColLeft, m.keys.ColRight):
 		// Block column movement on dashboard.
 		return nil, true
-	case keyS, keyShiftS, keyC, keyShiftC, keyI, keySlash, keyN, keyShiftN, keyBang:
+	case key.Matches(msg, m.keys.Sort, m.keys.SortClear, m.keys.ColHide, m.keys.ColShowAll, m.keys.EnterEditMode, m.keys.ColFinder, m.keys.FilterPin, m.keys.FilterToggle, m.keys.FilterNegate):
 		// Block table-specific keys on dashboard.
 		return nil, true
 	}
@@ -58,16 +59,16 @@ func (m *Model) handleDashboardKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 }
 
 // handleCommonKeys processes keys available in both Normal and Edit modes.
-func (m *Model) handleCommonKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
-	switch key.String() {
-	case keyQuestion:
+func (m *Model) handleCommonKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Help):
 		m.openHelp()
 		return nil, true
-	case keyTab:
+	case key.Matches(msg, m.keys.HouseToggle):
 		m.showHouse = !m.showHouse
 		m.resizeTables()
 		return nil, true
-	case keyCtrlO:
+	case key.Matches(msg, m.keys.MagToggle):
 		m.magMode = !m.magMode
 		if m.chat != nil && m.chat.Visible {
 			m.refreshChatViewport()
@@ -94,31 +95,31 @@ func (m *Model) handleCommonKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case keyH, keyLeft:
+	case key.Matches(msg, m.keys.ColLeft):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = nextVisibleCol(tab.Specs, tab.ColCursor, false)
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case keyL, keyRight:
+	case key.Matches(msg, m.keys.ColRight):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = nextVisibleCol(tab.Specs, tab.ColCursor, true)
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case keyCaret:
+	case key.Matches(msg, m.keys.ColStart):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = firstVisibleCol(tab.Specs)
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case keyDollar:
+	case key.Matches(msg, m.keys.ColEnd):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = lastVisibleCol(tab.Specs)
 			m.updateTabViewport(tab)
 		}
 		return nil, true
-	case keyCtrlB:
+	case key.Matches(msg, m.keys.FgExtract):
 		if len(m.ex.bgExtractions) > 0 {
 			m.foregroundExtraction()
 			return nil, true
@@ -128,12 +129,12 @@ func (m *Model) handleCommonKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 }
 
 // handleNormalKeys processes keys unique to Normal mode.
-func (m *Model) handleNormalKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
-	switch key.String() {
-	case keyShiftD:
+func (m *Model) handleNormalKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Dashboard):
 		m.toggleDashboard()
 		return nil, true
-	case keyF:
+	case key.Matches(msg, m.keys.TabNext):
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -141,7 +142,7 @@ func (m *Model) handleNormalKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 			m.nextTab()
 		}
 		return nil, true
-	case keyB:
+	case key.Matches(msg, m.keys.TabPrev):
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -149,7 +150,7 @@ func (m *Model) handleNormalKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 			m.prevTab()
 		}
 		return nil, true
-	case keyShiftF:
+	case key.Matches(msg, m.keys.TabLast):
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -157,7 +158,7 @@ func (m *Model) handleNormalKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 			m.switchToTab(len(m.tabs) - 1)
 		}
 		return nil, true
-	case keyShiftB:
+	case key.Matches(msg, m.keys.TabFirst):
 		if !m.inDetail() {
 			if m.showDashboard {
 				m.showDashboard = false
@@ -165,60 +166,60 @@ func (m *Model) handleNormalKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 			m.switchToTab(0)
 		}
 		return nil, true
-	case keyN:
+	case key.Matches(msg, m.keys.FilterPin):
 		m.togglePinAtCursor()
 		return nil, true
-	case keyShiftN:
+	case key.Matches(msg, m.keys.FilterToggle):
 		m.toggleFilterActivation()
 		return nil, true
-	case keyCtrlN:
+	case key.Matches(msg, m.keys.FilterClear):
 		m.clearAllPins()
 		return nil, true
-	case keyBang:
+	case key.Matches(msg, m.keys.FilterNegate):
 		m.toggleFilterInvert()
 		return nil, true
-	case keyS:
+	case key.Matches(msg, m.keys.Sort):
 		if tab := m.effectiveTab(); tab != nil {
 			toggleSort(tab, tab.ColCursor)
 			applySorts(tab)
 			tab.cachedVP = nil
 		}
 		return nil, true
-	case keyShiftS:
+	case key.Matches(msg, m.keys.SortClear):
 		if tab := m.effectiveTab(); tab != nil {
 			clearSorts(tab)
 			applySorts(tab)
 			tab.cachedVP = nil
 		}
 		return nil, true
-	case keyShiftU:
+	case key.Matches(msg, m.keys.ToggleUnits):
 		m.toggleUnitSystem()
 		return nil, true
-	case keyT:
+	case key.Matches(msg, m.keys.ToggleSettled):
 		if m.toggleSettledFilter() {
 			return nil, true
 		}
-	case keyC:
+	case key.Matches(msg, m.keys.ColHide):
 		m.hideCurrentColumn()
 		return nil, true
-	case keyShiftC:
+	case key.Matches(msg, m.keys.ColShowAll):
 		m.showAllColumns()
 		return nil, true
-	case keySlash:
+	case key.Matches(msg, m.keys.ColFinder):
 		m.openColumnFinder()
 		return nil, true
-	case keyCtrlF:
+	case key.Matches(msg, m.keys.DocSearch):
 		if m.effectiveTab().isDocumentTab() {
 			return m.openDocSearch(), true
 		}
-	case keyO:
+	case key.Matches(msg, m.keys.DocOpen):
 		if cmd := m.openSelectedDocument(); cmd != nil {
 			return cmd, true
 		}
-	case keyI:
+	case key.Matches(msg, m.keys.EnterEditMode):
 		m.enterEditMode()
 		return nil, true
-	case keyEnter:
+	case key.Matches(msg, m.keys.Enter):
 		if err := m.handleNormalEnter(); err != nil {
 			m.setStatusError(err.Error())
 			return nil, true
@@ -227,9 +228,9 @@ func (m *Model) handleNormalKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 			return m.formInitCmd(), true
 		}
 		return nil, true
-	case keyAt:
+	case key.Matches(msg, m.keys.Chat):
 		return m.openChat(), true
-	case keyEsc:
+	case key.Matches(msg, m.keys.Escape):
 		if m.inDetail() {
 			m.closeDetail()
 			return nil, true
@@ -312,12 +313,12 @@ func (m *Model) handleNormalEnter() error {
 }
 
 // handleEditKeys processes keys unique to Edit mode.
-func (m *Model) handleEditKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
-	switch key.String() {
-	case keyA:
+func (m *Model) handleEditKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Add):
 		m.startAddForm()
 		return m.formInitCmd(), true
-	case keyShiftA:
+	case key.Matches(msg, m.keys.QuickAdd):
 		if tab := m.effectiveTab(); tab != nil && tab.Kind == tabDocuments {
 			if err := m.startQuickDocumentForm(); err != nil {
 				m.setStatusError(err.Error())
@@ -325,68 +326,68 @@ func (m *Model) handleEditKeys(key tea.KeyPressMsg) (tea.Cmd, bool) {
 			return m.formInitCmd(), true
 		}
 		return nil, false
-	case keyE:
+	case key.Matches(msg, m.keys.EditCell):
 		if err := m.startCellOrFormEdit(); err != nil {
 			m.setStatusError(err.Error())
 			return nil, true
 		}
 		return m.formInitCmd(), true
-	case keyShiftE:
+	case key.Matches(msg, m.keys.EditFull):
 		if err := m.startEditForm(); err != nil {
 			m.setStatusError(err.Error())
 			return nil, true
 		}
 		return m.formInitCmd(), true
-	case keyD:
+	case key.Matches(msg, m.keys.Delete):
 		m.toggleDeleteSelected()
 		return nil, true
-	case keyShiftD:
+	case key.Matches(msg, m.keys.HardDelete):
 		m.promptHardDelete()
 		return nil, true
-	case keyO:
+	case key.Matches(msg, m.keys.DocOpen):
 		if cmd := m.openSelectedDocument(); cmd != nil {
 			return cmd, true
 		}
-	case keyR:
+	case key.Matches(msg, m.keys.ReExtract):
 		if cmd := m.extractSelectedDocument(); cmd != nil {
 			return cmd, true
 		}
-	case keyX:
+	case key.Matches(msg, m.keys.ShowDeleted):
 		m.toggleShowDeleted()
 		return nil, true
-	case keyP:
+	case key.Matches(msg, m.keys.HouseEdit):
 		m.startHouseForm()
 		return m.formInitCmd(), true
-	case keyEsc:
+	case key.Matches(msg, m.keys.ExitEdit):
 		m.enterNormalMode()
 		return nil, true
 	}
 	return nil, false
 }
 
-func (m *Model) handleCalendarKey(key tea.KeyPressMsg) tea.Cmd {
-	switch key.String() {
-	case keyH, keyLeft:
+func (m *Model) handleCalendarKey(msg tea.KeyPressMsg) tea.Cmd {
+	switch {
+	case key.Matches(msg, m.keys.CalLeft):
 		calendarMove(m.calendar, -1)
-	case keyL, keyRight:
+	case key.Matches(msg, m.keys.CalRight):
 		calendarMove(m.calendar, 1)
-	case keyJ, keyDown:
+	case key.Matches(msg, m.keys.CalDown):
 		calendarMove(m.calendar, 7)
-	case keyK, keyUp:
+	case key.Matches(msg, m.keys.CalUp):
 		calendarMove(m.calendar, -7)
-	case keyShiftH:
+	case key.Matches(msg, m.keys.CalPrevMonth):
 		calendarMoveMonth(m.calendar, -1)
-	case keyShiftL:
+	case key.Matches(msg, m.keys.CalNextMonth):
 		calendarMoveMonth(m.calendar, 1)
-	case keyLBracket:
+	case key.Matches(msg, m.keys.CalPrevYear):
 		calendarMoveYear(m.calendar, -1)
-	case keyRBracket:
+	case key.Matches(msg, m.keys.CalNextYear):
 		calendarMoveYear(m.calendar, 1)
-	case "t":
+	case key.Matches(msg, m.keys.CalToday):
 		calendarToday(m.calendar)
-	case keyEnter:
+	case key.Matches(msg, m.keys.CalConfirm):
 		m.confirmCalendar()
-	case keyEsc:
+	case key.Matches(msg, m.keys.CalCancel):
 		m.calendar = nil
 		m.resetFormState()
 	}

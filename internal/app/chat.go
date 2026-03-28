@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
@@ -1156,26 +1157,26 @@ func waitForChunk(ch <-chan llm.StreamChunk) tea.Cmd {
 }
 
 // handleChatKey processes keys when the chat overlay is active.
-func (m *Model) handleChatKey(key tea.KeyPressMsg) tea.Cmd {
+func (m *Model) handleChatKey(msg tea.KeyPressMsg) tea.Cmd {
 	// Completer navigation takes priority over normal input handling.
 	if mc := m.chat.Completer; mc != nil && !mc.Loading {
-		switch key.String() {
-		case keyEsc:
+		switch {
+		case key.Matches(msg, m.keys.CompleterCancel):
 			// Dismiss completer but keep "/model " in the input so the user
 			// can edit and re-trigger.
 			m.deactivateCompleter()
 			return nil
-		case keyUp, keyCtrlP:
+		case key.Matches(msg, m.keys.CompleterUp):
 			if mc.Cursor > 0 {
 				mc.Cursor--
 			}
 			return nil
-		case keyDown, keyCtrlN:
+		case key.Matches(msg, m.keys.CompleterDown):
 			if mc.Cursor < len(mc.Matches)-1 {
 				mc.Cursor++
 			}
 			return nil
-		case keyEnter:
+		case key.Matches(msg, m.keys.CompleterConfirm):
 			if len(mc.Matches) > 0 {
 				selected := mc.Matches[mc.Cursor].Name
 				m.deactivateCompleter()
@@ -1184,36 +1185,36 @@ func (m *Model) handleChatKey(key tea.KeyPressMsg) tea.Cmd {
 			}
 			m.deactivateCompleter()
 			return nil
-		case keyCtrlQ:
+		case key.Matches(msg, m.keys.Quit):
 			return tea.Quit
 		}
 	}
 
-	switch key.String() {
-	case keyEsc:
+	switch {
+	case key.Matches(msg, m.keys.ChatHide):
 		m.hideChat()
 		return nil
-	case keyEnter:
+	case key.Matches(msg, m.keys.ChatSend):
 		if m.chat.Streaming {
 			return nil
 		}
 		return m.submitChat()
-	case keyCtrlS:
+	case key.Matches(msg, m.keys.ChatToggleSQL):
 		m.toggleSQL()
 		return nil
-	case keyCtrlO:
+	case key.Matches(msg, m.keys.MagToggle):
 		m.toggleMagMode()
 		return nil
-	case keyCtrlC:
+	case key.Matches(msg, m.keys.Cancel):
 		// Handled by the global ctrl+c handler in model.Update which calls
 		// cancelChatOperations. This case is unreachable but kept for clarity.
 		return nil
-	case keyUp, keyCtrlP:
+	case key.Matches(msg, m.keys.ChatHistoryUp):
 		if m.chat.Input.Focused() && !m.chat.Streaming {
 			m.historyBack()
 			return nil
 		}
-	case keyDown, keyCtrlN:
+	case key.Matches(msg, m.keys.ChatHistoryDn):
 		if m.chat.Input.Focused() && !m.chat.Streaming {
 			m.historyForward()
 			return nil
@@ -1224,12 +1225,12 @@ func (m *Model) handleChatKey(key tea.KeyPressMsg) tea.Cmd {
 	// to activate or deactivate the completer based on the new input value.
 	if m.chat.Input.Focused() {
 		var cmd tea.Cmd
-		m.chat.Input, cmd = m.chat.Input.Update(key)
+		m.chat.Input, cmd = m.chat.Input.Update(msg)
 		return m.syncCompleter(cmd)
 	}
 
 	var cmd tea.Cmd
-	m.chat.Viewport, cmd = m.chat.Viewport.Update(key)
+	m.chat.Viewport, cmd = m.chat.Viewport.Update(msg)
 	return cmd
 }
 

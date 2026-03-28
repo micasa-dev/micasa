@@ -40,6 +40,7 @@ func newTestModel(t *testing.T) *Model {
 		width:  120,
 		height: 40,
 		cur:    locale.DefaultCurrency(),
+		keys:   newAppKeyMap(),
 	}
 	// Seed minimal rows so cursor operations don't panic.
 	for i := range m.tabs {

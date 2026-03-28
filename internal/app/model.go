@@ -40,7 +40,6 @@ const (
 	keyPgDown    = "pgdown"
 	keyShiftDown = "shift+down"
 	keyShiftUp   = "shift+up"
-	keyShiftTab  = "shift+tab"
 
 	// Action keys.
 	keyEsc   = "esc"
@@ -1177,17 +1176,17 @@ func (m *Model) openHelp() {
 	m.helpViewport = &vp
 }
 
-func (m *Model) handleInlineInputKey(key tea.KeyPressMsg) tea.Cmd {
-	switch key.String() {
-	case keyEsc:
+func (m *Model) handleInlineInputKey(msg tea.KeyPressMsg) tea.Cmd {
+	switch {
+	case key.Matches(msg, m.keys.InlineCancel):
 		m.closeInlineInput()
 		return nil
-	case keyEnter:
+	case key.Matches(msg, m.keys.InlineConfirm):
 		m.submitInlineInput()
 		return nil
 	}
 	var cmd tea.Cmd
-	m.inlineInput.Input, cmd = m.inlineInput.Input.Update(key)
+	m.inlineInput.Input, cmd = m.inlineInput.Input.Update(msg)
 	return cmd
 }
 
@@ -1475,16 +1474,16 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 	return nil, false
 }
 
-func (m *Model) helpOverlayKey(keyMsg tea.KeyPressMsg) tea.Cmd {
+func (m *Model) helpOverlayKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
-	case keyMsg.String() == keyEsc || keyMsg.String() == keyQuestion:
+	case key.Matches(msg, m.keys.HelpClose):
 		m.helpViewport = nil
-	case key.Matches(keyMsg, helpGotoTop):
+	case key.Matches(msg, helpGotoTop):
 		m.helpViewport.GotoTop()
-	case key.Matches(keyMsg, helpGotoBottom):
+	case key.Matches(msg, helpGotoBottom):
 		m.helpViewport.GotoBottom()
 	default:
-		vp, _ := m.helpViewport.Update(keyMsg)
+		vp, _ := m.helpViewport.Update(msg)
 		m.helpViewport = &vp
 	}
 	return nil

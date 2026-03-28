@@ -655,7 +655,7 @@ func TestHelpContentIncludesProjectStatusFilterShortcut(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Toggle settled projects")
+	assert.Contains(t, help, "toggle settled projects")
 }
 
 func TestHelpContentHasGlobalSection(t *testing.T) {
@@ -663,8 +663,8 @@ func TestHelpContentHasGlobalSection(t *testing.T) {
 	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Global")
-	assert.Contains(t, help, "Quit")
-	assert.Contains(t, help, "Cancel LLM")
+	assert.Contains(t, help, "quit")
+	assert.Contains(t, help, "cancel LLM")
 }
 
 func TestHelpContentEditModeHalfPage(t *testing.T) {
@@ -672,22 +672,22 @@ func TestHelpContentEditModeHalfPage(t *testing.T) {
 	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "CTRL+D")
-	assert.Contains(t, help, "Half page down")
+	assert.Contains(t, help, "half page down")
 }
 
 func TestHelpContentNavModeEsc(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Close detail")
+	assert.Contains(t, help, "close detail")
 }
 
 func TestHelpContentFormsShowsFieldNavigation(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Next field")
-	assert.Contains(t, help, "Previous field")
+	assert.Contains(t, help, "next field")
+	assert.Contains(t, help, "previous field")
 }
 
 func TestHelpContentExcludesDatePicker(t *testing.T) {
@@ -1059,7 +1059,7 @@ func TestHelpContentIncludesInvertFilter(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Invert filter")
+	assert.Contains(t, help, "invert filter")
 }
 
 func TestRowCountShowsDeletedCount(t *testing.T) {

@@ -6,90 +6,97 @@ package app
 import (
 	"fmt"
 	"strings"
+
+	"charm.land/bubbles/v2/key"
 )
 
 // helpContent generates the static help text (keyboard shortcuts).
 // Separated from rendering so it can be set once on the viewport.
 func (m *Model) helpContent() string {
-	type binding struct {
-		key  string
+	type entry struct {
+		keys string
 		desc string
 	}
+	fromBinding := func(b key.Binding) entry {
+		h := b.Help()
+		return entry{keys: h.Key, desc: h.Desc}
+	}
+
 	sections := []struct {
-		title    string
-		bindings []binding
+		title   string
+		entries []entry
 	}{
 		{
 			title: "Global",
-			bindings: []binding{
-				{keyCtrlC, "Cancel LLM operation"},
-				{keyCtrlQ, "Quit"},
+			entries: []entry{
+				fromBinding(m.keys.Cancel),
+				fromBinding(m.keys.Quit),
 			},
 		},
 		{
 			title: "Nav Mode",
-			bindings: []binding{
-				{keyJ + "/" + keyK + "/" + symUp + "/" + symDown, "Rows"},
-				{keyH + "/" + keyL + "/" + symLeft + "/" + symRight, "Columns"},
-				{keyCaret + "/" + keyDollar, "First/last column"},
-				{keyG + "/" + keyShiftG, "First/last row"},
-				{keyD + "/" + keyU, "Half page down/up"},
-				{keyB + "/" + keyF, "Switch tabs"},
-				{keyShiftB + "/" + keyShiftF, "First/last tab"},
-				{keyS + "/" + keyShiftS, "Sort / clear sorts"},
-				{keyT, "Toggle settled projects"},
-				{keyCtrlF, "Search documents"},
-				{keySlash, "Find column"},
-				{keyC + "/" + keyShiftC, "Toggle column visibility"},
-				{keyShiftN, "Toggle filter"},
-				{keyN, "Pin/unpin"},
-				{keyBang, "Invert filter"},
-				{keyCtrlN, "Clear pins and filter"},
-				{symReturn, drilldownArrow + " drill / " + linkArrow + " follow / preview"},
-				{keyO, "Open document"},
-				{keyTab, "House profile"},
-				{keyShiftU, "Toggle units"},
-				{keyShiftD, "Summary"},
-				{keyAt, "Ask LLM"},
-				{keyI, "Edit mode"},
-				{keyQuestion, "Help"},
-				{keyEsc, "Close detail / clear status"},
+			entries: []entry{
+				{keyJ + "/" + keyK + "/" + symUp + "/" + symDown, "rows"},
+				fromBinding(m.keys.ColLeft),
+				fromBinding(m.keys.ColStart),
+				{keyG + "/" + keyShiftG, "first/last row"},
+				{keyD + "/" + keyU, "half page down/up"},
+				fromBinding(m.keys.TabNext),
+				fromBinding(m.keys.TabFirst),
+				fromBinding(m.keys.Sort),
+				fromBinding(m.keys.ToggleSettled),
+				fromBinding(m.keys.DocSearch),
+				fromBinding(m.keys.ColFinder),
+				fromBinding(m.keys.ColHide),
+				fromBinding(m.keys.FilterToggle),
+				fromBinding(m.keys.FilterPin),
+				fromBinding(m.keys.FilterNegate),
+				fromBinding(m.keys.FilterClear),
+				fromBinding(m.keys.Enter),
+				fromBinding(m.keys.DocOpen),
+				fromBinding(m.keys.HouseToggle),
+				fromBinding(m.keys.ToggleUnits),
+				fromBinding(m.keys.Dashboard),
+				fromBinding(m.keys.Chat),
+				fromBinding(m.keys.EnterEditMode),
+				fromBinding(m.keys.Help),
+				fromBinding(m.keys.Escape),
 			},
 		},
 		{
 			title: "Edit Mode",
-			bindings: []binding{
-				{keyA, "Add entry"},
-				{keyShiftA, "Add document with extraction"},
-				{keyE, "Edit cell or row"},
-				{keyShiftE, "Edit row (full form)"},
-				{keyD, "Delete / restore"},
-				{keyShiftD, "Permanently delete (incidents)"},
-				{keyCtrlD, "Half page down"},
-				{keyX, "Show deleted"},
-				{keyP, "House profile"},
-				{keyEsc, "Nav mode"},
+			entries: []entry{
+				fromBinding(m.keys.Add),
+				fromBinding(m.keys.QuickAdd),
+				fromBinding(m.keys.EditCell),
+				fromBinding(m.keys.EditFull),
+				fromBinding(m.keys.Delete),
+				fromBinding(m.keys.HardDelete),
+				{keyCtrlD, "half page down"},
+				fromBinding(m.keys.ShowDeleted),
+				fromBinding(m.keys.HouseEdit),
+				fromBinding(m.keys.ExitEdit),
 			},
 		},
 		{
 			title: "Forms",
-			bindings: []binding{
-				{keyTab, "Next field"},
-				{keyShiftTab, "Previous field"},
-				{"1-9", "Jump to Nth option"},
-				{keyShiftH, "Toggle hidden files (file picker)"},
-				{keyCtrlE, "Open notes in $EDITOR"},
-				{keyCtrlS, "Save"},
-				{keyEsc, "Cancel"},
+			entries: []entry{
+				fromBinding(m.keys.FormNextField),
+				fromBinding(m.keys.FormPrevField),
+				{"1-9", "jump to Nth option"},
+				fromBinding(m.keys.FormHiddenFiles),
+				fromBinding(m.keys.FormEditor),
+				fromBinding(m.keys.FormSave),
+				fromBinding(m.keys.FormCancel),
 			},
 		},
 		{
 			title: "Chat (" + keyAt + ")",
-			bindings: []binding{
-				{symReturn, "Send message"},
-				{keyCtrlS, "Toggle SQL display"},
-				{symUp + "/" + symDown, "Prompt history"},
-				{keyEsc, "Hide chat"},
+			entries: []entry{
+				fromBinding(m.keys.ChatSend),
+				fromBinding(m.keys.ChatToggleSQL),
+				fromBinding(m.keys.ChatHistoryUp),
+				fromBinding(m.keys.ChatHide),
 			},
 		},
 	}
@@ -100,9 +107,9 @@ func (m *Model) helpContent() string {
 	for i, section := range sections {
 		b.WriteString(m.styles.HeaderSection().Render(" " + section.title + " "))
 		b.WriteString("\n")
-		for _, bind := range section.bindings {
-			keys := m.renderKeysLight(bind.key)
-			desc := m.styles.HeaderHint().Render(bind.desc)
+		for _, e := range section.entries {
+			keys := m.renderKeysLight(e.keys)
+			desc := m.styles.HeaderHint().Render(e.desc)
 			fmt.Fprintf(&b, "  %s  %s\n", keys, desc)
 		}
 		if i < len(sections)-1 {

@@ -211,7 +211,7 @@ func TestDocSearchHelpEntry(t *testing.T) {
 	m := newTestModelWithStore(t)
 
 	content := m.helpContent()
-	assert.Contains(t, content, "Search documents")
+	assert.Contains(t, content, "search documents")
 }
 
 func TestDocSearchStatusHint(t *testing.T) {

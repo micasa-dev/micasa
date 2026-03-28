@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -355,22 +356,22 @@ func (m *Model) openOpsTree() {
 }
 
 // handleOpsTreeKey handles key events for the ops tree overlay.
-func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
+func (m *Model) handleOpsTreeKey(msg tea.KeyPressMsg) tea.Cmd {
 	tree := m.opsTree
 	if tree == nil {
 		return nil
 	}
 
-	switch key.String() {
-	case keyEsc:
+	switch {
+	case key.Matches(msg, m.keys.OpsClose):
 		m.opsTree = nil
-	case keyJ, keyDown:
+	case key.Matches(msg, m.keys.OpsDown):
 		tree.cursor++
 		tree.clampCursor()
-	case keyK, keyUp:
+	case key.Matches(msg, m.keys.OpsUp):
 		tree.cursor--
 		tree.clampCursor()
-	case keyEnter, keyL, keyRight:
+	case key.Matches(msg, m.keys.OpsExpand):
 		nodes := tree.visibleNodes()
 		if tree.cursor >= 0 && tree.cursor < len(nodes) {
 			node := nodes[tree.cursor]
@@ -379,7 +380,7 @@ func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
 				tree.clampCursor()
 			}
 		}
-	case keyH, keyLeft:
+	case key.Matches(msg, m.keys.OpsCollapse):
 		nodes := tree.visibleNodes()
 		if tree.cursor >= 0 && tree.cursor < len(nodes) {
 			node := nodes[tree.cursor]
@@ -400,17 +401,17 @@ func (m *Model) handleOpsTreeKey(key tea.KeyPressMsg) tea.Cmd {
 				}
 			}
 		}
-	case keyB:
+	case key.Matches(msg, m.keys.OpsTabPrev):
 		if len(tree.previewGroups) > 1 && tree.previewTab > 0 {
 			tree.previewTab--
 		}
-	case keyF:
+	case key.Matches(msg, m.keys.OpsTabNext):
 		if len(tree.previewGroups) > 1 && tree.previewTab < len(tree.previewGroups)-1 {
 			tree.previewTab++
 		}
-	case keyG:
+	case key.Matches(msg, m.keys.OpsTop):
 		tree.cursor = 0
-	case keyShiftG:
+	case key.Matches(msg, m.keys.OpsBottom):
 		nodes := tree.visibleNodes()
 		if len(nodes) > 0 {
 			tree.cursor = len(nodes) - 1

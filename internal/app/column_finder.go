@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -123,44 +124,44 @@ func (cf *columnFinderState) clampCursor() {
 }
 
 // handleColumnFinderKey processes keys while the column finder is open.
-func (m *Model) handleColumnFinderKey(key tea.KeyPressMsg) tea.Cmd {
+func (m *Model) handleColumnFinderKey(msg tea.KeyPressMsg) tea.Cmd {
 	cf := m.columnFinder
 	if cf == nil {
 		return nil
 	}
 
-	switch key.String() {
-	case keyEsc:
+	switch {
+	case key.Matches(msg, m.keys.ColFinderCancel):
 		m.closeColumnFinder()
 		return nil
-	case keyEnter:
+	case key.Matches(msg, m.keys.ColFinderConfirm):
 		m.columnFinderJump()
 		return nil
-	case keyUp, keyCtrlP:
+	case key.Matches(msg, m.keys.ColFinderUp):
 		if cf.Cursor > 0 {
 			cf.Cursor--
 		}
 		return nil
-	case keyDown, keyCtrlN:
+	case key.Matches(msg, m.keys.ColFinderDown):
 		if cf.Cursor < len(cf.Matches)-1 {
 			cf.Cursor++
 		}
 		return nil
-	case keyBackspace:
+	case key.Matches(msg, m.keys.ColFinderBackspace):
 		if len(cf.Query) > 0 {
 			_, size := utf8.DecodeLastRuneInString(cf.Query)
 			cf.Query = cf.Query[:len(cf.Query)-size]
 			cf.refilter()
 		}
 		return nil
-	case keyCtrlU:
+	case key.Matches(msg, m.keys.ColFinderClear):
 		cf.Query = ""
 		cf.refilter()
 		return nil
 	default:
 		// Append printable characters to the query.
-		if key.Text != "" {
-			cf.Query += key.Text
+		if msg.Text != "" {
+			cf.Query += msg.Text
 			cf.refilter()
 		}
 		return nil

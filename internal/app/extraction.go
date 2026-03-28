@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
@@ -1046,12 +1047,12 @@ func (m *Model) handleExtractionKey(msg tea.KeyPressMsg) tea.Cmd {
 // handleExtractionPipelineKey handles keys in pipeline navigation mode.
 func (m *Model) handleExtractionPipelineKey(msg tea.KeyPressMsg) tea.Cmd {
 	ex := m.ex.extraction
-	switch msg.String() {
-	case keyEsc:
+	switch {
+	case key.Matches(msg, m.keys.ExtCancel):
 		m.cancelExtraction()
-	case keyCtrlC:
+	case key.Matches(msg, m.keys.ExtInterrupt):
 		m.interruptExtraction()
-	case keyJ, keyDown:
+	case key.Matches(msg, m.keys.ExtDown):
 		ex.cursorManual = true
 		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height()
 		scrollable := !ex.Done || ex.stepExpanded(ex.cursorStep())
@@ -1081,7 +1082,7 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyPressMsg) tea.Cmd {
 				break
 			}
 		}
-	case keyK, keyUp:
+	case key.Matches(msg, m.keys.ExtUp):
 		ex.cursorManual = true
 		overflow := ex.Viewport.TotalLineCount() > ex.Viewport.Height()
 		scrollable := !ex.Done || ex.stepExpanded(ex.cursorStep())
@@ -1117,29 +1118,29 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyPressMsg) tea.Cmd {
 				break
 			}
 		}
-	case keyEnter:
+	case key.Matches(msg, m.keys.ExtToggle):
 		si := ex.cursorStep()
 		// Only toggle from the parent header, not from a child tool line.
 		if si != stepExtract || len(ex.acquireTools) == 0 || ex.toolCursor == -1 {
 			ex.expanded[si] = !ex.stepExpanded(si)
 		}
-	case keyR:
+	case key.Matches(msg, m.keys.ExtRemodel):
 		if ex.Done && ex.hasLLM && ex.cursorStep() == stepLLM {
 			return m.activateExtractionModelPicker()
 		}
-	case keyT:
+	case key.Matches(msg, m.keys.ExtToggleTSV):
 		if ex.Done && ex.hasLLM {
 			return m.toggleExtractionTSV()
 		}
-	case keyA:
+	case key.Matches(msg, m.keys.ExtAccept):
 		if ex.Done {
 			m.acceptExtraction()
 		}
-	case keyX:
+	case key.Matches(msg, m.keys.ExtExplore):
 		if ex.Done && len(ex.operations) > 0 {
 			ex.enterExploreMode(m.cur)
 		}
-	case keyCtrlB:
+	case key.Matches(msg, m.keys.ExtBackground):
 		if !ex.Done {
 			m.backgroundExtraction()
 		}
@@ -1183,19 +1184,19 @@ func (m *Model) activateExtractionModelPicker() tea.Cmd {
 func (m *Model) handleExtractionModelPickerKey(msg tea.KeyPressMsg) tea.Cmd {
 	ex := m.ex.extraction
 	mc := ex.modelPicker
-	switch msg.String() {
-	case keyEsc:
+	switch {
+	case key.Matches(msg, m.keys.ExtModelCancel):
 		ex.modelPicker = nil
 		ex.modelFilter = ""
-	case keyUp, keyCtrlP:
+	case key.Matches(msg, m.keys.ExtModelUp):
 		if mc.Cursor > 0 {
 			mc.Cursor--
 		}
-	case keyDown, keyCtrlN:
+	case key.Matches(msg, m.keys.ExtModelDown):
 		if mc.Cursor < len(mc.Matches)-1 {
 			mc.Cursor++
 		}
-	case keyEnter:
+	case key.Matches(msg, m.keys.ExtModelConfirm):
 		if len(mc.Matches) > 0 {
 			selected := mc.Matches[mc.Cursor].Name
 			isLocal := mc.Matches[mc.Cursor].Local
@@ -1205,7 +1206,7 @@ func (m *Model) handleExtractionModelPickerKey(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		ex.modelPicker = nil
 		ex.modelFilter = ""
-	case keyBackspace:
+	case key.Matches(msg, m.keys.ExtModelBackspace):
 		if len(ex.modelFilter) > 0 {
 			ex.modelFilter = ex.modelFilter[:len(ex.modelFilter)-1]
 			refilterModelCompleter(mc, ex.modelFilter, m.extractionModelLabel())
@@ -1274,60 +1275,58 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 // handleExtractionExploreKey handles keys in table explore mode.
 func (m *Model) handleExtractionExploreKey(msg tea.KeyPressMsg) tea.Cmd {
 	ex := m.ex.extraction
-	switch msg.String() {
-	case keyEsc:
+	switch {
+	case key.Matches(msg, m.keys.ExploreExit):
 		ex.exploring = false
-	case keyJ, keyDown:
+	case key.Matches(msg, m.keys.ExploreDown):
 		g := ex.activePreviewGroup()
 		if g != nil && ex.previewRow < len(g.cells)-1 {
 			ex.previewRow++
 		}
-	case keyK, keyUp:
+	case key.Matches(msg, m.keys.ExploreUp):
 		if ex.previewRow > 0 {
 			ex.previewRow--
 		}
-	case keyH, keyLeft:
+	case key.Matches(msg, m.keys.ExploreLeft):
 		g := ex.activePreviewGroup()
 		if g != nil && ex.previewCol > 0 {
 			ex.previewCol--
 		}
-	case keyL, keyRight:
+	case key.Matches(msg, m.keys.ExploreRight):
 		g := ex.activePreviewGroup()
 		if g != nil && ex.previewCol < len(g.specs)-1 {
 			ex.previewCol++
 		}
-	case keyB:
+	case key.Matches(msg, m.keys.ExploreTabPrev):
 		if ex.previewTab > 0 {
 			ex.previewTab--
 			ex.previewRow = 0
 			ex.previewCol = 0
 		}
-	case keyF:
+	case key.Matches(msg, m.keys.ExploreTabNext):
 		if ex.previewTab < len(ex.previewGroups)-1 {
 			ex.previewTab++
 			ex.previewRow = 0
 			ex.previewCol = 0
 		}
-	case keyG:
+	case key.Matches(msg, m.keys.ExploreTop):
 		ex.previewRow = 0
-	case keyShiftG:
+	case key.Matches(msg, m.keys.ExploreBottom):
 		g := ex.activePreviewGroup()
 		if g != nil && len(g.cells) > 0 {
 			ex.previewRow = len(g.cells) - 1
 		}
-	case keyCaret:
+	case key.Matches(msg, m.keys.ExploreColStart):
 		ex.previewCol = 0
-	case keyDollar:
+	case key.Matches(msg, m.keys.ExploreColEnd):
 		g := ex.activePreviewGroup()
 		if g != nil && len(g.specs) > 0 {
 			ex.previewCol = len(g.specs) - 1
 		}
-	case keyA:
+	case key.Matches(msg, m.keys.ExploreAccept):
 		if ex.Done {
 			m.acceptExtraction()
 		}
-	case keyX:
-		ex.exploring = false
 	}
 	return nil
 }
