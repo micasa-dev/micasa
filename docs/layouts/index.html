@@ -26,15 +26,17 @@
     </div>
     <h1>micasa<span class="dot">.</span></h1>
     <p class="tagline">
-      A terminal UI for tracking everything about your home.
-      Single SQLite file. No cloud. No account. No subscriptions.
+      Home maintenance, from the terminal.
     </p>
-    <div class="hero-cta">
-      <a href="#install" class="btn-primary">Install</a>
-      <a href="{{ "docs/" | relURL }}" class="btn-secondary">Docs</a>
-      <a href="{{ "blog/" | relURL }}" class="btn-secondary">Blog</a>
-    </div>
-    <a class="hero-repo" href="https://github.com/micasa-dev/micasa">github.com/micasa-dev/micasa</a>
+    <nav class="hero-nav">
+      <a href="#install" class="hero-nav__primary">Install</a>
+      <span class="hero-nav__sep" aria-hidden="true">&middot;</span>
+      <a href="{{ "docs/" | relURL }}">Docs</a>
+      <span class="hero-nav__sep" aria-hidden="true">&middot;</span>
+      <a href="{{ "blog/" | relURL }}">Blog</a>
+      <span class="hero-nav__sep" aria-hidden="true">&middot;</span>
+      <a href="https://github.com/micasa-dev/micasa" class="hero-nav__github" aria-label="GitHub"><svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    </nav>
   </div>
 </header>
 
@@ -43,66 +45,44 @@
   <video src="{{ "videos/demo.webm" | relURL }}" class="demo-video" autoplay loop muted playsinline></video>
 </div>
 
-<!-- Pitch -->
-<div class="container">
-  <p class="pitch">
-    Your house is quietly plotting to break while you sleep&mdash;and
-    you&rsquo;re dreaming about redoing the kitchen.
-  </p>
-  <p class="pitch pitch-follow">
-    <strong class="brand">micasa</strong> tracks maintenance, projects, incidents, appliances, vendors, quotes, and documents&mdash;all from your terminal.
-  </p>
-</div>
+<hr class="section-rule section-rule--demo">
 
 <!-- Features -->
 <section id="features">
   <div class="container">
-    <h2>Frequently <span class="typewriter accent" id="typewriter">asked</span> questions</h2>
+    <h2>Frequently <span class="accent cursor">asked</span> questions</h2>
     <div class="features-grid">
 
       <div class="feature">
         <p class="feature-q">When did I last change the furnace filter?</p>
-        <p class="feature-a">Maintenance schedules, auto-computed due dates, full service history.</p>
+        <p class="feature-a">Schedules, due dates, full history. Set it and forget it.</p>
       </div>
 
       <div class="feature">
         <p class="feature-q">What if we finally did the backyard?</p>
-        <p class="feature-a">Projects from napkin sketch to completion&mdash;or graceful abandonment.</p>
+        <p class="feature-a">Projects from napkin sketch to completion, or graceful abandonment.</p>
       </div>
 
       <div class="feature">
-        <p class="feature-q">How much would it actually cost to&hellip;</p>
-        <p class="feature-a">Quotes side by side, vendor history, and the math you need to actually decide &mdash; in your local currency.</p>
-      </div>
-
-      <div class="feature">
-        <p class="feature-q">Is the dishwasher still under warranty?</p>
-        <p class="feature-a">Appliance tracking with purchase dates, warranty status, and maintenance history tied to each one.</p>
-      </div>
-
-      <div class="feature">
-        <p class="feature-q">The basement is leaking again.</p>
-        <p class="feature-a">Log incidents with severity and location, link them to appliances and vendors, and resolve them when fixed.</p>
+        <p class="feature-q">How much would it cost to&hellip;</p>
+        <p class="feature-a">Quotes side by side, vendor history, and the math to actually decide.</p>
       </div>
 
       <div class="feature">
         <p class="feature-q">Who did we use last time?</p>
-        <p class="feature-a">A vendor directory with contact info, quote history, and every job they've done for you.</p>
+        <p class="feature-a">Every contractor, every quote, every job. All searchable.</p>
       </div>
 
       <div class="feature">
-        <p class="feature-q">Where&rsquo;s the warranty card?</p>
-        <p class="feature-a">Attach files&mdash;manuals, invoices, photos&mdash;directly to projects and appliances. Stored in the same SQLite file. Full-text search finds any document by title, notes, or extracted text. PDFs and scanned documents are automatically OCR&rsquo;d so their text is searchable, and when an LLM is configured, that text can also be analyzed for richer summaries and structure.</p>
-      </div>
-
-      <div class="feature">
-        <p class="feature-q">How much have I spent on plumbing?</p>
-        <p class="feature-a">Chat with a local LLM about your data. It writes the SQL, runs the query, and summarizes the results&mdash;all on your machine.</p>
+        <p class="feature-q">How much have I spent on plumbing this year?</p>
+        <p class="feature-a">Ask a local LLM. Or don't. Offline until you say otherwise.</p>
       </div>
 
     </div>
   </div>
 </section>
+
+<hr class="section-rule">
 
 <!-- Install -->
 <section id="install">
@@ -110,23 +90,14 @@
     <h2>Get <span class="accent">started</span></h2>
     <div class="install-steps">
       <div>
-        <p><a href="https://brew.sh">Homebrew</a> (macOS and Linux):</p>
-        <pre><code>brew install micasa</code></pre>
-      </div>
-      <p class="install-or">or with Go (1.25+):</p>
-      <div>
         <pre><code>go install github.com/micasa-dev/micasa/cmd/micasa@latest</code></pre>
       </div>
-      <p class="install-or">or grab a binary from the <a href="https://github.com/micasa-dev/micasa/releases/latest">latest release</a></p>
-      <p class="install-or">Linux, macOS, and Windows binaries are available for amd64 and arm64.</p>
-      <div>
-        <p>Try it in 30 seconds:</p>
-        <pre><code>micasa demo           # poke around with sample data
-micasa                # start fresh with your own house
-micasa --print-path   # show where the database lives</code></pre>
-      </div>
+      <p class="install-or">or grab a <a href="https://github.com/micasa-dev/micasa/releases/latest">binary</a> for Linux, macOS, or Windows</p>
     </div>
-    <p class="install-data">Linux, macOS, Windows. One SQLite file, your machine. Back it up with <code>micasa backup</code>.</p>
+    <p class="install-then">Then:</p>
+    <pre class="install-commands"><code>micasa demo         <span class="install-comment"># sample data</span>
+micasa              <span class="install-comment"># your house</span></code></pre>
+
   </div>
 </section>
 
@@ -147,31 +118,23 @@ micasa --print-path   # show where the database lives</code></pre>
   </div>
 </section>
 
-<!-- Origin -->
-<section id="origin">
-  <div class="container">
-    <h2>Why <span class="accent">this</span> exists</h2>
-    <p class="origin-quote">I built this because my home maintenance system was a shoebox of receipts and the vague feeling I was supposed to call someone about the roof.</p>
-    <p class="origin-body"><strong class="brand">micasa</strong> replaces the shoebox, the binder you never open, and the sticky note on the fridge with one SQLite file and a terminal you already have open. Its modal, keyboard-driven interface is inspired by <a href="https://www.visidata.org/">VisiData</a>.</p>
-  </div>
-</section>
-
 <!-- Footer -->
 <footer>
   <div class="container">
-    <div class="footer-links">
+    <nav class="footer-nav">
       <a href="{{ "docs/" | relURL }}">Docs</a>
+      <span class="footer-sep" aria-hidden="true">&middot;</span>
       <a href="{{ "blog/" | relURL }}">Blog</a>
-      <a href="https://github.com/micasa-dev/micasa">GitHub</a>
-      <a href="https://github.com/micasa-dev/micasa/releases">Changelog</a>
-      <a href="https://github.com/micasa-dev/micasa/releases/latest">Latest Release</a>
+      <span class="footer-sep" aria-hidden="true">&middot;</span>
+      <a href="https://github.com/micasa-dev/micasa" class="footer-github" aria-label="GitHub"><svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <span class="footer-sep" aria-hidden="true">&middot;</span>
+      <a href="https://github.com/micasa-dev/micasa/releases">Releases</a>
+      <span class="footer-sep" aria-hidden="true">&middot;</span>
       <a href="https://github.com/micasa-dev/micasa/blob/main/LICENSE">Apache-2.0</a>
-    </div>
-    <p>&copy; 2026 Phillip Cloud</p>
+    </nav>
+    <p class="footer-copy">Inspired by <a href="https://www.visidata.org/">VisiData</a> &middot; &copy; 2026 Phillip Cloud</p>
   </div>
 </footer>
-
-<script src="{{ "js/typewriter.js" | relURL }}"></script>
 
 <script src="{{ "js/house-crumble.js" | relURL }}"></script>
 <script src="{{ "js/chimney-smoke.js" | relURL }}"></script>

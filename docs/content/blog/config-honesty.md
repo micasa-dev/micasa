@@ -34,7 +34,7 @@ model = "qwen3"
 [extraction.llm]
 provider = "anthropic"
 model = "claude-haiku-4-5-latest"
-api_key = "sk-..."
+api_key = "sk-…"
 ```
 
 No inheritance. No cascading. Changing `chat.llm.model` affects chat.

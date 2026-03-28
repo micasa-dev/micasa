@@ -45,7 +45,7 @@ The provider details are configured in your [micasa config](/docs/reference/conf
 [chat.llm]
 provider = "anthropic"
 model = "claude-sonnet-4-5-latest"
-api_key = "sk-..."
+api_key = "sk-…"
 ```
 
 Local Ollama still works with zero config. Nothing changed for the default
@@ -70,7 +70,7 @@ model = "qwen3"
 [extraction.llm]
 provider = "anthropic"
 model = "claude-haiku-4-5-latest"
-api_key = "sk-..."
+api_key = "sk-…"
 ```
 
 Chat runs locally, extraction runs on Anthropic. Or both local. Or both cloud.
@@ -138,7 +138,7 @@ Or with a cloud provider:
 ```sh
 export MICASA_CHAT_LLM_PROVIDER=anthropic
 export MICASA_CHAT_LLM_MODEL=claude-haiku-4-5-latest
-export MICASA_CHAT_LLM_API_KEY=sk-...
+export MICASA_CHAT_LLM_API_KEY=sk-…
 go run github.com/micasa-dev/micasa/cmd/micasa@latest demo
 ```
 

@@ -43,7 +43,7 @@ Anything you want done to your house, from "fix the squeaky door" to
 
 ### Why this matters
 
-- **Pre-seeded types** (Renovation, Repair, Landscaping, ...) keep naming
+- **Pre-seeded types** (Renovation, Repair, Landscaping, …) keep naming
   consistent -- no "Renovation" vs "renovation" vs "Reno" drift.
 - **Status lifecycle** (ideating through completed/abandoned) enables the
   settled-project toggle that hides finished work from the default view.
@@ -65,7 +65,7 @@ Recurring upkeep tasks with an optional appliance link.
 
 ### Why this matters
 
-- **Pre-seeded categories** (HVAC, Plumbing, Electrical, ...) keep filtering
+- **Pre-seeded categories** (HVAC, Plumbing, Electrical, …) keep filtering
   and sorting clean, same rationale as project types.
 - The optional **appliance link** enables bidirectional navigation: jump from
   a task to its appliance, or drill from an appliance into all its tasks.

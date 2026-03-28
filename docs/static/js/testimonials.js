@@ -81,7 +81,7 @@
     }
   ];
 
-  const SHOW = 4;
+  const SHOW = 3;
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = all[i]; all[i] = all[j]; all[j] = tmp;

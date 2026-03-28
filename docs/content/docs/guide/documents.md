@@ -199,7 +199,7 @@ document always saves regardless of which tools are installed.
 | Text extraction | PDF | `pdftotext` | No digital text extracted |
 | Text extraction | `text/*` | _(none)_ | _(always available)_ |
 | OCR | Scanned PDF | `tesseract` + (`pdfimages`, `pdftohtml`, or `pdftoppm`) | OCR skipped |
-| OCR | Images (PNG, JPEG, TIFF, ...) | `tesseract` | OCR skipped |
+| OCR | Images (PNG, JPEG, TIFF, …) | `tesseract` | OCR skipped |
 | LLM extraction | Any with extracted text | Ollama (or compatible) | No structured extraction attempted |
 
 `pdftotext` and `pdftoppm` ship together in the **poppler** utilities package.

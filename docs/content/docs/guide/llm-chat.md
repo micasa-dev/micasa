@@ -205,7 +205,7 @@ If you point `base_url` at a remote server (a cloud-hosted Ollama instance,
 a LAN machine, etc.), your home data travels over the network to that server.
 micasa connects over plain HTTP by default. Consider:
 
-- **Use HTTPS** if the endpoint supports it (`https://...`)
+- **Use HTTPS** if the endpoint supports it (`https://…`)
 - **Trust the server** -- the operator of a remote LLM endpoint can see
   everything micasa sends, including the full data dump in fallback mode
 - **Network exposure** -- anyone who can intercept traffic between you and a

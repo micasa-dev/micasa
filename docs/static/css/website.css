@@ -48,16 +48,14 @@ h2 .accent-alt {
   color: var(--sage);
 }
 
-/* --- Typewriter --- */
-.typewriter {
-  white-space: nowrap;
+.cursor {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 0.85em;
 }
 
-.typewriter::after {
+.cursor::after {
   content: "\2588";
-  margin-left: 1px;
+  margin-left: 7px;
   opacity: 0.3;
   animation: blink 1s step-end infinite;
 }
@@ -119,16 +117,20 @@ pre code {
 }
 
 section {
-  padding: 4rem 0;
+  padding: 3rem 0;
 }
 
 section + section {
   border-top: 1px solid var(--rule);
 }
 
+#features {
+  padding-top: 0;
+}
+
 /* --- Hero --- */
 .hero {
-  padding: 5rem 0 1rem;
+  padding: 5rem 0 2rem;
   text-align: center;
 }
 
@@ -215,8 +217,8 @@ section + section {
 }
 
 .hero h1 {
-  font-size: 3.5rem;
-  letter-spacing: -0.02em;
+  font-size: 4.5rem;
+  letter-spacing: -0.03em;
   margin-bottom: 0.75rem;
 }
 
@@ -225,48 +227,44 @@ section + section {
 }
 
 .tagline {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   color: var(--charcoal-soft);
-  max-width: 480px;
+  max-width: 640px;
   margin: 0 auto 2rem;
 }
 
-.hero-cta {
-  display: inline-flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
 
-.hero-cta a {
-  display: inline-block;
-  padding: 0.6rem 1.5rem;
-  border-radius: 6px;
+.hero-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
   font-family: "JetBrains Mono", monospace;
   font-size: 0.85rem;
+}
+
+.hero-nav a {
+  color: var(--warm-gray);
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
 }
 
-.btn-primary {
-  background: var(--terracotta);
-  color: var(--cream) !important;
+.hero-nav a:hover {
+  color: var(--terracotta);
 }
 
-.btn-primary:hover {
-  background: var(--terracotta-dark);
-  color: var(--cream) !important;
+.hero-nav__primary {
+  color: var(--terracotta) !important;
+  font-weight: 600;
 }
 
-.btn-secondary {
-  background: var(--linen);
-  color: var(--charcoal) !important;
-  border: 1px solid var(--rule);
+.hero-nav__sep {
+  color: var(--rule);
+  user-select: none;
 }
 
-.btn-secondary:hover {
-  background: var(--rule);
-  color: var(--charcoal) !important;
+.hero-nav__github {
+  display: inline-flex;
+  align-items: center;
 }
 
 .hero-repo {
@@ -286,7 +284,17 @@ section + section {
 .demo-container {
   text-align: center;
   max-width: 1100px;
-  padding: 1.5rem 1.5rem 3rem;
+  padding: 0 1.5rem 0;
+}
+
+.section-rule {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 0;
+}
+
+.section-rule--demo {
+  margin: 3rem 0;
 }
 
 .demo-video {
@@ -324,7 +332,7 @@ section + section {
 /* --- Features --- */
 .features-grid {
   display: grid;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .feature-q {
@@ -393,13 +401,27 @@ section + section {
   font-size: 0.9rem;
 }
 
+.install-then {
+  text-align: center;
+  color: var(--warm-gray);
+  font-size: 0.9rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.install-commands {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.install-comment {
+  color: var(--warm-gray);
+}
+
 .install-data {
   text-align: center;
   color: var(--warm-gray);
   font-size: 0.85rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--rule);
+  margin-top: 1.5rem;
 }
 
 /* --- Keybindings --- */
@@ -471,26 +493,43 @@ section + section {
 
 /* --- Footer --- */
 footer {
-  padding: 3rem 0;
+  padding: 2.5rem 0;
   border-top: 1px solid var(--rule);
   text-align: center;
-  color: var(--warm-gray);
-  font-size: 0.85rem;
 }
 
-footer a {
-  color: var(--warm-gray);
+.footer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
 }
 
-footer a:hover {
+.footer-nav a {
+  color: var(--warm-gray);
+  text-decoration: none;
+}
+
+.footer-nav a:hover {
   color: var(--terracotta);
 }
 
-.footer-links {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  margin-bottom: 0.75rem;
+.footer-sep {
+  color: var(--rule);
+  user-select: none;
+}
+
+.footer-github {
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-copy {
+  color: var(--warm-gray);
+  font-size: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 /* --- Responsive --- */
@@ -500,7 +539,7 @@ footer a:hover {
   }
 
   .hero h1 {
-    font-size: 2.5rem;
+    font-size: 3rem;
   }
 
   section {

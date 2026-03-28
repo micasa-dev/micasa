@@ -39,7 +39,6 @@ openssl rand -hex 32
 ```
 
 ```sh
-SELF_HOSTED=true
 POSTGRES_PASSWORD=something-strong-here
 RELAY_ENCRYPTION_KEY=paste-the-64-char-hex-key-here
 ```
@@ -114,10 +113,9 @@ All configuration is via environment variables in `.env`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SELF_HOSTED` | `true` | Must be `true` for self-hosted deployments. |
 | `POSTGRES_PASSWORD` | *(required)* | PostgreSQL password. |
 | `RELAY_ENCRYPTION_KEY` | *(required)* | 32-byte hex key for encrypting device tokens at rest. Generate with `openssl rand -hex 32`. |
-| `BLOB_QUOTA_BYTES` | `0` (unlimited) | Per-household blob storage limit in bytes. `0` means no limit. |
+| `BLOB_QUOTA` | `0` | Per-household blob storage limit. Accepts human-readable sizes (`5GB`, `500MB`). `0` = unlimited. |
 | `DOMAIN` | *(unset)* | Domain for TLS via Caddy. Only needed with the Caddy overlay. |
 
 ## Blob storage
@@ -127,7 +125,7 @@ self-hosted relays have no storage limit per household. To set a limit:
 
 ```sh
 # 5 GB per household
-BLOB_QUOTA_BYTES=5368709120
+BLOB_QUOTA=5GB
 ```
 
 Individual blobs are capped at 50 MB regardless of quota.
