@@ -1785,6 +1785,7 @@ func (m *Model) updateAllViewports() {
 	if dc := m.detail(); dc != nil {
 		m.updateTabViewport(&dc.Tab)
 	}
+	m.updateHelpViewport()
 }
 
 // refreshTable reapplies row filters, sorts, and viewport layout for a tab.

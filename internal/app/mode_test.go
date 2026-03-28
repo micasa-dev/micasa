@@ -495,6 +495,37 @@ func TestHelpTwoPaneShowsHintBar(t *testing.T) {
 		"help overlay should show close hint")
 }
 
+func TestHelpOverlayAdaptiveResize(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.width = 120
+	m.height = 50
+	sendKey(m, "?")
+	require.NotNil(t, m.helpState)
+
+	// Switch to Nav Mode (section 1) which has many entries.
+	sendKey(m, "j")
+	require.Equal(t, 1, m.helpState.section)
+
+	// Record viewport height at full size.
+	fullH := m.helpState.viewport.Height()
+	require.Greater(t, fullH, 3, "viewport should have meaningful height at 50-row terminal")
+
+	// Shrink terminal significantly — help should adapt.
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 25})
+	require.NotNil(t, m.helpState, "help should stay open after resize")
+	smallH := m.helpState.viewport.Height()
+	assert.Less(t, smallH, fullH,
+		"viewport should shrink when terminal shrinks (was %d, now %d)", fullH, smallH)
+
+	// Grow terminal back — help should grow.
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 50})
+	require.NotNil(t, m.helpState)
+	restoredH := m.helpState.viewport.Height()
+	assert.Equal(t, fullH, restoredH,
+		"viewport should restore to original height (was %d, now %d)", fullH, restoredH)
+}
+
 func TestDeleteRequiresEditMode(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
