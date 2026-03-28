@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/lipgloss/v2"
 )
 
 // helpContent generates the static help text (keyboard shortcuts).
@@ -101,18 +102,40 @@ func (m *Model) helpContent() string {
 		},
 	}
 
+	// Pre-render all keycaps and find the global max width.
+	type renderedSection struct {
+		title string
+		keys  []string
+		descs []string
+	}
+	rendered := make([]renderedSection, len(sections))
+	globalMaxKeyW := 0
+	for i, section := range sections {
+		rs := renderedSection{title: section.title}
+		for _, e := range section.entries {
+			k := m.renderKeysLight(e.keys)
+			rs.keys = append(rs.keys, k)
+			rs.descs = append(rs.descs, e.desc)
+			if w := lipgloss.Width(k); w > globalMaxKeyW {
+				globalMaxKeyW = w
+			}
+		}
+		rendered[i] = rs
+	}
+
+	sep := m.styles.TextDim().Render(symVLine)
 	var b strings.Builder
 	b.WriteString(m.styles.HeaderTitle().Render(" Keyboard Shortcuts "))
 	b.WriteString("\n\n")
-	for i, section := range sections {
-		b.WriteString(m.styles.HeaderSection().Render(" " + section.title + " "))
+	for i, rs := range rendered {
+		b.WriteString(m.styles.HeaderSection().Render(" " + rs.title + " "))
 		b.WriteString("\n")
-		for _, e := range section.entries {
-			keys := m.renderKeysLight(e.keys)
-			desc := m.styles.HeaderHint().Render(e.desc)
-			fmt.Fprintf(&b, "  %s  %s\n", keys, desc)
+		for j, keys := range rs.keys {
+			pad := strings.Repeat(" ", max(0, globalMaxKeyW-lipgloss.Width(keys)))
+			desc := m.styles.HeaderHint().Render(rs.descs[j])
+			fmt.Fprintf(&b, "  %s%s %s %s\n", pad, keys, sep, desc)
 		}
-		if i < len(sections)-1 {
+		if i < len(rendered)-1 {
 			b.WriteString("\n")
 		}
 	}
