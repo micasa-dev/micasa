@@ -219,8 +219,11 @@ func (m *Model) helpView() string {
 	// Bottom hint bar.
 	hints := []string{
 		m.helpItem(keyJ+"/"+keyK, "sections"),
-		m.helpItem(keyEsc, "close"),
 	}
+	if vp.TotalLineCount() > vp.Height() {
+		hints = append(hints, m.helpItem(keyG+"/"+keyShiftG, "top/bot"))
+	}
+	hints = append(hints, m.helpItem(keyEsc, "close"))
 	hintStr := joinWithSeparator(m.helpSeparator(), hints...)
 
 	return m.styles.OverlayBox().

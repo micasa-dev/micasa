@@ -351,12 +351,7 @@ func (m *Model) statusView() string {
 			Render("EDIT")
 	}
 
-	var help string
-	if m.mode == modeNormal {
-		help = m.normalModeStatusHelp(modeBadge)
-	} else {
-		help = m.editModeStatusHelp(modeBadge)
-	}
+	help := m.modeStatusHelp(modeBadge)
 
 	return m.withSyncIndicator(
 		m.withBgExtractionIndicator(m.withPullProgress(m.withStatusMessage(help))),
@@ -407,12 +402,7 @@ func (m *Model) inlineInputStatusView() string {
 	return m.withStatusMessage(prompt)
 }
 
-func (m *Model) normalModeStatusHelp(modeBadge string) string {
-	m.helpModel.SetWidth(m.effectiveWidth() - lipgloss.Width(modeBadge) - 1)
-	return modeBadge + " " + m.helpModel.ShortHelpView(m.ShortHelp())
-}
-
-func (m *Model) editModeStatusHelp(modeBadge string) string {
+func (m *Model) modeStatusHelp(modeBadge string) string {
 	m.helpModel.SetWidth(m.effectiveWidth() - lipgloss.Width(modeBadge) - 1)
 	return modeBadge + " " + m.helpModel.ShortHelpView(m.ShortHelp())
 }

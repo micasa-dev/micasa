@@ -171,6 +171,8 @@ type AppKeyMap struct {
 	// --- Help overlay (helpOverlayKey; Phase 2 adds two-pane) ---
 	HelpSectionUp   key.Binding
 	HelpSectionDown key.Binding
+	HelpGotoTop     key.Binding
+	HelpGotoBottom  key.Binding
 	HelpClose       key.Binding
 
 	// --- Confirmations (handleConfirmDiscard, handleConfirmHardDelete) ---
@@ -221,7 +223,7 @@ func newAppKeyMap() AppKeyMap {
 		EnterEditMode: key.NewBinding(key.WithKeys(keyI), key.WithHelp(keyI, "edit mode")),
 		Enter: key.NewBinding(
 			key.WithKeys(keyEnter),
-			key.WithHelp(symReturn, "drill / follow / preview"),
+			key.WithHelp(symReturn, drilldownArrow+" drill / "+linkArrow+" follow / preview"),
 		),
 		Dashboard: key.NewBinding(key.WithKeys(keyShiftD), key.WithHelp(keyShiftD, "summary")),
 		Sort: key.NewBinding(
@@ -281,7 +283,7 @@ func newAppKeyMap() AppKeyMap {
 			key.WithKeys(keyShiftE),
 			key.WithHelp(keyShiftE, "edit row (full form)"),
 		),
-		Delete: key.NewBinding(key.WithKeys(keyD), key.WithHelp(keyD, "delete / restore")),
+		Delete: key.NewBinding(key.WithKeys(keyD), key.WithHelp(keyD, "del/restore")),
 		HardDelete: key.NewBinding(
 			key.WithKeys(keyShiftD),
 			key.WithHelp(keyShiftD, "permanently delete"),
@@ -412,6 +414,8 @@ func newAppKeyMap() AppKeyMap {
 		// Help overlay
 		HelpSectionUp:   key.NewBinding(key.WithKeys(keyK, keyUp)),
 		HelpSectionDown: key.NewBinding(key.WithKeys(keyJ, keyDown)),
+		HelpGotoTop:     key.NewBinding(key.WithKeys(keyG)),
+		HelpGotoBottom:  key.NewBinding(key.WithKeys(keyShiftG)),
 		HelpClose:       key.NewBinding(key.WithKeys(keyEsc, keyQuestion)),
 
 		// Confirmations
@@ -435,7 +439,9 @@ func (m *Model) ShortHelp() []key.Binding {
 }
 
 func (m *Model) normalModeShortHelp() []key.Binding {
-	var bindings []key.Binding
+	// Help and back are high-priority — place them early so
+	// ShortHelpView truncates optional items first.
+	bindings := []key.Binding{m.keys.Help}
 
 	// Context-dependent action: what enter does on the current column.
 	if hint := m.enterHint(); hint != "" {
@@ -453,8 +459,6 @@ func (m *Model) normalModeShortHelp() []key.Binding {
 	if m.llmClient != nil {
 		bindings = append(bindings, m.keys.Chat)
 	}
-
-	bindings = append(bindings, m.keys.Help)
 
 	if m.inDetail() {
 		bindings = append(bindings, m.keys.Escape)

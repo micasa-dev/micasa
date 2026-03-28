@@ -641,21 +641,17 @@ func TestStatusBarTruncatesHintsAtNarrowWidth(t *testing.T) {
 	wideStatus := m.statusView()
 	require.Contains(t, wideStatus, "help")
 
-	// At narrow width, trailing hints (like "help") get truncated by
-	// help.ShortHelpView. The mode badge always remains.
-	m.width = 30
-	tab := m.activeTab()
-	require.NotNil(t, tab)
-	for i, spec := range tab.Specs {
-		if spec.Kind == cellDrilldown {
-			tab.ColCursor = i
-			break
-		}
-	}
+	// At narrow width, trailing hints get truncated by ShortHelpView.
+	// "help" (?) is first so it survives; later items like "ask" are dropped.
+	m.width = 40
 	status := m.statusView()
 	assert.Contains(t, status, "NAV", "mode badge should remain at narrow width")
-	assert.NotContains(t, status, "help",
-		"trailing hints should be truncated at narrow width")
+	assert.Contains(t, status, "help",
+		"help hint (high priority) should survive at narrow width")
+	// At very narrow, even help gets truncated, but the mode badge survives.
+	m.width = 15
+	tinyStatus := m.statusView()
+	assert.Contains(t, tinyStatus, "NAV", "mode badge should survive at very narrow width")
 }
 
 func TestHelpContentIncludesProjectStatusFilterShortcut(t *testing.T) {

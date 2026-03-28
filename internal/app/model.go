@@ -1265,9 +1265,7 @@ func (m *Model) updateHelpViewport() {
 	vp.KeyMap.Down.SetEnabled(false)
 	vp.KeyMap.Left.SetEnabled(false)
 	vp.KeyMap.Right.SetEnabled(false)
-	// Remap half-page to g/G for goto-top/goto-bottom within the section.
-	vp.KeyMap.HalfPageUp.SetKeys(keyG)
-	vp.KeyMap.HalfPageDown.SetKeys(keyShiftG)
+	// g/G for goto-top/goto-bottom are handled in helpOverlayKey.
 	hs.viewport = vp
 }
 
@@ -1588,6 +1586,10 @@ func (m *Model) helpOverlayKey(msg tea.KeyPressMsg) tea.Cmd {
 			hs.section--
 			m.updateHelpViewport()
 		}
+	case key.Matches(msg, m.keys.HelpGotoTop):
+		hs.viewport.GotoTop()
+	case key.Matches(msg, m.keys.HelpGotoBottom):
+		hs.viewport.GotoBottom()
 	default:
 		vp, _ := hs.viewport.Update(msg)
 		hs.viewport = vp
