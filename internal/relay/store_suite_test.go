@@ -641,3 +641,438 @@ func (s *StoreSuite) TestJoinedDevicePushPullImmediately() {
 	assert.Len(t, pulled, 1)
 	assert.Equal(t, "from-joined", pulled[0].ID)
 }
+
+// --- Blobs ---
+
+func (s *StoreSuite) TestPutBlobExactlyAtQuota() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	const quota int64 = 100
+
+	err := store.PutBlob(ctx, hh.HouseholdID,
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		make([]byte, 60), quota)
+	require.NoError(t, err)
+
+	err = store.PutBlob(ctx, hh.HouseholdID,
+		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		make([]byte, 40), quota)
+	require.NoError(t, err)
+
+	usage, err := store.BlobUsage(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Equal(t, quota, usage)
+}
+
+func (s *StoreSuite) TestPutBlobOneByteOverQuota() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	const quota int64 = 100
+	err := store.PutBlob(ctx, hh.HouseholdID,
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		make([]byte, 60), quota)
+	require.NoError(t, err)
+
+	err = store.PutBlob(ctx, hh.HouseholdID,
+		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		make([]byte, 41), quota)
+	require.ErrorIs(t, err, errQuotaExceeded)
+}
+
+func (s *StoreSuite) TestPutBlobQuotaZeroUnlimited() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	err := store.PutBlob(ctx, hh.HouseholdID,
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		make([]byte, 10000), 0)
+	require.NoError(t, err)
+}
+
+func (s *StoreSuite) TestPutBlobSameHashDifferentHouseholds() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	hh1 := suiteCreateHousehold(t, store)
+	hh2 := suiteCreateHousehold(t, store)
+
+	hash := "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+	data := []byte("same-data")
+
+	err := store.PutBlob(ctx, hh1.HouseholdID, hash, data, 0)
+	require.NoError(t, err)
+
+	err = store.PutBlob(ctx, hh2.HouseholdID, hash, data, 0)
+	require.NoError(t, err)
+}
+
+func (s *StoreSuite) TestGetBlobNotFound() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	_, err := store.GetBlob(ctx, hh.HouseholdID,
+		"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+	require.ErrorIs(t, err, errBlobNotFound)
+
+	exists, err := store.HasBlob(ctx, hh.HouseholdID,
+		"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+	require.NoError(t, err)
+	assert.False(t, exists)
+}
+
+func (s *StoreSuite) TestBlobUsageEmptyHousehold() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	usage, err := store.BlobUsage(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), usage)
+}
+
+func (s *StoreSuite) TestPutBlobZeroLength() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	err := store.PutBlob(ctx, hh.HouseholdID,
+		"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+		[]byte{}, 0)
+	require.NoError(t, err)
+
+	usage, err := store.BlobUsage(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), usage)
+}
+
+func (s *StoreSuite) TestGetBlobRoundTrip() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	data := []byte("exact-content-to-verify")
+	hash := "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	err := store.PutBlob(ctx, hh.HouseholdID, hash, data, 0)
+	require.NoError(t, err)
+
+	got, err := store.GetBlob(ctx, hh.HouseholdID, hash)
+	require.NoError(t, err)
+	assert.Equal(t, data, got)
+}
+
+func (s *StoreSuite) TestBlobUsageAccuracy() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	sizes := []int{10, 20, 35}
+	hashes := []string{
+		"1111111111111111111111111111111111111111111111111111111111111111",
+		"2222222222222222222222222222222222222222222222222222222222222222",
+		"3333333333333333333333333333333333333333333333333333333333333333",
+	}
+	var expected int64
+	for i, size := range sizes {
+		err := store.PutBlob(ctx, hh.HouseholdID, hashes[i], make([]byte, size), 0)
+		require.NoError(t, err)
+		expected += int64(size)
+	}
+
+	usage, err := store.BlobUsage(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Equal(t, expected, usage)
+}
+
+// --- Device Management ---
+
+func (s *StoreSuite) TestRevokeThenAuthenticate() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	hh := suiteCreateHousehold(t, store)
+	dev2ID, dev2Token := suiteJoinDevice(t, store, hh.HouseholdID, hh.DeviceID)
+
+	err := store.RevokeDevice(ctx, hh.HouseholdID, dev2ID)
+	require.NoError(t, err)
+
+	_, err = store.AuthenticateDevice(ctx, dev2Token)
+	require.Error(t, err)
+}
+
+func (s *StoreSuite) TestRevokeAllButOne() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	hh := suiteCreateHousehold(t, store)
+	dev2ID, _ := suiteJoinDevice(t, store, hh.HouseholdID, hh.DeviceID)
+	dev3ID, _ := suiteJoinDevice(t, store, hh.HouseholdID, hh.DeviceID)
+
+	require.NoError(t, store.RevokeDevice(ctx, hh.HouseholdID, dev2ID))
+	require.NoError(t, store.RevokeDevice(ctx, hh.HouseholdID, dev3ID))
+
+	dev, err := store.AuthenticateDevice(ctx, hh.DeviceToken)
+	require.NoError(t, err)
+	assert.Equal(t, hh.DeviceID, dev.ID)
+
+	_, err = store.Push(ctx, []sync.Envelope{{
+		ID: "after-revoke", HouseholdID: hh.HouseholdID,
+		DeviceID: hh.DeviceID, Nonce: []byte("n"), Ciphertext: []byte("c"),
+	}})
+	require.NoError(t, err)
+}
+
+func (s *StoreSuite) TestListDevicesExcludesRevoked() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	hh := suiteCreateHousehold(t, store)
+	dev2ID, _ := suiteJoinDevice(t, store, hh.HouseholdID, hh.DeviceID)
+
+	devices, err := store.ListDevices(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Len(t, devices, 2)
+
+	require.NoError(t, store.RevokeDevice(ctx, hh.HouseholdID, dev2ID))
+
+	devices, err = store.ListDevices(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	assert.Len(t, devices, 1)
+	assert.Equal(t, hh.DeviceID, devices[0].ID)
+}
+
+// --- Data Partitioning ---
+
+func (s *StoreSuite) TestGetBlobWrongHousehold() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	hh1 := suiteCreateHousehold(t, store)
+	hh2 := suiteCreateHousehold(t, store)
+
+	hash := "4444444444444444444444444444444444444444444444444444444444444444"
+	require.NoError(t, store.PutBlob(ctx, hh1.HouseholdID, hash, []byte("secret"), 0))
+
+	_, err := store.GetBlob(ctx, hh2.HouseholdID, hash)
+	require.ErrorIs(t, err, errBlobNotFound)
+}
+
+func (s *StoreSuite) TestPullWrongHousehold() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	hh1 := suiteCreateHousehold(t, store)
+	hh2 := suiteCreateHousehold(t, store)
+
+	_, err := store.Push(ctx, []sync.Envelope{{
+		ID: "op-1", HouseholdID: hh1.HouseholdID,
+		DeviceID: hh1.DeviceID, Nonce: []byte("n"), Ciphertext: []byte("c"),
+	}})
+	require.NoError(t, err)
+
+	pulled, _, err := store.Pull(ctx, hh2.HouseholdID, "any-device", 0, 100)
+	require.NoError(t, err)
+	assert.Empty(t, pulled)
+}
+
+func (s *StoreSuite) TestRevokeDeviceWrongHousehold() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	hh1 := suiteCreateHousehold(t, store)
+	hh2 := suiteCreateHousehold(t, store)
+
+	err := store.RevokeDevice(ctx, hh2.HouseholdID, hh1.DeviceID)
+	require.Error(t, err)
+}
+
+func (s *StoreSuite) TestCreateInviteNonExistentHousehold() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+
+	_, err := store.CreateInvite(ctx, "nonexistent-hh", "nonexistent-dev")
+	require.Error(t, err)
+}
+
+// --- Subscription State ---
+
+func (s *StoreSuite) TestUpdateSubscriptionRoundTrip() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	err := store.UpdateSubscription(ctx, hh.HouseholdID, "sub_1", "active")
+	require.NoError(t, err)
+
+	got, err := store.GetHousehold(ctx, hh.HouseholdID)
+	require.NoError(t, err)
+	require.NotNil(t, got.StripeSubscriptionID)
+	assert.Equal(t, "sub_1", *got.StripeSubscriptionID)
+	require.NotNil(t, got.StripeStatus)
+	assert.Equal(t, "active", *got.StripeStatus)
+}
+
+func (s *StoreSuite) TestSubscriptionStatusTransitions() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	transitions := []string{"active", "canceled", "active"}
+	for _, status := range transitions {
+		require.NoError(t, store.UpdateSubscription(ctx, hh.HouseholdID, "sub_1", status))
+		got, err := store.GetHousehold(ctx, hh.HouseholdID)
+		require.NoError(t, err)
+		require.NotNil(t, got.StripeStatus)
+		assert.Equal(t, status, *got.StripeStatus)
+	}
+}
+
+func (s *StoreSuite) TestHouseholdBySubscriptionUnknown() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+
+	_, err := store.HouseholdBySubscription(t.Context(), "sub_nonexistent")
+	require.Error(t, err)
+}
+
+func (s *StoreSuite) TestHouseholdByCustomerUnknown() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+
+	_, err := store.HouseholdByCustomer(t.Context(), "cus_nonexistent")
+	require.Error(t, err)
+}
+
+func (s *StoreSuite) TestUpdateSubscriptionNonExistentHousehold() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+
+	err := store.UpdateSubscription(t.Context(), "nonexistent", "sub_1", "active")
+	require.Error(t, err)
+}
+
+func (s *StoreSuite) TestUpdateCustomerIDEmpty() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	err := store.UpdateCustomerID(ctx, hh.HouseholdID, "")
+	require.Error(t, err)
+}
+
+// --- Auth ---
+
+func (s *StoreSuite) TestAuthenticateRepeatedly() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+	ctx := t.Context()
+	hh := suiteCreateHousehold(t, store)
+
+	for range 5 {
+		dev, err := store.AuthenticateDevice(ctx, hh.DeviceToken)
+		require.NoError(t, err)
+		assert.Equal(t, hh.DeviceID, dev.ID)
+	}
+}
+
+func (s *StoreSuite) TestAuthenticateEmptyString() {
+	t := s.T()
+	t.Parallel()
+	store := s.newStore(t)
+
+	_, err := store.AuthenticateDevice(t.Context(), "")
+	require.Error(t, err)
+}
+
+// --- Backend-specific: Push Duplicate ---
+
+func TestMemStorePushDuplicateAllowed(t *testing.T) {
+	t.Parallel()
+	store := NewMemStore()
+	store.SetEncryptionKey(defaultTestEncryptionKey)
+
+	resp, err := store.CreateHousehold(t.Context(), sync.CreateHouseholdRequest{
+		DeviceName: "test", PublicKey: testPublicKey,
+	})
+	require.NoError(t, err)
+
+	op := sync.Envelope{
+		ID: "dup-op", HouseholdID: resp.HouseholdID,
+		DeviceID: resp.DeviceID, Nonce: []byte("n"), Ciphertext: []byte("c"),
+	}
+	_, err = store.Push(t.Context(), []sync.Envelope{op})
+	require.NoError(t, err)
+
+	_, err = store.Push(t.Context(), []sync.Envelope{op})
+	require.NoError(t, err)
+}
+
+func TestPgStorePushDuplicateRejected(t *testing.T) {
+	if os.Getenv("RELAY_POSTGRES_DSN") == "" {
+		t.Skip("RELAY_POSTGRES_DSN not set")
+	}
+	store := openTestPgStore(t)
+	ctx := t.Context()
+
+	resp, err := store.CreateHousehold(ctx, sync.CreateHouseholdRequest{
+		DeviceName: "test", PublicKey: testPublicKey,
+	})
+	require.NoError(t, err)
+
+	op := sync.Envelope{
+		ID: "dup-op", HouseholdID: resp.HouseholdID,
+		DeviceID: resp.DeviceID, Nonce: []byte("n"), Ciphertext: []byte("c"),
+	}
+	_, err = store.Push(ctx, []sync.Envelope{op})
+	require.NoError(t, err)
+
+	_, err = store.Push(ctx, []sync.Envelope{op})
+	require.Error(t, err)
+}
