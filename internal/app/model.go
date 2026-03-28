@@ -214,6 +214,7 @@ type Model struct {
 	lastRowClick          rowClickState
 	lastDashClick         rowClickState
 	isDark                bool // terminal background is dark
+	keys                  AppKeyMap
 	cur                   locale.Currency
 	status                statusMsg
 	projectTypes          []data.ProjectType
@@ -320,6 +321,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		active:          0,
 		showHouse:       false,
 		mode:            modeNormal,
+		keys:            newAppKeyMap(),
 		cur:             store.Currency(),
 		syncCfg:         options.syncCfg,
 	}
