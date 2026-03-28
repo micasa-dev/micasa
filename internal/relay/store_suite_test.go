@@ -209,7 +209,9 @@ func (s *StoreSuite) TestConcurrentPushSeqsMonotonic() {
 	wg.Wait()
 
 	// Collect all seqs and verify monotonic with no gaps.
-	all := append(confirmed1, confirmed2...)
+	var all []sync.PushConfirmation
+	all = append(all, confirmed1...)
+	all = append(all, confirmed2...)
 	seqs := make(map[int64]bool, len(all))
 	for _, c := range all {
 		seqs[c.Seq] = true

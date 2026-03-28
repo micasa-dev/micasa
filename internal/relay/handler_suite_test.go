@@ -504,10 +504,9 @@ func (s *HandlerSuite) TestWebhookReplay() {
 		),
 	)
 
-	event := fmt.Sprintf(
+	payload := []byte(
 		`{"id":"evt_1","type":"customer.subscription.updated","data":{"object":{"id":"sub_replay","status":"active"}}}`,
 	)
-	payload := []byte(event)
 	sig := signWebhook(payload, secret)
 
 	for range 2 {
@@ -555,7 +554,7 @@ func (s *HandlerSuite) TestWebhookExactly1MiB() {
 	h, _ := s.newHandler(t, WithWebhookSecret(secret))
 
 	payload := make([]byte, maxRequestBody)
-	copy(payload, []byte(`{"id":"evt_1","type":"charge.succeeded","data":{}}`))
+	copy(payload, `{"id":"evt_1","type":"charge.succeeded","data":{}}`)
 	sig := signWebhook(payload, secret)
 
 	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))

@@ -67,6 +67,10 @@ linters:
         - gorm.io/gorm
         - gorm.io/gorm/*
 
+    testifylint:
+      disable:
+        - suite-broken-parallel # Our suites capture t := s.T() before Parallel()
+
     gocritic:
       enable-all: true
       disabled-tags:
