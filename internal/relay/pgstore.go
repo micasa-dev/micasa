@@ -512,7 +512,8 @@ func (s *PgStore) CompleteKeyExchange(
 ) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var ex pgKeyExchange
-		if err := tx.Where("id = ?", exchangeID).First(&ex).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", exchangeID).First(&ex).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("key exchange %s not found", exchangeID)
 			}
@@ -648,21 +649,23 @@ func (s *PgStore) ListDevices(
 }
 
 func (s *PgStore) RevokeDevice(ctx context.Context, householdID, deviceID string) error {
-	var dev pgDevice
-	err := s.db.WithContext(ctx).Where("id = ?", deviceID).First(&dev).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("device %s not found", deviceID)
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var dev pgDevice
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", deviceID).First(&dev).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("device %s not found", deviceID)
+			}
+			return fmt.Errorf("find device: %w", err)
 		}
-		return fmt.Errorf("find device: %w", err)
-	}
-	if dev.HouseholdID != householdID {
-		return fmt.Errorf("device does not belong to this household")
-	}
+		if dev.HouseholdID != householdID {
+			return fmt.Errorf("device does not belong to this household")
+		}
 
-	return s.db.WithContext(ctx).Model(&pgDevice{}).
-		Where("id = ?", deviceID).
-		Update("revoked", true).Error
+		return tx.Model(&pgDevice{}).
+			Where("id = ?", deviceID).
+			Update("revoked", true).Error
+	})
 }
 
 func (s *PgStore) GetHousehold(
