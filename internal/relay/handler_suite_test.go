@@ -6,10 +6,6 @@ package relay
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -75,12 +71,9 @@ func (s *HandlerSuite) TestEmptyBodyAllJSONEndpoints() {
 	}
 
 	for _, ep := range endpoints {
-		var req *http.Request
+		req := httptest.NewRequest(ep.method, ep.path, nil)
 		if ep.auth {
-			req = httptest.NewRequest(ep.method, ep.path, nil)
 			req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
-		} else {
-			req = httptest.NewRequest(ep.method, ep.path, nil)
 		}
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -190,6 +183,8 @@ func (s *HandlerSuite) TestBearerTrailingSpaceNoToken() {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
+// TestBearerLowercase verifies that lowercase "bearer" is rejected.
+// extractBearerToken intentionally requires exact "Bearer " casing.
 func (s *HandlerSuite) TestBearerLowercase() {
 	t := s.T()
 	t.Parallel()
@@ -479,15 +474,8 @@ func (s *HandlerSuite) TestCrossHouseholdDevices() {
 
 // --- Stripe Webhook ---
 
-// signWebhook creates a valid Stripe webhook signature for testing.
-func signWebhook(payload []byte, secret string) string {
-	ts := fmt.Sprintf("%d", time.Now().Unix())
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(ts + "." + string(payload)))
-	sig := hex.EncodeToString(mac.Sum(nil))
-	return "t=" + ts + ",v1=" + sig
-}
-
+// TestWebhookReplay verifies that replaying the same webhook is idempotent
+// (both succeed). The handler does not reject replays by design.
 func (s *HandlerSuite) TestWebhookReplay() {
 	t := s.T()
 	t.Parallel()
@@ -507,7 +495,7 @@ func (s *HandlerSuite) TestWebhookReplay() {
 	payload := []byte(
 		`{"id":"evt_1","type":"customer.subscription.updated","data":{"object":{"id":"sub_replay","status":"active"}}}`,
 	)
-	sig := signWebhook(payload, secret)
+	sig := makeSignatureHeader(payload, secret, time.Now())
 
 	for range 2 {
 		req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
@@ -525,7 +513,7 @@ func (s *HandlerSuite) TestWebhookNonSubscriptionEvent() {
 	h, _ := s.newHandler(t, WithWebhookSecret(secret))
 
 	payload := []byte(`{"id":"evt_1","type":"charge.succeeded","data":{}}`)
-	sig := signWebhook(payload, secret)
+	sig := makeSignatureHeader(payload, secret, time.Now())
 
 	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
 	req.Header.Set("Stripe-Signature", sig)
@@ -555,13 +543,15 @@ func (s *HandlerSuite) TestWebhookExactly1MiB() {
 
 	payload := make([]byte, maxRequestBody)
 	copy(payload, `{"id":"evt_1","type":"charge.succeeded","data":{}}`)
-	sig := signWebhook(payload, secret)
+	sig := makeSignatureHeader(payload, secret, time.Now())
 
 	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
 	req.Header.Set("Stripe-Signature", sig)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	assert.NotEqual(t, http.StatusRequestEntityTooLarge, rec.Code)
+	// Body accepted (not 413). The payload contains valid JSON for a
+	// non-subscription event, so the handler returns 200 "ignored".
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func (s *HandlerSuite) TestWebhook1MiBPlus1() {

@@ -246,19 +246,19 @@ func (s *StoreSuite) TestPullPaginationContiguous() {
 	// Page 1: limit=2.
 	page1, hasMore, err := store.Pull(ctx, hh.HouseholdID, "other", 0, 2)
 	require.NoError(t, err)
-	assert.Len(t, page1, 2)
+	require.Len(t, page1, 2)
 	assert.True(t, hasMore)
 
 	// Page 2: after last seq of page 1.
 	page2, hasMore, err := store.Pull(ctx, hh.HouseholdID, "other", page1[1].Seq, 2)
 	require.NoError(t, err)
-	assert.Len(t, page2, 2)
+	require.Len(t, page2, 2)
 	assert.True(t, hasMore)
 
 	// Page 3: last op.
 	page3, hasMore, err := store.Pull(ctx, hh.HouseholdID, "other", page2[1].Seq, 2)
 	require.NoError(t, err)
-	assert.Len(t, page3, 1)
+	require.Len(t, page3, 1)
 	assert.False(t, hasMore)
 
 	// Verify contiguous: page2[0].Seq == page1[1].Seq + 1.
@@ -395,11 +395,12 @@ func (s *StoreSuite) TestFifthAttemptConsumesInvite() {
 		require.NoError(t, err, "attempt %d should succeed", i)
 	}
 
-	// The 6th attempt should fail — invite consumed.
+	// The 6th attempt should fail — max attempts exceeded.
 	_, err = store.StartJoin(ctx, hh.HouseholdID, invite.Code, sync.JoinRequest{
 		DeviceName: "one-too-many", PublicKey: testPublicKey,
 	})
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "max attempts")
 }
 
 func (s *StoreSuite) TestConcurrentStartJoinSameCode() {
@@ -640,7 +641,7 @@ func (s *StoreSuite) TestJoinedDevicePushPullImmediately() {
 	// Original device can pull the joined device's op.
 	pulled, _, err := store.Pull(ctx, hh.HouseholdID, hh.DeviceID, 0, 100)
 	require.NoError(t, err)
-	assert.Len(t, pulled, 1)
+	require.Len(t, pulled, 1)
 	assert.Equal(t, "from-joined", pulled[0].ID)
 }
 
@@ -868,7 +869,7 @@ func (s *StoreSuite) TestListDevicesExcludesRevoked() {
 
 	devices, err = store.ListDevices(ctx, hh.HouseholdID)
 	require.NoError(t, err)
-	assert.Len(t, devices, 1)
+	require.Len(t, devices, 1)
 	assert.Equal(t, hh.DeviceID, devices[0].ID)
 }
 
@@ -1075,6 +1076,8 @@ func TestPgStorePushDuplicateRejected(t *testing.T) {
 	_, err = store.Push(ctx, []sync.Envelope{op})
 	require.NoError(t, err)
 
+	// Second push of same ID fails on PgStore (unique constraint).
 	_, err = store.Push(ctx, []sync.Envelope{op})
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate")
 }

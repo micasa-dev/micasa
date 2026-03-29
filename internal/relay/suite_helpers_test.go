@@ -64,7 +64,9 @@ func expireInvite(t testing.TB, store Store, code string) {
 	switch s := store.(type) {
 	case *MemStore:
 		s.mu.Lock()
-		s.invites[code].expiresAt = time.Now().Add(-time.Hour)
+		inv, ok := s.invites[code]
+		require.True(t, ok, "invite %q not found in MemStore", code)
+		inv.expiresAt = time.Now().Add(-time.Hour)
 		s.mu.Unlock()
 	case *PgStore:
 		require.NoError(t, s.db.Exec(
@@ -83,7 +85,9 @@ func expireKeyExchange(t testing.TB, store Store, exchangeID string) {
 	switch s := store.(type) {
 	case *MemStore:
 		s.mu.Lock()
-		s.exchanges[exchangeID].createdAt = past
+		ex, ok := s.exchanges[exchangeID]
+		require.True(t, ok, "exchange %q not found in MemStore", exchangeID)
+		ex.createdAt = past
 		s.mu.Unlock()
 	case *PgStore:
 		require.NoError(t, s.db.Exec(
