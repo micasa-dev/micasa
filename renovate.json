@@ -1,10 +1,69 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "schedule:weekly"],
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "nix": {
+    "enabled": true
+  },
   "packageRules": [
     {
+      "description": "Pin digests for GitHub Actions",
       "matchManagers": ["github-actions"],
       "pinDigests": true
+    },
+    {
+      "description": "Group all indirect Go dependencies",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "groupName": "go-indirect",
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "rebase"
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "Group Charmbracelet dependencies",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require"],
+      "matchPackagePrefixes": ["charm.land/", "github.com/charmbracelet/"],
+      "groupName": "charmbracelet"
+    },
+    {
+      "description": "Group golang.org/x dependencies",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require"],
+      "matchPackagePrefixes": ["golang.org/x/"],
+      "groupName": "golang-x"
+    },
+    {
+      "description": "Group Gorm dependencies",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require"],
+      "matchPackagePrefixes": ["gorm.io/"],
+      "groupName": "gorm"
+    },
+    {
+      "description": "Group Docker image updates",
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "groupName": "docker-images"
+    },
+    {
+      "description": "Automerge GitHub Actions patch updates",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "rebase"
     }
   ]
 }
