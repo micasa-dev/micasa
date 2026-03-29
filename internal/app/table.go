@@ -528,9 +528,11 @@ func renderCell(
 		value = symEmDash
 		style = appStyles.Empty()
 	} else if (cellValue.Kind == cellDrilldown || cellValue.Kind == cellOps) && value != "0" {
-		return renderPillCell(value, width, hl, deleted, dimmed)
+		// Non-zero counts: bold accent foreground. dimBackground converts
+		// bold→faint which gracefully dims the text behind overlays (#848).
+		style = appStyles.AccentBold()
 	} else if cellValue.Kind == cellDrilldown || cellValue.Kind == cellOps {
-		// Zero count: dim instead of pill to keep the grid quiet.
+		// Zero count: dim to keep the grid quiet.
 		style = appStyles.Empty()
 	} else if cellValue.Kind == cellStatus {
 		if s, ok := appStyles.StatusStyle(value); ok {
@@ -614,47 +616,6 @@ func renderCell(
 	return style.Render(aligned)
 }
 
-// renderPillCell renders a drilldown value as a compact pill badge,
-// right-aligned within the column width.
-func renderPillCell(
-	value string,
-	width int,
-	hl cellHighlight,
-	deleted bool,
-	dimmed bool,
-) string {
-	style := appStyles.Drilldown()
-	if dimmed && !deleted {
-		style = appStyles.CellDim()
-	}
-	if deleted {
-		style = appStyles.DeletedCell()
-		pill := style.Render(value)
-		pillW := lipgloss.Width(pill)
-		if pad := width - pillW; pad > 0 {
-			return strings.Repeat(" ", pad) + pill
-		}
-		return pill
-	}
-
-	if hl == highlightCursor {
-		style = style.Underline(true)
-	}
-
-	pill := style.Render(value)
-	pillW := lipgloss.Width(pill)
-
-	// Pad to fill the column; pill is always right-aligned.
-	if pad := width - pillW; pad > 0 {
-		padStyle := appStyles.Base()
-		if hl == highlightRow {
-			padStyle = padStyle.Background(surfacePair.resolve(appIsDark))
-		}
-		return padStyle.Render(strings.Repeat(" ", pad)) + pill
-	}
-	return pill
-}
-
 // joinCells joins rendered cell strings using per-gap separators.
 // If separators is shorter than needed, falls back to the last separator.
 func joinCells(cells []string, separators []string) string {
@@ -682,8 +643,6 @@ func cellStyle(kind cellKind) lipgloss.Style {
 		return appStyles.Money()
 	case cellReadonly:
 		return appStyles.Readonly()
-	case cellDrilldown, cellOps:
-		return appStyles.Drilldown()
 	default:
 		return defaultStyle
 	}

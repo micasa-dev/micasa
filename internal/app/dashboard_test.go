@@ -139,6 +139,57 @@ func TestDashboardHouseTitleUsesOutlineNotFill(t *testing.T) {
 		"house title should not have filled bg when overlay is active")
 }
 
+func TestDrilldownCountUsesAccentForegroundNotBackground(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	// Find a tab whose table has a non-zero drilldown cell.
+	found := false
+	for _, kind := range []TabKind{tabVendors, tabProjects, tabAppliances} {
+		m.active = tabIndex(kind)
+		tab := m.activeTab()
+		require.NotNil(t, tab)
+		for _, row := range tab.CellRows {
+			for ci, c := range row {
+				if ci < len(tab.Specs) &&
+					tab.Specs[ci].Kind == cellDrilldown &&
+					c.Value != "0" && c.Value != "" {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	require.True(t, found, "demo data must have at least one non-zero drilldown cell")
+
+	tab := m.activeTab()
+
+	// Non-zero drilldown counts use accent foreground (sky blue fg),
+	// never a filled background pill. This keeps the text legible when
+	// dimBackground applies ANSI faint behind an overlay (#848).
+	normal := m.tableView(tab)
+	assert.NotContains(t, normal, "48;2;86;180;233",
+		"drilldown count should not use filled accent bg")
+	assert.Contains(t, normal, "38;2;86;180;233",
+		"drilldown count should use accent foreground")
+
+	// With dashboard overlay: same foreground treatment, still readable.
+	m.showDashboard = true
+	m.dash.data = nonEmptyDashboard()
+	require.True(t, m.dashboardVisible())
+	dimmed := m.tableView(tab)
+	assert.NotContains(t, dimmed, "48;2;86;180;233",
+		"drilldown count should not use filled accent bg under overlay")
+	assert.Contains(t, dimmed, "38;2;86;180;233",
+		"drilldown count should use accent foreground under overlay")
+}
+
 func TestDashboardPreservesDrilldown(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
