@@ -290,6 +290,7 @@ func TestHintClickOpensChat(t *testing.T) {
 	m := newTestModelWithStore(t)
 	m.llmClient = testLLMClient(t, "test-model")
 	require.Equal(t, modeNormal, m.mode)
+	require.Nil(t, m.chat, "chat should not exist before click")
 
 	z := requireZone(t, m, "hint-ask")
 
@@ -313,6 +314,7 @@ func TestHintClickEnterDrills(t *testing.T) {
 		}
 	}
 	require.NotEmpty(t, m.enterHint(), "should have an enter hint on drilldown column")
+	require.False(t, m.inDetail(), "should not be in detail view before click")
 
 	z := requireZone(t, m, "hint-enter")
 
