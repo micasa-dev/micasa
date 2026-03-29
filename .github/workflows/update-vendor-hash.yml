@@ -88,6 +88,9 @@ jobs:
 
       - uses: cachix/install-nix-action@96951a368ba55167b55f1c916f7d416bac6505fe # v31.10.3
 
+      - name: Tidy go modules
+        run: nix develop -c go mod tidy
+
       - name: Compute new vendorHash
         id: compute
         run: |
@@ -119,10 +122,13 @@ jobs:
         run: nix build '.#micasa' --no-link -L
 
       - name: Commit and push
-        if: steps.compute.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add nix/package.nix
+          git add go.mod go.sum nix/package.nix
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
           git commit -m "chore: update vendorHash for Go dependency changes"
           git push
