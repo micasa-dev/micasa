@@ -318,10 +318,10 @@ func TestHelpToggle(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	sendKey(m, "?")
-	assert.NotNil(t, m.helpState)
+	assert.NotNil(t, m.helpViewport)
 	assert.Contains(t, m.buildView(), "Keyboard Shortcuts", "expected help visible after '?'")
 	sendKey(m, "?")
-	assert.Nil(t, m.helpState)
+	assert.Nil(t, m.helpViewport)
 	assert.NotContains(
 		t,
 		m.buildView(),
@@ -330,81 +330,30 @@ func TestHelpToggle(t *testing.T) {
 	)
 }
 
-func TestHelpSectionNavigation(t *testing.T) {
+func TestHelpClose(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
+
+	// ? opens.
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
-	require.Contains(t, m.buildView(), "Keyboard Shortcuts", "expected help visible")
+	require.NotNil(t, m.helpViewport, "? should open help")
 
-	sections := m.helpSections()
-	require.Greater(t, len(sections), 1, "need at least 2 sections for navigation test")
-
-	// Starts at section 0.
-	assert.Equal(t, 0, m.helpState.section)
-
-	// j moves to next section.
-	sendKey(m, "j")
-	assert.Equal(t, 1, m.helpState.section)
-
-	// k moves back up.
-	sendKey(m, "k")
-	assert.Equal(t, 0, m.helpState.section)
-
-	// Esc dismisses.
+	// esc closes.
 	sendKey(m, "esc")
-	assert.Nil(t, m.helpState)
-	assert.NotContains(t, m.buildView(), "Keyboard Shortcuts", "expected help hidden after esc")
-}
+	assert.Nil(t, m.helpViewport, "esc should close help")
 
-func TestHelpOverlayFixedWidthAcrossSections(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
+	// ? opens again, then ? closes (toggle).
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState, "expected help visible")
-
-	sections := m.helpSections()
-	require.Greater(t, len(sections), 1, "need multiple sections")
-
-	// Measure width at first section.
-	widthAtFirst := lipgloss.Width(m.helpView())
-
-	// Move to a different section.
-	sendKey(m, "j")
-	widthAtSecond := lipgloss.Width(m.helpView())
-
-	assert.Equal(t, widthAtFirst, widthAtSecond,
-		"help overlay width should stay constant across sections")
-}
-
-func TestHelpSectionClampsBounds(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
+	require.NotNil(t, m.helpViewport)
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState, "expected help visible")
-
-	sections := m.helpSections()
-
-	// k at section 0 stays at 0.
-	sendKey(m, "k")
-	assert.Equal(t, 0, m.helpState.section, "k at top should stay at 0")
-
-	// Navigate to last section.
-	for range len(sections) - 1 {
-		sendKey(m, "j")
-	}
-	assert.Equal(t, len(sections)-1, m.helpState.section)
-
-	// j at last section stays at last.
-	sendKey(m, "j")
-	assert.Equal(t, len(sections)-1, m.helpState.section, "j at bottom should stay at last")
+	assert.Nil(t, m.helpViewport, "? should toggle help closed")
 }
 
 func TestHelpAbsorbsOtherKeys(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
+	require.NotNil(t, m.helpViewport)
 	require.Contains(t, m.buildView(), "Keyboard Shortcuts", "expected help visible")
 
 	// Keys that would normally affect the model should be absorbed.
@@ -416,83 +365,53 @@ func TestHelpAbsorbsOtherKeys(t *testing.T) {
 		"'i' should not close help overlay")
 }
 
-func TestHelpTwoPaneClose(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
-
-	// ? opens.
-	sendKey(m, "?")
-	require.NotNil(t, m.helpState, "? should open help")
-
-	// esc closes.
-	sendKey(m, "esc")
-	assert.Nil(t, m.helpState, "esc should close help")
-
-	// ? opens again, then ? closes (toggle).
-	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
-	sendKey(m, "?")
-	assert.Nil(t, m.helpState, "? should toggle help closed")
-}
-
-func TestHelpRightPaneUpdatesOnSectionChange(t *testing.T) {
+func TestHelpShowsSectionNames(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
+	require.NotNil(t, m.helpViewport)
 
-	sections := m.helpSections()
-	require.Greater(t, len(sections), 1)
-
-	// Capture right pane content at section 0.
-	contentAtZero := m.helpState.viewport.View()
-
-	// Move to section 1.
-	sendKey(m, "j")
-	assert.Equal(t, 1, m.helpState.section)
-
-	// Right pane should show different content.
-	contentAtOne := m.helpState.viewport.View()
-	assert.NotEqual(t, contentAtZero, contentAtOne,
-		"right pane content should change when section changes")
-}
-
-func TestHelpTwoPaneShowsCursorIndicator(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
-	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
-
-	view := m.helpView()
-	assert.Contains(t, view, symTriRightSm,
-		"help overlay should show cursor indicator")
-}
-
-func TestHelpTwoPaneShowsSectionNames(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
-	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
-
-	view := m.helpView()
+	// The full content includes all sections, even if the viewport
+	// is too small to show them all at once.
+	content := m.helpContent()
 	sections := m.helpSections()
 	for _, sec := range sections {
-		assert.Contains(t, view, sec.title,
-			"help overlay should show section name: "+sec.title)
+		assert.Contains(t, content, sec.title,
+			"help content should include section name: "+sec.title)
 	}
 }
 
-func TestHelpTwoPaneShowsHintBar(t *testing.T) {
+func TestHelpShowsHintBar(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
+	require.NotNil(t, m.helpViewport)
 
 	view := m.helpView()
-	assert.Contains(t, view, "sections",
-		"help overlay should show sections navigation hint")
 	assert.Contains(t, view, "close",
 		"help overlay should show close hint")
+}
+
+func TestHelpScrolling(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.height = 20 // small height so the viewport overflows
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport)
+
+	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
+		t.Skip("viewport fits without scrolling")
+	}
+
+	// j/k should scroll the viewport.
+	initialOffset := m.helpViewport.YOffset()
+	sendKey(m, "j")
+	assert.Greater(t, m.helpViewport.YOffset(), initialOffset,
+		"j should scroll down in help viewport")
+
+	sendKey(m, "k")
+	assert.Equal(t, initialOffset, m.helpViewport.YOffset(),
+		"k should scroll back up in help viewport")
 }
 
 func TestHelpOverlayAdaptiveResize(t *testing.T) {
@@ -501,27 +420,23 @@ func TestHelpOverlayAdaptiveResize(t *testing.T) {
 	m.width = 120
 	m.height = 50
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
-
-	// Switch to Nav Mode (section 1) which has many entries.
-	sendKey(m, "j")
-	require.Equal(t, 1, m.helpState.section)
+	require.NotNil(t, m.helpViewport)
 
 	// Record viewport height at full size.
-	fullH := m.helpState.viewport.Height()
+	fullH := m.helpViewport.Height()
 	require.Greater(t, fullH, 3, "viewport should have meaningful height at 50-row terminal")
 
 	// Shrink terminal significantly — help should adapt.
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 25})
-	require.NotNil(t, m.helpState, "help should stay open after resize")
-	smallH := m.helpState.viewport.Height()
+	require.NotNil(t, m.helpViewport, "help should stay open after resize")
+	smallH := m.helpViewport.Height()
 	assert.Less(t, smallH, fullH,
 		"viewport should shrink when terminal shrinks (was %d, now %d)", fullH, smallH)
 
 	// Grow terminal back — help should grow.
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 50})
-	require.NotNil(t, m.helpState)
-	restoredH := m.helpState.viewport.Height()
+	require.NotNil(t, m.helpViewport)
+	restoredH := m.helpViewport.Height()
 	assert.Equal(t, fullH, restoredH,
 		"viewport should restore to original height (was %d, now %d)", fullH, restoredH)
 }

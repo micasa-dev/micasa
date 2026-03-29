@@ -140,92 +140,24 @@ func (m *Model) helpContent() string {
 	return b.String()
 }
 
-// helpView renders the two-pane help overlay.
-// Left pane: section names with cursor. Right pane: viewport of bindings.
+// helpView renders the single-pane scrolling help overlay.
 func (m *Model) helpView() string {
-	hs := m.helpState
-	if hs == nil {
+	vp := m.helpViewport
+	if vp == nil {
 		return ""
 	}
+	content := vp.View()
+	contentW := vp.Width()
 
-	sections := m.helpSections()
-
-	// Build left pane: section list with cursor indicator.
-	var leftLines []string
-	for i, sec := range sections {
-		cursor := "  "
-		if i == hs.section {
-			cursor = symTriRightSm + " "
-		}
-		line := cursor + m.styles.HeaderSection().Render(sec.title)
-		leftLines = append(leftLines, line)
-	}
-
-	// Measure left pane width.
-	leftW := 0
-	for _, line := range leftLines {
-		if w := lipgloss.Width(line); w > leftW {
-			leftW = w
-		}
-	}
-
-	// Right pane content from viewport.
-	rightContent := hs.viewport.View()
-	rightLines := strings.Split(rightContent, "\n")
-	rightH := hs.viewport.Height()
-
-	// Pad both panes to the same height.
-	paneH := rightH
-	if len(leftLines) > paneH {
-		paneH = len(leftLines)
-	}
-	for len(leftLines) < paneH {
-		leftLines = append(leftLines, "")
-	}
-	for len(rightLines) < paneH {
-		rightLines = append(rightLines, "")
-	}
-
-	// Build combined pane rows with dim separator.
-	dimSep := m.styles.TextDim().Render(" " + symVLine + " ")
-	var paneRows []string
-	for i := range paneH {
-		left := leftLines[i]
-		leftPad := strings.Repeat(" ", max(0, leftW-lipgloss.Width(left)))
-		right := rightLines[i]
-		paneRows = append(paneRows, left+leftPad+dimSep+right)
-	}
-
-	// Title.
-	title := m.styles.HeaderTitle().Render(" Keyboard Shortcuts ")
-
-	// Compute full content width for scroll rule.
-	bodyStr := strings.Join(paneRows, "\n")
-	contentW := 0
-	for _, row := range paneRows {
-		if w := lipgloss.Width(row); w > contentW {
-			contentW = w
-		}
-	}
-	if w := lipgloss.Width(title); w > contentW {
-		contentW = w
-	}
-
-	// Scroll rule for the right pane.
-	vp := &hs.viewport
 	rule := m.scrollRule(contentW, vp.TotalLineCount(), vp.Height(),
 		vp.AtTop(), vp.AtBottom(), vp.ScrollPercent(), symHLine)
 
-	// Bottom hint bar.
-	hints := []string{
-		m.helpItem(keyJ+"/"+keyK, "sections"),
-	}
+	hints := []string{m.helpItem(keyEsc, "close")}
 	if vp.TotalLineCount() > vp.Height() {
-		hints = append(hints, m.helpItem(keyG+"/"+keyShiftG, "top/bot"))
+		hints = append([]string{m.helpItem(keyJ+"/"+keyK, "scroll")}, hints...)
 	}
-	hints = append(hints, m.helpItem(keyEsc, "close"))
 	hintStr := joinWithSeparator(m.helpSeparator(), hints...)
 
 	return m.styles.OverlayBox().
-		Render(title + "\n\n" + bodyStr + "\n\n" + rule + "\n" + hintStr)
+		Render(content + "\n\n" + rule + "\n" + hintStr)
 }

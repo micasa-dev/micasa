@@ -366,11 +366,11 @@ func (m *Model) handleScroll(delta int) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if m.helpState != nil {
+	if m.helpViewport != nil {
 		if delta > 0 {
-			m.helpState.viewport.ScrollDown(1)
+			m.helpViewport.ScrollDown(1)
 		} else {
-			m.helpState.viewport.ScrollUp(1)
+			m.helpViewport.ScrollUp(1)
 		}
 		return m, nil
 	}
@@ -399,8 +399,8 @@ func (m *Model) handleScroll(delta int) (tea.Model, tea.Cmd) {
 // dismissActiveOverlay closes the topmost active overlay.
 func (m *Model) dismissActiveOverlay() {
 	switch {
-	case m.helpState != nil:
-		m.helpState = nil
+	case m.helpViewport != nil:
+		m.helpViewport = nil
 	case m.notePreview != nil:
 		m.notePreview = nil
 	case m.opsTree != nil:

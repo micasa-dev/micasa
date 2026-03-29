@@ -168,12 +168,10 @@ type AppKeyMap struct {
 	ExtModelCancel    key.Binding
 	ExtModelBackspace key.Binding
 
-	// --- Help overlay (helpOverlayKey; Phase 2 adds two-pane) ---
-	HelpSectionUp   key.Binding
-	HelpSectionDown key.Binding
-	HelpGotoTop     key.Binding
-	HelpGotoBottom  key.Binding
-	HelpClose       key.Binding
+	// --- Help overlay (helpOverlayKey) ---
+	HelpGotoTop    key.Binding
+	HelpGotoBottom key.Binding
+	HelpClose      key.Binding
 
 	// --- Confirmations (handleConfirmDiscard, handleConfirmHardDelete) ---
 	ConfirmYes key.Binding
@@ -412,11 +410,9 @@ func newAppKeyMap() AppKeyMap {
 		ExtModelBackspace: key.NewBinding(key.WithKeys(keyBackspace)),
 
 		// Help overlay
-		HelpSectionUp:   key.NewBinding(key.WithKeys(keyK, keyUp)),
-		HelpSectionDown: key.NewBinding(key.WithKeys(keyJ, keyDown)),
-		HelpGotoTop:     key.NewBinding(key.WithKeys(keyG)),
-		HelpGotoBottom:  key.NewBinding(key.WithKeys(keyShiftG)),
-		HelpClose:       key.NewBinding(key.WithKeys(keyEsc, keyQuestion)),
+		HelpGotoTop:    key.NewBinding(key.WithKeys(keyG)),
+		HelpGotoBottom: key.NewBinding(key.WithKeys(keyShiftG)),
+		HelpClose:      key.NewBinding(key.WithKeys(keyEsc, keyQuestion)),
 
 		// Confirmations
 		ConfirmYes: key.NewBinding(key.WithKeys(keyY)),

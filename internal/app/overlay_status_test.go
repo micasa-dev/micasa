@@ -85,7 +85,7 @@ func TestStatusBarShownWhenNoOverlayActive(t *testing.T) {
 	m := newTestModel(t)
 	m.showDashboard = false
 	m.notePreview = nil
-	m.helpState = nil
+	m.helpViewport = nil
 	m.columnFinder = nil
 	m.calendar = nil
 

@@ -177,13 +177,13 @@ func TestOverlayDismissOnOutsideClick(t *testing.T) {
 	m := newTestModelWithStore(t)
 
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState, "help viewport should be open")
+	require.NotNil(t, m.helpViewport, "help viewport should be open")
 
 	m.View()
 
 	// Click at (0,0) which should be outside the centered overlay.
 	sendClick(m, 0, 0)
-	assert.Nil(t, m.helpState, "clicking outside overlay should dismiss help")
+	assert.Nil(t, m.helpViewport, "clicking outside overlay should dismiss help")
 }
 
 // TestHintClickOpensHelp verifies that clicking the help hint opens
@@ -191,12 +191,12 @@ func TestOverlayDismissOnOutsideClick(t *testing.T) {
 func TestHintClickOpensHelp(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	require.Nil(t, m.helpState, "help should start closed")
+	require.Nil(t, m.helpViewport, "help should start closed")
 
 	z := requireZone(t, m, "hint-help")
 
 	sendClick(m, z.StartX, z.StartY)
-	assert.NotNil(t, m.helpState, "clicking help hint should open help")
+	assert.NotNil(t, m.helpViewport, "clicking help hint should open help")
 }
 
 // TestBreadcrumbBackClick verifies that clicking the breadcrumb back
@@ -252,21 +252,17 @@ func TestScrollWheelInHelpOverlay(t *testing.T) {
 	m.height = 20 // small height so the right pane viewport overflows
 
 	sendKey(m, "?")
-	require.NotNil(t, m.helpState)
+	require.NotNil(t, m.helpViewport)
 
-	// Navigate to Nav Mode section which has many entries.
-	sendKey(m, "j")
-	require.Equal(t, 1, m.helpState.section)
-
-	if m.helpState.viewport.TotalLineCount() <= m.helpState.viewport.Height() {
+	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
 		t.Skip("viewport fits without scrolling")
 	}
 
-	initialOffset := m.helpState.viewport.YOffset()
+	initialOffset := m.helpViewport.YOffset()
 
 	sendMouseWheel(m, 10, 10, tea.MouseWheelDown)
 
-	assert.Greater(t, m.helpState.viewport.YOffset(), initialOffset,
+	assert.Greater(t, m.helpViewport.YOffset(), initialOffset,
 		"scroll down in help overlay should advance viewport")
 }
 
