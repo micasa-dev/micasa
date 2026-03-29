@@ -283,20 +283,24 @@ func TestHintClickDeleteZoneExists(t *testing.T) {
 	requireZone(t, m, "hint-del")
 }
 
-// TestHintClickAskZoneExists verifies that the ask hint zone appears
-// when an LLM client is configured.
-func TestHintClickAskZoneExists(t *testing.T) {
+// TestHintClickOpensChat verifies that clicking the ask hint opens the
+// chat overlay when an LLM client is configured.
+func TestHintClickOpensChat(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
 	m.llmClient = testLLMClient(t, "test-model")
 	require.Equal(t, modeNormal, m.mode)
 
-	requireZone(t, m, "hint-ask")
+	z := requireZone(t, m, "hint-ask")
+
+	sendClick(m, z.StartX, z.StartY)
+	require.NotNil(t, m.chat, "clicking ask hint should open chat")
+	assert.True(t, m.chat.Visible, "chat should be visible after clicking ask hint")
 }
 
-// TestHintClickEnterZoneExists verifies that the enter hint zone
-// appears when the cursor is on a drilldown column.
-func TestHintClickEnterZoneExists(t *testing.T) {
+// TestHintClickEnterDrills verifies that clicking the enter hint on a
+// drilldown column opens the detail view.
+func TestHintClickEnterDrills(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 
@@ -310,7 +314,10 @@ func TestHintClickEnterZoneExists(t *testing.T) {
 	}
 	require.NotEmpty(t, m.enterHint(), "should have an enter hint on drilldown column")
 
-	requireZone(t, m, "hint-enter")
+	z := requireZone(t, m, "hint-enter")
+
+	sendClick(m, z.StartX, z.StartY)
+	assert.True(t, m.inDetail(), "clicking enter hint on drilldown column should open detail view")
 }
 
 // TestScrollWheelInHelpOverlay verifies that scroll wheel events in the
