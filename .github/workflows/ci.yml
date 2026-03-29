@@ -301,7 +301,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
+      - uses: cachix/install-nix-action@96951a368ba55167b55f1c916f7d416bac6505fe # v31.10.3
 
       - name: Build with Nix
         run: nix build '.#micasa'
@@ -330,7 +330,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
+      - uses: cachix/install-nix-action@96951a368ba55167b55f1c916f7d416bac6505fe # v31.10.3
 
       - name: Build docs
         run: nix run '.#docs'
