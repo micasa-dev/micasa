@@ -1168,12 +1168,15 @@ func (m *Model) openHelp() {
 	content := m.helpContent()
 	lines := strings.Split(content, "\n")
 
-	// Find the widest line for viewport width.
+	// Find the widest line for viewport width, clamped to terminal.
 	maxW := 0
 	for _, line := range lines {
 		if w := lipgloss.Width(line); w > maxW {
 			maxW = w
 		}
+	}
+	if termW := m.effectiveWidth() - 4; maxW > termW {
+		maxW = termW
 	}
 
 	// Viewport height: fit content or clamp to terminal.
@@ -1705,7 +1708,9 @@ func (m *Model) updateAllViewports() {
 		m.updateTabViewport(&dc.Tab)
 	}
 	if m.helpViewport != nil {
+		savedOffset := m.helpViewport.YOffset()
 		m.openHelp()
+		m.helpViewport.SetYOffset(savedOffset)
 	}
 }
 
