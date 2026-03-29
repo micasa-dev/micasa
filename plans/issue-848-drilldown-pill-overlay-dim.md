@@ -13,27 +13,35 @@ Same root cause as #833/#834: `dimBackground` converts bold (SGR 1) to
 faint (SGR 2), leaving dark foreground text invisible on the surviving
 bright background.
 
-## Approach
+## Initial approach (rejected)
 
-Identical to the tab/house pill fix in PR #834: when an overlay is
-active, switch from filled accent pill (`Drilldown()` — bright bg +
-dark fg + bold) to accent-foreground-only (`AccentOutline()` — accent fg,
-no bg). Faint then dims sky-blue text on the default terminal background,
-which stays legible.
+Thread an `overlayActive` bool through the render chain
+(`renderRows` → `renderRow` → `renderCell` → `renderPillCell`) and
+conditionally switch from `Drilldown()` to `AccentOutline()`. This
+worked but introduced two problems:
 
-Thread an `overlayActive` bool through the render chain:
+- Pill padding caused a geometry shift when toggling overlays (3-char
+  padded pill vs 1-char accent text)
+- Threading a bool through 4 function signatures for a single style
+  decision was heavy-handed
 
-- `renderRows` → `renderRow` → `renderCell` → `renderPillCell`
-- In `renderPillCell`: when `overlayActive && !deleted && !dimmed`,
-  use `AccentOutline()` instead of `Drilldown()`
-- Call sites:
-  - `view.go` tableView — pass `m.hasActiveOverlay()`
-  - `extraction_render.go` — pass `false` (inside an overlay, not behind)
+## Final approach
+
+Replace filled pill badges with bold accent-foreground text
+(`AccentBold()`) unconditionally. Non-zero drilldown counts now render
+through the normal `renderCell` right-alignment path, identical in
+geometry to zero-count cells. This:
+
+- Fixes overlay dimming: bold accent fg converts to faint under
+  `dimBackground`, staying legible
+- Eliminates geometry shifts: same width in both normal and overlay modes
+- Simplifies code: removes `renderPillCell` entirely, removes dead
+  `cellDrilldown/cellOps` arm from `cellStyle`
 
 ## Files modified
 
-- `internal/app/table.go` — add `overlayActive` param to render chain
-- `internal/app/view.go` — pass `m.hasActiveOverlay()` at call site
-- `internal/app/extraction_render.go` — pass `false` at call site
-- `internal/app/dashboard_test.go` — test verifying pill switches from
-  bg to fg under overlay
+- `internal/app/table.go` — replace pill rendering with `AccentBold()`,
+  remove `renderPillCell`, remove dead `cellStyle` branch
+- `internal/app/dashboard_test.go` — test verifying accent fg (not bg)
+  for drilldown counts in both normal and overlay modes
+- `plans/issue-848-drilldown-pill-overlay-dim.md` — this plan
