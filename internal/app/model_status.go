@@ -6,14 +6,15 @@ package app
 import (
 	"fmt"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 )
 
 // handleConfirmDiscard processes keys while the "discard unsaved changes?"
 // prompt is active. Only y (discard) and n/esc (keep editing) are recognized.
-func (m *Model) handleConfirmDiscard(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch key.String() {
-	case keyY:
+func (m *Model) handleConfirmDiscard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.ConfirmYes):
 		if m.confirm == confirmFormQuitDiscard {
 			m.confirm = confirmNone
 			if m.appCancel != nil {
@@ -25,7 +26,7 @@ func (m *Model) handleConfirmDiscard(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		m.confirm = confirmNone
 		m.exitForm()
-	case keyN, keyEsc:
+	case key.Matches(msg, m.keys.ConfirmNo):
 		m.confirm = confirmNone
 	}
 	return m, nil
@@ -156,9 +157,9 @@ func (m *Model) promptHardDelete() {
 	m.hardDeleteID = meta.ID
 }
 
-func (m *Model) handleConfirmHardDelete(key tea.KeyPressMsg) {
-	switch key.String() {
-	case keyY:
+func (m *Model) handleConfirmHardDelete(msg tea.KeyPressMsg) {
+	switch {
+	case key.Matches(msg, m.keys.ConfirmYes):
 		m.confirm = confirmNone
 		tab := m.effectiveTab()
 		var err error
@@ -173,7 +174,7 @@ func (m *Model) handleConfirmHardDelete(key tea.KeyPressMsg) {
 		}
 		m.setStatusInfo("Permanently deleted.")
 		m.surfaceError(m.reloadEffectiveTab())
-	case keyN, keyEsc:
+	case key.Matches(msg, m.keys.ConfirmNo):
 		m.confirm = confirmNone
 	}
 }

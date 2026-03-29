@@ -128,5 +128,5 @@ func TestHelpContentIncludesToggleUnits(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Toggle units")
+	assert.Contains(t, help, "toggle units")
 }

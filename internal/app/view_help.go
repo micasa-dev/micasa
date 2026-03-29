@@ -6,130 +6,158 @@ package app
 import (
 	"fmt"
 	"strings"
+
+	"charm.land/bubbles/v2/key"
+	"charm.land/lipgloss/v2"
 )
 
-// helpContent generates the static help text (keyboard shortcuts).
-// Separated from rendering so it can be set once on the viewport.
-func (m *Model) helpContent() string {
-	type binding struct {
-		key  string
-		desc string
+// helpSections returns the structured section data for the help overlay.
+// Each section groups related key bindings under a titled header.
+func (m *Model) helpSections() []helpSection {
+	fromBinding := func(b key.Binding) helpEntry {
+		h := b.Help()
+		return helpEntry{keys: h.Key, desc: h.Desc}
 	}
-	sections := []struct {
-		title    string
-		bindings []binding
-	}{
+	return []helpSection{
 		{
 			title: "Global",
-			bindings: []binding{
-				{keyCtrlC, "Cancel LLM operation"},
-				{keyCtrlQ, "Quit"},
+			entries: []helpEntry{
+				fromBinding(m.keys.Cancel),
+				fromBinding(m.keys.Quit),
 			},
 		},
 		{
 			title: "Nav Mode",
-			bindings: []binding{
-				{keyJ + "/" + keyK + "/" + symUp + "/" + symDown, "Rows"},
-				{keyH + "/" + keyL + "/" + symLeft + "/" + symRight, "Columns"},
-				{keyCaret + "/" + keyDollar, "First/last column"},
-				{keyG + "/" + keyShiftG, "First/last row"},
-				{keyD + "/" + keyU, "Half page down/up"},
-				{keyB + "/" + keyF, "Switch tabs"},
-				{keyShiftB + "/" + keyShiftF, "First/last tab"},
-				{keyS + "/" + keyShiftS, "Sort / clear sorts"},
-				{keyT, "Toggle settled projects"},
-				{keyCtrlF, "Search documents"},
-				{keySlash, "Find column"},
-				{keyC + "/" + keyShiftC, "Toggle column visibility"},
-				{keyShiftN, "Toggle filter"},
-				{keyN, "Pin/unpin"},
-				{keyBang, "Invert filter"},
-				{keyCtrlN, "Clear pins and filter"},
-				{symReturn, drilldownArrow + " drill / " + linkArrow + " follow / preview"},
-				{keyO, "Open document"},
-				{keyTab, "House profile"},
-				{keyShiftU, "Toggle units"},
-				{keyShiftD, "Summary"},
-				{keyAt, "Ask LLM"},
-				{keyI, "Edit mode"},
-				{keyQuestion, "Help"},
-				{keyEsc, "Close detail / clear status"},
+			entries: []helpEntry{
+				{keyJ + "/" + keyK + "/" + symUp + "/" + symDown, "rows"},
+				fromBinding(m.keys.ColLeft),
+				fromBinding(m.keys.ColStart),
+				{keyG + "/" + keyShiftG, "first/last row"},
+				{keyD + "/" + keyU, "half page down/up"},
+				fromBinding(m.keys.TabNext),
+				fromBinding(m.keys.TabFirst),
+				fromBinding(m.keys.Sort),
+				fromBinding(m.keys.ToggleSettled),
+				fromBinding(m.keys.DocSearch),
+				fromBinding(m.keys.ColFinder),
+				fromBinding(m.keys.ColHide),
+				fromBinding(m.keys.FilterToggle),
+				fromBinding(m.keys.FilterPin),
+				fromBinding(m.keys.FilterNegate),
+				fromBinding(m.keys.FilterClear),
+				fromBinding(m.keys.Enter),
+				fromBinding(m.keys.DocOpen),
+				fromBinding(m.keys.HouseToggle),
+				fromBinding(m.keys.ToggleUnits),
+				fromBinding(m.keys.Dashboard),
+				fromBinding(m.keys.Chat),
+				fromBinding(m.keys.EnterEditMode),
+				fromBinding(m.keys.Help),
+				fromBinding(m.keys.Escape),
 			},
 		},
 		{
 			title: "Edit Mode",
-			bindings: []binding{
-				{keyA, "Add entry"},
-				{keyShiftA, "Add document with extraction"},
-				{keyE, "Edit cell or row"},
-				{keyShiftE, "Edit row (full form)"},
-				{keyD, "Delete / restore"},
-				{keyShiftD, "Permanently delete (incidents)"},
-				{keyCtrlD, "Half page down"},
-				{keyX, "Show deleted"},
-				{keyP, "House profile"},
-				{keyEsc, "Nav mode"},
+			entries: []helpEntry{
+				fromBinding(m.keys.Add),
+				fromBinding(m.keys.QuickAdd),
+				fromBinding(m.keys.EditCell),
+				fromBinding(m.keys.EditFull),
+				fromBinding(m.keys.Delete),
+				fromBinding(m.keys.HardDelete),
+				{keyCtrlD, "half page down"},
+				fromBinding(m.keys.ShowDeleted),
+				fromBinding(m.keys.HouseEdit),
+				fromBinding(m.keys.ExitEdit),
 			},
 		},
 		{
 			title: "Forms",
-			bindings: []binding{
-				{keyTab, "Next field"},
-				{keyShiftTab, "Previous field"},
-				{"1-9", "Jump to Nth option"},
-				{keyShiftH, "Toggle hidden files (file picker)"},
-				{keyCtrlE, "Open notes in $EDITOR"},
-				{keyCtrlS, "Save"},
-				{keyEsc, "Cancel"},
+			entries: []helpEntry{
+				fromBinding(m.keys.FormNextField),
+				fromBinding(m.keys.FormPrevField),
+				{"1-9", "jump to Nth option"},
+				fromBinding(m.keys.FormHiddenFiles),
+				fromBinding(m.keys.FormEditor),
+				fromBinding(m.keys.FormSave),
+				fromBinding(m.keys.FormCancel),
 			},
 		},
 		{
 			title: "Chat (" + keyAt + ")",
-			bindings: []binding{
-				{symReturn, "Send message"},
-				{keyCtrlS, "Toggle SQL display"},
-				{symUp + "/" + symDown, "Prompt history"},
-				{keyEsc, "Hide chat"},
+			entries: []helpEntry{
+				fromBinding(m.keys.ChatSend),
+				fromBinding(m.keys.ChatToggleSQL),
+				fromBinding(m.keys.ChatHistoryUp),
+				fromBinding(m.keys.ChatHide),
 			},
 		},
 	}
+}
 
+// helpContent generates the full help text as a single string.
+// Used by tests that check for specific content across all sections.
+func (m *Model) helpContent() string {
+	sections := m.helpSections()
+
+	// Pre-render all keycaps and find the global max width.
+	type renderedSection struct {
+		title string
+		keys  []string
+		descs []string
+	}
+	rendered := make([]renderedSection, len(sections))
+	globalMaxKeyW := 0
+	for i, section := range sections {
+		rs := renderedSection{title: section.title}
+		for _, e := range section.entries {
+			k := m.renderKeysLight(e.keys)
+			rs.keys = append(rs.keys, k)
+			rs.descs = append(rs.descs, e.desc)
+			if w := lipgloss.Width(k); w > globalMaxKeyW {
+				globalMaxKeyW = w
+			}
+		}
+		rendered[i] = rs
+	}
+
+	sep := m.styles.TextDim().Render(symVLine)
 	var b strings.Builder
 	b.WriteString(m.styles.HeaderTitle().Render(" Keyboard Shortcuts "))
 	b.WriteString("\n\n")
-	for i, section := range sections {
-		b.WriteString(m.styles.HeaderSection().Render(" " + section.title + " "))
+	for i, rs := range rendered {
+		b.WriteString(m.styles.HeaderSection().Render(" " + rs.title + " "))
 		b.WriteString("\n")
-		for _, bind := range section.bindings {
-			keys := m.renderKeysLight(bind.key)
-			desc := m.styles.HeaderHint().Render(bind.desc)
-			fmt.Fprintf(&b, "  %s  %s\n", keys, desc)
+		for j, keys := range rs.keys {
+			pad := strings.Repeat(" ", max(0, globalMaxKeyW-lipgloss.Width(keys)))
+			desc := m.styles.HeaderHint().Render(rs.descs[j])
+			fmt.Fprintf(&b, "  %s%s %s %s\n", pad, keys, sep, desc)
 		}
-		if i < len(sections)-1 {
+		if i < len(rendered)-1 {
 			b.WriteString("\n")
 		}
 	}
 	return b.String()
 }
 
-// helpView renders the help overlay using a viewport for scrolling.
+// helpView renders the single-pane scrolling help overlay.
 func (m *Model) helpView() string {
 	vp := m.helpViewport
 	if vp == nil {
 		return ""
 	}
-
 	content := vp.View()
 	contentW := vp.Width()
+
 	rule := m.scrollRule(contentW, vp.TotalLineCount(), vp.Height(),
-		vp.AtTop(), vp.AtBottom(), vp.ScrollPercent(), "─")
+		vp.AtTop(), vp.AtBottom(), vp.ScrollPercent(), symHLine)
 
 	hints := []string{m.helpItem(keyEsc, "close")}
 	if vp.TotalLineCount() > vp.Height() {
 		hints = append([]string{m.helpItem(keyJ+"/"+keyK, "scroll")}, hints...)
 	}
-	closeHintStr := joinWithSeparator(m.helpSeparator(), hints...)
+	hintStr := joinWithSeparator(m.helpSeparator(), hints...)
 
 	return m.styles.OverlayBox().
-		Render(content + "\n\n" + rule + "\n" + closeHintStr)
+		Render(content + "\n\n" + rule + "\n" + hintStr)
 }

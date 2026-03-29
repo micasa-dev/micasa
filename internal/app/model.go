@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strings"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/viewport"
@@ -40,7 +41,6 @@ const (
 	keyPgDown    = "pgdown"
 	keyShiftDown = "shift+down"
 	keyShiftUp   = "shift+up"
-	keyShiftTab  = "shift+tab"
 
 	// Action keys.
 	keyEsc   = "esc"
@@ -141,12 +141,17 @@ const (
 	symMiddleDot = "\u00b7" // ·
 )
 
-// Key bindings for help viewport (g/G for top/bottom are not in the
-// default viewport keymap).
-var (
-	helpGotoTop    = key.NewBinding(key.WithKeys(keyG))
-	helpGotoBottom = key.NewBinding(key.WithKeys(keyShiftG))
-)
+// helpSection is a titled group of key bindings for the help overlay.
+type helpSection struct {
+	title   string
+	entries []helpEntry
+}
+
+// helpEntry is a single key-description pair within a help section.
+type helpEntry struct {
+	keys string
+	desc string
+}
 
 // pullState groups fields for an in-progress Ollama model pull.
 type pullState struct {
@@ -214,6 +219,8 @@ type Model struct {
 	lastRowClick          rowClickState
 	lastDashClick         rowClickState
 	isDark                bool // terminal background is dark
+	keys                  AppKeyMap
+	helpModel             help.Model
 	cur                   locale.Currency
 	status                statusMsg
 	projectTypes          []data.ProjectType
@@ -239,6 +246,20 @@ type Model struct {
 	syncCancel        context.CancelFunc
 	syncDebounceGen   int
 	syncPendingReload bool // true when pulled data awaits form close
+}
+
+func newHelpModel() help.Model {
+	h := help.New()
+	h.Styles = help.Styles{
+		ShortKey:       appStyles.Keycap(),
+		ShortDesc:      appStyles.HeaderHint(),
+		ShortSeparator: appStyles.HeaderHint(),
+		FullKey:        appStyles.KeycapLight(),
+		FullDesc:       appStyles.HeaderHint(),
+		FullSeparator:  appStyles.HeaderHint(),
+	}
+	h.ShortSeparator = " " + symMiddleDot + " "
+	return h
 }
 
 func NewModel(store *data.Store, options Options) (*Model, error) {
@@ -320,6 +341,8 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		active:          0,
 		showHouse:       false,
 		mode:            modeNormal,
+		keys:            newAppKeyMap(),
+		helpModel:       newHelpModel(),
 		cur:             store.Currency(),
 		syncCfg:         options.syncCfg,
 	}
@@ -1139,53 +1162,56 @@ func cloneFormData(d formData) formData {
 	return d
 }
 
-// openHelp creates a viewport sized to fit the terminal and populated with
-// the help content. The viewport handles scroll state and key delegation.
+// openHelp creates the single-pane scrolling help overlay. All sections are
+// rendered as one continuous document using column-aligned key rendering.
 func (m *Model) openHelp() {
 	content := m.helpContent()
 	lines := strings.Split(content, "\n")
 
-	// Chrome: border (2) + padding (2) + gap + rule + hint (4) = 8 lines.
-	maxH := m.effectiveHeight() - 2
-	if maxH < 10 {
-		maxH = 10
-	}
-	viewH := maxH - 8
-	if viewH < 3 {
-		viewH = 3
-	}
-	// If content fits, no scrolling needed.
-	if len(lines) <= viewH {
-		viewH = len(lines)
-	}
-
-	// Lock width to the widest content line so the overlay never resizes.
+	// Find the widest line for viewport width, clamped to terminal.
 	maxW := 0
 	for _, line := range lines {
 		if w := lipgloss.Width(line); w > maxW {
 			maxW = w
 		}
 	}
+	if termW := m.effectiveWidth() - 4; maxW > termW {
+		maxW = termW
+	}
 
-	vp := viewport.New(viewport.WithWidth(maxW), viewport.WithHeight(viewH))
+	// Viewport height: fit content or clamp to terminal.
+	// Chrome: border (2) + padding (2) + bottom gap (2) + rule (1) + hint (1) = 8.
+	maxH := m.effectiveHeight() - 8
+	if maxH < 3 {
+		maxH = 3
+	}
+	vpH := len(lines)
+	if vpH > maxH {
+		vpH = maxH
+	}
+	if vpH < 3 {
+		vpH = 3
+	}
+
+	vp := viewport.New(viewport.WithWidth(maxW), viewport.WithHeight(vpH))
 	vp.SetContent(content)
-	// Disable horizontal scroll to avoid conflicts with table navigation.
+	// Disable left/right so they don't interfere.
 	vp.KeyMap.Left.SetEnabled(false)
 	vp.KeyMap.Right.SetEnabled(false)
 	m.helpViewport = &vp
 }
 
-func (m *Model) handleInlineInputKey(key tea.KeyPressMsg) tea.Cmd {
-	switch key.String() {
-	case keyEsc:
+func (m *Model) handleInlineInputKey(msg tea.KeyPressMsg) tea.Cmd {
+	switch {
+	case key.Matches(msg, m.keys.InlineCancel):
 		m.closeInlineInput()
 		return nil
-	case keyEnter:
+	case key.Matches(msg, m.keys.InlineConfirm):
 		m.submitInlineInput()
 		return nil
 	}
 	var cmd tea.Cmd
-	m.inlineInput.Input, cmd = m.inlineInput.Input.Update(key)
+	m.inlineInput.Input, cmd = m.inlineInput.Input.Update(msg)
 	return cmd
 }
 
@@ -1473,16 +1499,19 @@ func (m *Model) dispatchOverlay(msg tea.Msg) (tea.Cmd, bool) {
 	return nil, false
 }
 
-func (m *Model) helpOverlayKey(keyMsg tea.KeyPressMsg) tea.Cmd {
+func (m *Model) helpOverlayKey(msg tea.KeyPressMsg) tea.Cmd {
+	if m.helpViewport == nil {
+		return nil
+	}
 	switch {
-	case keyMsg.String() == keyEsc || keyMsg.String() == keyQuestion:
+	case key.Matches(msg, m.keys.HelpClose):
 		m.helpViewport = nil
-	case key.Matches(keyMsg, helpGotoTop):
+	case key.Matches(msg, m.keys.HelpGotoTop):
 		m.helpViewport.GotoTop()
-	case key.Matches(keyMsg, helpGotoBottom):
+	case key.Matches(msg, m.keys.HelpGotoBottom):
 		m.helpViewport.GotoBottom()
 	default:
-		vp, _ := m.helpViewport.Update(keyMsg)
+		vp, _ := m.helpViewport.Update(msg)
 		m.helpViewport = &vp
 	}
 	return nil
@@ -1677,6 +1706,11 @@ func (m *Model) updateAllViewports() {
 	}
 	if dc := m.detail(); dc != nil {
 		m.updateTabViewport(&dc.Tab)
+	}
+	if m.helpViewport != nil {
+		savedOffset := m.helpViewport.YOffset()
+		m.openHelp()
+		m.helpViewport.SetYOffset(savedOffset)
 	}
 }
 

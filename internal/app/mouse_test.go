@@ -249,9 +249,14 @@ func TestHintClickEntersEditMode(t *testing.T) {
 func TestScrollWheelInHelpOverlay(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
+	m.height = 20 // small height so the right pane viewport overflows
 
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport)
+
+	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
+		t.Skip("viewport fits without scrolling")
+	}
 
 	initialOffset := m.helpViewport.YOffset()
 

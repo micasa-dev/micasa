@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -62,25 +63,25 @@ func (m *Model) searchOverlayWidth() int {
 }
 
 // handleDocSearchKey processes keys while the search overlay is open.
-func (m *Model) handleDocSearchKey(key tea.KeyPressMsg) tea.Cmd {
+func (m *Model) handleDocSearchKey(msg tea.KeyPressMsg) tea.Cmd {
 	ds := m.docSearch
 	if ds == nil {
 		return nil
 	}
 
-	switch key.String() {
-	case keyEsc:
+	switch {
+	case key.Matches(msg, m.keys.DocSearchCancel):
 		m.closeDocSearch()
 		return nil
-	case keyEnter:
+	case key.Matches(msg, m.keys.DocSearchConfirm):
 		m.docSearchNavigate()
 		return nil
-	case keyUp, keyCtrlP, keyCtrlK:
+	case key.Matches(msg, m.keys.DocSearchUp):
 		if ds.Cursor > 0 {
 			ds.Cursor--
 		}
 		return nil
-	case keyDown, keyCtrlN, keyCtrlJ:
+	case key.Matches(msg, m.keys.DocSearchDown):
 		if ds.Cursor < len(ds.Results)-1 {
 			ds.Cursor++
 		}
@@ -88,7 +89,7 @@ func (m *Model) handleDocSearchKey(key tea.KeyPressMsg) tea.Cmd {
 	default:
 		// Forward to textinput for typing.
 		var cmd tea.Cmd
-		ds.Input, cmd = ds.Input.Update(key)
+		ds.Input, cmd = ds.Input.Update(msg)
 		m.runDocSearch()
 		return cmd
 	}

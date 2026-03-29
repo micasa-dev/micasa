@@ -6,6 +6,7 @@ package app
 import (
 	"fmt"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
@@ -25,7 +26,7 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resizeTables()
 		m.updateAllViewports()
 	case tea.KeyPressMsg:
-		if typed.String() == keyCtrlQ {
+		if key.Matches(typed, m.keys.Quit) {
 			if m.mode == modeForm && m.fs.formDirty {
 				m.confirm = confirmFormQuitDiscard
 				return m, nil
@@ -41,7 +42,7 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Quit
 		}
-		if typed.String() == keyCtrlC {
+		if key.Matches(typed, m.keys.Cancel) {
 			// When the extraction overlay is open and running,
 			// interrupt just that extraction instead of canceling
 			// everything. The overlay stays visible so the user can
@@ -275,10 +276,10 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyCtrlS {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(keyMsg, m.keys.FormSave) {
 		return m, m.saveFormInPlace()
 	}
-	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyCtrlE &&
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(keyMsg, m.keys.FormEditor) &&
 		m.fs.notesEditMode {
 		return m, m.launchExternalEditor()
 	}
@@ -291,7 +292,7 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	// Toggle hidden files in the filepicker with ".".
-	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyShiftH {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(keyMsg, m.keys.FormHiddenFiles) {
 		if field := m.fs.form.GetFocusedField(); field != nil {
 			if fp, ok := field.(*huh.FilePicker); ok {
 				current := filePickerShowHidden(fp)
@@ -322,7 +323,7 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	// Intercept ESC on dirty forms to confirm before discarding.
-	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == keyEsc {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(keyMsg, m.keys.FormCancel) {
 		mandatoryHouse := m.fs.formKind() == formHouse && !m.hasHouse
 		if m.fs.formDirty && !mandatoryHouse {
 			m.confirm = confirmFormDiscard

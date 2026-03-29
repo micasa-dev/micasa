@@ -631,31 +631,34 @@ func TestStatusBarStableWidthWithFilters(t *testing.T) {
 	assert.Equal(t, beforeW, afterW, "status bar width should not change with filtering")
 }
 
-func TestStatusViewUsesMoreLabelWhenHintsCollapse(t *testing.T) {
+func TestStatusBarTruncatesHintsAtNarrowWidth(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.height = 40
-	// At very narrow width, the help hint compacts from "help" to "more".
-	// Add an enter hint to increase the hint count enough to trigger collapse.
-	m.width = 20
-	tab := m.activeTab()
-	require.NotNil(t, tab)
-	// Put cursor on a drilldown column to generate an enter hint.
-	for i, spec := range tab.Specs {
-		if spec.Kind == cellDrilldown {
-			tab.ColCursor = i
-			break
-		}
-	}
+
+	// At wide width, the "help" hint is visible.
+	m.width = 200
+	wideStatus := m.statusView()
+	require.Contains(t, wideStatus, "help")
+
+	// At narrow width, trailing hints get truncated by ShortHelpView.
+	// "help" (?) is first so it survives; later items like "ask" are dropped.
+	m.width = 40
 	status := m.statusView()
-	assert.Contains(t, status, "more", "expected collapsed hint label to include more")
+	assert.Contains(t, status, "NAV", "mode badge should remain at narrow width")
+	assert.Contains(t, status, "help",
+		"help hint (high priority) should survive at narrow width")
+	// At very narrow, even help gets truncated, but the mode badge survives.
+	m.width = 15
+	tinyStatus := m.statusView()
+	assert.Contains(t, tinyStatus, "NAV", "mode badge should survive at very narrow width")
 }
 
 func TestHelpContentIncludesProjectStatusFilterShortcut(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Toggle settled projects")
+	assert.Contains(t, help, "toggle settled projects")
 }
 
 func TestHelpContentHasGlobalSection(t *testing.T) {
@@ -663,8 +666,8 @@ func TestHelpContentHasGlobalSection(t *testing.T) {
 	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "Global")
-	assert.Contains(t, help, "Quit")
-	assert.Contains(t, help, "Cancel LLM")
+	assert.Contains(t, help, "quit")
+	assert.Contains(t, help, "cancel LLM")
 }
 
 func TestHelpContentEditModeHalfPage(t *testing.T) {
@@ -672,22 +675,22 @@ func TestHelpContentEditModeHalfPage(t *testing.T) {
 	m := newTestModel(t)
 	help := m.helpContent()
 	assert.Contains(t, help, "CTRL+D")
-	assert.Contains(t, help, "Half page down")
+	assert.Contains(t, help, "half page down")
 }
 
 func TestHelpContentNavModeEsc(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Close detail")
+	assert.Contains(t, help, "close detail")
 }
 
 func TestHelpContentFormsShowsFieldNavigation(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Next field")
-	assert.Contains(t, help, "Previous field")
+	assert.Contains(t, help, "next field")
+	assert.Contains(t, help, "previous field")
 }
 
 func TestHelpContentExcludesDatePicker(t *testing.T) {
@@ -1059,7 +1062,7 @@ func TestHelpContentIncludesInvertFilter(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	help := m.helpContent()
-	assert.Contains(t, help, "Invert filter")
+	assert.Contains(t, help, "invert filter")
 }
 
 func TestRowCountShowsDeletedCount(t *testing.T) {

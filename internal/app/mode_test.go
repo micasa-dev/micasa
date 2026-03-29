@@ -40,6 +40,7 @@ func newTestModel(t *testing.T) *Model {
 		width:  120,
 		height: 40,
 		cur:    locale.DefaultCurrency(),
+		keys:   newAppKeyMap(),
 	}
 	// Seed minimal rows so cursor operations don't panic.
 	for i := range m.tabs {
@@ -329,89 +330,23 @@ func TestHelpToggle(t *testing.T) {
 	)
 }
 
-func TestHelpViewportScrolling(t *testing.T) {
+func TestHelpClose(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
+
+	// ? opens.
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport, "? should open help")
+
+	// esc closes.
+	sendKey(m, "esc")
+	assert.Nil(t, m.helpViewport, "esc should close help")
+
+	// ? opens again, then ? closes (toggle).
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport)
-	require.Contains(t, m.buildView(), "Keyboard Shortcuts", "expected help visible")
-
-	// Scroll down and verify offset moves.
-	sendKey(m, "j")
-	if m.helpViewport.TotalLineCount() > m.helpViewport.Height() {
-		assert.NotZero(t, m.helpViewport.YOffset(), "expected viewport to scroll down on 'j'")
-	}
-
-	// Scroll back up.
-	sendKey(m, "k")
-	assert.Equal(t, 0, m.helpViewport.YOffset(), "expected viewport at top after scrolling back up")
-
-	// Go to bottom with G.
-	sendKey(m, "G")
-	if m.helpViewport.TotalLineCount() > m.helpViewport.Height() {
-		assert.True(t, m.helpViewport.AtBottom(), "expected viewport at bottom after 'G'")
-	}
-
-	// Go to top with g.
-	sendKey(m, "g")
-	assert.True(t, m.helpViewport.AtTop(), "expected viewport at top after 'g'")
-
-	// Esc dismisses.
-	sendKey(m, "esc")
-	assert.Nil(t, m.helpViewport)
-	assert.NotContains(t, m.buildView(), "Keyboard Shortcuts", "expected help hidden after esc")
-}
-
-func TestHelpOverlayFixedWidthOnScroll(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
-	m.height = 20 // Small height forces scrolling.
 	sendKey(m, "?")
-	require.NotNil(t, m.helpViewport, "expected help visible")
-	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
-		t.Skip("help content fits without scrolling at this height")
-	}
-
-	// Measure width at top.
-	widthAtTop := lipgloss.Width(m.helpView())
-
-	// Scroll to middle.
-	for range 5 {
-		sendKey(m, "j")
-	}
-	widthAtMiddle := lipgloss.Width(m.helpView())
-
-	// Scroll to bottom.
-	sendKey(m, "G")
-	widthAtBottom := lipgloss.Width(m.helpView())
-
-	assert.Equal(t, widthAtTop, widthAtMiddle, "help width changed from top to middle")
-	assert.Equal(t, widthAtTop, widthAtBottom, "help width changed from top to bottom")
-}
-
-func TestHelpScrollIndicatorChanges(t *testing.T) {
-	t.Parallel()
-	m := newTestModel(t)
-	m.height = 20
-	sendKey(m, "?")
-	require.NotNil(t, m.helpViewport, "expected help visible")
-	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
-		t.Skip("help content fits without scrolling at this height")
-	}
-
-	viewAtTop := m.helpView()
-	assert.Contains(t, viewAtTop, "Top")
-
-	sendKey(m, "G")
-	viewAtBottom := m.helpView()
-	assert.Contains(t, viewAtBottom, "Bot")
-
-	// Scroll back up one line from bottom -- should show percentage.
-	sendKey(m, "k")
-	viewAtMiddle := m.helpView()
-	assert.NotContains(t, viewAtMiddle, "Top")
-	assert.NotContains(t, viewAtMiddle, "Bot")
-	assert.Contains(t, viewAtMiddle, "%")
+	assert.Nil(t, m.helpViewport, "? should toggle help closed")
 }
 
 func TestHelpAbsorbsOtherKeys(t *testing.T) {
@@ -428,6 +363,82 @@ func TestHelpAbsorbsOtherKeys(t *testing.T) {
 	// the status bar should not show EDIT mode.
 	assert.Contains(t, m.buildView(), "Keyboard Shortcuts",
 		"'i' should not close help overlay")
+}
+
+func TestHelpShowsSectionNames(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport)
+
+	// The full content includes all sections, even if the viewport
+	// is too small to show them all at once.
+	content := m.helpContent()
+	sections := m.helpSections()
+	for _, sec := range sections {
+		assert.Contains(t, content, sec.title,
+			"help content should include section name: "+sec.title)
+	}
+}
+
+func TestHelpShowsHintBar(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport)
+
+	view := m.helpView()
+	assert.Contains(t, view, "close",
+		"help overlay should show close hint")
+}
+
+func TestHelpScrolling(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.height = 20 // small height so the viewport overflows
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport)
+
+	if m.helpViewport.TotalLineCount() <= m.helpViewport.Height() {
+		t.Skip("viewport fits without scrolling")
+	}
+
+	// j/k should scroll the viewport.
+	initialOffset := m.helpViewport.YOffset()
+	sendKey(m, "j")
+	assert.Greater(t, m.helpViewport.YOffset(), initialOffset,
+		"j should scroll down in help viewport")
+
+	sendKey(m, "k")
+	assert.Equal(t, initialOffset, m.helpViewport.YOffset(),
+		"k should scroll back up in help viewport")
+}
+
+func TestHelpOverlayAdaptiveResize(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.width = 120
+	m.height = 50
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport)
+
+	// Record viewport height at full size.
+	fullH := m.helpViewport.Height()
+	require.Greater(t, fullH, 3, "viewport should have meaningful height at 50-row terminal")
+
+	// Shrink terminal significantly — help should adapt.
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 25})
+	require.NotNil(t, m.helpViewport, "help should stay open after resize")
+	smallH := m.helpViewport.Height()
+	assert.Less(t, smallH, fullH,
+		"viewport should shrink when terminal shrinks (was %d, now %d)", fullH, smallH)
+
+	// Grow terminal back — help should grow.
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 50})
+	require.NotNil(t, m.helpViewport)
+	restoredH := m.helpViewport.Height()
+	assert.Equal(t, fullH, restoredH,
+		"viewport should restore to original height (was %d, now %d)", fullH, restoredH)
 }
 
 func TestDeleteRequiresEditMode(t *testing.T) {
