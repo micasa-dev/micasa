@@ -244,6 +244,45 @@ func TestHintClickEntersEditMode(t *testing.T) {
 	assert.Equal(t, modeEdit, m.mode, "clicking edit hint should enter edit mode")
 }
 
+// TestHintClickExitsEditMode verifies that clicking the exit hint
+// returns to nav mode from edit mode.
+func TestHintClickExitsEditMode(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	sendKey(m, "i") // enter edit mode
+	require.Equal(t, modeEdit, m.mode)
+
+	z := requireZone(t, m, "hint-exit")
+
+	sendClick(m, z.StartX, z.StartY)
+	assert.Equal(t, modeNormal, m.mode, "clicking exit hint should return to nav mode")
+}
+
+// TestHintClickAddsEntry verifies that clicking the add hint in edit
+// mode opens the add form.
+func TestHintClickAddsEntry(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	sendKey(m, "i") // enter edit mode
+	require.Equal(t, modeEdit, m.mode)
+
+	z := requireZone(t, m, "hint-add")
+
+	sendClick(m, z.StartX, z.StartY)
+	assert.Equal(t, modeForm, m.mode, "clicking add hint should open form")
+}
+
+// TestHintClickDeleteZoneExists verifies that the del hint zone is
+// present in edit mode so clicks can dispatch to the delete handler.
+func TestHintClickDeleteZoneExists(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, "i") // enter edit mode
+	require.Equal(t, modeEdit, m.mode)
+
+	requireZone(t, m, "hint-del")
+}
+
 // TestScrollWheelInHelpOverlay verifies that scroll wheel events in the
 // help overlay scroll the help content instead of the table.
 func TestScrollWheelInHelpOverlay(t *testing.T) {

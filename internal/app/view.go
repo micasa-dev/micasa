@@ -416,7 +416,7 @@ func (m *Model) modeStatusHelp(modeBadge string) string {
 		}
 		h := kb.Help()
 		item := m.helpItem(h.Key, h.Desc)
-		if id := hintZoneID(h.Key, h.Desc); id != "" {
+		if id := hintZoneID(h.Key); id != "" {
 			item = m.zones.Mark(zoneHint+id, item)
 		}
 		items = append(items, item)
@@ -435,27 +435,30 @@ func (m *Model) modeStatusHelp(modeBadge string) string {
 	return joinWithSeparator(sep, items...)
 }
 
-// hintZoneID maps a keybinding to its mouse zone identifier for
-// handleHintClick. Returns "" for bindings without a click handler.
-func hintZoneID(helpKey, desc string) string {
-	switch {
-	case desc == "help":
+// hintZoneID maps a keybinding's help key string to its mouse zone
+// identifier for handleHintClick. Keyed on the display key (e.g. "?",
+// "i", "@") rather than user-facing descriptions so that copy edits
+// to help text don't silently break click zones.
+// Returns "" for bindings without a click handler.
+func hintZoneID(helpKey string) string {
+	switch helpKey {
+	case keyQuestion:
 		return "help"
-	case desc == "edit mode":
+	case keyI:
 		return "edit"
-	case desc == "ask LLM":
+	case keyAt:
 		return "ask"
-	case helpKey == symReturn:
+	case symReturn:
 		return "enter"
-	case desc == "add" || desc == "add entry":
+	case keyA, keyA + "/" + keyShiftA:
 		return "add"
-	case desc == "del/restore":
+	case keyD:
 		return "del"
-	case desc == "open document":
+	case keyO:
 		return "open"
-	case desc == "search documents":
+	case keyCtrlF:
 		return "search"
-	case strings.HasPrefix(desc, "close") || desc == "nav mode":
+	case keyEsc:
 		return "exit"
 	default:
 		return ""
