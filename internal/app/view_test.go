@@ -641,7 +641,7 @@ func TestStatusBarTruncatesHintsAtNarrowWidth(t *testing.T) {
 	wideStatus := m.statusView()
 	require.Contains(t, wideStatus, "help")
 
-	// At narrow width, trailing hints get truncated by ShortHelpView.
+	// At narrow width, trailing hints get truncated.
 	// "help" (?) is first so it survives; later items like "ask" are dropped.
 	m.width = 40
 	status := m.statusView()

@@ -425,8 +425,7 @@ func newAppKeyMap() AppKeyMap {
 }
 
 // ShortHelp returns context-dependent key bindings for the status bar hint
-// line, rendered by help.Model.ShortHelpView. The returned slice varies by
-// mode and current tab state.
+// line. The returned slice varies by mode and current tab state.
 func (m *Model) ShortHelp() []key.Binding {
 	if m.mode == modeEdit {
 		return m.editModeShortHelp()
@@ -435,8 +434,8 @@ func (m *Model) ShortHelp() []key.Binding {
 }
 
 func (m *Model) normalModeShortHelp() []key.Binding {
-	// Help and back are high-priority — place them early so
-	// ShortHelpView truncates optional items first.
+	// Help is high-priority — place it first so truncation drops
+	// optional items before help.
 	bindings := []key.Binding{m.keys.Help}
 
 	// Context-dependent action: what enter does on the current column.

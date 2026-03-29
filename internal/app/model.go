@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"strings"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/viewport"
@@ -220,7 +219,6 @@ type Model struct {
 	lastDashClick         rowClickState
 	isDark                bool // terminal background is dark
 	keys                  AppKeyMap
-	helpModel             help.Model
 	cur                   locale.Currency
 	status                statusMsg
 	projectTypes          []data.ProjectType
@@ -246,20 +244,6 @@ type Model struct {
 	syncCancel        context.CancelFunc
 	syncDebounceGen   int
 	syncPendingReload bool // true when pulled data awaits form close
-}
-
-func newHelpModel() help.Model {
-	h := help.New()
-	h.Styles = help.Styles{
-		ShortKey:       appStyles.Keycap(),
-		ShortDesc:      appStyles.HeaderHint(),
-		ShortSeparator: appStyles.HeaderHint(),
-		FullKey:        appStyles.KeycapLight(),
-		FullDesc:       appStyles.HeaderHint(),
-		FullSeparator:  appStyles.HeaderHint(),
-	}
-	h.ShortSeparator = " " + symMiddleDot + " "
-	return h
 }
 
 func NewModel(store *data.Store, options Options) (*Model, error) {
@@ -342,7 +326,6 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		showHouse:       false,
 		mode:            modeNormal,
 		keys:            newAppKeyMap(),
-		helpModel:       newHelpModel(),
 		cur:             store.Currency(),
 		syncCfg:         options.syncCfg,
 	}
