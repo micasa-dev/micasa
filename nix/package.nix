@@ -10,7 +10,7 @@ buildGoModule {
   pname = "micasa";
   inherit version src;
   subPackages = [ "cmd/micasa" ];
-  vendorHash = "sha256-uE8w14GLe5vQKET96HbXhddpv7xegEJKcpjJXaci68o=";
+  vendorHash = "sha256-IVwzGJF1P5Wuk7giK9WBbxYyAK6kYm4kKxjc+rwHXMs=";
   env.CGO_ENABLED = 0;
   preCheck = ''
     export HOME="$(mktemp -d)"
