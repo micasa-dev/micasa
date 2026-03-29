@@ -1,0 +1,128 @@
+# Copyright 2026 Phillip Cloud
+# Licensed under the Apache License, Version 2.0
+
+name: Update Vendor Hash
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - go.mod
+      - go.sum
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    if: github.actor == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      needed: ${{ steps.check.outputs.needed }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >
+            github.com:443
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Determine if update is needed
+        id: check
+        run: |
+          # Skip if nix/package.nix was already modified in this PR
+          if git diff --name-only origin/main..HEAD | grep -q '^nix/package.nix$'; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Skip if HEAD is already a vendor hash commit (prevent infinite loop)
+          if git log -1 --format='%s' | grep -q '^chore: update vendorHash'; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+
+  update-vendor-hash:
+    name: Update Vendor Hash
+    needs: check
+    if: needs.check.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >
+            api.github.com:443
+            cache.nixos.org:443
+            github.com:443
+            proxy.golang.org:443
+            release-assets.githubusercontent.com:443
+            releases.nixos.org:443
+            storage.googleapis.com:443
+            sum.golang.org:443
+
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: cachix/install-nix-action@51f3067b56fe8ae331890c77d4e454f6d60615ff # v31.10.2
+
+      - name: Compute new vendorHash
+        id: compute
+        run: |
+          old_hash=$(grep -oP 'vendorHash = "\Ksha256-[^"]+' nix/package.nix)
+
+          fake_hash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          sed -i "s|vendorHash = \"sha256-[^\"]*\";|vendorHash = \"$fake_hash\";|" nix/package.nix
+
+          output=$(nix build '.#micasa' 2>&1 || true)
+          new_hash=$(echo "$output" | grep -oP 'got:\s+\Ksha256-[A-Za-z0-9+/=]+' || true)
+
+          if [ -z "$new_hash" ]; then
+            echo "::error::Failed to extract vendorHash from nix build output"
+            echo "$output"
+            exit 1
+          fi
+
+          if [ "$old_hash" = "$new_hash" ]; then
+            echo "vendorHash unchanged ($old_hash), nothing to do"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          sed -i "s|vendorHash = \"$fake_hash\";|vendorHash = \"$new_hash\";|" nix/package.nix
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify build
+        if: steps.compute.outputs.changed == 'true'
+        run: nix build '.#micasa' --no-link -L
+
+      - name: Commit and push
+        if: steps.compute.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add nix/package.nix
+          git commit -m "chore: update vendorHash for Go dependency changes"
+          git push

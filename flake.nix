@@ -37,19 +37,9 @@
 
         buildGoModule = pkgs.buildGoModule.override { inherit go; };
 
-        micasa = buildGoModule {
-          pname = "micasa";
-          inherit version;
+        micasa = import ./nix/package.nix {
+          inherit buildGoModule version;
           src = ./.;
-          subPackages = [ "cmd/micasa" ];
-          vendorHash = "sha256-uE8w14GLe5vQKET96HbXhddpv7xegEJKcpjJXaci68o=";
-          env.CGO_ENABLED = 0;
-          preCheck = ''
-            export HOME="$(mktemp -d)"
-          '';
-          ldflags = [
-            "-X main.version=${version}"
-          ];
         };
 
         licenseCheck = pkgs.writeShellApplication {
@@ -203,10 +193,10 @@
             if git diff --cached --quiet -- go.sum; then
               exit 0
             fi
-            if ! git diff --cached --quiet -- flake.nix; then
+            if ! git diff --cached --quiet -- nix/package.nix; then
               exit 0
             fi
-            echo "go.sum changed but flake.nix is unchanged -- run /update-vendor-hash to update vendorHash" >&2
+            echo "go.sum changed but nix/package.nix is unchanged -- run /update-vendor-hash to update vendorHash" >&2
             exit 1
           '';
         };
