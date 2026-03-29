@@ -283,6 +283,36 @@ func TestHintClickDeleteZoneExists(t *testing.T) {
 	requireZone(t, m, "hint-del")
 }
 
+// TestHintClickAskZoneExists verifies that the ask hint zone appears
+// when an LLM client is configured.
+func TestHintClickAskZoneExists(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	m.llmClient = testLLMClient(t, "test-model")
+	require.Equal(t, modeNormal, m.mode)
+
+	requireZone(t, m, "hint-ask")
+}
+
+// TestHintClickEnterZoneExists verifies that the enter hint zone
+// appears when the cursor is on a drilldown column.
+func TestHintClickEnterZoneExists(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	tab := m.effectiveTab()
+	require.NotNil(t, tab)
+	for i, spec := range tab.Specs {
+		if spec.Kind == cellDrilldown {
+			tab.ColCursor = i
+			break
+		}
+	}
+	require.NotEmpty(t, m.enterHint(), "should have an enter hint on drilldown column")
+
+	requireZone(t, m, "hint-enter")
+}
+
 // TestScrollWheelInHelpOverlay verifies that scroll wheel events in the
 // help overlay scroll the help content instead of the table.
 func TestScrollWheelInHelpOverlay(t *testing.T) {

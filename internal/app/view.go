@@ -438,34 +438,33 @@ func (m *Model) modeStatusHelp(modeBadge string) string {
 // hintZoneID maps a keybinding's trigger keys to its mouse zone
 // identifier for handleHintClick. Uses the actual key triggers
 // (key.Binding.Keys()) rather than display strings so that
-// presentation changes don't break click zones.
+// presentation changes don't break click zones. Checks all
+// trigger aliases, not just the first.
 // Returns "" for bindings without a click handler.
 func hintZoneID(keys []string) string {
-	if len(keys) == 0 {
-		return ""
+	for _, k := range keys {
+		switch k {
+		case keyQuestion:
+			return "help"
+		case keyI:
+			return "edit"
+		case keyAt:
+			return "ask"
+		case keyEnter:
+			return "enter"
+		case keyA:
+			return "add"
+		case keyD:
+			return "del"
+		case keyO:
+			return "open"
+		case keyCtrlF:
+			return "search"
+		case keyEsc:
+			return "exit"
+		}
 	}
-	switch keys[0] {
-	case keyQuestion:
-		return "help"
-	case keyI:
-		return "edit"
-	case keyAt:
-		return "ask"
-	case keyEnter:
-		return "enter"
-	case keyA:
-		return "add"
-	case keyD:
-		return "del"
-	case keyO:
-		return "open"
-	case keyCtrlF:
-		return "search"
-	case keyEsc:
-		return "exit"
-	default:
-		return ""
-	}
+	return ""
 }
 
 // withStatusMessage renders the help line, prepending the status message if set.
