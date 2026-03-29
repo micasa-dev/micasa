@@ -55,7 +55,7 @@ func (pgDevice) TableName() string { return "devices" }
 type pgOp struct {
 	Seq         int64     `gorm:"primaryKey;autoIncrement:false"`
 	HouseholdID string    `gorm:"primaryKey"`
-	ID          string    `gorm:"column:id;not null;uniqueIndex:idx_ops_dedup,composite:household_id"`
+	ID          string    `gorm:"column:id;not null"`
 	DeviceID    string    `gorm:"column:device_id;not null"`
 	Nonce       []byte    `gorm:"not null;type:bytea"`
 	Ciphertext  []byte    `gorm:"not null;type:bytea"`
@@ -146,10 +146,22 @@ func (s *PgStore) AutoMigrate() error {
 	if err := s.db.Exec(`DROP INDEX IF EXISTS idx_households_stripe_customer_id`).Error; err != nil {
 		return err
 	}
-	return s.db.Exec(`
+	if err := s.db.Exec(`
 		CREATE UNIQUE INDEX idx_households_stripe_customer_id
 		ON households (stripe_customer_id)
 		WHERE stripe_customer_id IS NOT NULL
+	`).Error; err != nil {
+		return err
+	}
+	// Composite unique index for op dedup: same op ID allowed in different
+	// households. GORM's uniqueIndex tag with composite doesn't reliably
+	// produce a multi-column index, so we manage it manually.
+	if err := s.db.Exec(`DROP INDEX IF EXISTS idx_ops_dedup`).Error; err != nil {
+		return err
+	}
+	return s.db.Exec(`
+		CREATE UNIQUE INDEX idx_ops_dedup
+		ON ops (id, household_id)
 	`).Error
 }
 
@@ -402,7 +414,8 @@ func (s *PgStore) StartJoin(
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var inv pgInvite
-		if err := tx.Where("code = ?", code).First(&inv).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("code = ?", code).First(&inv).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("invite code not found")
 			}
