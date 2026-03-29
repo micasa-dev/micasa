@@ -1,0 +1,12 @@
+.git
+.github
+.claude
+.superpowers
+docs
+plans
+deploy
+images
+tapes
+*.md
+!go.mod
+!go.sum

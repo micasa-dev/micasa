@@ -3,7 +3,7 @@
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres@sha256:6f30057d31f5861b66f3545d4821f987aacf1dd920765f0acadea0c58ff975b1 # 17-alpine
     environment:
       POSTGRES_USER: micasa
       POSTGRES_DB: micasa
@@ -20,6 +20,8 @@ services:
     build:
       context: ../
       dockerfile: deploy/relay/Dockerfile
+      args:
+        BUILD_TAGS: selfhosted
     environment:
       DATABASE_URL: postgres://micasa:${POSTGRES_PASSWORD}@postgres:5432/micasa?sslmode=disable
       SELF_HOSTED: "true"
