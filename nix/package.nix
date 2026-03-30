@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 {
+  lib,
   buildGoModule,
   version,
   src,
@@ -18,5 +19,11 @@ buildGoModule {
   ldflags = [
     "-X main.version=${version}"
   ];
-  meta.mainProgram = "micasa";
+  meta = {
+    description = "A modal TUI for tracking home projects, maintenance schedules, appliances, and vendor quotes.";
+    homepage = "https://micasa.dev";
+    changelog = "https://github.com/micasa-dev/micasa/releases/tag/v${version}";
+    license = lib.licenses.asl20;
+    mainProgram = "micasa";
+  };
 }

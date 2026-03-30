@@ -37,7 +37,7 @@
 
         buildGoModule = pkgs.buildGoModule.override { inherit go; };
 
-        micasa = import ./nix/package.nix {
+        micasa = pkgs.callPackage ./nix/package.nix {
           inherit buildGoModule version;
           src = ./.;
         };
