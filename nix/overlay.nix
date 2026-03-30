@@ -6,14 +6,10 @@
 # `pkgs.govulncheck`, `pkgs.deadcode`, etc. include our flags and
 # exclusion logic.
 
-final: prev:
-let
-  go = final.go_1_26;
-in
-{
+final: prev: {
   deadcode =
     let
-      unwrapped = (prev.buildGoModule.override { inherit go; }) {
+      unwrapped = prev.buildGoModule {
         pname = "deadcode";
         version = "0.43.0";
         src = prev.fetchFromGitHub {
@@ -31,7 +27,7 @@ in
       name = "deadcode";
       runtimeInputs = [
         unwrapped
-        go
+        final.go
       ];
       runtimeEnv.CGO_ENABLED = "0";
       text = builtins.readFile ./scripts/deadcode.bash;
@@ -41,7 +37,7 @@ in
     name = "golangci-lint";
     runtimeInputs = [
       prev.golangci-lint
-      go
+      final.go
     ];
     runtimeEnv.CGO_ENABLED = "0";
     text = builtins.readFile ./scripts/golangci-lint.bash;
@@ -51,7 +47,7 @@ in
     name = "govulncheck";
     runtimeInputs = [
       prev.govulncheck
-      go
+      final.go
       prev.jq
       prev.ripgrep
     ];
