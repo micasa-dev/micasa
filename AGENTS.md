@@ -359,6 +359,24 @@ details; do not duplicate that detail here.
   context so operations cancel on quit. When reviewing or writing code
   that makes HTTP requests, runs queries, or calls external services,
   always ask: "if the caller cancels, does this operation stop?"
+- **All relay Postgres access goes through `rlsdb.DB.Tx`**: Every PgStore
+  method that touches the database MUST use `s.rls.Tx(ctx, householdID, fn)`.
+  This is not a guideline -- it is the ONLY way to obtain a `*gorm.DB` for
+  queries. The `rlsdb` package enforces this structurally: the raw `*gorm.DB`
+  is unexported and inaccessible from the `relay` package. Do NOT:
+  - Store a `*gorm.DB` reference on `PgStore`
+  - Pass a `*gorm.DB` through context values
+  - Create a second `gorm.Open` connection
+  - Import `rlsdb` internals via `unsafe` or reflection
+  If a method genuinely cannot know the household ID or receives it from
+  an untrusted source, use `s.rls.WithoutHousehold(ctx, fn)` with a
+  `// SAFETY:` comment explaining why. The approved call sites are:
+  `AuthenticateDevice` (token hash lookup), `GetKeyExchangeResult`
+  (unauthenticated exchange poll), `StartJoin` (unauthenticated endpoint,
+  household ID from URL is attacker-controlled), `HouseholdBySubscription`
+  (Stripe webhook), and `HouseholdByCustomer` (Stripe webhook). New
+  `WithoutHousehold` call sites require explicit user approval before
+  implementation.
 
 ### UI/UX conventions
 
