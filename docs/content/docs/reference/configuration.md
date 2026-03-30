@@ -108,101 +108,7 @@ micasa backup ~/backups/micasa-$(date +%F).db
 micasa backup --source /path/to/micasa.db ~/backups/snapshot.db
 ```
 
-## Environment variables
-
-Every config key has a corresponding environment variable derived
-mechanically from the dotted TOML path:
-
-```
-MICASA_ + UPPER(dotted.path with "." replaced by "_")
-```
-
-For example, `documents.max_file_size` becomes `MICASA_DOCUMENTS_MAX_FILE_SIZE`.
-You can always infer the env var name from the config key.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MICASA_DB_PATH` | [Platform default](#platform-data-directory) | Database file path |
-| `MICASA_CHAT_ENABLE` | `true` | Enable/disable the chat feature |
-| `MICASA_CHAT_LLM_PROVIDER` | `ollama` | Chat LLM provider name |
-| `MICASA_CHAT_LLM_BASE_URL` | `http://localhost:11434` | Chat LLM API base URL |
-| `MICASA_CHAT_LLM_MODEL` | `qwen3` | Chat LLM model name |
-| `MICASA_CHAT_LLM_API_KEY` | (empty) | Chat API key for cloud providers |
-| `MICASA_CHAT_LLM_EXTRA_CONTEXT` | (empty) | Custom context appended to chat system prompts |
-| `MICASA_CHAT_LLM_TIMEOUT` | `5m` | Chat inference timeout |
-| `MICASA_CHAT_LLM_THINKING` | (unset) | Chat model thinking mode |
-| `MICASA_EXTRACTION_MAX_PAGES` | `0` | Max pages to OCR per document (0 = no limit) |
-| `MICASA_EXTRACTION_LLM_ENABLE` | `true` | Enable/disable LLM extraction |
-| `MICASA_EXTRACTION_LLM_PROVIDER` | `ollama` | Extraction LLM provider name |
-| `MICASA_EXTRACTION_LLM_BASE_URL` | `http://localhost:11434` | Extraction LLM API base URL |
-| `MICASA_EXTRACTION_LLM_MODEL` | `qwen3` | Extraction LLM model name |
-| `MICASA_EXTRACTION_LLM_API_KEY` | (empty) | Extraction API key for cloud providers |
-| `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | Extraction inference timeout |
-| `MICASA_EXTRACTION_LLM_THINKING` | (unset) | Extraction model thinking mode |
-| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | Enable/disable OCR on documents |
-| `MICASA_EXTRACTION_OCR_TSV_ENABLE` | `true` | Enable/disable spatial layout annotations |
-| `MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD` | `70` | OCR confidence threshold (0-100) |
-| `MICASA_DOCUMENTS_MAX_FILE_SIZE` | `50 MiB` | Max document import size |
-| `MICASA_DOCUMENTS_CACHE_TTL` | `30d` | Document cache lifetime |
-| `MICASA_DOCUMENTS_FILE_PICKER_DIR` | (Downloads) | Starting directory for the file picker |
-| `MICASA_LOCALE_CURRENCY` | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
-
-### `MICASA_DB_PATH`
-
-Sets the default database path when no positional argument is given. Equivalent
-to passing the path as an argument:
-
-```sh
-export MICASA_DB_PATH=/path/to/my/house.db
-micasa   # uses /path/to/my/house.db
-```
-
-### `MICASA_CHAT_LLM_MODEL`
-
-Sets the chat LLM model name, overriding the config file value:
-
-```sh
-export MICASA_CHAT_LLM_MODEL=llama3.3
-micasa   # uses llama3.3 instead of the default qwen3 for chat
-```
-
-### `MICASA_CHAT_LLM_TIMEOUT`
-
-Sets the maximum time for a single chat LLM response (including streaming),
-overriding the config file value. Uses Go duration syntax:
-
-```sh
-export MICASA_CHAT_LLM_TIMEOUT=10m
-micasa   # waits up to 10m for chat LLM responses
-```
-
-### `MICASA_DOCUMENTS_MAX_FILE_SIZE`
-
-Sets the maximum file size for document imports, overriding the config file
-value. Accepts unitized strings or bare integers (bytes). Must be positive:
-
-```sh
-export MICASA_DOCUMENTS_MAX_FILE_SIZE="100 MiB"
-micasa   # allows documents up to 100 MiB
-```
-
-### `MICASA_DOCUMENTS_CACHE_TTL`
-
-Sets the document cache lifetime, overriding the config file value. Accepts
-day-suffixed strings (`30d`), Go durations (`720h`), or bare integers
-(seconds). Set to `0` to disable eviction:
-
-```sh
-export MICASA_DOCUMENTS_CACHE_TTL=7d
-micasa   # evicts cache entries older than 7 days
-```
-
-### `MICASA_DOCUMENTS_CACHE_TTL_DAYS`
-
-Deprecated. Use `MICASA_DOCUMENTS_CACHE_TTL` instead. Accepts a bare integer
-interpreted as days. Cannot be set alongside `MICASA_DOCUMENTS_CACHE_TTL`.
-
-### Platform data directory
+## Platform data directory
 
 micasa uses platform-aware data directories (via
 [adrg/xdg](https://github.com/adrg/xdg)). When no path is specified (via
@@ -423,7 +329,7 @@ their own default base URLs when none is configured.
 Environment variables override config file values. The full precedence order
 (highest to lowest):
 
-1. Environment variables (see [table above](#environment-variables))
+1. Environment variables (named `MICASA_` + the uppercased dotted config key)
 2. Config file values
 3. Built-in defaults
 
