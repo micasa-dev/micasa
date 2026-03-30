@@ -11,8 +11,7 @@ let
   version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ../VERSION);
 in
 buildGoModule {
-  inherit pname;
-  inherit version;
+  inherit pname version;
   src = gitignoreSource ../.;
   subPackages = [ "cmd/micasa" ];
   vendorHash = "sha256-r8zgXVRss4U3EA2iSs9YqLlNlWeANJXIKP8s1O75Wmw=";
