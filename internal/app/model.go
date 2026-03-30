@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -159,6 +160,7 @@ type pullState struct {
 	display  string             // status bar progress text
 	peak     float64            // high-water mark for progress bar
 	cancel   context.CancelFunc // cancel in-flight pull
+	scanner  io.Closer          // HTTP body behind the pull stream
 	progress progress.Model     // bubbles progress bar widget
 }
 
@@ -846,6 +848,7 @@ func (m *Model) handlePullProgress(msg pullProgressMsg) tea.Cmd {
 	m.pull.active = true
 	if msg.PullState != nil {
 		m.pull.cancel = msg.PullState.Cancel
+		m.pull.scanner = msg.PullState.Scanner
 	}
 	m.pull.display = m.formatPullProgress(msg)
 	m.resizeTables()
@@ -963,10 +966,13 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 	)
 }
 
-// cancelPull cancels any in-flight model pull.
+// cancelPull cancels any in-flight model pull and closes the HTTP body.
 func (m *Model) cancelPull() {
 	if m.pull.cancel != nil {
 		m.pull.cancel()
+	}
+	if m.pull.scanner != nil {
+		_ = m.pull.scanner.Close()
 	}
 	m.clearPullState()
 }
