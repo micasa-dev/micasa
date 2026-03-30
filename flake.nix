@@ -5,7 +5,7 @@
   description = "micasa Go development environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/73df5b332192fe8d42c9f27cb6c13d910a59386d"; # nixos-unstable-small 2026-03-26
+    nixpkgs.url = "github:NixOS/nixpkgs/f1720962abb36e0d4ca0a2c689e02ca18a3373b7"; # nixos-unstable-small 2026-03-26
     flake-utils.url = "github:numtide/flake-utils";
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
