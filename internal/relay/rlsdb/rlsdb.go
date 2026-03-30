@@ -48,15 +48,19 @@ func (d *DB) Tx(ctx context.Context, householdID string, fn func(tx *gorm.DB) er
 	})
 }
 
-// WithoutHousehold opens a transaction without setting app.household_id.
-// Use this only for operations on non-RLS tables (devices, households,
-// invites, key_exchanges). Querying an RLS-enabled table (ops, blobs)
-// from this callback will return zero rows — the RLS policy uses NULLIF
-// to reject empty/unset household IDs, so no data is visible.
+// WithoutHousehold opens a transaction for non-RLS tables only.
 //
-// SAFETY: Adding a new call site requires review and a comment explaining
-// why household scoping is impossible (e.g., unauthenticated endpoint,
-// cross-household lookup by non-household key).
+// This method clears app.household_id to empty string, which the RLS
+// policy on ops/blobs treats as NULL (no rows visible). Do NOT use this
+// as a way to "skip" household scoping — it is only for methods that
+// exclusively query non-RLS tables (devices, households, invites,
+// key_exchanges) and have no household ID available.
+//
+// If you have a household ID but don't trust it, validate it first and
+// use Tx — do not bypass scoping. If unsure, stop and ask the user.
+//
+// SAFETY: Every call site MUST have a // SAFETY: comment explaining why
+// no household ID is available. New call sites require user approval.
 func (d *DB) WithoutHousehold(ctx context.Context, fn func(tx *gorm.DB) error) error {
 	return d.raw.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Clear any stale session-level household_id from connection pooling.

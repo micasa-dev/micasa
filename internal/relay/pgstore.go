@@ -147,6 +147,8 @@ func (s *PgStore) AutoMigrate() error {
 	if err := s.rls.InitRLS(rlsTables); err != nil {
 		return err
 	}
+	// SAFETY: DDL statements (CREATE/DROP INDEX) are not affected by RLS.
+	// No household context exists during migration.
 	return s.rls.WithoutHousehold(context.Background(), func(tx *gorm.DB) error {
 		// Partial unique index: only enforce uniqueness for non-empty customer IDs.
 		// GORM's uniqueIndex tag creates an unconditional index which conflicts

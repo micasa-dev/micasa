@@ -368,15 +368,22 @@ details; do not duplicate that detail here.
   - Pass a `*gorm.DB` through context values
   - Create a second `gorm.Open` connection
   - Import `rlsdb` internals via `unsafe` or reflection
-  If a method genuinely cannot know the household ID or receives it from
-  an untrusted source, use `s.rls.WithoutHousehold(ctx, fn)` with a
-  `// SAFETY:` comment explaining why. The approved call sites are:
-  `AuthenticateDevice` (token hash lookup), `GetKeyExchangeResult`
-  (unauthenticated exchange poll), `StartJoin` (unauthenticated endpoint,
-  household ID from URL is attacker-controlled), `HouseholdBySubscription`
-  (Stripe webhook), and `HouseholdByCustomer` (Stripe webhook). New
-  `WithoutHousehold` call sites require explicit user approval before
-  implementation.
+  `WithoutHousehold` is for methods that ONLY touch non-RLS tables
+  (`households`, `devices`, `invites`, `key_exchanges`) and genuinely
+  have no household ID available. It is NOT a fallback for untrusted
+  input -- if you have a household ID but don't trust it, validate it
+  first, don't bypass scoping. Each call site MUST have a `// SAFETY:`
+  comment. The approved call sites are:
+  - `AutoMigrate` (construction-time DDL, no household context)
+  - `AuthenticateDevice` (token hash lookup, discovers household)
+  - `GetKeyExchangeResult` (unauthenticated joiner, no household yet)
+  - `StartJoin` (unauthenticated endpoint, only touches non-RLS tables)
+  - `HouseholdBySubscription` (Stripe webhook, only has subscription ID)
+  - `HouseholdByCustomer` (Stripe webhook, only has customer ID)
+  New `WithoutHousehold` call sites require explicit user approval
+  before implementation. Do NOT use `WithoutHousehold` just because
+  a household ID is "unknown" or "untrusted" -- stop and ask the
+  user how to proceed.
 
 ### UI/UX conventions
 

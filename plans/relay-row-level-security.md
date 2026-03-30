@@ -290,15 +290,15 @@ New entry under "Architecture and code style":
   - Pass a `*gorm.DB` through context values
   - Create a second `gorm.Open` connection
   - Import `rlsdb` internals via `unsafe` or reflection
-  If a method genuinely cannot know the household ID or receives it from
-  an untrusted source, use `s.rls.WithoutHousehold(ctx, fn)` with a
-  `// SAFETY:` comment explaining why. The approved call sites are:
+  `WithoutHousehold` is for methods that ONLY touch non-RLS tables and
+  genuinely have no household ID available. It is NOT a fallback for
+  untrusted input. Each call site MUST have a `// SAFETY:` comment.
+  The approved call sites are: `AutoMigrate` (construction-time DDL),
   `AuthenticateDevice` (token hash lookup), `GetKeyExchangeResult`
-  (unauthenticated exchange poll), `StartJoin` (unauthenticated endpoint,
-  household ID from URL is attacker-controlled), `HouseholdBySubscription`
-  (Stripe webhook), and `HouseholdByCustomer` (Stripe webhook). New
-  `WithoutHousehold` call sites require explicit user approval before
-  implementation.
+  (unauthenticated joiner), `StartJoin` (unauthenticated, non-RLS
+  tables only), `HouseholdBySubscription` (Stripe webhook), and
+  `HouseholdByCustomer` (Stripe webhook). New call sites require
+  explicit user approval before implementation.
 ```
 
 ## Scope boundaries
