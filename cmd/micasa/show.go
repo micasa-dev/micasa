@@ -12,7 +12,9 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/micasa-dev/micasa/internal/config"
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/spf13/cobra"
 	"gorm.io/gorm"
 )
@@ -447,7 +449,13 @@ var vendorCols = []showCol[data.Vendor]{
 	{"NAME", func(v data.Vendor) string { return fmtStr(v.Name) }},
 	{"CONTACT", func(v data.Vendor) string { return fmtStr(v.ContactName) }},
 	{"EMAIL", func(v data.Vendor) string { return fmtStr(v.Email) }},
-	{"PHONE", func(v data.Vendor) string { return fmtStr(v.Phone) }},
+	{"PHONE", func(v data.Vendor) string {
+		region := strings.ToUpper(config.DetectCountry())
+		if v.Locale != "" {
+			region = strings.ToUpper(v.Locale)
+		}
+		return fmtStr(locale.FormatPhoneNumber(v.Phone, region))
+	}},
 	{"WEBSITE", func(v data.Vendor) string { return fmtStr(v.Website) }},
 }
 

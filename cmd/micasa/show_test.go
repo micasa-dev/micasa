@@ -169,14 +169,16 @@ func TestShowProjectsJSON(t *testing.T) {
 }
 
 func TestShowVendorsText(t *testing.T) {
-	t.Parallel()
+	// Not parallel: t.Setenv modifies process-global state.
+	// LC_ALL has highest precedence in DetectCountry().
+	t.Setenv("LC_ALL", "en_US.UTF-8")
 	store := newTestStoreWithMigration(t)
 
 	require.NoError(t, store.CreateVendor(&data.Vendor{
 		Name:        "Acme Plumbing",
 		ContactName: "John Doe",
 		Email:       "john@acme.com",
-		Phone:       "555-1234",
+		Phone:       "5551234567",
 	}))
 
 	var buf bytes.Buffer
@@ -187,7 +189,7 @@ func TestShowVendorsText(t *testing.T) {
 	assert.Contains(t, out, "Acme Plumbing")
 	assert.Contains(t, out, "John Doe")
 	assert.Contains(t, out, "john@acme.com")
-	assert.Contains(t, out, "555-1234")
+	assert.Contains(t, out, "(555) 123-4567")
 }
 
 func TestShowVendorsJSON(t *testing.T) {
@@ -208,6 +210,25 @@ func TestShowVendorsJSON(t *testing.T) {
 	assert.Equal(t, "Acme Plumbing", result[0]["name"])
 	assert.Equal(t, "https://acme.example.com", result[0]["website"])
 	assert.NotEmpty(t, result[0]["id"])
+}
+
+func TestShowVendorsJSONPhoneRaw(t *testing.T) {
+	t.Parallel()
+	store := newTestStoreWithMigration(t)
+
+	require.NoError(t, store.CreateVendor(&data.Vendor{
+		Name:  "Raw Phone Co",
+		Phone: "5551234567",
+	}))
+
+	var buf bytes.Buffer
+	require.NoError(t, runShow(&buf, store, "vendors", true, false))
+
+	var result []map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Len(t, result, 1)
+	assert.Equal(t, "5551234567", result[0]["phone"],
+		"JSON output must carry raw phone, not formatted")
 }
 
 func TestShowAppliancesText(t *testing.T) {
