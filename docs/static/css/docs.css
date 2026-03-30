@@ -613,6 +613,16 @@ pre {
   white-space: nowrap;
 }
 
+.env-hint {
+  display: block;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.7em;
+  color: var(--warm-gray);
+  margin-top: 0.15em;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
 .docs-main th {
   font-family: "DM Serif Display", "Georgia", serif;
   font-weight: 400;
