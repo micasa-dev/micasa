@@ -62,6 +62,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh api /orgs/micasa-dev/packages/container/micasa/versions \
-            --paginate --jq '.[] | select(.metadata.container.tags | length == 0) | .id' \
-          | xargs -I{} gh api -X DELETE /orgs/micasa-dev/packages/container/micasa/versions/{}
+          ids=$(gh api /orgs/micasa-dev/packages/container/micasa/versions \
+            --paginate --jq '[.[] | select(.metadata.container.tags | length == 0) | .id] | .[]' 2>/dev/null) || true
+          for id in $ids; do
+            gh api -X DELETE "/orgs/micasa-dev/packages/container/micasa/versions/$id" 2>/dev/null || true
+          done
