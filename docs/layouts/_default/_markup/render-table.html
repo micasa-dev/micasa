@@ -1,5 +1,8 @@
 <div class="table-wrap">
-  <table>
+  <table
+    {{- range $k, $v := .Attributes }}
+      {{- printf " %s=%q" $k $v | safeHTMLAttr }}
+    {{- end }}>
     <thead>
       {{- range .THead }}
       <tr>

@@ -30,7 +30,13 @@ Remove entirely:
   not env vars. Promote it to `## Platform data directory` since its parent
   section is gone.
 - The `## Database path resolution order` section stays as-is (already
-  references `MICASA_DB_PATH` naturally).
+  references `MICASA_DB_PATH` naturally). This is the primary discovery path
+  for `MICASA_DB_PATH` -- it appears explicitly in the numbered list and in
+  the CLI `run` section's flag table. No annotation needed since it has no
+  TOML key equivalent.
+- The deprecated `MICASA_DOCUMENTS_CACHE_TTL_DAYS` is mentioned in the
+  `[documents]` section's `cache_ttl` description (see below). It has no
+  TOML key equivalent either -- it exists solely for backward compatibility.
 
 ### Add env var annotations to TOML section tables
 
@@ -45,6 +51,9 @@ Visual treatment (CSS):
 - `color: var(--warm-gray)` (#9e958a light, #706760 dark)
 - `margin-top: 0.15em`
 - `letter-spacing: -0.01em` (slight tightening for long names)
+- `overflow-wrap: anywhere` (allows long names like
+  `MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD` to break on narrow
+  viewports instead of forcing horizontal scroll)
 - No background, no border -- just color and size differentiation
 
 Row height impact: ~30% taller per row. Acceptable per user review of mockup.
@@ -135,6 +144,7 @@ CSS addition to `docs/static/css/docs.css`:
   color: var(--warm-gray);
   margin-top: 0.15em;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 ```
 
@@ -161,7 +171,9 @@ annotation approach after seeing it live.
 
 - Dark mode adjustments: `var(--warm-gray)` already adapts via the existing
   CSS variable theming.
-- Mobile responsive changes: annotations are small enough to not cause issues
-  at narrow widths.
+- Auto-generating env var annotations from Go config structs: the env var
+  names are mechanically derived and rarely change. A generator from the
+  `mapstructure` tags would be nice but is not worth the build complexity
+  for 22 rows. If the config schema grows significantly, revisit.
 - The table horizontal scroll wrapper added earlier in this session stays --
   it's good defensive CSS regardless of this change.
