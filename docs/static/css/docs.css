@@ -598,11 +598,38 @@ pre {
 
 /* ── Tables ────────────────────────────────────────────────── */
 
+.docs-main .table-wrap {
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+}
+
 .docs-main table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0 1.5rem;
   font-size: 0.92rem;
+}
+
+.docs-main td {
+  white-space: nowrap;
+}
+
+.docs-main td:last-child {
+  white-space: normal;
+}
+
+.docs-main td code {
+  white-space: nowrap;
+}
+
+.docs-main .env-hint {
+  display: block;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.7em;
+  color: var(--warm-gray);
+  margin-top: 0.15em;
+  margin-left: 0.49em;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .docs-main th {

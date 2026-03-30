@@ -108,101 +108,7 @@ micasa backup ~/backups/micasa-$(date +%F).db
 micasa backup --source /path/to/micasa.db ~/backups/snapshot.db
 ```
 
-## Environment variables
-
-Every config key has a corresponding environment variable derived
-mechanically from the dotted TOML path:
-
-```
-MICASA_ + UPPER(dotted.path with "." replaced by "_")
-```
-
-For example, `documents.max_file_size` becomes `MICASA_DOCUMENTS_MAX_FILE_SIZE`.
-You can always infer the env var name from the config key.
-
-| Variable | Default | Config equivalent | Description |
-|----------|---------|-------------------|-------------|
-| `MICASA_DB_PATH` | [Platform default](#platform-data-directory) | -- | Database file path |
-| `MICASA_CHAT_ENABLE` | `true` | `chat.enable` | Enable/disable the chat feature |
-| `MICASA_CHAT_LLM_PROVIDER` | `ollama` | `chat.llm.provider` | Chat LLM provider name |
-| `MICASA_CHAT_LLM_BASE_URL` | `http://localhost:11434` | `chat.llm.base_url` | Chat LLM API base URL |
-| `MICASA_CHAT_LLM_MODEL` | `qwen3` | `chat.llm.model` | Chat LLM model name |
-| `MICASA_CHAT_LLM_API_KEY` | (empty) | `chat.llm.api_key` | Chat API key for cloud providers |
-| `MICASA_CHAT_LLM_EXTRA_CONTEXT` | (empty) | `chat.llm.extra_context` | Custom context appended to chat system prompts |
-| `MICASA_CHAT_LLM_TIMEOUT` | `5m` | `chat.llm.timeout` | Chat inference timeout |
-| `MICASA_CHAT_LLM_THINKING` | (unset) | `chat.llm.thinking` | Chat model thinking mode |
-| `MICASA_EXTRACTION_MAX_PAGES` | `0` | `extraction.max_pages` | Max pages to OCR per document (0 = no limit) |
-| `MICASA_EXTRACTION_LLM_ENABLE` | `true` | `extraction.llm.enable` | Enable/disable LLM extraction |
-| `MICASA_EXTRACTION_LLM_PROVIDER` | `ollama` | `extraction.llm.provider` | Extraction LLM provider name |
-| `MICASA_EXTRACTION_LLM_BASE_URL` | `http://localhost:11434` | `extraction.llm.base_url` | Extraction LLM API base URL |
-| `MICASA_EXTRACTION_LLM_MODEL` | `qwen3` | `extraction.llm.model` | Extraction LLM model name |
-| `MICASA_EXTRACTION_LLM_API_KEY` | (empty) | `extraction.llm.api_key` | Extraction API key for cloud providers |
-| `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | `extraction.llm.timeout` | Extraction inference timeout |
-| `MICASA_EXTRACTION_LLM_THINKING` | (unset) | `extraction.llm.thinking` | Extraction model thinking mode |
-| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | `extraction.ocr.enable` | Enable/disable OCR on documents |
-| `MICASA_EXTRACTION_OCR_TSV_ENABLE` | `true` | `extraction.ocr.tsv.enable` | Enable/disable spatial layout annotations |
-| `MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD` | `70` | `extraction.ocr.tsv.confidence_threshold` | OCR confidence threshold (0-100) |
-| `MICASA_DOCUMENTS_MAX_FILE_SIZE` | `50 MiB` | `documents.max_file_size` | Max document import size |
-| `MICASA_DOCUMENTS_CACHE_TTL` | `30d` | `documents.cache_ttl` | Document cache lifetime |
-| `MICASA_DOCUMENTS_FILE_PICKER_DIR` | (Downloads) | `documents.file_picker_dir` | Starting directory for the file picker |
-| `MICASA_LOCALE_CURRENCY` | (auto-detect) | `locale.currency` | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
-
-### `MICASA_DB_PATH`
-
-Sets the default database path when no positional argument is given. Equivalent
-to passing the path as an argument:
-
-```sh
-export MICASA_DB_PATH=/path/to/my/house.db
-micasa   # uses /path/to/my/house.db
-```
-
-### `MICASA_CHAT_LLM_MODEL`
-
-Sets the chat LLM model name, overriding the config file value:
-
-```sh
-export MICASA_CHAT_LLM_MODEL=llama3.3
-micasa   # uses llama3.3 instead of the default qwen3 for chat
-```
-
-### `MICASA_CHAT_LLM_TIMEOUT`
-
-Sets the maximum time for a single chat LLM response (including streaming),
-overriding the config file value. Uses Go duration syntax:
-
-```sh
-export MICASA_CHAT_LLM_TIMEOUT=10m
-micasa   # waits up to 10m for chat LLM responses
-```
-
-### `MICASA_DOCUMENTS_MAX_FILE_SIZE`
-
-Sets the maximum file size for document imports, overriding the config file
-value. Accepts unitized strings or bare integers (bytes). Must be positive:
-
-```sh
-export MICASA_DOCUMENTS_MAX_FILE_SIZE="100 MiB"
-micasa   # allows documents up to 100 MiB
-```
-
-### `MICASA_DOCUMENTS_CACHE_TTL`
-
-Sets the document cache lifetime, overriding the config file value. Accepts
-day-suffixed strings (`30d`), Go durations (`720h`), or bare integers
-(seconds). Set to `0` to disable eviction:
-
-```sh
-export MICASA_DOCUMENTS_CACHE_TTL=7d
-micasa   # evicts cache entries older than 7 days
-```
-
-### `MICASA_DOCUMENTS_CACHE_TTL_DAYS`
-
-Deprecated. Use `MICASA_DOCUMENTS_CACHE_TTL` instead. Accepts a bare integer
-interpreted as days. Cannot be set alongside `MICASA_DOCUMENTS_CACHE_TTL`.
-
-### Platform data directory
+## Platform data directory
 
 micasa uses platform-aware data directories (via
 [adrg/xdg](https://github.com/adrg/xdg)). When no path is specified (via
@@ -294,7 +200,7 @@ Controls the chat (NL-to-SQL) feature and its LLM settings.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to hide the chat feature from the UI. |
+| `enable` {{< env "MICASA_CHAT_ENABLE" >}} | bool | `true` | Set to `false` to hide the chat feature from the UI. |
 
 ### `[chat.llm]` section
 
@@ -303,13 +209,13 @@ default; no values are inherited from other config sections.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `provider` | string | `ollama` | LLM provider. Supported: `ollama`, `anthropic`, `openai`, `openrouter`, `deepseek`, `gemini`, `groq`, `mistral`, `llamacpp`, `llamafile`. Auto-detected from `base_url` and `api_key` when not set. |
-| `base_url` | string | `http://localhost:11434` | Root URL of the provider's API. No `/v1` suffix needed. |
-| `model` | string | `qwen3` | Model identifier sent in chat requests. |
-| `api_key` | string | (empty) | Authentication credential. Required for cloud providers. Leave empty for local servers. |
-| `timeout` | string | `"5m"` | Inference timeout for chat responses (including streaming). Go duration syntax, e.g. `"10m"`. |
-| `thinking` | string | (unset) | Model reasoning effort level. Supported: `none`, `low`, `medium`, `high`, `auto`. Empty = server default. |
-| `extra_context` | string | (empty) | Custom text appended to chat system prompts. Useful for domain-specific details about your house. Currency is handled automatically via `[locale]`. |
+| `provider` {{< env "MICASA_CHAT_LLM_PROVIDER" >}} | string | `ollama` | LLM provider. Supported: `ollama`, `anthropic`, `openai`, `openrouter`, `deepseek`, `gemini`, `groq`, `mistral`, `llamacpp`, `llamafile`. Auto-detected from `base_url` and `api_key` when not set. |
+| `base_url` {{< env "MICASA_CHAT_LLM_BASE_URL" >}} | string | `http://localhost:11434` | Root URL of the provider's API. No `/v1` suffix needed. |
+| `model` {{< env "MICASA_CHAT_LLM_MODEL" >}} | string | `qwen3` | Model identifier sent in chat requests. |
+| `api_key` {{< env "MICASA_CHAT_LLM_API_KEY" >}} | string | (empty) | Authentication credential. Required for cloud providers. Leave empty for local servers. |
+| `timeout` {{< env "MICASA_CHAT_LLM_TIMEOUT" >}} | string | `"5m"` | Inference timeout for chat responses (including streaming). Go duration syntax, e.g. `"10m"`. |
+| `thinking` {{< env "MICASA_CHAT_LLM_THINKING" >}} | string | (unset) | Model reasoning effort level. Supported: `none`, `low`, `medium`, `high`, `auto`. Empty = server default. |
+| `extra_context` {{< env "MICASA_CHAT_LLM_EXTRA_CONTEXT" >}} | string | (empty) | Custom text appended to chat system prompts. Useful for domain-specific details about your house. Currency is handled automatically via `[locale]`. |
 
 ### `[extraction.llm]` section
 
@@ -319,13 +225,13 @@ model, and credentials.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run. |
-| `provider` | string | `ollama` | LLM provider for extraction. Same options as `[chat.llm]`. |
-| `base_url` | string | `http://localhost:11434` | API base URL for extraction. |
-| `model` | string | `qwen3` | Model for extraction. Extraction works well with small, fast models optimized for structured JSON output. |
-| `api_key` | string | (empty) | Authentication credential for extraction. |
-| `timeout` | string | `"5m"` | Extraction inference timeout. |
-| `thinking` | string | (unset) | Reasoning effort level for extraction. |
+| `enable` {{< env "MICASA_EXTRACTION_LLM_ENABLE" >}} | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run. |
+| `provider` {{< env "MICASA_EXTRACTION_LLM_PROVIDER" >}} | string | `ollama` | LLM provider for extraction. Same options as `[chat.llm]`. |
+| `base_url` {{< env "MICASA_EXTRACTION_LLM_BASE_URL" >}} | string | `http://localhost:11434` | API base URL for extraction. |
+| `model` {{< env "MICASA_EXTRACTION_LLM_MODEL" >}} | string | `qwen3` | Model for extraction. Extraction works well with small, fast models optimized for structured JSON output. |
+| `api_key` {{< env "MICASA_EXTRACTION_LLM_API_KEY" >}} | string | (empty) | Authentication credential for extraction. |
+| `timeout` {{< env "MICASA_EXTRACTION_LLM_TIMEOUT" >}} | string | `"5m"` | Extraction inference timeout. |
+| `thinking` {{< env "MICASA_EXTRACTION_LLM_THINKING" >}} | string | (unset) | Reasoning effort level for extraction. |
 
 ### `[documents]` section
 
@@ -333,8 +239,9 @@ Document attachment limits and caching.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `max_file_size` | string or integer | `"50 MiB"` | Maximum file size for document imports. Accepts unitized strings (`"50 MiB"`, `"1.5 GiB"`) or bare integers (bytes). Must be positive. |
-| `cache_ttl` | string or integer | `"30d"` | Cache lifetime for extracted documents. Accepts `"30d"`, `"720h"`, or bare integers (seconds). Set to `"0s"` to disable eviction. |
+| `max_file_size` {{< env "MICASA_DOCUMENTS_MAX_FILE_SIZE" >}} | string or integer | `"50 MiB"` | Maximum file size for document imports. Accepts unitized strings (`"50 MiB"`, `"1.5 GiB"`) or bare integers (bytes). Must be positive. |
+| `cache_ttl` {{< env "MICASA_DOCUMENTS_CACHE_TTL" >}} | string or integer | `"30d"` | Cache lifetime for extracted documents. Accepts `"30d"`, `"720h"`, or bare integers (seconds). Set to `"0s"` to disable eviction. Replaces the deprecated `MICASA_DOCUMENTS_CACHE_TTL_DAYS` env var. |
+| `file_picker_dir` {{< env "MICASA_DOCUMENTS_FILE_PICKER_DIR" >}} | string | (Downloads) | Starting directory for the file picker. Defaults to the platform's Downloads directory. |
 
 ### `[extraction]` section
 
@@ -342,7 +249,7 @@ Document extraction pipeline settings.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `max_pages` | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
+| `max_pages` {{< env "MICASA_EXTRACTION_MAX_PAGES" >}} | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
 
 ### `[extraction.ocr]` section
 
@@ -350,7 +257,7 @@ OCR sub-pipeline settings. Requires `tesseract` and `pdftocairo`.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to disable OCR on documents. When disabled, scanned pages and images produce no text. |
+| `enable` {{< env "MICASA_EXTRACTION_OCR_ENABLE" >}} | bool | `true` | Set to `false` to disable OCR on documents. When disabled, scanned pages and images produce no text. |
 
 ### `[extraction.ocr.tsv]` section
 
@@ -360,8 +267,8 @@ at ~2x token overhead.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to disable spatial annotations sent to the LLM. |
-| `confidence_threshold` | int | `70` | Confidence threshold (0-100). Lines with OCR confidence below this value include a confidence score; lines above omit it to save tokens. Set to 0 to never show confidence. |
+| `enable` {{< env "MICASA_EXTRACTION_OCR_TSV_ENABLE" >}} | bool | `true` | Set to `false` to disable spatial annotations sent to the LLM. |
+| `confidence_threshold` {{< env "MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD" >}} | int | `70` | Confidence threshold (0-100). Lines with OCR confidence below this value include a confidence score; lines above omit it to save tokens. Set to 0 to never show confidence. |
 
 ### `[locale]` section
 
@@ -370,7 +277,7 @@ fields in the application.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `currency` | string | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`, `JPY`). Auto-detected from `LC_MONETARY`/`LANG` if not set, falls back to `USD`. Persisted to the database on first run -- after that the DB value is authoritative. |
+| `currency` {{< env "MICASA_LOCALE_CURRENCY" >}} | string | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`, `JPY`). Auto-detected from `LC_MONETARY`/`LANG` if not set, falls back to `USD`. Persisted to the database on first run -- after that the DB value is authoritative. |
 
 Currency resolution order (highest to lowest):
 
@@ -423,9 +330,15 @@ their own default base URLs when none is configured.
 Environment variables override config file values. The full precedence order
 (highest to lowest):
 
-1. Environment variables (see [table above](#environment-variables))
+1. Environment variables
 2. Config file values
 3. Built-in defaults
+
+Each config key has a corresponding env var shown in gray below the key name:
+`MICASA_` + uppercase config path with dots replaced by underscores.
+`MICASA_DB_PATH` is an exception -- it controls the
+[database path](#database-path-resolution-order) and has no config file
+equivalent.
 
 ### `extra_context` examples
 
