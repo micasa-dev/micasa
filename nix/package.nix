@@ -7,10 +7,11 @@
   gitignoreSource,
 }:
 let
+  pname = "micasa";
   version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ../VERSION);
 in
 buildGoModule {
-  pname = "micasa";
+  inherit pname;
   inherit version;
   src = gitignoreSource ../.;
   subPackages = [ "cmd/micasa" ];
@@ -27,6 +28,6 @@ buildGoModule {
     homepage = "https://micasa.dev";
     changelog = "https://github.com/micasa-dev/micasa/releases/tag/v${version}";
     license = lib.licenses.asl20;
-    mainProgram = "micasa";
+    mainProgram = pname;
   };
 }
