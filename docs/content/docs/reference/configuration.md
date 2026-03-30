@@ -200,7 +200,7 @@ Controls the chat (NL-to-SQL) feature and its LLM settings.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to hide the chat feature from the UI. |
+| `enable` {{< env "MICASA_CHAT_ENABLE" >}} | bool | `true` | Set to `false` to hide the chat feature from the UI. |
 
 ### `[chat.llm]` section
 
@@ -209,13 +209,13 @@ default; no values are inherited from other config sections.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `provider` | string | `ollama` | LLM provider. Supported: `ollama`, `anthropic`, `openai`, `openrouter`, `deepseek`, `gemini`, `groq`, `mistral`, `llamacpp`, `llamafile`. Auto-detected from `base_url` and `api_key` when not set. |
-| `base_url` | string | `http://localhost:11434` | Root URL of the provider's API. No `/v1` suffix needed. |
-| `model` | string | `qwen3` | Model identifier sent in chat requests. |
-| `api_key` | string | (empty) | Authentication credential. Required for cloud providers. Leave empty for local servers. |
-| `timeout` | string | `"5m"` | Inference timeout for chat responses (including streaming). Go duration syntax, e.g. `"10m"`. |
-| `thinking` | string | (unset) | Model reasoning effort level. Supported: `none`, `low`, `medium`, `high`, `auto`. Empty = server default. |
-| `extra_context` | string | (empty) | Custom text appended to chat system prompts. Useful for domain-specific details about your house. Currency is handled automatically via `[locale]`. |
+| `provider` {{< env "MICASA_CHAT_LLM_PROVIDER" >}} | string | `ollama` | LLM provider. Supported: `ollama`, `anthropic`, `openai`, `openrouter`, `deepseek`, `gemini`, `groq`, `mistral`, `llamacpp`, `llamafile`. Auto-detected from `base_url` and `api_key` when not set. |
+| `base_url` {{< env "MICASA_CHAT_LLM_BASE_URL" >}} | string | `http://localhost:11434` | Root URL of the provider's API. No `/v1` suffix needed. |
+| `model` {{< env "MICASA_CHAT_LLM_MODEL" >}} | string | `qwen3` | Model identifier sent in chat requests. |
+| `api_key` {{< env "MICASA_CHAT_LLM_API_KEY" >}} | string | (empty) | Authentication credential. Required for cloud providers. Leave empty for local servers. |
+| `timeout` {{< env "MICASA_CHAT_LLM_TIMEOUT" >}} | string | `"5m"` | Inference timeout for chat responses (including streaming). Go duration syntax, e.g. `"10m"`. |
+| `thinking` {{< env "MICASA_CHAT_LLM_THINKING" >}} | string | (unset) | Model reasoning effort level. Supported: `none`, `low`, `medium`, `high`, `auto`. Empty = server default. |
+| `extra_context` {{< env "MICASA_CHAT_LLM_EXTRA_CONTEXT" >}} | string | (empty) | Custom text appended to chat system prompts. Useful for domain-specific details about your house. Currency is handled automatically via `[locale]`. |
 
 ### `[extraction.llm]` section
 
@@ -225,13 +225,13 @@ model, and credentials.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run. |
-| `provider` | string | `ollama` | LLM provider for extraction. Same options as `[chat.llm]`. |
-| `base_url` | string | `http://localhost:11434` | API base URL for extraction. |
-| `model` | string | `qwen3` | Model for extraction. Extraction works well with small, fast models optimized for structured JSON output. |
-| `api_key` | string | (empty) | Authentication credential for extraction. |
-| `timeout` | string | `"5m"` | Extraction inference timeout. |
-| `thinking` | string | (unset) | Reasoning effort level for extraction. |
+| `enable` {{< env "MICASA_EXTRACTION_LLM_ENABLE" >}} | bool | `true` | Set to `false` to disable LLM-powered structured extraction. OCR and pdftotext still run. |
+| `provider` {{< env "MICASA_EXTRACTION_LLM_PROVIDER" >}} | string | `ollama` | LLM provider for extraction. Same options as `[chat.llm]`. |
+| `base_url` {{< env "MICASA_EXTRACTION_LLM_BASE_URL" >}} | string | `http://localhost:11434` | API base URL for extraction. |
+| `model` {{< env "MICASA_EXTRACTION_LLM_MODEL" >}} | string | `qwen3` | Model for extraction. Extraction works well with small, fast models optimized for structured JSON output. |
+| `api_key` {{< env "MICASA_EXTRACTION_LLM_API_KEY" >}} | string | (empty) | Authentication credential for extraction. |
+| `timeout` {{< env "MICASA_EXTRACTION_LLM_TIMEOUT" >}} | string | `"5m"` | Extraction inference timeout. |
+| `thinking` {{< env "MICASA_EXTRACTION_LLM_THINKING" >}} | string | (unset) | Reasoning effort level for extraction. |
 
 ### `[documents]` section
 
@@ -239,8 +239,9 @@ Document attachment limits and caching.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `max_file_size` | string or integer | `"50 MiB"` | Maximum file size for document imports. Accepts unitized strings (`"50 MiB"`, `"1.5 GiB"`) or bare integers (bytes). Must be positive. |
-| `cache_ttl` | string or integer | `"30d"` | Cache lifetime for extracted documents. Accepts `"30d"`, `"720h"`, or bare integers (seconds). Set to `"0s"` to disable eviction. |
+| `max_file_size` {{< env "MICASA_DOCUMENTS_MAX_FILE_SIZE" >}} | string or integer | `"50 MiB"` | Maximum file size for document imports. Accepts unitized strings (`"50 MiB"`, `"1.5 GiB"`) or bare integers (bytes). Must be positive. |
+| `cache_ttl` {{< env "MICASA_DOCUMENTS_CACHE_TTL" >}} | string or integer | `"30d"` | Cache lifetime for extracted documents. Accepts `"30d"`, `"720h"`, or bare integers (seconds). Set to `"0s"` to disable eviction. Replaces the deprecated `MICASA_DOCUMENTS_CACHE_TTL_DAYS` env var. |
+| `file_picker_dir` {{< env "MICASA_DOCUMENTS_FILE_PICKER_DIR" >}} | string | (Downloads) | Starting directory for the file picker. Defaults to the platform's Downloads directory. |
 
 ### `[extraction]` section
 
@@ -248,7 +249,7 @@ Document extraction pipeline settings.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `max_pages` | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
+| `max_pages` {{< env "MICASA_EXTRACTION_MAX_PAGES" >}} | int | `0` | Maximum pages to OCR per scanned document. 0 means no limit. |
 
 ### `[extraction.ocr]` section
 
@@ -256,7 +257,7 @@ OCR sub-pipeline settings. Requires `tesseract` and `pdftocairo`.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to disable OCR on documents. When disabled, scanned pages and images produce no text. |
+| `enable` {{< env "MICASA_EXTRACTION_OCR_ENABLE" >}} | bool | `true` | Set to `false` to disable OCR on documents. When disabled, scanned pages and images produce no text. |
 
 ### `[extraction.ocr.tsv]` section
 
@@ -266,8 +267,8 @@ at ~2x token overhead.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enable` | bool | `true` | Set to `false` to disable spatial annotations sent to the LLM. |
-| `confidence_threshold` | int | `70` | Confidence threshold (0-100). Lines with OCR confidence below this value include a confidence score; lines above omit it to save tokens. Set to 0 to never show confidence. |
+| `enable` {{< env "MICASA_EXTRACTION_OCR_TSV_ENABLE" >}} | bool | `true` | Set to `false` to disable spatial annotations sent to the LLM. |
+| `confidence_threshold` {{< env "MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD" >}} | int | `70` | Confidence threshold (0-100). Lines with OCR confidence below this value include a confidence score; lines above omit it to save tokens. Set to 0 to never show confidence. |
 
 ### `[locale]` section
 
@@ -276,7 +277,7 @@ fields in the application.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `currency` | string | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`, `JPY`). Auto-detected from `LC_MONETARY`/`LANG` if not set, falls back to `USD`. Persisted to the database on first run -- after that the DB value is authoritative. |
+| `currency` {{< env "MICASA_LOCALE_CURRENCY" >}} | string | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`, `JPY`). Auto-detected from `LC_MONETARY`/`LANG` if not set, falls back to `USD`. Persisted to the database on first run -- after that the DB value is authoritative. |
 
 Currency resolution order (highest to lowest):
 
