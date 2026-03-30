@@ -34,7 +34,7 @@ Write `docs/layouts/shortcodes/env.html`:
 Add to `docs/static/css/docs.css`, in the Tables section after the `.docs-main td code` rule (around line 614):
 
 ```css
-.env-hint {
+.docs-main .env-hint {
   display: block;
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 0.7em;
