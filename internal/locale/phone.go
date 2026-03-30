@@ -22,8 +22,6 @@ func FormatPhoneNumber(number, regionCode string) string {
 		return number
 	}
 	// Prefer region comparison (distinguishes US/CA under shared +1 code).
-	// Fall back to country-code comparison for fictional numbers (e.g. 555-xxxx)
-	// that parse successfully but return an empty region.
 	parsedRegion := phonenumbers.GetRegionCodeForNumber(parsed)
 	if parsedRegion != "" {
 		if parsedRegion == regionCode {
@@ -31,8 +29,18 @@ func FormatPhoneNumber(number, regionCode string) string {
 		}
 		return phonenumbers.Format(parsed, phonenumbers.INTERNATIONAL)
 	}
-	if int(parsed.GetCountryCode()) == phonenumbers.GetCountryCodeForRegion(regionCode) {
-		return phonenumbers.Format(parsed, phonenumbers.NATIONAL)
+	// Fictional numbers (e.g. 555-xxxx) parse but have no region. When
+	// the input lacks a "+" prefix, the user entered a local number — use
+	// NATIONAL if the country code matches. When "+" is present, the user
+	// explicitly typed an international code; for shared codes like +1
+	// (US/CA) use INTERNATIONAL to avoid misattribution.
+	cc := int(parsed.GetCountryCode())
+	if cc != phonenumbers.GetCountryCodeForRegion(regionCode) {
+		return phonenumbers.Format(parsed, phonenumbers.INTERNATIONAL)
 	}
-	return phonenumbers.Format(parsed, phonenumbers.INTERNATIONAL)
+	if strings.HasPrefix(trimmed, "+") &&
+		len(phonenumbers.GetRegionCodesForCountryCode(cc)) > 1 {
+		return phonenumbers.Format(parsed, phonenumbers.INTERNATIONAL)
+	}
+	return phonenumbers.Format(parsed, phonenumbers.NATIONAL)
 }
