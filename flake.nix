@@ -35,8 +35,6 @@
             (import ./nix/overlay.nix)
           ];
         };
-        go = pkgs.go_1_26;
-
         micasa = pkgs.callPackage ./nix/package.nix {
           inherit (gitignore.lib) gitignoreSource;
         };
@@ -152,7 +150,7 @@
         goModTidyCheck = pkgs.writeShellApplication {
           name = "go-mod-tidy-check";
           runtimeInputs = [
-            go
+            pkgs.go
             pkgs.git
           ];
           text = ''
@@ -167,7 +165,7 @@
         goGenerateCheck = pkgs.writeShellApplication {
           name = "go-generate-check";
           runtimeInputs = [
-            go
+            pkgs.go
             pkgs.git
           ];
           runtimeEnv.CGO_ENABLED = "0";
@@ -239,7 +237,7 @@
             CGO_ENABLED = "0";
             GOFLAGS = "-trimpath";
             packages = [
-              go
+              pkgs.go
               pkgs.osv-scanner
               pkgs.git
               pkgs.hugo
@@ -404,7 +402,7 @@
           coverage = pkgs.writeShellApplication {
             name = "coverage";
             runtimeInputs = [
-              go
+              pkgs.go
               pkgs.sd
             ];
             runtimeEnv.CGO_ENABLED = "1";
@@ -418,7 +416,7 @@
           run-pre-commit = pkgs.writeShellApplication {
             name = "run-pre-commit";
             runtimeInputs = [
-              go
+              pkgs.go
               pkgs.git
             ]
             ++ preCommit.enabledPackages;

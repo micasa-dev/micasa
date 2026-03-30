@@ -4,13 +4,12 @@
 {
   lib,
   buildGoModule,
-  go_1_26,
   gitignoreSource,
 }:
 let
   version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ../VERSION);
 in
-(buildGoModule.override { go = go_1_26; }) {
+buildGoModule {
   pname = "micasa";
   inherit version;
   src = gitignoreSource ../.;
