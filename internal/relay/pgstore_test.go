@@ -11,9 +11,7 @@ import (
 	"github.com/micasa-dev/micasa/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 )
 
@@ -26,20 +24,22 @@ func openTestPgStore(t *testing.T) *PgStore {
 		t.Skip("RELAY_POSTGRES_DSN not set, skipping Postgres integration test")
 	}
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
+	store, err := OpenPgStore(dsn)
 	require.NoError(t, err)
-
-	store := NewPgStore(db)
 	require.NoError(t, store.AutoMigrate())
 
-	// Derive table names from pgModels and truncate with CASCADE.
-	for _, m := range pgModels {
-		tabler, ok := m.(schema.Tabler)
-		require.True(t, ok, "model %T must implement schema.Tabler", m)
-		require.NoError(t, db.Exec("TRUNCATE "+tabler.TableName()+" CASCADE").Error)
-	}
+	// TRUNCATE is DDL — unaffected by RLS policies.
+	ctx := t.Context()
+	require.NoError(t, store.rls.WithoutHousehold(ctx, func(tx *gorm.DB) error {
+		for _, m := range pgModels {
+			tabler, ok := m.(schema.Tabler)
+			require.True(t, ok, "model %T must implement schema.Tabler", m)
+			if err := tx.Exec("TRUNCATE " + tabler.TableName() + " CASCADE").Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
 
 	store.SetEncryptionKey(defaultTestEncryptionKey)
 	t.Cleanup(func() { _ = store.Close() })

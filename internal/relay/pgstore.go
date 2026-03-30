@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/micasa-dev/micasa/internal/relay/rlsdb"
 	"github.com/micasa-dev/micasa/internal/sync"
 	"github.com/micasa-dev/micasa/internal/uid"
 	"gorm.io/driver/postgres"
@@ -19,7 +20,7 @@ import (
 
 // PgStore implements the relay Store interface backed by Postgres via GORM.
 type PgStore struct {
-	db            *gorm.DB
+	rls           *rlsdb.DB
 	encryptionKey []byte
 }
 
@@ -101,6 +102,13 @@ type pgBlob struct {
 
 func (pgBlob) TableName() string { return "blobs" }
 
+// rlsTables lists the tables that have row-level security policies
+// enforcing household isolation.
+var rlsTables = []rlsdb.RLSTable{
+	{Name: "ops", Column: "household_id"},
+	{Name: "blobs", Column: "household_id"},
+}
+
 // OpenPgStore connects to a Postgres database and returns a PgStore.
 func OpenPgStore(dsn string) (*PgStore, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -109,12 +117,13 @@ func OpenPgStore(dsn string) (*PgStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open postgres: %w", err)
 	}
-	return &PgStore{db: db}, nil
+	rls := rlsdb.New(db)
+	return &PgStore{rls: rls}, nil
 }
 
-// NewPgStore wraps an existing GORM DB as a PgStore (useful for testing).
-func NewPgStore(db *gorm.DB) *PgStore {
-	return &PgStore{db: db}
+// NewPgStore wraps an existing rlsdb.DB as a PgStore (useful for testing).
+func NewPgStore(rls *rlsdb.DB) *PgStore {
+	return &PgStore{rls: rls}
 }
 
 func (s *PgStore) SetEncryptionKey(key []byte) {
@@ -135,40 +144,49 @@ var pgModels = []any{
 	&pgBlob{},
 }
 
-// AutoMigrate creates/updates the database schema.
+// AutoMigrate creates/updates the database schema and enables RLS.
 func (s *PgStore) AutoMigrate() error {
-	if err := s.db.AutoMigrate(pgModels...); err != nil {
+	if err := s.rls.Migrate(pgModels...); err != nil {
 		return err
 	}
-	// Partial unique index: only enforce uniqueness for non-empty customer IDs.
-	// GORM's uniqueIndex tag creates an unconditional index which conflicts
-	// when multiple households have empty stripe_customer_id.
-	if err := s.db.Exec(`DROP INDEX IF EXISTS idx_households_stripe_customer_id`).Error; err != nil {
+	if err := s.rls.InitRLS(rlsTables); err != nil {
 		return err
 	}
-	if err := s.db.Exec(`
-		CREATE UNIQUE INDEX idx_households_stripe_customer_id
-		ON households (stripe_customer_id)
-		WHERE stripe_customer_id IS NOT NULL
-	`).Error; err != nil {
-		return err
-	}
-	// Composite unique index for op dedup: same op ID allowed in different
-	// households. GORM's uniqueIndex tag with composite doesn't reliably
-	// produce a multi-column index, so we manage it manually.
-	if err := s.db.Exec(`DROP INDEX IF EXISTS idx_ops_dedup`).Error; err != nil {
-		return err
-	}
-	return s.db.Exec(`
-		CREATE UNIQUE INDEX idx_ops_dedup
-		ON ops (id, household_id)
-	`).Error
+	return s.rls.WithoutHousehold(context.Background(), func(tx *gorm.DB) error {
+		// Partial unique index: only enforce uniqueness for non-empty customer IDs.
+		// GORM's uniqueIndex tag creates an unconditional index which conflicts
+		// when multiple households have empty stripe_customer_id.
+		if err := tx.Exec(`DROP INDEX IF EXISTS idx_households_stripe_customer_id`).Error; err != nil {
+			return err
+		}
+		if err := tx.Exec(`
+			CREATE UNIQUE INDEX idx_households_stripe_customer_id
+			ON households (stripe_customer_id)
+			WHERE stripe_customer_id IS NOT NULL
+		`).Error; err != nil {
+			return err
+		}
+		// Composite unique index for op dedup: same op ID allowed in different
+		// households. GORM's uniqueIndex tag with composite doesn't reliably
+		// produce a multi-column index, so we manage it manually.
+		if err := tx.Exec(`DROP INDEX IF EXISTS idx_ops_dedup`).Error; err != nil {
+			return err
+		}
+		return tx.Exec(`
+			CREATE UNIQUE INDEX idx_ops_dedup
+			ON ops (id, household_id)
+		`).Error
+	})
 }
 
 func (s *PgStore) Push(ctx context.Context, ops []sync.Envelope) ([]sync.PushConfirmation, error) {
+	if len(ops) == 0 {
+		return []sync.PushConfirmation{}, nil
+	}
+
 	confirmed := make([]sync.PushConfirmation, 0, len(ops))
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.rls.Tx(ctx, ops[0].HouseholdID, func(tx *gorm.DB) error {
 		for _, op := range ops {
 			// Atomic seq increment within the transaction.
 			var seq int64
@@ -220,12 +238,14 @@ func (s *PgStore) Pull(
 	}
 
 	var rows []pgOp
-	q := s.db.WithContext(ctx).
-		Where("household_id = ? AND seq > ?", householdID, afterSeq)
-	if excludeDeviceID != "" {
-		q = q.Where("device_id != ?", excludeDeviceID)
-	}
-	if err := q.Order("seq ASC").Limit(limit + 1).Find(&rows).Error; err != nil {
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		q := tx.Where("household_id = ? AND seq > ?", householdID, afterSeq)
+		if excludeDeviceID != "" {
+			q = q.Where("device_id != ?", excludeDeviceID)
+		}
+		return q.Order("seq ASC").Limit(limit + 1).Find(&rows).Error
+	})
+	if err != nil {
 		return nil, false, fmt.Errorf("pull ops: %w", err)
 	}
 
@@ -260,7 +280,7 @@ func (s *PgStore) CreateHousehold(
 		return sync.CreateHouseholdResponse{}, err
 	}
 
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.rls.Tx(ctx, hhID, func(tx *gorm.DB) error {
 		hh := pgHousehold{ID: hhID}
 		if err := tx.Create(&hh).Error; err != nil {
 			return fmt.Errorf("create household: %w", err)
@@ -298,7 +318,7 @@ func (s *PgStore) RegisterDevice(
 		return sync.RegisterDeviceResponse{}, err
 	}
 
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.rls.Tx(ctx, req.HouseholdID, func(tx *gorm.DB) error {
 		// Verify household exists within the transaction.
 		var count int64
 		if err := tx.Model(&pgHousehold{}).
@@ -335,17 +355,25 @@ func (s *PgStore) AuthenticateDevice(ctx context.Context, token string) (sync.De
 	sha := tokenSHA256(token)
 
 	var dev pgDevice
-	result := s.db.WithContext(ctx).Raw(
-		"UPDATE devices SET last_seen = now() "+
-			"WHERE token_sha = ? AND revoked = false "+
-			"RETURNING *",
-		sha,
-	).Scan(&dev)
-	if result.Error != nil {
-		return sync.Device{}, fmt.Errorf("authenticate: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return sync.Device{}, fmt.Errorf("invalid token")
+	// SAFETY: discovers household from token hash; no householdID available
+	// until authentication succeeds.
+	err := s.rls.WithoutHousehold(ctx, func(tx *gorm.DB) error {
+		result := tx.Raw(
+			"UPDATE devices SET last_seen = now() "+
+				"WHERE token_sha = ? AND revoked = false "+
+				"RETURNING *",
+			sha,
+		).Scan(&dev)
+		if result.Error != nil {
+			return fmt.Errorf("authenticate: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("invalid token")
+		}
+		return nil
+	})
+	if err != nil {
+		return sync.Device{}, err
 	}
 
 	return pgDeviceToSync(dev), nil
@@ -366,7 +394,7 @@ func (s *PgStore) CreateInvite(
 	// Wrap count + create in a transaction. Lock the household row with
 	// FOR UPDATE to serialize concurrent invite creation for the same
 	// household (Postgres doesn't allow FOR UPDATE with aggregate functions).
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		// Lock household row as the serialization point.
 		if err := tx.Model(&pgHousehold{}).
 			Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -412,7 +440,9 @@ func (s *PgStore) StartJoin(
 ) (sync.JoinResponse, error) {
 	var resp sync.JoinResponse
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	// SAFETY: household ID from unauthenticated URL path (attacker-controlled);
+	// must not be trusted for RLS scoping.
+	err := s.rls.WithoutHousehold(ctx, func(tx *gorm.DB) error {
 		var inv pgInvite
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("code = ?", code).First(&inv).Error; err != nil {
@@ -482,13 +512,13 @@ func (s *PgStore) GetPendingExchanges(
 	householdID string,
 ) ([]sync.PendingKeyExchange, error) {
 	var rows []pgKeyExchange
-	err := s.db.WithContext(ctx).
-		Where(
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		return tx.Where(
 			"household_id = ? AND completed = false AND created_at > ?",
 			householdID,
 			time.Now().Add(-keyExchangeExpiry),
-		).
-		Find(&rows).Error
+		).Find(&rows).Error
+	})
 	if err != nil {
 		return nil, fmt.Errorf("get pending exchanges: %w", err)
 	}
@@ -510,7 +540,7 @@ func (s *PgStore) CompleteKeyExchange(
 	householdID, exchangeID string,
 	encryptedKey []byte,
 ) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		var ex pgKeyExchange
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ?", exchangeID).First(&ex).Error; err != nil {
@@ -572,7 +602,9 @@ func (s *PgStore) GetKeyExchangeResult(
 	exchangeID string,
 ) (sync.KeyExchangeResult, error) {
 	var result sync.KeyExchangeResult
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	// SAFETY: unauthenticated joiner polling for key exchange completion;
+	// no householdID in the Store interface for this method.
+	err := s.rls.WithoutHousehold(ctx, func(tx *gorm.DB) error {
 		var ex pgKeyExchange
 		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 			Where("id = ?", exchangeID).First(&ex).Error; err != nil {
@@ -634,9 +666,10 @@ func (s *PgStore) ListDevices(
 	householdID string,
 ) ([]sync.Device, error) {
 	var rows []pgDevice
-	err := s.db.WithContext(ctx).
-		Where("household_id = ? AND revoked = false", householdID).
-		Find(&rows).Error
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		return tx.Where("household_id = ? AND revoked = false", householdID).
+			Find(&rows).Error
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list devices: %w", err)
 	}
@@ -649,7 +682,7 @@ func (s *PgStore) ListDevices(
 }
 
 func (s *PgStore) RevokeDevice(ctx context.Context, householdID, deviceID string) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		var dev pgDevice
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ?", deviceID).First(&dev).Error; err != nil {
@@ -673,7 +706,9 @@ func (s *PgStore) GetHousehold(
 	householdID string,
 ) (sync.Household, error) {
 	var hh pgHousehold
-	err := s.db.WithContext(ctx).Where("id = ?", householdID).First(&hh).Error
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		return tx.Where("id = ?", householdID).First(&hh).Error
+	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return sync.Household{}, fmt.Errorf("household %s not found", householdID)
@@ -687,19 +722,21 @@ func (s *PgStore) UpdateSubscription(
 	ctx context.Context,
 	householdID, subscriptionID, status string,
 ) error {
-	result := s.db.WithContext(ctx).Model(&pgHousehold{}).
-		Where("id = ?", householdID).
-		Updates(map[string]any{
-			"stripe_subscription_id": &subscriptionID,
-			"stripe_status":          &status,
-		})
-	if result.Error != nil {
-		return fmt.Errorf("update subscription: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("household %s not found", householdID)
-	}
-	return nil
+	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		result := tx.Model(&pgHousehold{}).
+			Where("id = ?", householdID).
+			Updates(map[string]any{
+				"stripe_subscription_id": &subscriptionID,
+				"stripe_status":          &status,
+			})
+		if result.Error != nil {
+			return fmt.Errorf("update subscription: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("household %s not found", householdID)
+		}
+		return nil
+	})
 }
 
 func (s *PgStore) HouseholdBySubscription(
@@ -707,9 +744,11 @@ func (s *PgStore) HouseholdBySubscription(
 	subscriptionID string,
 ) (sync.Household, error) {
 	var hh pgHousehold
-	err := s.db.WithContext(ctx).
-		Where("stripe_subscription_id = ?", subscriptionID).
-		First(&hh).Error
+	// SAFETY: Stripe webhook lookup; only has subscription ID, not household ID.
+	err := s.rls.WithoutHousehold(ctx, func(tx *gorm.DB) error {
+		return tx.Where("stripe_subscription_id = ?", subscriptionID).
+			First(&hh).Error
+	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return sync.Household{}, fmt.Errorf("no household with subscription %s", subscriptionID)
@@ -726,17 +765,18 @@ func (s *PgStore) UpdateCustomerID(
 	if customerID == "" {
 		return fmt.Errorf("customer ID must not be empty")
 	}
-	result := s.db.WithContext(ctx).
-		Model(&pgHousehold{}).
-		Where("id = ?", householdID).
-		Update("stripe_customer_id", &customerID)
-	if result.Error != nil {
-		return fmt.Errorf("update customer ID: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("household %q not found", householdID)
-	}
-	return nil
+	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		result := tx.Model(&pgHousehold{}).
+			Where("id = ?", householdID).
+			Update("stripe_customer_id", &customerID)
+		if result.Error != nil {
+			return fmt.Errorf("update customer ID: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("household %q not found", householdID)
+		}
+		return nil
+	})
 }
 
 func (s *PgStore) HouseholdByCustomer(
@@ -744,9 +784,11 @@ func (s *PgStore) HouseholdByCustomer(
 	customerID string,
 ) (sync.Household, error) {
 	var h pgHousehold
-	err := s.db.WithContext(ctx).
-		Where("stripe_customer_id = ?", customerID).
-		First(&h).Error
+	// SAFETY: Stripe webhook lookup; only has customer ID, not household ID.
+	err := s.rls.WithoutHousehold(ctx, func(tx *gorm.DB) error {
+		return tx.Where("stripe_customer_id = ?", customerID).
+			First(&h).Error
+	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return sync.Household{}, fmt.Errorf("no household with customer %q", customerID)
@@ -758,9 +800,11 @@ func (s *PgStore) HouseholdByCustomer(
 
 func (s *PgStore) OpsCount(ctx context.Context, householdID string) (int64, error) {
 	var count int64
-	err := s.db.WithContext(ctx).Model(&pgOp{}).
-		Where("household_id = ?", householdID).
-		Count(&count).Error
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		return tx.Model(&pgOp{}).
+			Where("household_id = ?", householdID).
+			Count(&count).Error
+	})
 	if err != nil {
 		return 0, fmt.Errorf("count ops: %w", err)
 	}
@@ -773,7 +817,7 @@ func (s *PgStore) PutBlob(
 	data []byte,
 	quota int64,
 ) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		// Lock the household row to serialize concurrent blob uploads.
 		// Without this, READ COMMITTED allows two transactions to read
 		// the same usage sum and both insert, overshooting the quota.
@@ -827,9 +871,10 @@ func (s *PgStore) PutBlob(
 
 func (s *PgStore) GetBlob(ctx context.Context, householdID, hash string) ([]byte, error) {
 	var blob pgBlob
-	err := s.db.WithContext(ctx).
-		Where("household_id = ? AND hash = ?", householdID, hash).
-		First(&blob).Error
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		return tx.Where("household_id = ? AND hash = ?", householdID, hash).
+			First(&blob).Error
+	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errBlobNotFound
@@ -841,9 +886,11 @@ func (s *PgStore) GetBlob(ctx context.Context, householdID, hash string) ([]byte
 
 func (s *PgStore) HasBlob(ctx context.Context, householdID, hash string) (bool, error) {
 	var count int64
-	err := s.db.WithContext(ctx).Model(&pgBlob{}).
-		Where("household_id = ? AND hash = ?", householdID, hash).
-		Count(&count).Error
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		return tx.Model(&pgBlob{}).
+			Where("household_id = ? AND hash = ?", householdID, hash).
+			Count(&count).Error
+	})
 	if err != nil {
 		return false, fmt.Errorf("check blob: %w", err)
 	}
@@ -852,10 +899,12 @@ func (s *PgStore) HasBlob(ctx context.Context, householdID, hash string) (bool, 
 
 func (s *PgStore) BlobUsage(ctx context.Context, householdID string) (int64, error) {
 	var used int64
-	err := s.db.WithContext(ctx).Model(&pgBlob{}).
-		Where("household_id = ?", householdID).
-		Select("COALESCE(SUM(size_bytes), 0)").
-		Scan(&used).Error
+	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
+		return tx.Model(&pgBlob{}).
+			Where("household_id = ?", householdID).
+			Select("COALESCE(SUM(size_bytes), 0)").
+			Scan(&used).Error
+	})
 	if err != nil {
 		return 0, fmt.Errorf("blob usage: %w", err)
 	}
@@ -863,11 +912,7 @@ func (s *PgStore) BlobUsage(ctx context.Context, householdID string) (int64, err
 }
 
 func (s *PgStore) Close() error {
-	db, err := s.db.DB()
-	if err != nil {
-		return err
-	}
-	return db.Close()
+	return s.rls.Close()
 }
 
 // pgDeviceToSync converts a pgDevice to a sync.Device.

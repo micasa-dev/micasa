@@ -9,6 +9,7 @@ import (
 
 	"github.com/micasa-dev/micasa/internal/sync"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 var testPublicKey = []byte("fake-public-key-32-bytes-paddin!")
@@ -69,10 +70,12 @@ func expireInvite(t testing.TB, store Store, code string) {
 		inv.expiresAt = time.Now().Add(-time.Hour)
 		s.mu.Unlock()
 	case *PgStore:
-		require.NoError(t, s.db.Exec(
-			"UPDATE invites SET expires_at = ? WHERE code = ?",
-			time.Now().Add(-time.Hour), code,
-		).Error)
+		require.NoError(t, s.rls.WithoutHousehold(t.Context(), func(tx *gorm.DB) error {
+			return tx.Exec(
+				"UPDATE invites SET expires_at = ? WHERE code = ?",
+				time.Now().Add(-time.Hour), code,
+			).Error
+		}))
 	default:
 		t.Fatalf("unsupported store type %T", store)
 	}
@@ -90,10 +93,12 @@ func expireKeyExchange(t testing.TB, store Store, exchangeID string) {
 		ex.createdAt = past
 		s.mu.Unlock()
 	case *PgStore:
-		require.NoError(t, s.db.Exec(
-			"UPDATE key_exchanges SET created_at = ? WHERE id = ?",
-			past, exchangeID,
-		).Error)
+		require.NoError(t, s.rls.WithoutHousehold(t.Context(), func(tx *gorm.DB) error {
+			return tx.Exec(
+				"UPDATE key_exchanges SET created_at = ? WHERE id = ?",
+				past, exchangeID,
+			).Error
+		}))
 	default:
 		t.Fatalf("unsupported store type %T", store)
 	}
