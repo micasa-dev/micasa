@@ -121,11 +121,6 @@ func OpenPgStore(dsn string) (*PgStore, error) {
 	return &PgStore{rls: rls}, nil
 }
 
-// NewPgStore wraps an existing rlsdb.DB as a PgStore (useful for testing).
-func NewPgStore(rls *rlsdb.DB) *PgStore {
-	return &PgStore{rls: rls}
-}
-
 func (s *PgStore) SetEncryptionKey(key []byte) {
 	if len(key) != 32 {
 		panic(fmt.Sprintf("encryption key must be exactly 32 bytes, got %d", len(key)))
