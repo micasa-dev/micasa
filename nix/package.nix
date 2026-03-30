@@ -18,4 +18,5 @@ buildGoModule {
   ldflags = [
     "-X main.version=${version}"
   ];
+  meta.mainProgram = "micasa";
 }
