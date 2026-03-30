@@ -26,13 +26,13 @@ func magFormat(c cell, includeUnit bool, currencySymbol string) string {
 	}
 
 	// Only transform kinds that carry meaningful numeric data.
-	// cellText is excluded because it covers phone numbers, serial numbers,
+	// cellText is excluded because it covers serial numbers,
 	// model numbers, and other identifiers that happen to look numeric.
 	switch c.Kind {
 	case cellMoney, cellDrilldown, cellOps:
 		// Definitely numeric; continue to parsing below.
 	case cellText, cellReadonly, cellDate, cellStatus, cellWarranty,
-		cellUrgency, cellNotes, cellEntity:
+		cellUrgency, cellNotes, cellEntity, cellTelephoneNumber:
 		return value
 	default:
 		panic(fmt.Sprintf("unhandled cellKind: %d", c.Kind))

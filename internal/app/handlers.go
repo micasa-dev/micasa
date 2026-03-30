@@ -5,9 +5,11 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/table"
+	"github.com/micasa-dev/micasa/internal/config"
 	"github.com/micasa-dev/micasa/internal/data"
 )
 
@@ -494,7 +496,8 @@ func (vendorHandler) Load(
 	quoteCounts := fetchCounts(store.CountQuotesByVendor, ids)
 	jobCounts := fetchCounts(store.CountServiceLogsByVendor, ids)
 	docCounts := fetchDocCounts(store, data.DocumentEntityVendor, ids)
-	rows, meta, cellRows := vendorRows(vendors, quoteCounts, jobCounts, docCounts)
+	defaultRegion := strings.ToUpper(config.DetectCountry())
+	rows, meta, cellRows := vendorRows(vendors, quoteCounts, jobCounts, docCounts, defaultRegion)
 	return rows, meta, cellRows, nil
 }
 

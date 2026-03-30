@@ -277,7 +277,7 @@ func TestOperationsSchema_VendorsCreateColumns(t *testing.T) {
 	variant := findVariant(t, ActionCreate, data.TableVendors)
 	dataProps := variantDataProps(t, variant)
 
-	expected := []string{"name", "contact_name", "email", "phone", "website", "notes"}
+	expected := []string{"name", "contact_name", "email", "phone", "website", "notes", "locale"}
 	assert.Len(t, dataProps, len(expected))
 	for _, col := range expected {
 		_, ok := dataProps[col]

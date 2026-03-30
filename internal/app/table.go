@@ -644,7 +644,7 @@ func cellStyle(kind cellKind) lipgloss.Style {
 	case cellReadonly:
 		return appStyles.Readonly()
 	case cellText, cellDate, cellStatus, cellDrilldown, cellWarranty,
-		cellUrgency, cellNotes, cellEntity, cellOps:
+		cellUrgency, cellNotes, cellEntity, cellOps, cellTelephoneNumber:
 		return defaultStyle
 	}
 	panic(fmt.Sprintf("unhandled cellKind: %d", kind))

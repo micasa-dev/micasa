@@ -77,6 +77,7 @@ const (
 	ColLaborCents        = "labor_cents"
 	ColLastSeq           = "last_seq"
 	ColLastServicedAt    = "last_serviced_at"
+	ColLocale            = "locale"
 	ColLocation          = "location"
 	ColLotSquareFeet     = "lot_square_feet"
 	ColMIMEType          = "mime_type"
@@ -291,5 +292,6 @@ var TableExtractColumns = map[string][]metaColumn{
 		{Name: "phone", JSONType: "string"},
 		{Name: "website", JSONType: "string"},
 		{Name: "notes", JSONType: "string"},
+		{Name: "locale", JSONType: "string"},
 	},
 }

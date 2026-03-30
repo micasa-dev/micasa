@@ -300,7 +300,7 @@ func seedTabMoneyCells(tab *Tab, amounts []string) {
 			case cellReadonly:
 				cr[j] = cell{Value: "1", Kind: cellReadonly}
 			case cellText, cellDate, cellStatus, cellDrilldown, cellWarranty,
-				cellUrgency, cellNotes, cellEntity, cellOps:
+				cellUrgency, cellNotes, cellEntity, cellOps, cellTelephoneNumber:
 				cr[j] = cell{Value: "test", Kind: spec.Kind}
 			default:
 				panic(fmt.Sprintf("unhandled cellKind: %d", spec.Kind))
@@ -390,7 +390,7 @@ func seedMoneyCells(m *Model) {
 		case cellReadonly:
 			row[i] = cell{Value: "1", Kind: cellReadonly}
 		case cellText, cellDate, cellStatus, cellDrilldown, cellWarranty,
-			cellUrgency, cellNotes, cellEntity, cellOps:
+			cellUrgency, cellNotes, cellEntity, cellOps, cellTelephoneNumber:
 			row[i] = cell{Value: "test", Kind: spec.Kind}
 		default:
 			panic(fmt.Sprintf("unhandled cellKind: %d", spec.Kind))

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/micasa-dev/micasa/internal/config"
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/micasa-dev/micasa/internal/extract"
 	"github.com/micasa-dev/micasa/internal/locale"
@@ -707,7 +708,7 @@ func previewColumns(tableName string, cur locale.Currency) []previewColDef {
 			{data.ColName, s[1], fmtAnyText},
 			{data.ColContactName, s[2], fmtAnyText},
 			{data.ColEmail, s[3], fmtAnyText},
-			{data.ColPhone, s[4], fmtAnyText},
+			{data.ColPhone, s[4], fmtPhone},
 			{data.ColWebsite, s[5], fmtAnyText},
 		}
 	case tableDocuments:
@@ -871,6 +872,17 @@ func fmtAnyText(v any) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func fmtPhone(v any) string {
+	if v == nil {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return fmtAnyText(v)
+	}
+	return locale.FormatPhoneNumber(s, strings.ToUpper(config.DetectCountry()))
 }
 
 func fmtAnyFK(v any) string {

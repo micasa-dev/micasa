@@ -218,7 +218,7 @@ var vendorColumnDefs = []columnDef{
 	{"Name", columnSpec{Title: "Name", Min: 14, Max: 24, Flex: true}},
 	{"Contact", columnSpec{Title: "Contact", Min: 10, Max: 20, Flex: true}},
 	{"Email", columnSpec{Title: "Email", Min: 12, Max: 24, Flex: true}},
-	{"Phone", columnSpec{Title: "Phone", Min: 12, Max: 16}},
+	{"Phone", columnSpec{Title: "Phone", Min: 12, Max: 20, Kind: cellTelephoneNumber}},
 	{"Website", columnSpec{Title: "Website", Min: 12, Max: 28, Flex: true}},
 	{
 		"Quotes",

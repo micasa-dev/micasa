@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/table"
@@ -311,8 +312,13 @@ func vendorRows(
 	quoteCounts map[string]int,
 	jobCounts map[string]int,
 	docCounts map[string]int,
+	defaultRegion string,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(vendors, func(v data.Vendor) rowSpec {
+		region := defaultRegion
+		if v.Locale != "" {
+			region = strings.ToUpper(v.Locale)
+		}
 		return rowSpec{
 			ID:      v.ID,
 			Deleted: v.DeletedAt.Valid,
@@ -321,7 +327,7 @@ func vendorRows(
 				{Value: v.Name, Kind: cellText},
 				{Value: v.ContactName, Kind: cellText},
 				{Value: v.Email, Kind: cellText},
-				{Value: v.Phone, Kind: cellText},
+				{Value: locale.FormatPhoneNumber(v.Phone, region), Kind: cellTelephoneNumber},
 				{Value: v.Website, Kind: cellText},
 				{Value: countStr(quoteCounts, v.ID), Kind: cellDrilldown},
 				{Value: countStr(jobCounts, v.ID), Kind: cellDrilldown},

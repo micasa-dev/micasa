@@ -149,6 +149,7 @@ type Vendor struct {
 	Phone       string         `                                                                             json:"phone"`
 	Website     string         `                                                                             json:"website"`
 	Notes       string         `                                                                             json:"notes"`
+	Locale      string         `                                                                             json:"locale"`
 	Documents   []Document     `gorm:"polymorphic:Entity;polymorphicType:EntityKind;polymorphicValue:vendor" json:"-"`
 	CreatedAt   time.Time      `                                                                             json:"created_at"`
 	UpdatedAt   time.Time      `                                                                             json:"updated_at"`

@@ -126,6 +126,7 @@ type vendorFormData struct {
 	Phone       string
 	Website     string
 	Notes       string
+	Locale      string
 }
 
 // entityRef identifies a polymorphic document parent (kind + ID).
@@ -1102,6 +1103,7 @@ func (m *Model) parseVendorFormData() (data.Vendor, error) {
 		Phone:       strings.TrimSpace(values.Phone),
 		Website:     strings.TrimSpace(values.Website),
 		Notes:       strings.TrimSpace(values.Notes),
+		Locale:      strings.TrimSpace(values.Locale),
 	}, nil
 }
 
@@ -1153,6 +1155,7 @@ func vendorFormValues(vendor data.Vendor) *vendorFormData {
 		Phone:       vendor.Phone,
 		Website:     vendor.Website,
 		Notes:       vendor.Notes,
+		Locale:      vendor.Locale,
 	}
 }
 

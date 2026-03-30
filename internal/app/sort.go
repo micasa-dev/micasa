@@ -129,7 +129,7 @@ func compareCells(tab *Tab, col, a, b int) int {
 			return cmpOrdered(strings.ToLower(va), strings.ToLower(vb))
 		}
 		return cmpOrdered(na, nb)
-	case cellText, cellStatus, cellNotes, cellEntity:
+	case cellText, cellStatus, cellNotes, cellEntity, cellTelephoneNumber:
 		return cmpOrdered(strings.ToLower(va), strings.ToLower(vb))
 	}
 	panic(fmt.Sprintf("unhandled cellKind: %d", kind))

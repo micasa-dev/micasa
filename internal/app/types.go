@@ -377,12 +377,13 @@ const (
 	cellReadonly
 	cellDate
 	cellStatus
-	cellDrilldown // interactive count that opens a detail view
-	cellWarranty  // date with green/red coloring based on expiry
-	cellUrgency   // date colored by proximity (green -> yellow -> red)
-	cellNotes     // text that can be expanded in a read-only overlay
-	cellEntity    // entity ref with colored kind-letter prefix
-	cellOps       // extraction ops count; opens tree overlay on enter
+	cellDrilldown       // interactive count that opens a detail view
+	cellWarranty        // date with green/red coloring based on expiry
+	cellUrgency         // date colored by proximity (green -> yellow -> red)
+	cellNotes           // text that can be expanded in a read-only overlay
+	cellEntity          // entity ref with colored kind-letter prefix
+	cellOps             // extraction ops count; opens tree overlay on enter
+	cellTelephoneNumber // formatted phone number; passthrough for styling
 )
 
 type cell struct {

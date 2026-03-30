@@ -63,6 +63,7 @@ func TestVendorRows(t *testing.T) {
 		map[string]int{"01JTEST00000000000000001": 3},
 		map[string]int{"01JTEST00000000000000002": 5},
 		nil,
+		"US",
 	)
 	require.Len(t, rows, 2)
 	assert.Equal(t, "01JTEST00000000000000001", meta[0].ID)
@@ -78,7 +79,7 @@ func TestVendorRows(t *testing.T) {
 func TestVendorRowsDocCount(t *testing.T) {
 	t.Parallel()
 	docCounts := map[string]int{"01JTEST00000000000000001": 9}
-	_, _, cells := vendorRows(sampleVendors(), nil, nil, docCounts)
+	_, _, cells := vendorRows(sampleVendors(), nil, nil, docCounts, "US")
 	require.Len(t, cells, 2)
 	assert.Equal(t, "9", cells[0][int(vendorColDocs)].Value)
 	assert.Equal(t, cellDrilldown, cells[0][int(vendorColDocs)].Kind)
@@ -123,11 +124,18 @@ func TestVendorColumnSpecKinds(t *testing.T) {
 	specs := vendorColumnSpecs()
 	// ID (0) is readonly.
 	assert.Equal(t, cellReadonly, specs[0].Kind, "ID column should be readonly")
-	// Editable columns: Name, Contact, Email, Phone, Website.
-	for _, col := range []int{1, 2, 3, 4, 5} {
+	// Editable text columns: Name, Contact, Email, Website.
+	for _, col := range []int{1, 2, 3, 5} {
 		assert.Equalf(t, cellText, specs[col].Kind,
 			"col %d (%s): expected cellText", col, specs[col].Title)
 	}
+	// Phone (4) is a telephone number.
+	assert.Equal(
+		t,
+		cellTelephoneNumber,
+		specs[4].Kind,
+		"Phone column should be cellTelephoneNumber",
+	)
 	// Quotes (6), Jobs (7), and Docs (8) are drilldown columns.
 	for _, col := range []int{6, 7, 8} {
 		assert.Equalf(t, cellDrilldown, specs[col].Kind,
@@ -165,6 +173,119 @@ func TestVendorJobsRowsSetsItemLinkID(t *testing.T) {
 	require.Len(t, cells, 1)
 	assert.Equal(t, "HVAC Filter", cells[0][1].Value)
 	assert.Equal(t, "01JTEST00000000000000007", cells[0][1].LinkID)
+}
+
+func TestVendorPhoneFormattedInTable(t *testing.T) {
+	// Not parallel: t.Setenv modifies process-global state.
+	// Force US default so the UK phone only formats correctly when the
+	// implementation actually consults Vendor.Locale (not the system default).
+	t.Setenv("LC_ALL", "en_US.UTF-8")
+	m := newTestModelWithStore(t)
+
+	require.NoError(t, m.store.CreateVendor(&data.Vendor{
+		Name:   "Phone Test Co",
+		Phone:  "02079460958",
+		Locale: "GB",
+	}))
+
+	// Navigate to vendor tab and reload.
+	for i, tab := range m.tabs {
+		if tab.Kind == tabVendors {
+			m.active = i
+			break
+		}
+	}
+	require.NoError(t, m.reloadActiveTab())
+
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	require.NotEmpty(t, tab.CellRows)
+
+	// Find the phone cell (vendorColPhone).
+	phoneCell := tab.CellRows[0][int(vendorColPhone)]
+	assert.Equal(t, "020 7946 0958", phoneCell.Value)
+	assert.Equal(t, cellTelephoneNumber, phoneCell.Kind)
+}
+
+func TestVendorLocalePreservedOnEdit(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	// Create vendor with a Locale set.
+	require.NoError(t, m.store.CreateVendor(&data.Vendor{
+		Name:   "UK Plumber",
+		Phone:  "02079460958",
+		Locale: "GB",
+	}))
+
+	vendors, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	require.Len(t, vendors, 1)
+	id := vendors[0].ID
+
+	// Open the real edit form -- this calls vendorFormValues(vendor)
+	// which copies Locale from the DB record into formData.
+	require.NoError(t, m.startEditVendorForm(id))
+	m.fs.form.Init()
+
+	// Change the name through the form data (simulates user editing).
+	values, ok := m.fs.formData.(*vendorFormData)
+	require.True(t, ok)
+	values.Name = "UK Plumber Renamed"
+
+	// Submit -- parseVendorFormData carries Locale through.
+	require.NoError(t, m.submitVendorForm())
+
+	// Reload and verify Locale is preserved.
+	updated, err := m.store.GetVendor(id)
+	require.NoError(t, err)
+	assert.Equal(t, "GB", updated.Locale)
+	assert.Equal(t, "UK Plumber Renamed", updated.Name)
+}
+
+func TestVendorInlineEditPhoneUsesRawValue(t *testing.T) {
+	// Not parallel: t.Setenv modifies process-global state.
+	t.Setenv("LC_ALL", "en_US.UTF-8")
+	m := newTestModelWithStore(t)
+
+	// Use a UK phone + GB locale so the table cell displays a formatted
+	// value ("020 7946 0958") that differs from the raw DB value.
+	require.NoError(t, m.store.CreateVendor(&data.Vendor{
+		Name:   "Raw Phone Co",
+		Phone:  "02079460958",
+		Locale: "GB",
+	}))
+
+	// Switch to vendor tab and reload.
+	for i, tab := range m.tabs {
+		if tab.Kind == tabVendors {
+			m.active = i
+			break
+		}
+	}
+	require.NoError(t, m.reloadActiveTab())
+
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	require.NotEmpty(t, tab.CellRows)
+
+	// Verify the table cell shows the formatted value.
+	phoneCell := tab.CellRows[0][int(vendorColPhone)]
+	assert.Equal(t, "020 7946 0958", phoneCell.Value, "table should show formatted phone")
+
+	id := tab.Rows[0].ID
+
+	// Open inline edit for phone column.
+	require.NoError(t, m.inlineEditVendor(id, vendorColPhone))
+	require.NotNil(t, m.inlineInput)
+
+	// The inline input should contain the raw DB value, not the formatted one.
+	assert.Equal(
+		t,
+		"02079460958",
+		m.inlineInput.Input.Value(),
+		"inline edit should use raw DB value",
+	)
 }
 
 func sampleVendors() []data.Vendor {
