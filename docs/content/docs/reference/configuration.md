@@ -330,9 +330,12 @@ their own default base URLs when none is configured.
 Environment variables override config file values. The full precedence order
 (highest to lowest):
 
-1. Environment variables (named `MICASA_` + the uppercased dotted config key)
+1. Environment variables
 2. Config file values
 3. Built-in defaults
+
+Each config key has a corresponding env var shown in gray below the key name:
+`MICASA_` + uppercase config path with dots replaced by underscores.
 
 ### `extra_context` examples
 
