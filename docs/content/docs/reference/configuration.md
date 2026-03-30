@@ -120,32 +120,32 @@ MICASA_ + UPPER(dotted.path with "." replaced by "_")
 For example, `documents.max_file_size` becomes `MICASA_DOCUMENTS_MAX_FILE_SIZE`.
 You can always infer the env var name from the config key.
 
-| Variable | Default | Config equivalent | Description |
-|----------|---------|-------------------|-------------|
-| `MICASA_DB_PATH` | [Platform default](#platform-data-directory) | -- | Database file path |
-| `MICASA_CHAT_ENABLE` | `true` | `chat.enable` | Enable/disable the chat feature |
-| `MICASA_CHAT_LLM_PROVIDER` | `ollama` | `chat.llm.provider` | Chat LLM provider name |
-| `MICASA_CHAT_LLM_BASE_URL` | `http://localhost:11434` | `chat.llm.base_url` | Chat LLM API base URL |
-| `MICASA_CHAT_LLM_MODEL` | `qwen3` | `chat.llm.model` | Chat LLM model name |
-| `MICASA_CHAT_LLM_API_KEY` | (empty) | `chat.llm.api_key` | Chat API key for cloud providers |
-| `MICASA_CHAT_LLM_EXTRA_CONTEXT` | (empty) | `chat.llm.extra_context` | Custom context appended to chat system prompts |
-| `MICASA_CHAT_LLM_TIMEOUT` | `5m` | `chat.llm.timeout` | Chat inference timeout |
-| `MICASA_CHAT_LLM_THINKING` | (unset) | `chat.llm.thinking` | Chat model thinking mode |
-| `MICASA_EXTRACTION_MAX_PAGES` | `0` | `extraction.max_pages` | Max pages to OCR per document (0 = no limit) |
-| `MICASA_EXTRACTION_LLM_ENABLE` | `true` | `extraction.llm.enable` | Enable/disable LLM extraction |
-| `MICASA_EXTRACTION_LLM_PROVIDER` | `ollama` | `extraction.llm.provider` | Extraction LLM provider name |
-| `MICASA_EXTRACTION_LLM_BASE_URL` | `http://localhost:11434` | `extraction.llm.base_url` | Extraction LLM API base URL |
-| `MICASA_EXTRACTION_LLM_MODEL` | `qwen3` | `extraction.llm.model` | Extraction LLM model name |
-| `MICASA_EXTRACTION_LLM_API_KEY` | (empty) | `extraction.llm.api_key` | Extraction API key for cloud providers |
-| `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | `extraction.llm.timeout` | Extraction inference timeout |
-| `MICASA_EXTRACTION_LLM_THINKING` | (unset) | `extraction.llm.thinking` | Extraction model thinking mode |
-| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | `extraction.ocr.enable` | Enable/disable OCR on documents |
-| `MICASA_EXTRACTION_OCR_TSV_ENABLE` | `true` | `extraction.ocr.tsv.enable` | Enable/disable spatial layout annotations |
-| `MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD` | `70` | `extraction.ocr.tsv.confidence_threshold` | OCR confidence threshold (0-100) |
-| `MICASA_DOCUMENTS_MAX_FILE_SIZE` | `50 MiB` | `documents.max_file_size` | Max document import size |
-| `MICASA_DOCUMENTS_CACHE_TTL` | `30d` | `documents.cache_ttl` | Document cache lifetime |
-| `MICASA_DOCUMENTS_FILE_PICKER_DIR` | (Downloads) | `documents.file_picker_dir` | Starting directory for the file picker |
-| `MICASA_LOCALE_CURRENCY` | (auto-detect) | `locale.currency` | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MICASA_DB_PATH` | [Platform default](#platform-data-directory) | Database file path |
+| `MICASA_CHAT_ENABLE` | `true` | Enable/disable the chat feature |
+| `MICASA_CHAT_LLM_PROVIDER` | `ollama` | Chat LLM provider name |
+| `MICASA_CHAT_LLM_BASE_URL` | `http://localhost:11434` | Chat LLM API base URL |
+| `MICASA_CHAT_LLM_MODEL` | `qwen3` | Chat LLM model name |
+| `MICASA_CHAT_LLM_API_KEY` | (empty) | Chat API key for cloud providers |
+| `MICASA_CHAT_LLM_EXTRA_CONTEXT` | (empty) | Custom context appended to chat system prompts |
+| `MICASA_CHAT_LLM_TIMEOUT` | `5m` | Chat inference timeout |
+| `MICASA_CHAT_LLM_THINKING` | (unset) | Chat model thinking mode |
+| `MICASA_EXTRACTION_MAX_PAGES` | `0` | Max pages to OCR per document (0 = no limit) |
+| `MICASA_EXTRACTION_LLM_ENABLE` | `true` | Enable/disable LLM extraction |
+| `MICASA_EXTRACTION_LLM_PROVIDER` | `ollama` | Extraction LLM provider name |
+| `MICASA_EXTRACTION_LLM_BASE_URL` | `http://localhost:11434` | Extraction LLM API base URL |
+| `MICASA_EXTRACTION_LLM_MODEL` | `qwen3` | Extraction LLM model name |
+| `MICASA_EXTRACTION_LLM_API_KEY` | (empty) | Extraction API key for cloud providers |
+| `MICASA_EXTRACTION_LLM_TIMEOUT` | `5m` | Extraction inference timeout |
+| `MICASA_EXTRACTION_LLM_THINKING` | (unset) | Extraction model thinking mode |
+| `MICASA_EXTRACTION_OCR_ENABLE` | `true` | Enable/disable OCR on documents |
+| `MICASA_EXTRACTION_OCR_TSV_ENABLE` | `true` | Enable/disable spatial layout annotations |
+| `MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD` | `70` | OCR confidence threshold (0-100) |
+| `MICASA_DOCUMENTS_MAX_FILE_SIZE` | `50 MiB` | Max document import size |
+| `MICASA_DOCUMENTS_CACHE_TTL` | `30d` | Document cache lifetime |
+| `MICASA_DOCUMENTS_FILE_PICKER_DIR` | (Downloads) | Starting directory for the file picker |
+| `MICASA_LOCALE_CURRENCY` | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`) |
 
 ### `MICASA_DB_PATH`
 

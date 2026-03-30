@@ -598,11 +598,19 @@ pre {
 
 /* ── Tables ────────────────────────────────────────────────── */
 
+.docs-main .table-wrap {
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+}
+
 .docs-main table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0 1.5rem;
   font-size: 0.92rem;
+}
+
+.docs-main td code {
+  white-space: nowrap;
 }
 
 .docs-main th {
