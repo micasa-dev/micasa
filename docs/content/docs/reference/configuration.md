@@ -336,6 +336,9 @@ Environment variables override config file values. The full precedence order
 
 Each config key has a corresponding env var shown in gray below the key name:
 `MICASA_` + uppercase config path with dots replaced by underscores.
+`MICASA_DB_PATH` is the sole exception -- it controls the
+[database path](#database-path-resolution-order) and has no config file
+equivalent.
 
 ### `extra_context` examples
 
