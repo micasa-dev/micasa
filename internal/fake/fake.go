@@ -82,6 +82,17 @@ func (h *HomeFaker) pick(items []string) string {
 	return items[h.f.IntN(len(items))]
 }
 
+// phone generates a 10-digit phone number. gofakeit.Phone() can start
+// with 0 or 1, which libphonenumber misparses (leading 1 looks like a
+// country code). Nudge the first digit to 2-9 to keep it NANP-valid.
+func (h *HomeFaker) phone() string {
+	p := []byte(h.f.Phone())
+	if len(p) > 0 && (p[0] == '0' || p[0] == '1') {
+		p[0] = "23456789"[h.f.IntN(8)]
+	}
+	return string(p)
+}
+
 // ---------------------------------------------------------------------------
 // Output types
 // ---------------------------------------------------------------------------
@@ -247,7 +258,7 @@ func (h *HomeFaker) Vendor() Vendor {
 	return Vendor{
 		Name:        h.vendorNameForTrade(trade),
 		ContactName: h.f.Name(),
-		Phone:       h.f.Phone(),
+		Phone:       h.phone(),
 		Email:       h.f.Email(),
 		Website:     fmt.Sprintf("https://%s", h.f.DomainName()),
 	}
@@ -258,7 +269,7 @@ func (h *HomeFaker) VendorForTrade(trade string) Vendor {
 	return Vendor{
 		Name:        h.vendorNameForTrade(trade),
 		ContactName: h.f.Name(),
-		Phone:       h.f.Phone(),
+		Phone:       h.phone(),
 		Email:       h.f.Email(),
 	}
 }
