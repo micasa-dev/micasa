@@ -613,7 +613,7 @@ pre {
   white-space: nowrap;
 }
 
-.env-hint {
+.docs-main .env-hint {
   display: block;
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 0.7em;
