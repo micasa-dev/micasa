@@ -609,6 +609,14 @@ pre {
   font-size: 0.92rem;
 }
 
+.docs-main td {
+  white-space: nowrap;
+}
+
+.docs-main td:last-child {
+  white-space: normal;
+}
+
 .docs-main td code {
   white-space: nowrap;
 }
@@ -619,8 +627,9 @@ pre {
   font-size: 0.7em;
   color: var(--warm-gray);
   margin-top: 0.15em;
+  margin-left: 0.49em;
   letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .docs-main th {
