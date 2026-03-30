@@ -9,6 +9,8 @@
     flake-utils.url = "github:numtide/flake-utils";
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
+    gitignore.url = "github:hercules-ci/gitignore.nix";
+    gitignore.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -17,6 +19,7 @@
       nixpkgs,
       flake-utils,
       git-hooks,
+      gitignore,
       ...
     }:
     {
@@ -33,13 +36,9 @@
           ];
         };
         go = pkgs.go_1_26;
-        version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ./VERSION);
-
-        buildGoModule = pkgs.buildGoModule.override { inherit go; };
 
         micasa = pkgs.callPackage ./nix/package.nix {
-          inherit buildGoModule version;
-          src = ./.;
+          inherit (gitignore.lib) gitignoreSource;
         };
 
         licenseCheck = pkgs.writeShellApplication {

@@ -4,12 +4,16 @@
 {
   lib,
   buildGoModule,
-  version,
-  src,
+  go_1_26,
+  gitignoreSource,
 }:
-buildGoModule {
+let
+  version = builtins.replaceStrings [ "\n" "\r" ] [ "" "" ] (builtins.readFile ../VERSION);
+in
+(buildGoModule.override { go = go_1_26; }) {
   pname = "micasa";
-  inherit version src;
+  inherit version;
+  src = gitignoreSource ../.;
   subPackages = [ "cmd/micasa" ];
   vendorHash = "sha256-r8zgXVRss4U3EA2iSs9YqLlNlWeANJXIKP8s1O75Wmw=";
   env.CGO_ENABLED = 0;
