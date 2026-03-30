@@ -53,7 +53,10 @@ type PullScanner struct {
 // Close releases the underlying HTTP response body. It is safe to call
 // multiple times.
 func (ps *PullScanner) Close() error {
-	return ps.body.Close()
+	if err := ps.body.Close(); err != nil {
+		return fmt.Errorf("close pull scanner: %w", err)
+	}
+	return nil
 }
 
 // Next returns the next progress chunk, or nil at EOF.
