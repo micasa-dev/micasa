@@ -17,8 +17,6 @@ linters:
     - godot            # requires period at end of comments
     - nonamedreturns   # forbids named returns; sometimes useful for docs
     - tagalign         # aligns struct tags; cosmetic
-    - grouper          # import grouping; not needed
-    - canonicalheader  # checks http header casing; too noisy
     - noinlineerr     # forbids inline err assignments; standard Go idiom
     - nilnil          # flags nil,nil returns; standard Go "not found" pattern
     - dupl            # duplicate code detection; tests excluded, remaining are HTTP boilerplate
@@ -39,8 +37,6 @@ linters:
     - testpackage      # requires _test package suffix; we test internals
     - paralleltest     # requires t.Parallel(); not always appropriate
     - tparallel        # similar to paralleltest
-    - gomoddirectives  # restricts go.mod directives; not needed
-    - importas         # enforces import aliases; not needed
     - interfacebloat   # limits interface methods; not useful for us
     - gosmopolitan     # i18n checks; not applicable
     - prealloc         # premature optimization; not useful
