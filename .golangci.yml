@@ -101,17 +101,13 @@ linters:
         path: _test\.go
         text: "G204|G704"
 
-      # goconst: repeated strings in tests are fine
+      # goconst: repeated test fixture strings
       - linters: [goconst]
-        path: _test\.go
+        path: internal/relay/(handler_suite|pgstore|stripe)_test\.go
 
-      # dupl: similar test structures are expected
-      - linters: [dupl]
-        path: _test\.go
-
-      # unqueryvet: SELECT * in test SQL injection fixtures is intentional
+      # unqueryvet: SELECT * in test SQL fixtures is intentional
       - linters: [unqueryvet]
-        path: _test\.go
+        path: internal/(data/query|data/sqlite/sqlite|llm/prompt|sqlfmt/sqlfmt)_test\.go
 
       # unqueryvet: dumpTable intentionally selects all columns for migration testing
       - linters: [unqueryvet]
