@@ -207,16 +207,22 @@ function processCodeInMermaid() {
     var nodes = [];
     var node;
     while ((node = walker.nextNode())) {
-      if (node.textContent.includes('`')) nodes.push(node);
+      if (node.textContent.includes('`')) {
+        nodes.push(node);
+      }
     }
     var mono = '"JetBrains Mono", "Fira Code", "Consolas", monospace';
     nodes.forEach(function(textNode) {
       var parts = textNode.textContent.split(/`([^`]+)`/);
-      if (parts.length <= 1) return;
+      if (parts.length <= 1) {
+        return;
+      }
       var parent = textNode.parentNode;
       var frag = document.createDocumentFragment();
       for (var i = 0; i < parts.length; i++) {
-        if (parts[i] === '') continue;
+        if (parts[i] === '') {
+          continue;
+        }
         if (i % 2 === 0) {
           frag.appendChild(document.createTextNode(parts[i]));
         } else {
@@ -241,7 +247,9 @@ document.addEventListener('theme-changed', async function () {
   for (var i = 0; i < els.length; i++) {
     var el = els[i];
     var source = el.getAttribute('data-original-source');
-    if (!source) continue;
+    if (!source) {
+      continue;
+    }
     el.removeAttribute('data-processed');
     el.innerHTML = source;
   }
