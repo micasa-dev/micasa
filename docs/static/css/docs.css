@@ -837,7 +837,12 @@ h2:hover .badge-experimental .badge-label {
 }
 
 .docs-main pre.mermaid .marker {
-  stroke: var(--warm-gray) !important;
+  stroke: var(--charcoal-soft) !important;
+}
+
+.docs-main pre.mermaid .marker circle {
+  fill: var(--cream) !important;
+  stroke: var(--charcoal-soft) !important;
 }
 
 .docs-main pre.mermaid .edgeLabel .label {
