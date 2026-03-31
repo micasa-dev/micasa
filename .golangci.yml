@@ -20,6 +20,9 @@ linters:
     - tagalign         # aligns struct tags; cosmetic
     - grouper          # import grouping; not needed
     - canonicalheader  # checks http header casing; too noisy
+    - noinlineerr     # forbids inline err assignments; standard Go idiom
+    - nilnil          # flags nil,nil returns; standard Go "not found" pattern
+    - dupl            # duplicate code detection; tests excluded, remaining are HTTP boilerplate
 
     # Complexity metrics -- we trust reviewer judgment
     - funlen           # function length limits
@@ -103,4 +106,8 @@ linters:
 
       # dupl: similar test structures are expected
       - linters: [dupl]
+        path: _test\.go
+
+      # unqueryvet: SELECT * in test SQL injection fixtures is intentional
+      - linters: [unqueryvet]
         path: _test\.go
