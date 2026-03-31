@@ -182,8 +182,13 @@ details; do not duplicate that detail here.
   independent, sequential when dependent).
 - **Use `jq`, not Python, for JSON**: Use `jq` directly, or `--jq` flags on
   `gh` subcommands.
-- **Treat "upstream" conceptually**: Use the repo's canonical mainline remote
-  (e.g. `origin/main`) even if no `upstream` remote exists.
+- **Discover the mainline remote once per session**: Run
+  `gh repo view --json nameWithOwner --jq .nameWithOwner` to get the
+  canonical repo (e.g. `micasa-dev/micasa`), then match it against
+  `git remote -v` to find the local remote name (e.g. `upstream`). Use
+  that remote's default branch for rebases, PR bases, and diff
+  comparisons. Cache the result for the session — don't re-discover on
+  every command.
 - **Modern CLI tools**: Use `rg` not `grep`, `fd` not `find`, `sd` not
   `sed` where possible.
 - **Read deps locally**: To read a dependency's source, look in the local
