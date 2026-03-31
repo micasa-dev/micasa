@@ -237,7 +237,7 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 
 // resolveDBPath returns the database path to use. Precedence:
 // 1. Explicit positional arg (opts.dbPath)
-// 2. data.DefaultDBPath(), which honors MICASA_DB_PATH env var internally
+// 2. data.DefaultDBPath(), which honors MICASA_DB_PATH env var internally.
 func (opts *runOpts) resolveDBPath() (string, error) {
 	if opts.dbPath != "" {
 		return data.ExpandHome(opts.dbPath), nil
@@ -338,7 +338,7 @@ func newBackupCmd() *cobra.Command {
 // resolveBackupSource returns the source database path for backup. Precedence:
 // 1. Explicit --source flag
 // 2. MICASA_DB_PATH env var (passed via opts.envDBPath)
-// 3. data.DefaultDBPath() platform default
+// 3. data.DefaultDBPath() platform default.
 func (opts *backupOpts) resolveBackupSource() (string, error) {
 	if opts.source != "" {
 		return data.ExpandHome(opts.source), nil

@@ -14,7 +14,6 @@ linters:
     - lll              # line length; golines handles this
     - tagliatelle      # enforces JSON tag casing; we set tags explicitly
     - exhaustruct      # requires all struct fields; too noisy for large structs
-    - godot            # requires period at end of comments
     - nonamedreturns   # forbids named returns; sometimes useful for docs
     - tagalign         # aligns struct tags; cosmetic
     - noinlineerr     # forbids inline err assignments; standard Go idiom

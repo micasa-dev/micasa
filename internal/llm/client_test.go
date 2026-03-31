@@ -549,7 +549,7 @@ func TestWrapErrorDeadlineExceeded(t *testing.T) {
 
 // TestWrapErrorProviderErrorPreservesNonConnectionErrors verifies that
 // ProviderErrors NOT caused by connection failures pass through the
-// original error message instead of showing "cannot reach."
+// original error message instead of showing "cannot reach.".
 func TestWrapErrorProviderErrorPreservesNonConnectionErrors(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -29,7 +29,7 @@ func DefaultDBPath() (string, error) {
 }
 
 // DocumentCacheDir returns the directory used for extracted document BLOBs.
-// On Linux: $XDG_CACHE_HOME/micasa/documents (default ~/.cache/micasa/documents)
+// On Linux: $XDG_CACHE_HOME/micasa/documents (default ~/.cache/micasa/documents).
 func DocumentCacheDir() (string, error) {
 	dir := filepath.Join(xdg.CacheHome, AppName, "documents")
 	// 0o700: owner-only access. Windows ignores Unix permission bits;
