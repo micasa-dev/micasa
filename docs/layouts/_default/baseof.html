@@ -185,6 +185,10 @@ mermaid.initialize({
 });
 await mermaid.run();
 
+// Yield one frame so the browser commits rendered SVGs to the DOM
+// before we walk their text nodes.
+await new Promise(function(resolve) { requestAnimationFrame(resolve); });
+
 // Post-process rendered SVGs once — CSS custom properties in docs.css
 // handle all color changes on theme toggle without re-rendering.
 document.querySelectorAll(".mermaid svg").forEach(function(svg) {
