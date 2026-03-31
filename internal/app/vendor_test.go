@@ -218,23 +218,33 @@ func TestVendorLocalePreservedOnEdit(t *testing.T) {
 		Locale: "GB",
 	}))
 
-	vendors, err := m.store.ListVendors(false)
-	require.NoError(t, err)
-	require.Len(t, vendors, 1)
-	id := vendors[0].ID
+	// Navigate to vendor tab and reload.
+	for i, tab := range m.tabs {
+		if tab.Kind == tabVendors {
+			m.active = i
+			break
+		}
+	}
+	require.NoError(t, m.reloadActiveTab())
+	tab := m.activeTab()
+	require.NotEmpty(t, tab.Rows)
+	tab.Table.SetCursor(0)
+	id := tab.Rows[0].ID
 
-	// Open the real edit form -- this calls vendorFormValues(vendor)
-	// which copies Locale from the DB record into formData.
-	require.NoError(t, m.startEditVendorForm(id))
-	m.fs.form.Init()
+	// Open edit form via keypresses.
+	sendKey(m, "i")
+	tab.ColCursor = int(vendorColID)
+	sendKey(m, "e")
+	require.Equal(t, modeForm, m.mode, "should open full edit form")
 
-	// Change the name through the form data (simulates user editing).
+	// Change the name through the form data.
 	values, ok := m.fs.formData.(*vendorFormData)
 	require.True(t, ok)
 	values.Name = "UK Plumber Renamed"
 
-	// Submit -- parseVendorFormData carries Locale through.
-	require.NoError(t, m.submitVendorForm())
+	// Submit via keypress.
+	sendKey(m, "ctrl+s")
+	sendKey(m, "esc")
 
 	// Reload and verify Locale is preserved.
 	updated, err := m.store.GetVendor(id)
@@ -273,10 +283,11 @@ func TestVendorInlineEditPhoneUsesRawValue(t *testing.T) {
 	phoneCell := tab.CellRows[0][int(vendorColPhone)]
 	assert.Equal(t, "020 7946 0958", phoneCell.Value, "table should show formatted phone")
 
-	id := tab.Rows[0].ID
-
-	// Open inline edit for phone column.
-	require.NoError(t, m.inlineEditVendor(id, vendorColPhone))
+	// Open inline edit for phone column via keypresses.
+	tab.Table.SetCursor(0)
+	sendKey(m, "i")
+	tab.ColCursor = int(vendorColPhone)
+	sendKey(m, "e")
 	require.NotNil(t, m.inlineInput)
 
 	// The inline input should contain the raw DB value, not the formatted one.
