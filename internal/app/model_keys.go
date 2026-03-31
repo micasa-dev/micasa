@@ -267,10 +267,7 @@ func (m *Model) handleNormalKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		}
 		prefix := appStyles.AccentText().Render("Copied: ")
 		prefixW := lipgloss.Width(prefix)
-		budget := m.width - prefixW
-		if budget < 10 {
-			budget = 10
-		}
+		budget := max(m.width-prefixW, 10)
 		displayValue := clipValue
 		if opsLabel != "" {
 			displayValue = opsLabel
