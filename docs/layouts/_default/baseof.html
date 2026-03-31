@@ -182,26 +182,59 @@ function getMermaidTheme() {
     themeVariables: dark ? {
       fontFamily: '"Source Serif 4", Georgia, serif',
       fontSize: "14px",
-      primaryColor: '#3d3730',
-      primaryBorderColor: '#d4764e',
-      primaryTextColor: '#e8ddd0',
-      lineColor: '#706760',
-      secondaryColor: '#242019',
-      tertiaryColor: '#242019'
+      background: "transparent",
+      primaryColor: "#3d3730",
+      primaryBorderColor: "#d4764e",
+      primaryTextColor: "#e8ddd0",
+      lineColor: "#706760",
+      secondaryColor: "#242019",
+      tertiaryColor: "#242019",
+      actorBkg: "#3d3730",
+      actorBorder: "#d4764e",
+      actorTextColor: "#e8ddd0",
+      actorLineColor: "#706760",
+      signalColor: "#a89e91",
+      signalTextColor: "#e8ddd0",
+      labelBoxBkgColor: "#242019",
+      labelBoxBorderColor: "#3d3730",
+      labelTextColor: "#a89e91",
+      loopTextColor: "#a89e91",
+      noteBkgColor: "#302b25",
+      noteBorderColor: "#3d3730",
+      noteTextColor: "#e8ddd0",
+      activationBkgColor: "#3d3730",
+      activationBorderColor: "#d4764e"
     } : {
       fontFamily: '"Source Serif 4", Georgia, serif',
       fontSize: "14px",
-      primaryColor: '#f0ebe4',
-      primaryBorderColor: '#c05e3c',
-      primaryTextColor: '#2d2a26',
-      lineColor: '#9e958a',
-      secondaryColor: '#faf6f1',
-      tertiaryColor: '#faf6f1'
+      background: "transparent",
+      primaryColor: "#f0ebe4",
+      primaryBorderColor: "#c05e3c",
+      primaryTextColor: "#2d2a26",
+      lineColor: "#9e958a",
+      secondaryColor: "#faf6f1",
+      tertiaryColor: "#faf6f1",
+      actorBkg: "#f0ebe4",
+      actorBorder: "#c05e3c",
+      actorTextColor: "#2d2a26",
+      actorLineColor: "#d9d2c9",
+      signalColor: "#4a4640",
+      signalTextColor: "#2d2a26",
+      labelBoxBkgColor: "#faf6f1",
+      labelBoxBorderColor: "#d9d2c9",
+      labelTextColor: "#4a4640",
+      loopTextColor: "#4a4640",
+      noteBkgColor: "#faf6f1",
+      noteBorderColor: "#d9d2c9",
+      noteTextColor: "#2d2a26",
+      activationBkgColor: "#f0ebe4",
+      activationBorderColor: "#c05e3c"
     }
   };
 }
 
 function processCodeInMermaid() {
+  var dark = document.documentElement.getAttribute("data-theme") === "dark";
   document.querySelectorAll(".mermaid svg").forEach(function(svg) {
     var walker = document.createTreeWalker(svg, NodeFilter.SHOW_TEXT, null);
     var nodes = [];
@@ -234,6 +267,16 @@ function processCodeInMermaid() {
       }
       parent.replaceChild(frag, textNode);
     });
+
+    // Adapt rect group backgrounds to current theme
+    if (dark) {
+      svg.querySelectorAll("rect").forEach(function(rect) {
+        var fill = (rect.getAttribute("fill") || "").replace(/\s/g, "");
+        if (fill === "rgb(240,235,228)") {
+          rect.setAttribute("fill", "#302b25");
+        }
+      });
+    }
   });
 }
 

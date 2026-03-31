@@ -746,6 +746,10 @@ h2:hover .badge-experimental .badge-label {
   font-size: 0.9em;
 }
 
+.docs-main pre.mermaid text.actor > tspan {
+  font-family: "DM Serif Display", Georgia, serif !important;
+}
+
 /* ── Screenshots ───────────────────────────────────────────── */
 
 .docs-main img,

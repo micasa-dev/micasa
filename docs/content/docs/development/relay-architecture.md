@@ -208,7 +208,7 @@ sequenceDiagram
     B->>R: `GET /sync/pull?after=0`
     R-->>B: all encrypted ops
     B->>B: `secretbox.Open(op, hhKey)` per op
-    B->>B: apply INSERT/UPDATE/DELETE to local SQLite
+    B->>B: apply `INSERT`/`UPDATE`/`DELETE` to local SQLite
     end
 
     rect rgb(240, 235, 228)
