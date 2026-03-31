@@ -23,6 +23,7 @@ linters:
     - noinlineerr     # forbids inline err assignments; standard Go idiom
     - nilnil          # flags nil,nil returns; standard Go "not found" pattern
     - dupl            # duplicate code detection; tests excluded, remaining are HTTP boilerplate
+    - dogsled         # flags multiple blank identifiers; functions returning 5 values are by design
 
     # Complexity metrics -- we trust reviewer judgment
     - funlen           # function length limits
@@ -77,6 +78,10 @@ linters:
       disable:
         - suite-broken-parallel # Our suites capture t := s.T() before Parallel()
 
+    modernize:
+      disable:
+        - newexpr  # ptr[T] helper wraps non-zero values; new() only creates zero values
+
     gocritic:
       enable-all: true
       disabled-tags:
@@ -111,3 +116,17 @@ linters:
       # unqueryvet: SELECT * in test SQL injection fixtures is intentional
       - linters: [unqueryvet]
         path: _test\.go
+
+      # unqueryvet: dumpTable intentionally selects all columns for migration testing
+      - linters: [unqueryvet]
+        path: internal/data/query\.go
+        text: "SELECT \\*"
+
+      # contextcheck: Open is a constructor; threading context to it adds no value
+      - linters: [contextcheck]
+        path: internal/data/backup\.go
+        text: "Open"
+
+      # usetesting: os.MkdirTemp shared via sync.Once; t.TempDir would clean up after first test
+      - linters: [usetesting]
+        path: cmd/micasa/main_test\.go

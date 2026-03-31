@@ -274,7 +274,7 @@ func TestVisibleProjectionHiddenCursor(t *testing.T) {
 	}
 	_, _, cursor, _, _ := visibleProjection(
 		tab,
-	) //nolint:dogsled // visibleProjection returns 5 values by design
+	)
 	assert.Equal(t, -1, cursor)
 }
 
@@ -287,7 +287,7 @@ func TestVisibleProjectionHiddenSortOmitted(t *testing.T) {
 	}
 	_, _, _, sorts, _ := visibleProjection(
 		tab,
-	) //nolint:dogsled // visibleProjection returns 5 values by design
+	)
 	assert.Empty(t, sorts)
 }
 
@@ -593,27 +593,27 @@ func TestApplianceAge(t *testing.T) {
 			"less than a month",
 			ptr(time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)),
 			"<1m",
-		}, //nolint:modernize // non-zero value
+		},
 		{
 			"a few months",
 			ptr(time.Date(2025, 10, 5, 0, 0, 0, 0, time.UTC)),
 			"4m",
-		}, //nolint:modernize // non-zero value
+		},
 		{
 			"one year exact",
 			ptr(time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)),
 			"1y",
-		}, //nolint:modernize // non-zero value
+		},
 		{
 			"years and months",
 			ptr(time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)),
 			"2y 7m",
-		}, //nolint:modernize // non-zero value
+		},
 		{
 			"future date",
 			ptr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
 			"",
-		}, //nolint:modernize // non-zero value
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -626,7 +626,7 @@ func ptr[T any](
 	v T,
 ) *T {
 	return &v
-} //nolint:modernize // wraps non-zero values; new() only creates zero values
+}
 
 func TestNavBadgeLabel(t *testing.T) {
 	t.Parallel()

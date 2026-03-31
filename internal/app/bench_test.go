@@ -101,7 +101,7 @@ func BenchmarkColumnWidths(b *testing.B) {
 	tab := m.activeTab()
 	visSpecs, visCells, _, _, _ := visibleProjection(
 		tab,
-	) //nolint:dogsled // visibleProjection returns 5 values by design
+	)
 	sepW := 3
 	b.ResetTimer()
 	for b.Loop() {
@@ -114,7 +114,7 @@ func BenchmarkNaturalWidths(b *testing.B) {
 	tab := m.activeTab()
 	visSpecs, visCells, _, _, _ := visibleProjection(
 		tab,
-	) //nolint:dogsled // visibleProjection returns 5 values by design
+	)
 	b.ResetTimer()
 	for b.Loop() {
 		_ = naturalWidths(visSpecs, visCells, "$")

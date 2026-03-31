@@ -82,7 +82,7 @@ func (s *Store) Backup(ctx context.Context, destPath string) error {
 func verifyBackup(ctx context.Context, path string) error {
 	backup, err := Open(
 		path,
-	) //nolint:contextcheck // Open is a constructor that doesn't benefit from context
+	)
 	if err != nil {
 		return fmt.Errorf("open backup for verification: %w", err)
 	}

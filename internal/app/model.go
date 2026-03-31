@@ -1705,7 +1705,7 @@ func (m *Model) updateTabViewport(tab *Tab) {
 	sepW := lipgloss.Width(" │ ")
 	fullWidths := columnWidths(visSpecs, visCells, width, sepW, nil)
 	ensureCursorVisible(tab, visColCursor, len(visSpecs))
-	vpStart, _, _, _ := viewportRange( //nolint:dogsled // viewportRange returns 4 values by design
+	vpStart, _, _, _ := viewportRange(
 		fullWidths, sepW, width, tab.ViewOffset, visColCursor,
 	)
 	tab.ViewOffset = vpStart

@@ -463,9 +463,7 @@ func isIdentChar(b byte) bool {
 // them as string slices along with column names. The sql.Rows lifecycle
 // is scoped to this function so defer closes correctly.
 func dumpTable(s *Store, name string) ([][]string, []string, error) {
-	sqlRows, err := s.db.Raw("SELECT * FROM " + name).
-		Rows()
-		//nolint:unqueryvet // dumpTable intentionally selects all columns
+	sqlRows, err := s.db.Raw("SELECT * FROM " + name).Rows()
 	if err != nil {
 		return nil, nil, err
 	}

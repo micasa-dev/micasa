@@ -143,7 +143,7 @@ func TestProjectHandlerStartEditForm(t *testing.T) {
 		Status:        data.ProjectStatusPlanned,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -184,7 +184,7 @@ func TestQuoteHandlerStartEditForm(t *testing.T) {
 		Total:      "800.00",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -218,7 +218,7 @@ func TestMaintenanceHandlerStartEditForm(t *testing.T) {
 		ScheduleType: schedNone,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -247,7 +247,7 @@ func TestApplianceHandlerStartEditForm(t *testing.T) {
 
 	m.fs.formData = &applianceFormData{Name: "Edit Fridge"}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -276,7 +276,7 @@ func TestVendorHandlerStartEditForm(t *testing.T) {
 
 	m.fs.formData = &vendorFormData{Name: "Edit Vendor Co"}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -310,7 +310,7 @@ func TestIncidentHandlerStartEditForm(t *testing.T) {
 		DateNoticed: "2026-02-01",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -351,7 +351,7 @@ func TestServiceLogHandlerStartEditForm(t *testing.T) {
 		Notes:             "test log",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -419,7 +419,7 @@ func TestProjectHandlerInlineEditTextColumn(t *testing.T) {
 		Status:        data.ProjectStatusPlanned,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -441,7 +441,7 @@ func TestProjectHandlerInlineEditSelectColumn(t *testing.T) {
 		Status:        data.ProjectStatusPlanned,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -463,7 +463,7 @@ func TestProjectHandlerInlineEditDateColumn(t *testing.T) {
 		Status:        data.ProjectStatusPlanned,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -484,7 +484,7 @@ func TestProjectHandlerInlineEditIDFallsBackToEditForm(t *testing.T) {
 		Status:        data.ProjectStatusPlanned,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -508,7 +508,7 @@ func TestProjectHandlerInlineEditMoneyColumn(t *testing.T) {
 		Budget:        "1000.00",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	m.exitForm()
@@ -546,7 +546,7 @@ func TestQuoteHandlerInlineEditColumns(t *testing.T) {
 		Total:      "500.00",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	cases := []struct {
@@ -620,7 +620,7 @@ func TestMaintenanceHandlerInlineEditColumns(t *testing.T) {
 		IntervalMonths: "6",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	// Item column opens inline input.
@@ -678,7 +678,7 @@ func TestMaintenanceHandlerInlineEditSeason(t *testing.T) {
 		Season:     data.SeasonSpring,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	// Season column opens form overlay (select).
@@ -821,7 +821,7 @@ func TestApplianceHandlerInlineEditColumns(t *testing.T) {
 		Cost:  "500.00",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	textCols := []struct {
@@ -887,7 +887,7 @@ func TestIncidentHandlerInlineEditColumns(t *testing.T) {
 		Cost:        "100.00",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	// Title opens inline input.
@@ -985,7 +985,7 @@ func TestServiceLogHandlerInlineEditColumns(t *testing.T) {
 		Notes:             "inline test",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	// Date opens calendar.
@@ -1046,7 +1046,7 @@ func TestVendorHandlerInlineEditColumns(t *testing.T) {
 		Website: "https://test.com",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
+	_, meta, _, _ := h.Load(m.store, false)
 	id := meta[0].ID
 
 	textCols := []struct {
@@ -1273,7 +1273,7 @@ func TestSkipColEditRemapsIndices(t *testing.T) {
 	_, meta, _, _ := (newQuoteHandler()).Load(
 		m.store,
 		false,
-	) //nolint:dogsled // Load returns 4 values by design
+	)
 	quoteID := meta[0].ID
 
 	// Project quote handler skips Project column (col 1).

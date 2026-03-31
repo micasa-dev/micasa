@@ -66,7 +66,7 @@ func getTestBin(t *testing.T) string {
 		dir, err := os.MkdirTemp(
 			"",
 			"micasa-test-*",
-		) //nolint:usetesting // shared via sync.Once; t.TempDir would clean up after first test
+		)
 		if err != nil {
 			errTestBin = fmt.Errorf("create temp dir: %w", err)
 			return
