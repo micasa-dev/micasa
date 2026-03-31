@@ -31,9 +31,36 @@ have full table navigation:
 | <kbd>ctrl+n</kbd>    | Clear all pins and filter |
 | <kbd>tab</kbd>       | Toggle house profile |
 | <kbd>D</kbd>         | Toggle dashboard       |
+| <kbd>y</kbd>         | Copy cell value to clipboard |
 | <kbd>i</kbd>         | Enter Edit mode      |
 | <kbd>@</kbd>         | Open LLM chat        |
 | <kbd>?</kbd>         | Help overlay         |
+
+### Clipboard (yank)
+
+Press <kbd>y</kbd> to copy the focused cell's value to the system clipboard.
+The status bar briefly shows the copied value. Money values are copied
+without the currency symbol.
+
+micasa uses [OSC 52](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands)
+to set the clipboard directly through the terminal. This works over SSH
+and doesn't require external tools like `xclip` or `xsel`. Most modern
+terminals support it, but some need explicit configuration:
+
+| Terminal | Configuration |
+|----------|---------------|
+| tmux | `set -g set-clipboard on` in `~/.tmux.conf` |
+| GNU Screen | `bindkey -d -k kb stuff "\010"` — limited support |
+| Alacritty | Enabled by default |
+| iTerm2 | Preferences → General → Selection → enable "Applications in terminal may access clipboard" |
+| kitty | Enabled by default |
+| WezTerm | Enabled by default |
+| Windows Terminal | Enabled by default |
+| foot | Enabled by default |
+| GNOME Terminal | Supported since 3.46 |
+
+If your terminal doesn't support OSC 52, the keypress is silently
+ignored — nothing breaks, you just don't get clipboard content.
 
 ## Edit mode
 
