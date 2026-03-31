@@ -824,7 +824,7 @@ h2:hover .badge-experimental .badge-label {
 }
 
 .docs-main pre.mermaid .relationshipLabelBox {
-  fill: var(--linen) !important;
+  fill: transparent !important;
   opacity: 1 !important;
 }
 
