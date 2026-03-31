@@ -172,16 +172,16 @@ document.addEventListener('click', function(e) {
 </script>
 
 <script type="module">
-import mermaid from 'mermaid';
+import mermaid from "mermaid";
 
 function getMermaidTheme() {
-  var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  var dark = document.documentElement.getAttribute("data-theme") === "dark";
   return {
     startOnLoad: false,
-    theme: 'base',
+    theme: "base",
     themeVariables: dark ? {
       fontFamily: '"Source Serif 4", Georgia, serif',
-      fontSize: '14px',
+      fontSize: "14px",
       primaryColor: '#3d3730',
       primaryBorderColor: '#d4764e',
       primaryTextColor: '#e8ddd0',
@@ -190,7 +190,7 @@ function getMermaidTheme() {
       tertiaryColor: '#242019'
     } : {
       fontFamily: '"Source Serif 4", Georgia, serif',
-      fontSize: '14px',
+      fontSize: "14px",
       primaryColor: '#f0ebe4',
       primaryBorderColor: '#c05e3c',
       primaryTextColor: '#2d2a26',
@@ -202,31 +202,31 @@ function getMermaidTheme() {
 }
 
 function processCodeInMermaid() {
-  document.querySelectorAll('.mermaid svg').forEach(function(svg) {
+  document.querySelectorAll(".mermaid svg").forEach(function(svg) {
     var walker = document.createTreeWalker(svg, NodeFilter.SHOW_TEXT, null);
     var nodes = [];
     var node;
     while ((node = walker.nextNode())) {
-      if (node.textContent.includes('`')) {
+      if (node.textContent.includes("`")) {
         nodes.push(node);
       }
     }
     var mono = '"JetBrains Mono", "Fira Code", "Consolas", monospace';
     nodes.forEach(function(textNode) {
-      var parts = textNode.textContent.split(/`([^`]+)`/);
+      var parts = textNode.textContent.split(/`([^`]+)`/g);
       if (parts.length <= 1) {
         return;
       }
       var parent = textNode.parentNode;
       var frag = document.createDocumentFragment();
       for (var i = 0; i < parts.length; i++) {
-        if (parts[i] === '') {
+        if (parts[i] === "") {
           continue;
         }
         if (i % 2 === 0) {
           frag.appendChild(document.createTextNode(parts[i]));
         } else {
-          var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          var tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
           tspan.style.fontFamily = mono;
           tspan.textContent = parts[i];
           frag.appendChild(tspan);
@@ -241,16 +241,16 @@ mermaid.initialize(getMermaidTheme());
 await mermaid.run();
 processCodeInMermaid();
 
-document.addEventListener('theme-changed', async function () {
+document.addEventListener("theme-changed", async function () {
   mermaid.initialize(getMermaidTheme());
-  var els = document.querySelectorAll('.mermaid[data-processed]');
+  var els = document.querySelectorAll(".mermaid[data-processed]");
   for (var i = 0; i < els.length; i++) {
     var el = els[i];
-    var source = el.getAttribute('data-original-source');
+    var source = el.getAttribute("data-original-source");
     if (!source) {
       continue;
     }
-    el.removeAttribute('data-processed');
+    el.removeAttribute("data-processed");
     el.innerHTML = source;
   }
   await mermaid.run();
