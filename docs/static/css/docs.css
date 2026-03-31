@@ -812,6 +812,37 @@ h2:hover .badge-experimental .badge-label {
   stroke: var(--terracotta) !important;
 }
 
+/* ER diagram colors */
+
+.docs-main pre.mermaid .entityBox,
+.docs-main pre.mermaid .node rect,
+.docs-main pre.mermaid .node circle,
+.docs-main pre.mermaid .node ellipse,
+.docs-main pre.mermaid .node polygon {
+  fill: var(--linen) !important;
+  stroke: var(--terracotta) !important;
+}
+
+.docs-main pre.mermaid .relationshipLabelBox {
+  fill: var(--cream) !important;
+}
+
+.docs-main pre.mermaid .relationshipLine {
+  stroke: var(--warm-gray) !important;
+}
+
+.docs-main pre.mermaid .marker {
+  stroke: var(--warm-gray) !important;
+}
+
+.docs-main pre.mermaid .edgeLabel .label {
+  fill: var(--charcoal) !important;
+}
+
+.docs-main pre.mermaid .label {
+  color: var(--charcoal) !important;
+}
+
 /* ── Screenshots ───────────────────────────────────────────── */
 
 .docs-main img,
