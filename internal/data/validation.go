@@ -47,7 +47,7 @@ func ParseOptionalDate(input string) (*time.Time, error) {
 func ParseOptionalDateAt(input string, ref time.Time) (*time.Time, error) {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
-		return nil, nil
+		return nil, nil //nolint:nilnil // empty optional input is not an error
 	}
 	parsed, err := parseDate(trimmed, ref)
 	if err != nil {

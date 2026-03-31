@@ -355,7 +355,7 @@ func buildIDMapping(db *gorm.DB, table string) (map[string]string, error) {
 		return nil, err
 	}
 	if len(ids) == 0 {
-		return nil, nil
+		return nil, nil //nolint:nilnil // empty result is not an error
 	}
 	mapping := make(map[string]string, len(ids))
 	for _, oldID := range ids {
@@ -368,7 +368,7 @@ func buildIDMapping(db *gorm.DB, table string) (map[string]string, error) {
 		mapping[oldID] = uid.New()
 	}
 	if len(mapping) == 0 {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no duplicates found is not an error
 	}
 	return mapping, nil
 }

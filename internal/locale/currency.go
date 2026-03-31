@@ -215,7 +215,7 @@ func (c Currency) ParseRequiredCents(input string) (int64, error) {
 func (c Currency) ParseOptionalCents(input string) (*int64, error) {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
-		return nil, nil
+		return nil, nil //nolint:nilnil // empty optional input is not an error
 	}
 	cents, err := c.parseCents(trimmed)
 	if err != nil {

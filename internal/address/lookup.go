@@ -61,7 +61,7 @@ func Lookup(
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil
+		return nil, nil //nolint:nilnil // not-found is not an error
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("postal code lookup: unexpected status %d", resp.StatusCode)
@@ -73,7 +73,7 @@ func Lookup(
 	}
 
 	if len(data.Places) == 0 {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no results is not an error
 	}
 
 	p := data.Places[0]

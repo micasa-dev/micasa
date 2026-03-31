@@ -17,7 +17,6 @@ linters:
     - nonamedreturns   # forbids named returns; sometimes useful for docs
     - tagalign         # aligns struct tags; cosmetic
     - noinlineerr     # forbids inline err assignments; standard Go idiom
-    - nilnil          # flags nil,nil returns; standard Go "not found" pattern
     - dupl            # duplicate code detection; tests excluded, remaining are HTTP boilerplate
     - dogsled         # flags multiple blank identifiers; functions returning 5 values are by design
 

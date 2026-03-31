@@ -75,7 +75,7 @@ func (ps *PullScanner) Next() (*PullChunk, error) {
 	if err := ps.scanner.Err(); err != nil {
 		return nil, fmt.Errorf("scanning pull response: %w", err)
 	}
-	return nil, nil // EOF
+	return nil, nil //nolint:nilnil // EOF signals end of stream, not an error
 }
 
 // PullModel initiates a model pull via the Ollama native API at baseURL.
