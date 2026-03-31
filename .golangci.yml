@@ -36,7 +36,6 @@ linters:
     - testpackage      # requires _test package suffix; we test internals
     - paralleltest     # requires t.Parallel(); not always appropriate
     - tparallel        # similar to paralleltest
-    - interfacebloat   # limits interface methods; not useful for us
     - gosmopolitan     # i18n checks; not applicable
     - prealloc         # premature optimization; not useful
     - err113           # forbids dynamic errors; too aggressive for user-facing messages
@@ -71,6 +70,9 @@ linters:
     testifylint:
       disable:
         - suite-broken-parallel # Our suites capture t := s.T() before Parallel()
+
+    interfacebloat:
+      max: 25  # relay Store has 24 methods; default 10 is too low
 
     modernize:
       disable:
