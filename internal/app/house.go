@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -211,7 +212,7 @@ func bedBathLabel(profile data.HouseProfile) string {
 		parts = append(parts, fmt.Sprintf("%dbd", profile.Bedrooms))
 	}
 	if profile.Bathrooms > 0 {
-		parts = append(parts, fmt.Sprintf("%sba", formatFloat(profile.Bathrooms)))
+		parts = append(parts, formatFloat(profile.Bathrooms)+"ba")
 	}
 	if len(parts) == 0 {
 		return ""
@@ -223,7 +224,7 @@ func formatInt(value int) string {
 	if value == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d", value)
+	return strconv.Itoa(value)
 }
 
 func formatFloat(value float64) string {

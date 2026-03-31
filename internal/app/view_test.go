@@ -591,21 +591,29 @@ func TestApplianceAge(t *testing.T) {
 		{"nil purchase", nil, ""},
 		{
 			"less than a month",
-			ptr(time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)),
+			ptr(time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)), //nolint:modernize // non-zero value
 			"<1m",
-		}, //nolint:modernize // non-zero value
+		},
 		{
 			"a few months",
-			ptr(time.Date(2025, 10, 5, 0, 0, 0, 0, time.UTC)),
+			ptr(time.Date(2025, 10, 5, 0, 0, 0, 0, time.UTC)), //nolint:modernize // non-zero value
 			"4m",
-		}, //nolint:modernize // non-zero value
+		},
 		{
 			"one year exact",
-			ptr(time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)),
+			ptr(time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)), //nolint:modernize // non-zero value
 			"1y",
+		},
+		{
+			"years and months",
+			ptr(time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)),
+			"2y 7m",
 		}, //nolint:modernize // non-zero value
-		{"years and months", ptr(time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)), "2y 7m"},
-		{"future date", ptr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)), ""},
+		{
+			"future date",
+			ptr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+			"",
+		}, //nolint:modernize // non-zero value
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -614,11 +622,8 @@ func TestApplianceAge(t *testing.T) {
 	}
 }
 
-func ptr[T any](
-	v T,
-) *T {
-	return &v
-} //nolint:modernize // ptr wraps non-zero values; new() only creates zero values
+//nolint:modernize // ptr wraps non-zero values; new() only creates zero values
+func ptr[T any](v T) *T { return &v }
 
 func TestNavBadgeLabel(t *testing.T) {
 	t.Parallel()

@@ -53,7 +53,7 @@ func TestProjectHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 
 	// Restore.
 	require.NoError(t, h.Restore(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Len(t, rows, 1)
 }
 
@@ -69,7 +69,7 @@ func TestProjectHandlerEditRoundTrip(t *testing.T) {
 		Status:        data.ProjectStatusIdeating,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false)
+	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	id := meta[0].ID
 
 	// Edit via form data.
@@ -211,11 +211,11 @@ func TestApplianceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 	id := meta[0].ID
 
 	require.NoError(t, h.Delete(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Empty(t, rows)
 
 	require.NoError(t, h.Restore(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Len(t, rows, 1)
 }
 
@@ -226,7 +226,7 @@ func TestApplianceHandlerEditRoundTrip(t *testing.T) {
 
 	m.fs.formData = &applianceFormData{Name: "Dryer"}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false)
+	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	id := meta[0].ID
 
 	editID := id
@@ -268,11 +268,11 @@ func TestMaintenanceHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 	id := meta[0].ID
 
 	require.NoError(t, h.Delete(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Empty(t, rows)
 
 	require.NoError(t, h.Restore(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Len(t, rows, 1)
 }
 
@@ -347,12 +347,12 @@ func TestQuoteHandlerRoundTrip(t *testing.T) {
 
 	// Delete.
 	require.NoError(t, h.Delete(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Empty(t, rows)
 
 	// Restore.
 	require.NoError(t, h.Restore(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Len(t, rows, 1)
 }
 
@@ -390,12 +390,12 @@ func TestServiceLogHandlerRoundTrip(t *testing.T) {
 
 	// Delete.
 	require.NoError(t, h.Delete(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Empty(t, rows)
 
 	// Restore.
 	require.NoError(t, h.Restore(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Len(t, rows, 1)
 }
 
@@ -526,7 +526,7 @@ func TestMaintenanceHandlerEditSeasonRoundTrip(t *testing.T) {
 		Season:     data.SeasonSpring,
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false)
+	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	id := meta[0].ID
 
 	// Edit to change season.
@@ -667,7 +667,7 @@ func TestIncidentHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 
 	// Restore.
 	require.NoError(t, h.Restore(m.store, id))
-	rows, _, _, _ = h.Load(m.store, false)
+	rows, _, _, _ = h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	assert.Len(t, rows, 1)
 }
 
@@ -683,7 +683,7 @@ func TestIncidentHandlerEditRoundTrip(t *testing.T) {
 		DateNoticed: "2026-02-01",
 	}
 	require.NoError(t, h.SubmitForm(m))
-	_, meta, _, _ := h.Load(m.store, false)
+	_, meta, _, _ := h.Load(m.store, false) //nolint:dogsled // Load returns 4 values by design
 	id := meta[0].ID
 
 	editID := id

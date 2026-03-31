@@ -691,14 +691,8 @@ func setFixedValues(specs []columnSpec, title string, values []string) {
 
 func (m *Model) resizeTables() {
 	// Chrome: 1 blank after house + 1 tab/breadcrumb row + 1 underline = 3
-	height := m.height - m.houseLines() - 3 - m.statusLines()
-	if height < 4 {
-		height = 4
-	}
-	tableHeight := height - 1
-	if tableHeight < 2 {
-		tableHeight = 2
-	}
+	height := max(m.height-m.houseLines()-3-m.statusLines(), 4)
+	tableHeight := max(height-1, 2)
 	for i := range m.tabs {
 		m.tabs[i].cachedVP = nil
 		m.tabs[i].Table.SetHeight(tableHeight)
@@ -872,10 +866,7 @@ func (m *Model) formatPullProgress(msg pullProgressMsg) string {
 	} else {
 		pct = m.pull.peak
 	}
-	barW := m.width/3 - lipgloss.Width(label) - 2
-	if barW < 15 {
-		barW = 15
-	}
+	barW := max(m.width/3-lipgloss.Width(label)-2, 15)
 	m.pull.progress.SetWidth(barW)
 	return label + " " + m.pull.progress.ViewAs(pct)
 }
@@ -1173,14 +1164,8 @@ func (m *Model) openHelp() {
 
 	// Viewport height: fit content or clamp to terminal.
 	// Chrome: border (2) + padding (2) + bottom gap (2) + rule (1) + hint (1) = 8.
-	maxH := m.effectiveHeight() - 8
-	if maxH < 3 {
-		maxH = 3
-	}
-	vpH := min(len(lines), maxH)
-	if vpH < 3 {
-		vpH = 3
-	}
+	maxH := max(m.effectiveHeight()-8, 3)
+	vpH := max(min(len(lines), maxH), 3)
 
 	vp := viewport.New(viewport.WithWidth(maxW), viewport.WithHeight(vpH))
 	vp.SetContent(content)

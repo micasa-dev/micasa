@@ -1312,7 +1312,11 @@ func TestBlobUploadAndDownload(t *testing.T) {
 
 	payload := []byte("encrypted-blob-content")
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader(payload),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
@@ -1336,14 +1340,22 @@ func TestBlobDedup409(t *testing.T) {
 
 	// First upload succeeds.
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader(payload),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
 	// Second upload returns 409 (dedup).
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req = httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader(payload),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusConflict, rec.Code)
@@ -1376,7 +1388,7 @@ func TestBlobHEADExists(t *testing.T) {
 	// Upload.
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, testHash),
 		bytes.NewReader([]byte("data")),
 	)
@@ -1386,7 +1398,7 @@ func TestBlobHEADExists(t *testing.T) {
 
 	// HEAD after upload -- 200.
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil)
+	req = httptest.NewRequest(http.MethodHead, blobURL(hh.HouseholdID, testHash), nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -1887,6 +1899,7 @@ func TestWithBlobQuotaNegativePanics(t *testing.T) {
 // failingStore wraps a real Store and lets tests inject errors for specific methods.
 type failingStore struct {
 	Store
+
 	listDevicesErr      error
 	getHouseholdErr     error
 	opsCountErr         error

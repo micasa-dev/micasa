@@ -2497,10 +2497,7 @@ func (m *Model) openEditDocumentForm(values *documentFormData, scoped bool) erro
 // newDocumentFilePicker creates a file picker pre-configured for document
 // uploads: files only, hidden files shown, height scaled to the terminal.
 func (m *Model) newDocumentFilePicker(title string) *huh.FilePicker {
-	h := m.height / 3
-	if h < 5 {
-		h = 5
-	}
+	h := max(m.height/3, 5)
 	// Use the configured starting directory (defaults to ~/Downloads).
 	// Fall back to cwd if the configured dir is empty.
 	dir := m.filePickerDir

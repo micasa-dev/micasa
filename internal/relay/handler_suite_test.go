@@ -205,7 +205,7 @@ func (s *HandlerSuite) TestBearerDoubleSpace() {
 	hh := suiteCreateHousehold(t, store)
 
 	// "Bearer  <token>" — double space. extractBearerToken returns " <token>".
-	req := httptest.NewRequest("GET", "/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	req.Header.Set("Authorization", "Bearer  "+hh.DeviceToken)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -217,7 +217,7 @@ func (s *HandlerSuite) TestNoAuthHeader() {
 	t.Parallel()
 	h, _ := s.newHandler(t)
 
-	req := httptest.NewRequest("GET", "/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -229,7 +229,7 @@ func (s *HandlerSuite) TestLongBearerToken() {
 	h, _ := s.newHandler(t)
 
 	longToken := strings.Repeat("a", 10240)
-	req := httptest.NewRequest("GET", "/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	req.Header.Set("Authorization", "Bearer "+longToken)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -529,7 +529,7 @@ func (s *HandlerSuite) TestWebhookMissingSignatureHeader() {
 	t.Parallel()
 	h, _ := s.newHandler(t, WithWebhookSecret("whsec_test"))
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe",
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe",
 		bytes.NewReader([]byte(`{"id":"evt_1"}`)))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -546,7 +546,7 @@ func (s *HandlerSuite) TestWebhookExactly1MiB() {
 	copy(payload, `{"id":"evt_1","type":"charge.succeeded","data":{}}`)
 	sig := makeSignatureHeader(payload, secret, time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(payload))
 	req.Header.Set("Stripe-Signature", sig)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -561,7 +561,7 @@ func (s *HandlerSuite) TestWebhook1MiBPlus1() {
 	h, _ := s.newHandler(t, WithWebhookSecret("whsec_test"))
 
 	payload := make([]byte, maxRequestBody+1)
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(payload))
 	req.Header.Set("Stripe-Signature", "t=123,v1=fake")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

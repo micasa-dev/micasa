@@ -155,7 +155,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	}
 
 	maps.Copy(db.ClauseBuilders, dialector.ClauseBuilders())
-	return
+	return err
 }
 
 func (dialector Dialector) ClauseBuilders() map[string]clause.ClauseBuilder {

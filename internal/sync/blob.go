@@ -122,7 +122,7 @@ func (c *Client) HasBlob(ctx context.Context, householdID, hash string) (bool, e
 	if err != nil {
 		return false, fmt.Errorf("construct blob check URL: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, "HEAD", blobURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, blobURL, nil)
 	if err != nil {
 		return false, fmt.Errorf("create blob check request: %w", err)
 	}

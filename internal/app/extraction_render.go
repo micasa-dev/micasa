@@ -607,8 +607,8 @@ func (m *Model) renderPageRatio(count, limit, docPages int) string {
 	countStr := bright.Render(strconv.Itoa(count))
 	if docPages > 0 {
 		return countStr + sep +
-			hint.Render(fmt.Sprintf("%d", limit)) + sep +
-			dim.Render(fmt.Sprintf("%d", docPages)) +
+			hint.Render(strconv.Itoa(limit)) + sep +
+			dim.Render(strconv.Itoa(docPages)) +
 			dim.Render(" pp")
 	}
 	total := limit
@@ -616,7 +616,7 @@ func (m *Model) renderPageRatio(count, limit, docPages int) string {
 		total = count
 	}
 	return countStr + sep +
-		hint.Render(fmt.Sprintf("%d", total)) +
+		hint.Render(strconv.Itoa(total)) +
 		dim.Render(" pp")
 }
 

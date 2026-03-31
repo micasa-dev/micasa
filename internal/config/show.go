@@ -28,7 +28,7 @@ var deprecatedPaths = map[string]string{}
 
 // ShowConfig writes the fully resolved configuration as valid TOML to w,
 // annotating each field with its env var name and marking active overrides.
-func (c Config) ShowConfig(w io.Writer) error {
+func (c *Config) ShowConfig(w io.Writer) error {
 	dc := c.forDisplay()
 
 	envMap := EnvVars() // env_var -> config_key
@@ -43,8 +43,8 @@ func (c Config) ShowConfig(w io.Writer) error {
 }
 
 // forDisplay returns a copy with nil optionals populated to effective values.
-func (c Config) forDisplay() Config {
-	d := c
+func (c *Config) forDisplay() Config {
+	d := *c
 	if d.Documents.CacheTTL == nil {
 		dur := d.Documents.CacheTTLDuration()
 		d.Documents.CacheTTL = &Duration{dur}
@@ -170,7 +170,7 @@ func walkSections(
 
 		comment := envComment(envByKey[path])
 		if replacement, ok := deprecatedPaths[path]; ok {
-			dep := fmt.Sprintf("DEPRECATED: use %s", replacement)
+			dep := "DEPRECATED: use " + replacement
 			if comment != "" {
 				comment = comment + "; " + dep
 			} else {

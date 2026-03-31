@@ -800,6 +800,7 @@ func TestTruncateToWidth(t *testing.T) {
 			text: "hello",
 			maxW: 10,
 			check: func(t *testing.T, result string) {
+				t.Helper()
 				assert.Equal(t, "hello", result)
 			},
 		},
@@ -808,6 +809,7 @@ func TestTruncateToWidth(t *testing.T) {
 			text: "very long text here",
 			maxW: 10,
 			check: func(t *testing.T, result string) {
+				t.Helper()
 				assert.LessOrEqual(t, lipgloss.Width(result), 10)
 				assert.Contains(t, result, "\u2026")
 			},
@@ -817,6 +819,7 @@ func TestTruncateToWidth(t *testing.T) {
 			text: "\u6771\u829d\u88fd\u54c1\u682a\u5f0f\u4f1a\u793e", // 東芝製品株式会社
 			maxW: 8,
 			check: func(t *testing.T, result string) {
+				t.Helper()
 				assert.LessOrEqual(t, lipgloss.Width(result), 8)
 				assert.Contains(t, result, "\u2026")
 			},
@@ -826,6 +829,7 @@ func TestTruncateToWidth(t *testing.T) {
 			text: "hello",
 			maxW: 1,
 			check: func(t *testing.T, result string) {
+				t.Helper()
 				assert.Equal(t, "\u2026", result)
 			},
 		},
@@ -834,6 +838,7 @@ func TestTruncateToWidth(t *testing.T) {
 			text: "hello",
 			maxW: 0,
 			check: func(t *testing.T, result string) {
+				t.Helper()
 				assert.Empty(t, result)
 			},
 		},

@@ -150,7 +150,7 @@ func TestApplyOpsSortsBySeqBeforeApplying(t *testing.T) {
 		},
 	}
 
-	result := ApplyOps(db, ops)
+	result := ApplyOps(t.Context(), db, ops)
 	require.Empty(t, result.Errors, "no errors expected")
 	assert.Equal(t, 2, result.Applied)
 
@@ -530,7 +530,7 @@ func TestApplyOpsDeleteBeforeInsertSortedBySeq(t *testing.T) {
 		},
 	}
 
-	result := ApplyOps(db, ops)
+	result := ApplyOps(t.Context(), db, ops)
 	require.Empty(t, result.Errors, "no errors expected")
 	assert.Equal(t, 2, result.Applied)
 
@@ -644,12 +644,12 @@ func TestApplyOpsEmptyOps(t *testing.T) {
 
 	db := store.GormDB()
 
-	result := ApplyOps(db, nil)
+	result := ApplyOps(t.Context(), db, nil)
 	assert.Equal(t, 0, result.Applied)
 	assert.Equal(t, 0, result.Conflicts)
 	assert.Empty(t, result.Errors)
 
-	result = ApplyOps(db, []DecryptedOp{})
+	result = ApplyOps(t.Context(), db, []DecryptedOp{})
 	assert.Equal(t, 0, result.Applied)
 	assert.Equal(t, 0, result.Conflicts)
 	assert.Empty(t, result.Errors)
@@ -709,7 +709,7 @@ func TestApplyOpsMultipleOpsAcrossTables(t *testing.T) {
 		},
 	}
 
-	result := ApplyOps(db, ops)
+	result := ApplyOps(t.Context(), db, ops)
 	require.Empty(t, result.Errors)
 	assert.Equal(t, 3, result.Applied)
 	assert.Equal(t, 0, result.Conflicts)
@@ -803,7 +803,7 @@ func TestApplyOpsCountsErrorsAndConflicts(t *testing.T) {
 		},
 	}
 
-	result := ApplyOps(db, ops)
+	result := ApplyOps(t.Context(), db, ops)
 	assert.Equal(t, 1, result.Applied, "one op should succeed")
 	assert.Equal(t, 1, result.Conflicts, "one conflict loss expected")
 	assert.Len(t, result.Errors, 1, "one error expected for disallowed table")
@@ -1161,7 +1161,7 @@ func TestApplyOpsDoesNotMutateCallerSlice(t *testing.T) {
 	origFirstSeq := ops[0].Envelope.Seq
 	origSecondSeq := ops[1].Envelope.Seq
 
-	result := ApplyOps(db, ops)
+	result := ApplyOps(t.Context(), db, ops)
 	require.Empty(t, result.Errors)
 
 	// Caller's slice should not be reordered.

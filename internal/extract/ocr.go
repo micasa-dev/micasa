@@ -185,10 +185,7 @@ func ocrPDFPages(
 ) []ocrPageResult {
 	results := make([]ocrPageResult, pageCount)
 
-	workers := runtime.NumCPU()
-	if workers > pageCount {
-		workers = pageCount
-	}
+	workers := min(runtime.NumCPU(), pageCount)
 
 	sem := make(chan struct{}, workers)
 	var wg sync.WaitGroup

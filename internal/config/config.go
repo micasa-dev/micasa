@@ -496,8 +496,8 @@ func collectEnvVars(t reflect.Type, prefix string, m map[string]string) {
 // Get resolves a dot-delimited config key to its string representation.
 // Keys mirror the TOML structure (e.g. "chat.llm.model",
 // "documents.max_file_size").
-func (c Config) Get(key string) (string, error) {
-	return getField(reflect.ValueOf(c), key)
+func (c *Config) Get(key string) (string, error) {
+	return getField(reflect.ValueOf(*c), key)
 }
 
 // getField walks a struct value using dot-delimited TOML tag names and returns
@@ -656,7 +656,7 @@ func collectKeys(t reflect.Type, prefix string) []string {
 }
 
 // hasAPIKeys reports whether any API key field is set in the config.
-func (c Config) hasAPIKeys() bool {
+func (c *Config) hasAPIKeys() bool {
 	return c.Chat.LLM.APIKey != "" ||
 		c.Extraction.LLM.APIKey != ""
 }

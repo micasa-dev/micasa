@@ -27,7 +27,7 @@ const (
 // Query runs a jq filter against the config and writes the result to w.
 // An identity filter (".") uses ShowConfig for canonical TOML formatting.
 // Otherwise: scalars print bare, objects encode as TOML, arrays as JSON.
-func (c Config) Query(ctx context.Context, w io.Writer, filter string) error {
+func (c *Config) Query(ctx context.Context, w io.Writer, filter string) error {
 	filter = strings.TrimSpace(filter)
 	if filter == "" || filter == defaultFilter {
 		return c.ShowConfig(w)
@@ -48,7 +48,7 @@ func (c Config) Query(ctx context.Context, w io.Writer, filter string) error {
 		return fmt.Errorf("compile filter: %w", err)
 	}
 
-	input, err := configToJQ(c)
+	input, err := configToJQ(*c)
 	if err != nil {
 		return err
 	}

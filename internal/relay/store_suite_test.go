@@ -18,6 +18,7 @@ import (
 // StoreSuite tests the Store interface contract against any backend.
 type StoreSuite struct {
 	suite.Suite
+
 	newStore func(t *testing.T) Store // immutable factory
 }
 

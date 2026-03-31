@@ -16,11 +16,11 @@ import (
 type ByteSize uint64
 
 // Bytes returns the size as uint64.
-func (b ByteSize) Bytes() uint64 { return uint64(b) }
+func (b *ByteSize) Bytes() uint64 { return uint64(*b) }
 
 // MarshalText implements encoding.TextMarshaler, producing human-readable
 // IEC notation like "50 MiB".
-func (b ByteSize) MarshalText() ([]byte, error) {
+func (b *ByteSize) MarshalText() ([]byte, error) {
 	return []byte(humanize.IBytes(b.Bytes())), nil
 }
 

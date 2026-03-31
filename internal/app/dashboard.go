@@ -573,10 +573,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 	if budget > 0 && len(lines) > budget {
 		indicatorLines := 0
 		for range 3 {
-			viewportH := budget - indicatorLines
-			if viewportH < 1 {
-				viewportH = 1
-			}
+			viewportH := max(budget-indicatorLines, 1)
 			m.scrollDashTo(cursorLine, viewportH, len(lines))
 			end := min(m.dash.scrollOffset+viewportH, len(lines))
 			needed := 0
@@ -592,10 +589,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 			indicatorLines = needed
 		}
 
-		viewportH := budget - indicatorLines
-		if viewportH < 1 {
-			viewportH = 1
-		}
+		viewportH := max(budget-indicatorLines, 1)
 
 		end := min(m.dash.scrollOffset+viewportH, len(lines))
 
@@ -977,10 +971,7 @@ func (m *Model) scrollDashTo(targetLine, viewportH, totalLines int) {
 	} else if targetLine >= m.dash.scrollOffset+viewportH {
 		m.dash.scrollOffset = targetLine - viewportH + 1
 	}
-	maxOffset := totalLines - viewportH
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
+	maxOffset := max(totalLines-viewportH, 0)
 	if m.dash.scrollOffset > maxOffset {
 		m.dash.scrollOffset = maxOffset
 	}

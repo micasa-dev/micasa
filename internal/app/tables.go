@@ -341,7 +341,7 @@ func vendorRows(
 // Zero or absent entries render as "0".
 func countStr(counts map[string]int, id string) string {
 	if n := counts[id]; n > 0 {
-		return fmt.Sprintf("%d", n)
+		return strconv.Itoa(n)
 	}
 	return "0"
 }

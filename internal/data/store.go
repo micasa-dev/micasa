@@ -568,10 +568,10 @@ func (s *Store) countByFK(model any, fkColumn string, ids []string) (map[string]
 // deleted_at. Works with both Store.db and transaction handles.
 // Writes an "update" oplog entry with the new values as payload.
 func updateByIDWith(db *gorm.DB, table string, model any, id string, values any) error {
-	if err := db.Model(model).Where(ColID+" = ?", id).
-		Select("*").
-		Omit(ColID, ColCreatedAt, ColDeletedAt).
-		Updates(values).Error; err != nil {
+	if err := db.Model(model).Where(ColID+" = ?", id). //nolint:unqueryvet // GORM Select("*") updates all non-omitted columns
+								Select("*").
+								Omit(ColID, ColCreatedAt, ColDeletedAt).
+								Updates(values).Error; err != nil {
 		return err
 	}
 	if !isSyncApplying(db) {

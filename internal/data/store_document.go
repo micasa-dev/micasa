@@ -141,10 +141,10 @@ func (s *Store) UpdateDocument(doc Document) error {
 			ColChecksumSHA256, ColData,
 		)
 	}
-	if err := s.db.Model(&Document{}).Where(ColID+" = ?", doc.ID).
-		Select("*").
-		Omit(omit...).
-		Updates(doc).Error; err != nil {
+	if err := s.db.Model(&Document{}).Where(ColID+" = ?", doc.ID). //nolint:unqueryvet // GORM Select("*") updates all non-omitted columns
+									Select("*").
+									Omit(omit...).
+									Updates(doc).Error; err != nil {
 		return err
 	}
 	if !isSyncApplying(s.db) {

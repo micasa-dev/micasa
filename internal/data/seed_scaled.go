@@ -422,10 +422,7 @@ func (s *Store) SeedScaledDataFrom(h *fake.HomeFaker, years int) (SeedSummary, e
 func projectStatusForAge(h *fake.HomeFaker, yearsAgo int) string {
 	// Weight completed more heavily for older projects.
 	// yearsAgo 0 = current year (any status), 5+ = heavily completed.
-	completedWeight := 10 + yearsAgo*15
-	if completedWeight > 80 {
-		completedWeight = 80
-	}
+	completedWeight := min(10+yearsAgo*15, 80)
 
 	roll := h.IntN(100)
 	switch {

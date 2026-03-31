@@ -65,7 +65,7 @@ func (s *Store) Backup(ctx context.Context, destPath string) error {
 		return err
 	}
 
-	if err := verifyBackup(destPath); err != nil {
+	if err := verifyBackup(ctx, destPath); err != nil {
 		return err
 	}
 
@@ -78,15 +78,17 @@ func (s *Store) Backup(ctx context.Context, destPath string) error {
 
 // verifyBackup opens the backup and runs PRAGMA integrity_check to confirm
 // the database is internally consistent.
-func verifyBackup(path string) error {
-	backup, err := Open(path)
+func verifyBackup(ctx context.Context, path string) error {
+	backup, err := Open(
+		path,
+	) //nolint:contextcheck // Open is a constructor that doesn't benefit from context
 	if err != nil {
 		return fmt.Errorf("open backup for verification: %w", err)
 	}
 	defer func() { _ = backup.Close() }()
 
 	var result string
-	if err := backup.db.Raw("PRAGMA integrity_check").Scan(&result).Error; err != nil {
+	if err := backup.db.WithContext(ctx).Raw("PRAGMA integrity_check").Scan(&result).Error; err != nil {
 		return fmt.Errorf("integrity check failed: %w", err)
 	}
 	if result != "ok" {

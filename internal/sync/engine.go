@@ -104,7 +104,7 @@ func (e *Engine) pullAll(ctx context.Context, lastSeq int64) (int, int, error) {
 			break
 		}
 
-		ar := ApplyOps(e.store.GormDB(), result.Ops)
+		ar := ApplyOps(ctx, e.store.GormDB(), result.Ops)
 		if len(ar.Errors) > 0 {
 			return total, totalConflicts, fmt.Errorf("apply ops: %w", ar.Errors[0])
 		}

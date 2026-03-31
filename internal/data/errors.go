@@ -46,14 +46,13 @@ func Hint(err error) string {
 func FieldError(label string, err error) error {
 	switch {
 	case errors.Is(err, locale.ErrNegativeMoney):
-		return WithHint(err, fmt.Sprintf("%s must be a positive amount", label))
+		return WithHint(err, label+" must be a positive amount")
 	case errors.Is(err, locale.ErrInvalidMoney):
-		return WithHint(err, fmt.Sprintf("%s should look like 1250.00", label))
+		return WithHint(err, label+" should look like 1250.00")
 	case errors.Is(err, ErrInvalidDate):
-		return WithHint(err, fmt.Sprintf(
-			"%s should be YYYY-MM-DD or a relative date like 'yesterday'", label))
+		return WithHint(err, label+" should be YYYY-MM-DD or a relative date like 'yesterday'")
 	case errors.Is(err, ErrInvalidInt):
-		return WithHint(err, fmt.Sprintf("%s should be a whole number", label))
+		return WithHint(err, label+" should be a whole number")
 	case errors.Is(err, ErrInvalidFloat):
 		return WithHint(err, fmt.Sprintf("%s should be a number like 2.5", label))
 	case errors.Is(err, ErrInvalidInterval):

@@ -196,7 +196,7 @@ func TestFormatSQLWrapsLongLines(t *testing.T) {
 			"FROM maintenance_items WHERE deleted_at IS NULL ORDER BY next_due",
 		40,
 	)
-	for _, line := range strings.Split(got, "\n") {
+	for line := range strings.SplitSeq(got, "\n") {
 		assert.LessOrEqual(t, len(line), 50,
 			"line too long (allowing 10 char grace for unbreakable tokens): %q", line)
 	}

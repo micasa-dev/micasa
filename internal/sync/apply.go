@@ -4,6 +4,7 @@
 package sync
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,9 +47,9 @@ func allowedSyncTable(tableName string) bool {
 // Uses LWW conflict resolution when a local unsynced op exists for the
 // same (table, row_id). Sets the syncApplying context flag to suppress
 // oplog hooks from re-logging applied remote ops.
-func ApplyOps(db *gorm.DB, ops []DecryptedOp) ApplyResult {
+func ApplyOps(ctx context.Context, db *gorm.DB, ops []DecryptedOp) ApplyResult {
 	// Ensure oplog hooks are suppressed for remote op application.
-	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
+	db = db.WithContext(data.WithSyncApplying(ctx))
 
 	// Copy the slice to avoid mutating the caller's data, then sort by
 	// relay seq so ops apply in causal order regardless of how the

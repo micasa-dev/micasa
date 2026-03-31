@@ -230,6 +230,7 @@ var sqlKeywords = map[string]bool{
 // clauseToken is a processed token that may represent a multi-word keyword.
 type clauseToken struct {
 	sqlToken
+
 	Keyword string // uppercased multi-word keyword (e.g. "ORDER BY"), or "" if not a clause
 	Level   int    // clause level from clauseLevel, or -1
 }

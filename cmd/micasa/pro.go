@@ -87,12 +87,12 @@ func resolveProDeps(dbPath string) (*proDeps, error) {
 	dev, err := store.GetSyncDevice()
 	if err != nil {
 		if errors.Is(err, data.ErrNoSyncDevice) {
-			return nil, fmt.Errorf("sync not set up -- run `micasa pro init` first")
+			return nil, errors.New("sync not set up -- run `micasa pro init` first")
 		}
 		return nil, fmt.Errorf("read sync state: %w", err)
 	}
 	if dev.HouseholdID == "" {
-		return nil, fmt.Errorf("sync not set up -- run `micasa pro init` first")
+		return nil, errors.New("sync not set up -- run `micasa pro init` first")
 	}
 
 	secretDir, err := crypto.SecretsDir()
@@ -516,9 +516,9 @@ func runProInvite(dbPath string) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("interrupted")
+			return errors.New("interrupted")
 		case <-deadline:
-			return fmt.Errorf("timed out waiting for joiner (5 minutes)")
+			return errors.New("timed out waiting for joiner (5 minutes)")
 		case <-ticker.C:
 			exchanges, err := client.GetPendingExchanges(ctx, deps.device.HouseholdID)
 			if err != nil {
@@ -613,7 +613,7 @@ func runProJoin(code, dbPath, relayURL string) error {
 		)
 	}
 	if householdID == "" || inviteCode == "" {
-		return fmt.Errorf(
+		return errors.New(
 			"invalid invite code format -- " +
 				"both household ID and code must be non-empty",
 		)
@@ -656,7 +656,7 @@ func runProJoin(code, dbPath, relayURL string) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("interrupted")
+			return errors.New("interrupted")
 		case <-timeoutCh:
 			return fmt.Errorf(
 				"timed out waiting for inviter approval (5 minutes)",

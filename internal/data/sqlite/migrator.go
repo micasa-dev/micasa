@@ -24,7 +24,7 @@ type Migrator struct {
 	migrator.Migrator
 }
 
-func (m *Migrator) RunWithoutForeignKey(fc func() error) error {
+func (m Migrator) RunWithoutForeignKey(fc func() error) error {
 	var enabled int
 	m.DB.Raw("PRAGMA foreign_keys").Scan(&enabled)
 	if enabled == 1 {
@@ -395,7 +395,7 @@ func (m Migrator) GetIndexes(value any) ([]gorm.Index, error) {
 	indexes := make([]gorm.Index, 0)
 	err := m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		rst := make([]*Index, 0)
-		if err := m.DB.Raw(
+		if err := m.DB.Raw( //nolint:unqueryvet // GORM internal PRAGMA query
 			"SELECT * FROM PRAGMA_index_list(?)", stmt.Table,
 		).Scan(&rst).Error; err != nil {
 			return err

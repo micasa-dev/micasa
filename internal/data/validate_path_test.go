@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -72,7 +73,7 @@ func TestValidateDBPathRejectsRandomURLs(t *testing.T) {
 	f := gofakeit.New(testSeed)
 	for i := range 100 {
 		u := f.URL()
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Error(t, ValidateDBPath(u), "ValidateDBPath(%q) should reject", u)
 		})
 	}
@@ -83,7 +84,7 @@ func TestValidateDBPathRejectsRandomURLsWithQueryParams(t *testing.T) {
 	f := gofakeit.New(testSeed)
 	for i := range 50 {
 		u := fmt.Sprintf("%s?%s=%s", f.URL(), f.Word(), f.Word())
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Error(t, ValidateDBPath(u), "ValidateDBPath(%q) should reject", u)
 		})
 	}
@@ -126,7 +127,7 @@ func TestOpenRejectsURIs(t *testing.T) {
 	f := gofakeit.New(testSeed)
 	for i := range 10 {
 		u := f.URL()
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			_, err := Open(u)
 			require.Error(t, err, "Open(%q) should reject URI paths", u)
 		})

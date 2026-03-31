@@ -355,7 +355,7 @@ func runBackup(w io.Writer, opts *backupOpts) error {
 		return fmt.Errorf("resolve source path: %w", err)
 	}
 	if sourcePath == ":memory:" {
-		return fmt.Errorf("cannot back up an in-memory database")
+		return errors.New("cannot back up an in-memory database")
 	}
 	if _, err := os.Stat(sourcePath); err != nil {
 		return fmt.Errorf(
