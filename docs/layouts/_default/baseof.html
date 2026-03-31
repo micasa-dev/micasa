@@ -172,49 +172,68 @@ document.addEventListener('click', function(e) {
 </script>
 
 <script type="module">
-import mermaid from 'mermaid';
+import mermaid from "mermaid";
 
-function getMermaidTheme() {
-  var dark = document.documentElement.getAttribute('data-theme') === 'dark';
-  return {
-    startOnLoad: false,
-    theme: 'base',
-    themeVariables: dark ? {
-      fontFamily: '"Source Serif 4", Georgia, serif',
-      fontSize: '14px',
-      primaryColor: '#3d3730',
-      primaryBorderColor: '#d4764e',
-      primaryTextColor: '#e8ddd0',
-      lineColor: '#706760',
-      secondaryColor: '#242019',
-      tertiaryColor: '#242019'
-    } : {
-      fontFamily: '"Source Serif 4", Georgia, serif',
-      fontSize: '14px',
-      primaryColor: '#f0ebe4',
-      primaryBorderColor: '#c05e3c',
-      primaryTextColor: '#2d2a26',
-      lineColor: '#9e958a',
-      secondaryColor: '#faf6f1',
-      tertiaryColor: '#faf6f1'
-    }
-  };
-}
-
-mermaid.initialize(getMermaidTheme());
-mermaid.run();
-
-document.addEventListener('theme-changed', async function () {
-  mermaid.initialize(getMermaidTheme());
-  var els = document.querySelectorAll('.mermaid[data-processed]');
-  for (var i = 0; i < els.length; i++) {
-    var el = els[i];
-    var source = el.getAttribute('data-original-source');
-    if (!source) continue;
-    el.removeAttribute('data-processed');
-    el.innerHTML = source;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "base",
+  themeVariables: {
+    fontFamily: '"Source Serif 4", Georgia, serif',
+    fontSize: "14px",
+    background: "transparent"
   }
-  await mermaid.run();
+});
+await mermaid.run();
+
+// Yield one frame so the browser commits rendered SVGs to the DOM
+// before we walk their text nodes.
+await new Promise(function(resolve) { requestAnimationFrame(resolve); });
+
+// Post-process rendered SVGs once — CSS custom properties in docs.css
+// handle all color changes on theme toggle without re-rendering.
+document.querySelectorAll(".mermaid svg").forEach(function(svg) {
+  // Replace backtick-delimited text with monospace tspans
+  var walker = document.createTreeWalker(svg, NodeFilter.SHOW_TEXT, null);
+  var nodes = [];
+  var node;
+  while ((node = walker.nextNode())) {
+    if (node.textContent.includes("`")) {
+      nodes.push(node);
+    }
+  }
+  var mono = '"JetBrains Mono", "Fira Code", "Consolas", monospace';
+  nodes.forEach(function(textNode) {
+    var parts = textNode.textContent.split(/`([^`]+)`/g);
+    if (parts.length <= 1) {
+      return;
+    }
+    var parent = textNode.parentNode;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] === "") {
+        continue;
+      }
+      if (i % 2 === 0) {
+        frag.appendChild(document.createTextNode(parts[i]));
+      } else {
+        var tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        tspan.style.fontFamily = mono;
+        tspan.textContent = parts[i];
+        frag.appendChild(tspan);
+      }
+    }
+    parent.replaceChild(frag, textNode);
+  });
+
+  // Replace hardcoded rect group fills with a CSS variable so they
+  // adapt to theme toggles without re-rendering.
+  svg.querySelectorAll("rect").forEach(function(rect) {
+    var fill = (rect.getAttribute("fill") || "").replace(/\s/g, "");
+    if (fill === "rgb(240,235,228)") {
+      rect.removeAttribute("fill");
+      rect.style.fill = "var(--linen)";
+    }
+  });
 });
 </script>
 
