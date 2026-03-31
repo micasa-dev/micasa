@@ -26,7 +26,7 @@ Create a pull request for the current branch.
   omit them from the summary. Only mention AGENTS.md if the PR is solely
   about agent rules.
 - **Avoid CI trigger phrases**: Never put `[skip ci]`, `[ci skip]`, etc.
-  in the PR title or body unless you intend to suppress CI.
+  in the PR title or body.
 
 ## Closing issues
 

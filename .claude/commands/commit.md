@@ -35,14 +35,12 @@ Use conventional commits with scopes:
 ## Scope conventions
 
 - Reference the issue number: `closes #42`, `fixes #42`
-- AGENTS.md-only commits: add the standard no-ci marker to the message.
-  There's nothing to build or test.
 - Do not amend unless explicitly requested
 - Do not use `--no-verify` under any circumstances
 
 ## Avoid CI trigger phrases
 
 The tokens `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`, and
-`[actions skip]` suppress CI runs. Never include them in commit messages
-unless you intend to suppress CI (e.g. AGENTS.md-only changes). When
-referring to the mechanism, paraphrase instead of writing the literal token.
+`[actions skip]` suppress CI runs. Never include them in commit messages.
+When referring to the mechanism, paraphrase instead of writing the literal
+token.
