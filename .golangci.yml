@@ -18,7 +18,6 @@ linters:
     - tagalign         # aligns struct tags; cosmetic
     - noinlineerr     # forbids inline err assignments; standard Go idiom
     - dupl            # duplicate code detection; tests excluded, remaining are HTTP boilerplate
-    - dogsled         # flags multiple blank identifiers; functions returning 5 values are by design
 
     # Complexity metrics -- we trust reviewer judgment
     - funlen           # function length limits
@@ -73,10 +72,6 @@ linters:
     interfacebloat:
       max: 25  # relay Store has 24 methods; default 10 is too low
 
-    modernize:
-      disable:
-        - newexpr  # ptr[T] helper wraps non-zero values; new() only creates zero values
-
     gocritic:
       enable-all: true
       disabled-tags:
@@ -121,3 +116,15 @@ linters:
       # usetesting: os.MkdirTemp shared via sync.Once; t.TempDir would clean up after first test
       - linters: [usetesting]
         path: cmd/micasa/main_test\.go
+
+      # dogsled: visibleProjection returns 5 values, Load returns 4 — callers use subsets
+      - linters: [dogsled]
+        path: internal/app/(bench|view|handler_crud|handler_form_wiring)_test\.go
+      - linters: [dogsled]
+        path: internal/app/model\.go
+        source: "viewportRange"
+
+      # modernize/newexpr: ptr[T] helper wraps non-zero values; new() only creates zero values
+      - linters: [modernize]
+        path: internal/app/view_test\.go
+        text: "newexpr"
