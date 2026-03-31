@@ -47,6 +47,7 @@ npx --yes \
   -p "@semantic-release/exec@7.1.0" \
   -p "@semantic-release/git@10.0.1" \
   -p "conventional-changelog-conventionalcommits@8.0.0" \
+  -p "lodash-es@4.17.23" \
   semantic-release \
   --ci \
   --dry-run \
