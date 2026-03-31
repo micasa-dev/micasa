@@ -5,7 +5,6 @@ package data
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/micasa-dev/micasa/internal/locale"
 )
@@ -54,13 +53,12 @@ func FieldError(label string, err error) error {
 	case errors.Is(err, ErrInvalidInt):
 		return WithHint(err, label+" should be a whole number")
 	case errors.Is(err, ErrInvalidFloat):
-		return WithHint(err, fmt.Sprintf("%s should be a number like 2.5", label))
+		return WithHint(err, label+" should be a number like 2.5")
 	case errors.Is(err, ErrInvalidInterval):
-		return WithHint(err, fmt.Sprintf(
-			"%s should be months (6), or a duration like 6m, 1y, 2y 6m", label))
+		return WithHint(err, label+" should be months (6), or a duration like 6m, 1y, 2y 6m")
 	case errors.Is(err, ErrIntervalAndDueDate):
 		return WithHint(err, err.Error())
 	default:
-		return WithHint(err, fmt.Sprintf("%s: %s", label, err.Error()))
+		return WithHint(err, label+": "+err.Error())
 	}
 }

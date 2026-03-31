@@ -149,7 +149,7 @@ func (s *Store) MaxDocumentSize() uint64 {
 // imports. The value must be positive; zero is rejected.
 func (s *Store) SetMaxDocumentSize(n uint64) error {
 	if n == 0 {
-		return fmt.Errorf("max document size must be positive, got 0")
+		return errors.New("max document size must be positive, got 0")
 	}
 	s.maxDocumentSize = n
 	return nil
@@ -224,7 +224,7 @@ func ExpandHome(path string) string {
 // are accepted.
 func ValidateDBPath(path string) error {
 	if path == "" {
-		return fmt.Errorf("database path must not be empty")
+		return errors.New("database path must not be empty")
 	}
 	if path == ":memory:" {
 		return nil

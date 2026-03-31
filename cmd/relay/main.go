@@ -132,7 +132,7 @@ func resolveRelayMode(selfHostedEnv, webhookSecret string) (bool, error) {
 		}
 	}
 	if selfHosted && webhookSecret != "" {
-		return false, fmt.Errorf(
+		return false, errors.New(
 			"SELF_HOSTED=true and STRIPE_WEBHOOK_SECRET are mutually exclusive -- " +
 				"set one or the other, not both",
 		)
@@ -144,7 +144,7 @@ func resolveRelayMode(selfHostedEnv, webhookSecret string) (bool, error) {
 // Returns an error if the key is missing, malformed, or the wrong length.
 func parseEncryptionKey(hexKey string) ([]byte, error) {
 	if hexKey == "" {
-		return nil, fmt.Errorf(
+		return nil, errors.New(
 			"RELAY_ENCRYPTION_KEY is required; generate one with: openssl rand -hex 32",
 		)
 	}

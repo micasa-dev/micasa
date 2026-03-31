@@ -4,7 +4,7 @@
 package app
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -552,7 +552,7 @@ func newVendorJobsHandler(vendorID string) scopedHandler {
 			return nil
 		},
 		startAddFn: func(_ *Model) error {
-			return fmt.Errorf("add service log entries from the Maintenance tab")
+			return errors.New("add service log entries from the Maintenance tab")
 		},
 	}
 }

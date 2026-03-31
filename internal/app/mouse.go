@@ -385,10 +385,7 @@ func (m *Model) handleScroll(delta int) (tea.Model, tea.Cmd) {
 	if total == 0 {
 		return m, nil
 	}
-	next := cursor + delta
-	if next < 0 {
-		next = 0
-	}
+	next := max(cursor+delta, 0)
 	if next >= total {
 		next = total - 1
 	}

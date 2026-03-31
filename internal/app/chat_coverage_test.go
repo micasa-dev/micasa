@@ -4,7 +4,7 @@
 package app
 
 import (
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
 	"strings"
@@ -1127,7 +1127,7 @@ func TestHandleModelsListMsgError(t *testing.T) {
 	m := newTestModel(t)
 	m.openChat()
 
-	m.handleModelsListMsg(modelsListMsg{Err: fmt.Errorf("connection refused")})
+	m.handleModelsListMsg(modelsListMsg{Err: errors.New("connection refused")})
 	require.NotEmpty(t, m.chat.Messages)
 	last := m.chat.Messages[len(m.chat.Messages)-1]
 	assert.Equal(t, roleError, last.Role)
@@ -1164,7 +1164,7 @@ func TestHandleModelsListMsgCompleterError(t *testing.T) {
 	m.chat.Input.SetValue("/model ")
 	m.chat.Completer = &modelCompleter{Loading: true}
 
-	m.handleModelsListMsg(modelsListMsg{Err: fmt.Errorf("oops")})
+	m.handleModelsListMsg(modelsListMsg{Err: errors.New("oops")})
 	assert.False(t, m.chat.Completer.Loading)
 	// Should fall back to well-known models only.
 	require.NotEmpty(t, m.chat.Completer.All)
@@ -1250,7 +1250,7 @@ func TestHandleSQLStreamStartedError(t *testing.T) {
 	}
 
 	cmd := m.handleSQLStreamStarted(sqlStreamStartedMsg{
-		Err:      fmt.Errorf("connection refused"),
+		Err:      errors.New("connection refused"),
 		CancelFn: func() {},
 	})
 	assert.Nil(t, cmd)
@@ -1311,7 +1311,7 @@ func TestHandleSQLChunkError(t *testing.T) {
 		{Role: roleAssistant, Content: "", SQL: ""},
 	}
 
-	cmd := m.handleSQLChunk(sqlChunkMsg{Err: fmt.Errorf("stream error")})
+	cmd := m.handleSQLChunk(sqlChunkMsg{Err: errors.New("stream error")})
 	assert.Nil(t, cmd)
 	assert.False(t, m.chat.Streaming)
 
@@ -1351,7 +1351,7 @@ func TestHandleChatChunkError(t *testing.T) {
 		{Role: roleAssistant, Content: ""},
 	}
 
-	cmd := m.handleChatChunk(chatChunkMsg{Err: fmt.Errorf("oops")})
+	cmd := m.handleChatChunk(chatChunkMsg{Err: errors.New("oops")})
 	assert.Nil(t, cmd)
 	assert.False(t, m.chat.Streaming)
 	require.NotEmpty(t, m.chat.Messages)

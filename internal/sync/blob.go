@@ -42,7 +42,7 @@ func (c *Client) UploadBlob(ctx context.Context, householdID, hash string, plain
 	}
 	req, err := http.NewRequestWithContext(
 		ctx,
-		"PUT",
+		http.MethodPut,
 		blobURL,
 		bytes.NewReader(sealed),
 	)
@@ -74,7 +74,7 @@ func (c *Client) DownloadBlob(ctx context.Context, householdID, hash string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("construct blob download URL: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, "GET", blobURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, blobURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create blob download request: %w", err)
 	}

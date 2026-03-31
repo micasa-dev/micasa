@@ -89,7 +89,7 @@ func (s *Store) setupFTS() error {
 	}
 	for _, t := range triggers {
 		// Drop first so updated trigger definitions take effect on existing DBs.
-		drop := fmt.Sprintf("DROP TRIGGER IF EXISTS %s", t.name)
+		drop := "DROP TRIGGER IF EXISTS " + t.name
 		if err := s.db.Exec(drop).Error; err != nil {
 			return fmt.Errorf("drop trigger %s: %w", t.name, err)
 		}

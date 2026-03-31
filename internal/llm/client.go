@@ -306,7 +306,7 @@ func (c *Client) ChatComplete(
 		return "", c.wrapError(err)
 	}
 	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("no choices in response")
+		return "", errors.New("no choices in response")
 	}
 	return resp.Choices[0].Message.ContentString(), nil
 }
@@ -387,7 +387,7 @@ func (c *Client) wrapError(err error) error {
 	if errors.As(err, &providerErr) {
 		if isNetworkError(err) {
 			if c.providerName == providerOllama {
-				return fmt.Errorf(
+				return errors.New(
 					"cannot reach ollama -- start it with `ollama serve`",
 				)
 			}

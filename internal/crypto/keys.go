@@ -6,6 +6,7 @@ package crypto
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -204,7 +205,7 @@ func LoadDeviceKeyPair(dir string) (DeviceKeyPair, error) {
 		return DeviceKeyPair{}, fmt.Errorf("validate device keypair: %w", err)
 	}
 	if subtle.ConstantTimeCompare(derived, kp.PublicKey[:]) != 1 {
-		return DeviceKeyPair{}, fmt.Errorf("device public key does not match private key")
+		return DeviceKeyPair{}, errors.New("device public key does not match private key")
 	}
 
 	return kp, nil

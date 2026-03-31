@@ -5,7 +5,7 @@ package extract
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -553,9 +553,7 @@ func TestOcrImageWithProgress_ValidImage(t *testing.T) {
 		skipOrFatalCI(t, "tesseract not available")
 	}
 
-	data, err := os.ReadFile(
-		filepath.Join("testdata", "sample-text.png"),
-	) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "sample-text.png"))
 	if err != nil {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample-text.png")
 	}
@@ -622,9 +620,7 @@ func TestOcrImageWithProgress_ContextCancelled(t *testing.T) {
 		skipOrFatalCI(t, "tesseract not available")
 	}
 
-	data, err := os.ReadFile(
-		filepath.Join("testdata", "sample-text.png"),
-	) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "sample-text.png"))
 	if err != nil {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample-text.png")
 	}
@@ -718,9 +714,7 @@ func TestImageOCRExtractor_Extract_ContextCancelled(t *testing.T) {
 		skipOrFatalCI(t, "tesseract not available")
 	}
 
-	data, err := os.ReadFile(
-		filepath.Join("testdata", "invoice.png"),
-	) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "invoice.png"))
 	if err != nil {
 		skipOrFatalCI(t, "test fixture not found: testdata/invoice.png")
 	}
@@ -919,7 +913,7 @@ func TestCollectOCRResults_MixedErrorsAndSuccess(t *testing.T) {
 
 	results := []ocrPageResult{
 		{text: "page one", tsv: []byte("h1\th2\ndata1\n")},
-		{err: fmt.Errorf("page 2 failed")},
+		{err: errors.New("page 2 failed")},
 		{text: "page three", tsv: []byte("h1\th2\ndata3\n")},
 	}
 
@@ -934,8 +928,8 @@ func TestCollectOCRResults_AllErrors(t *testing.T) {
 	t.Parallel()
 
 	results := []ocrPageResult{
-		{err: fmt.Errorf("fail 1")},
-		{err: fmt.Errorf("fail 2")},
+		{err: errors.New("fail 1")},
+		{err: errors.New("fail 2")},
 	}
 
 	text, tsv := collectOCRResults(results)

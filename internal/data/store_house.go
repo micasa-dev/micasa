@@ -25,7 +25,7 @@ func (s *Store) CreateHouseProfile(profile HouseProfile) error {
 		return fmt.Errorf("count house profiles: %w", err)
 	}
 	if count > 0 {
-		return fmt.Errorf("house profile already exists")
+		return errors.New("house profile already exists")
 	}
 	return s.db.Create(&profile).Error
 }
@@ -37,7 +37,7 @@ func (s *Store) UpdateHouseProfile(profile HouseProfile) error {
 	}
 	profile.ID = existing.ID
 	profile.CreatedAt = existing.CreatedAt
-	if err := s.db.Model(&existing).Select("*").Updates(profile).Error; err != nil {
+	if err := s.db.Model(&existing).Select("*").Updates(profile).Error; err != nil { //nolint:unqueryvet // GORM Select("*") updates all non-omitted columns
 		return err
 	}
 	if !isSyncApplying(s.db) {

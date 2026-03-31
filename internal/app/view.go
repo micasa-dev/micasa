@@ -151,9 +151,7 @@ func (m *Model) buildBaseView() string {
 	upperH := lipgloss.Height(upper)
 	statusH := lipgloss.Height(status)
 	gap := m.height - upperH - statusH + 1
-	if gap < 1 {
-		gap = 1
-	}
+	gap = max(gap, 1)
 
 	var b strings.Builder
 	b.WriteString(upper)
@@ -184,9 +182,7 @@ func (m *Model) buildDashboardOverlay() string {
 	// + hints (1) = 8 lines.
 	maxH := m.overlayMaxHeight()
 	contentBudget := maxH - 8
-	if contentBudget < 3 {
-		contentBudget = 3
-	}
+	contentBudget = max(contentBudget, 3)
 	m.prepareDashboardView()
 	content := m.dashboardView(contentBudget, innerW)
 
@@ -336,10 +332,7 @@ func (m *Model) statusView() string {
 	// Anchor to the wider label so the narrower one gets padded, not squeezed.
 	navW := lipgloss.Width(m.styles.ModeNormal().Render("NAV"))
 	editW := lipgloss.Width(m.styles.ModeEdit().Render("EDIT"))
-	badgeWidth := navW
-	if editW > badgeWidth {
-		badgeWidth = editW
-	}
+	badgeWidth := max(navW, editW)
 	modeBadge := m.styles.ModeNormal().
 		Width(badgeWidth).
 		Align(lipgloss.Center).
@@ -607,13 +600,8 @@ func (m *Model) centerPanel(panel string, minPadTop int) string {
 	panelH := lipgloss.Height(panel)
 	panelW := lipgloss.Width(panel)
 	padTop := (height - panelH) / 2
-	if padTop < minPadTop {
-		padTop = minPadTop
-	}
-	padLeft := (width - panelW) / 2
-	if padLeft < 0 {
-		padLeft = 0
-	}
+	padTop = max(padTop, minPadTop)
+	padLeft := max((width-panelW)/2, 0)
 	lines := strings.Split(panel, "\n")
 	var b strings.Builder
 	for range padTop {
@@ -675,9 +663,7 @@ func (m *Model) tableView(tab *Tab) string {
 	}
 
 	effectiveHeight := tab.Table.Height() - badgeChrome - rowCountChrome
-	if effectiveHeight < 2 {
-		effectiveHeight = 2
-	}
+	effectiveHeight = max(effectiveHeight, 2)
 	// Mag and compact transforms are mutually exclusive: mag replaces
 	// values with order-of-magnitude notation, compact abbreviates them.
 	// Both strip the $ prefix since the header carries the unit.

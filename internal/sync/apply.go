@@ -75,7 +75,7 @@ func ApplyOps(ctx context.Context, db *gorm.DB, ops []DecryptedOp) ApplyResult {
 	return result
 }
 
-var errConflictLoss = fmt.Errorf("conflict: remote op lost to local op")
+var errConflictLoss = errors.New("conflict: remote op lost to local op")
 
 func isConflictLoss(err error) bool {
 	return errors.Is(err, errConflictLoss)
@@ -166,7 +166,7 @@ func applyOpToTable(tx *gorm.DB, op OpPayload) error {
 func validateInsertPayloadID(row map[string]any, rowID string) error {
 	raw, ok := row["id"]
 	if !ok {
-		return fmt.Errorf("insert payload missing string id field")
+		return errors.New("insert payload missing string id field")
 	}
 	payloadID, ok := raw.(string)
 	if !ok {

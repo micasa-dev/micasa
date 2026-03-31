@@ -175,17 +175,11 @@ func (m *Model) buildDocSearchOverlay() string {
 	} else {
 		// Show up to 8 results, centered around the cursor.
 		maxVisible := min(8, len(ds.Results))
-		start := ds.Cursor - maxVisible/2
-		if start < 0 {
-			start = 0
-		}
+		start := max(ds.Cursor-maxVisible/2, 0)
 		end := start + maxVisible
 		if end > len(ds.Results) {
 			end = len(ds.Results)
-			start = end - maxVisible
-			if start < 0 {
-				start = 0
-			}
+			start = max(end-maxVisible, 0)
 		}
 
 		for i := start; i < end; i++ {

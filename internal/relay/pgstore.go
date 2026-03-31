@@ -365,7 +365,7 @@ func (s *PgStore) AuthenticateDevice(ctx context.Context, token string) (sync.De
 			return fmt.Errorf("authenticate: %w", result.Error)
 		}
 		if result.RowsAffected == 0 {
-			return fmt.Errorf("invalid token")
+			return errors.New("invalid token")
 		}
 		return nil
 	})
@@ -444,18 +444,18 @@ func (s *PgStore) StartJoin(
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("code = ?", code).First(&inv).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("invite code not found")
+				return errors.New("invite code not found")
 			}
 			return fmt.Errorf("find invite: %w", err)
 		}
 		if inv.HouseholdID != householdID {
-			return fmt.Errorf("invite code not found")
+			return errors.New("invite code not found")
 		}
 		if inv.Consumed {
-			return fmt.Errorf("invite code already consumed")
+			return errors.New("invite code already consumed")
 		}
 		if time.Now().After(inv.ExpiresAt) {
-			return fmt.Errorf("invite code expired")
+			return errors.New("invite code expired")
 		}
 
 		if inv.Attempts >= maxInviteAttempts {
@@ -463,13 +463,13 @@ func (s *PgStore) StartJoin(
 			if err := tx.Save(&inv).Error; err != nil {
 				return fmt.Errorf("update invite: %w", err)
 			}
-			return fmt.Errorf("invite code max attempts exceeded")
+			return errors.New("invite code max attempts exceeded")
 		}
 
 		// Find inviter's public key.
 		var inviterDev pgDevice
 		if err := tx.Where("id = ?", inv.CreatedBy).First(&inviterDev).Error; err != nil {
-			return fmt.Errorf("inviter device not found")
+			return errors.New("inviter device not found")
 		}
 
 		exchangeID := newCryptoToken()
@@ -547,10 +547,10 @@ func (s *PgStore) CompleteKeyExchange(
 			return fmt.Errorf("find exchange: %w", err)
 		}
 		if ex.HouseholdID != householdID {
-			return fmt.Errorf("key exchange does not belong to this household")
+			return errors.New("key exchange does not belong to this household")
 		}
 		if ex.Completed {
-			return fmt.Errorf("key exchange already completed")
+			return errors.New("key exchange already completed")
 		}
 
 		// Register the joiner as a device.
@@ -689,7 +689,7 @@ func (s *PgStore) RevokeDevice(ctx context.Context, householdID, deviceID string
 			return fmt.Errorf("find device: %w", err)
 		}
 		if dev.HouseholdID != householdID {
-			return fmt.Errorf("device does not belong to this household")
+			return errors.New("device does not belong to this household")
 		}
 
 		return tx.Model(&pgDevice{}).
@@ -760,7 +760,7 @@ func (s *PgStore) UpdateCustomerID(
 	householdID, customerID string,
 ) error {
 	if customerID == "" {
-		return fmt.Errorf("customer ID must not be empty")
+		return errors.New("customer ID must not be empty")
 	}
 	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		result := tx.Model(&pgHousehold{}).

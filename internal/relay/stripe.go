@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -30,7 +31,7 @@ func VerifyWebhookSignature(
 
 	parts := parseSignatureHeader(sigHeader)
 	if parts.timestamp == "" || len(parts.signatures) == 0 {
-		return fmt.Errorf("invalid signature header format")
+		return errors.New("invalid signature header format")
 	}
 
 	ts, err := strconv.ParseInt(parts.timestamp, 10, 64)
@@ -40,10 +41,10 @@ func VerifyWebhookSignature(
 
 	sigTime := time.Unix(ts, 0)
 	if time.Since(sigTime) > tolerance {
-		return fmt.Errorf("signature timestamp too old")
+		return errors.New("signature timestamp too old")
 	}
 	if time.Until(sigTime) > tolerance {
-		return fmt.Errorf("signature timestamp too far in the future")
+		return errors.New("signature timestamp too far in the future")
 	}
 
 	// Compute expected signature: HMAC-SHA256(timestamp + "." + payload, secret)
@@ -57,7 +58,7 @@ func VerifyWebhookSignature(
 			return nil
 		}
 	}
-	return fmt.Errorf("no matching signature found")
+	return errors.New("no matching signature found")
 }
 
 type signatureParts struct {

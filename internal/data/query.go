@@ -6,6 +6,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -104,7 +105,7 @@ func (s *Store) ReadOnlyQuery(
 ) (columns []string, rows [][]string, err error) {
 	trimmed := strings.TrimSpace(query)
 	if trimmed == "" {
-		return nil, nil, fmt.Errorf("empty query")
+		return nil, nil, errors.New("empty query")
 	}
 
 	// --- Layer 1: fast prefix check (comment-aware) ---
@@ -119,7 +120,7 @@ func (s *Store) ReadOnlyQuery(
 
 	// --- Layer 2: reject multi-statement payloads ---
 	if strings.Contains(trimmed, ";") {
-		return nil, nil, fmt.Errorf("multiple statements are not allowed")
+		return nil, nil, errors.New("multiple statements are not allowed")
 	}
 
 	// --- Layer 3: keyword blocklist (defense-in-depth) ---
@@ -220,7 +221,7 @@ func (s *Store) explainIsReadOnly(db *gorm.DB, query string) error {
 		}
 	}
 	if opcodeIdx < 0 {
-		return fmt.Errorf("EXPLAIN output missing opcode column")
+		return errors.New("EXPLAIN output missing opcode column")
 	}
 
 	for explainRows.Next() {
@@ -462,7 +463,9 @@ func isIdentChar(b byte) bool {
 // them as string slices along with column names. The sql.Rows lifecycle
 // is scoped to this function so defer closes correctly.
 func dumpTable(s *Store, name string) ([][]string, []string, error) {
-	sqlRows, err := s.db.Raw(fmt.Sprintf("SELECT * FROM %s", name)).Rows()
+	sqlRows, err := s.db.Raw("SELECT * FROM " + name).
+		Rows()
+		//nolint:unqueryvet // dumpTable intentionally selects all columns
 	if err != nil {
 		return nil, nil, err
 	}

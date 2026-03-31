@@ -65,10 +65,10 @@ func (s *HandlerSuite) TestEmptyBodyAllJSONEndpoints() {
 		path   string
 		auth   bool
 	}{
-		{"POST", "/households", false},
-		{"POST", "/sync/push", true},
-		{"POST", "/households/" + hh.HouseholdID + "/join", false},
-		{"POST", "/key-exchange/fake-id/complete", true},
+		{http.MethodPost, "/households", false},
+		{http.MethodPost, "/sync/push", true},
+		{http.MethodPost, "/households/" + hh.HouseholdID + "/join", false},
+		{http.MethodPost, "/key-exchange/fake-id/complete", true},
 	}
 
 	for _, ep := range endpoints {
@@ -121,7 +121,7 @@ func (s *HandlerSuite) TestPullAfterNonNumeric() {
 	hh := suiteCreateHousehold(t, store)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=abc", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?after=abc", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
@@ -132,7 +132,7 @@ func (s *HandlerSuite) TestPullLimitNonNumeric() {
 	hh := suiteCreateHousehold(t, store)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=abc", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?limit=abc", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
@@ -143,7 +143,7 @@ func (s *HandlerSuite) TestPullLimitZero() {
 	hh := suiteCreateHousehold(t, store)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=0", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?limit=0", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
@@ -154,7 +154,7 @@ func (s *HandlerSuite) TestPullLimit1001() {
 	hh := suiteCreateHousehold(t, store)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=1001", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?limit=1001", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
@@ -313,7 +313,7 @@ func (s *HandlerSuite) TestGetBlobContentType() {
 	hash := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 	require.NoError(t, store.PutBlob(t.Context(), hh.HouseholdID, hash, []byte("data"), 0))
 
-	req := httptest.NewRequest("GET", "/blobs/"+hh.HouseholdID+"/"+hash, nil)
+	req := httptest.NewRequest(http.MethodGet, "/blobs/"+hh.HouseholdID+"/"+hash, nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -337,18 +337,18 @@ func (s *HandlerSuite) TestSubscriptionGatingCanceled() {
 		method string
 		path   string
 	}{
-		{"POST", "/sync/push"},
-		{"GET", "/sync/pull"},
+		{http.MethodPost, "/sync/push"},
+		{http.MethodGet, "/sync/pull"},
 		{
-			"PUT",
+			http.MethodPut,
 			"/blobs/" + hh.HouseholdID + "/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
 		},
 		{
-			"GET",
+			http.MethodGet,
 			"/blobs/" + hh.HouseholdID + "/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
 		},
 		{
-			"HEAD",
+			http.MethodHead,
 			"/blobs/" + hh.HouseholdID + "/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
 		},
 	}
@@ -373,7 +373,7 @@ func (s *HandlerSuite) TestSubscriptionGatingReactivation() {
 	)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull", nil, hh.DeviceToken))
 	require.Equal(t, http.StatusPaymentRequired, rec.Code)
 
 	require.NoError(
@@ -382,7 +382,7 @@ func (s *HandlerSuite) TestSubscriptionGatingReactivation() {
 	)
 
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
@@ -397,7 +397,7 @@ func (s *HandlerSuite) TestSelfHostedBypassesGating() {
 	)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
@@ -408,7 +408,7 @@ func (s *HandlerSuite) TestNullSubscriptionAllowed() {
 	hh := suiteCreateHousehold(t, store)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
@@ -425,9 +425,9 @@ func (s *HandlerSuite) TestCrossHouseholdBlobAccess() {
 
 	hash := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 
-	for _, method := range []string{"PUT", "GET", "HEAD"} {
+	for _, method := range []string{http.MethodPut, http.MethodGet, http.MethodHead} {
 		var body *bytes.Reader
-		if method == "PUT" {
+		if method == http.MethodPut {
 			body = bytes.NewReader([]byte("data"))
 		} else {
 			body = bytes.NewReader(nil)
@@ -449,7 +449,7 @@ func (s *HandlerSuite) TestCrossHouseholdInvite() {
 	hh2 := suiteCreateHousehold(t, store)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("POST", "/households/"+hh2.HouseholdID+"/invite",
+	h.ServeHTTP(rec, authRequest(http.MethodPost, "/households/"+hh2.HouseholdID+"/invite",
 		nil, hh1.DeviceToken))
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
@@ -462,12 +462,12 @@ func (s *HandlerSuite) TestCrossHouseholdDevices() {
 	hh2 := suiteCreateHousehold(t, store)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/households/"+hh2.HouseholdID+"/devices",
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/households/"+hh2.HouseholdID+"/devices",
 		nil, hh1.DeviceToken))
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("DELETE",
+	h.ServeHTTP(rec, authRequest(http.MethodDelete,
 		"/households/"+hh2.HouseholdID+"/devices/"+hh2.DeviceID,
 		nil, hh1.DeviceToken))
 	assert.Equal(t, http.StatusForbidden, rec.Code)

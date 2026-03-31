@@ -503,7 +503,7 @@ func (m *Model) navigateToLink(link *columnLink, targetID string) error {
 	m.switchToTab(tabIndex(link.TargetTab))
 	tab := m.activeTab()
 	if tab == nil {
-		return fmt.Errorf("target tab not found")
+		return errors.New("target tab not found")
 	}
 	if !selectRowByID(tab, targetID) {
 		m.setStatusError(fmt.Sprintf("Linked item %s not found (deleted?).", targetID))
@@ -1292,11 +1292,7 @@ func (m *Model) overlayContentWidth() int {
 
 // overlayMaxHeight returns the clamped maximum height for overlay boxes.
 func (m *Model) overlayMaxHeight() int {
-	h := m.effectiveHeight() - 4
-	if h < 10 {
-		h = 10
-	}
-	return h
+	return max(m.effectiveHeight()-4, 10)
 }
 
 // scrollRule renders a horizontal rule with an embedded Vim-style scroll

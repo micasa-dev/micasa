@@ -6,6 +6,7 @@ package extract
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -82,7 +83,7 @@ func pdfPageCount(ctx context.Context, pdfPath string) (int, error) {
 			return n, nil
 		}
 	}
-	return 0, fmt.Errorf("pdfinfo output missing Pages field")
+	return 0, errors.New("pdfinfo output missing Pages field")
 }
 
 // ocrPage rasterizes a single PDF page with pdftocairo and pipes the PNG

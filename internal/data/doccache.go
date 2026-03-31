@@ -22,7 +22,7 @@ func (s *Store) ExtractDocument(id string) (string, error) {
 		return "", fmt.Errorf("load document content: %w", err)
 	}
 	if len(doc.Data) == 0 {
-		return "", fmt.Errorf("document has no content")
+		return "", errors.New("document has no content")
 	}
 
 	cacheDir, err := DocumentCacheDir()

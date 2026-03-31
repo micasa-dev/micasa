@@ -258,9 +258,7 @@ func writeAligned(w io.Writer, blk sectionBlock) error {
 			continue
 		}
 		pad := maxKV - len(al.kv)
-		if pad < 0 {
-			pad = 0
-		}
+		pad = max(pad, 0)
 		if _, err := fmt.Fprintf(
 			w, "%s%s # %s\n", al.kv, strings.Repeat(" ", pad), al.comment,
 		); err != nil {

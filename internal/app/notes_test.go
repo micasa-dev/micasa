@@ -4,7 +4,7 @@
 package app
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"testing"
 
@@ -458,7 +458,7 @@ func TestEditorFinishedWithErrorReopensTextarea(t *testing.T) {
 		TempFile: tmpFile,
 	}
 
-	m.handleEditorFinished(editorFinishedMsg{Err: fmt.Errorf("exit status 1")})
+	m.handleEditorFinished(editorFinishedMsg{Err: errors.New("exit status 1")})
 
 	// Original text should be preserved.
 	assert.Equal(t, "original", values.Notes)

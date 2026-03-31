@@ -4,7 +4,6 @@
 package data
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -645,7 +644,7 @@ func TestMigratePreservesRowCount(t *testing.T) {
 		{TableDeletionRecords, 1},
 	}
 	for _, tc := range tables {
-		t.Run(fmt.Sprintf("%s_count", tc.name), func(t *testing.T) {
+		t.Run(tc.name+"_count", func(t *testing.T) {
 			var count int64
 			require.NoError(t, store.GormDB().Unscoped().Table(tc.name).Count(&count).Error)
 			assert.Equal(t, int64(tc.count), count, "table %s", tc.name)

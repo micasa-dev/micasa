@@ -26,7 +26,7 @@ func Editor() (string, error) {
 			return name, nil
 		}
 	}
-	return "", fmt.Errorf("no editor found -- set $VISUAL or $EDITOR")
+	return "", errors.New("no editor found -- set $VISUAL or $EDITOR")
 }
 
 // EditorCommand returns the editor executable and its arguments, splitting
@@ -44,7 +44,7 @@ func EditorCommand(configPath string) (string, []string, error) {
 		return "", nil, fmt.Errorf("parse editor command %q: %w", editor, err)
 	}
 	if len(parts) == 0 {
-		return "", nil, fmt.Errorf("editor command resolved to empty")
+		return "", nil, errors.New("editor command resolved to empty")
 	}
 	args := make([]string, len(parts)-1, len(parts))
 	copy(args, parts[1:])

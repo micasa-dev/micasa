@@ -5,6 +5,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 
 	"golang.org/x/crypto/nacl/box"
@@ -55,7 +56,7 @@ func BoxOpen(
 		&recipientPrivateKey,
 	)
 	if !ok {
-		return nil, fmt.Errorf("box open failed: invalid keys or tampered ciphertext")
+		return nil, errors.New("box open failed: invalid keys or tampered ciphertext")
 	}
 	return plaintext, nil
 }

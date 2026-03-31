@@ -86,7 +86,7 @@ func (c *Client) Push(ctx context.Context, ops []OpPayload) (*PushResponse, erro
 	}
 	req, err := http.NewRequestWithContext(
 		ctx,
-		"POST",
+		http.MethodPost,
 		pushURL,
 		bytes.NewReader(body),
 	)
@@ -125,7 +125,7 @@ func (c *Client) Pull(ctx context.Context, afterSeq int64, limit int) (*PullResu
 		pullURL += "&limit=" + strconv.Itoa(limit)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", pullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create pull request: %w", err)
 	}

@@ -947,7 +947,7 @@ func (m *Model) commitShadowOperations(ex *extractionLogState, ops []extract.Ope
 		return nil
 	}
 	if ex.shadowDB == nil {
-		return fmt.Errorf("no shadow DB: operations were not staged")
+		return errors.New("no shadow DB: operations were not staged")
 	}
 	err := ex.shadowDB.Commit(m.store, ops)
 	ex.closeShadowDB()

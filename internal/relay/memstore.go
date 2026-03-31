@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	gosync "sync"
 	"time"
@@ -225,11 +226,11 @@ func (m *MemStore) AuthenticateDevice(_ context.Context, token string) (sync.Dev
 	sha := tokenSHA256(token)
 	devID, ok := m.tokenIndex[sha]
 	if !ok {
-		return sync.Device{}, fmt.Errorf("invalid token")
+		return sync.Device{}, errors.New("invalid token")
 	}
 	rec := m.devices[devID]
 	if rec.revoked {
-		return sync.Device{}, fmt.Errorf("invalid token")
+		return sync.Device{}, errors.New("invalid token")
 	}
 	return rec.device, nil
 }
@@ -284,26 +285,26 @@ func (m *MemStore) StartJoin(
 
 	inv, ok := m.invites[code]
 	if !ok {
-		return sync.JoinResponse{}, fmt.Errorf("invite code not found")
+		return sync.JoinResponse{}, errors.New("invite code not found")
 	}
 	if inv.householdID != householdID {
-		return sync.JoinResponse{}, fmt.Errorf("invite code not found")
+		return sync.JoinResponse{}, errors.New("invite code not found")
 	}
 	if inv.consumed {
-		return sync.JoinResponse{}, fmt.Errorf("invite code already consumed")
+		return sync.JoinResponse{}, errors.New("invite code already consumed")
 	}
 	if time.Now().After(inv.expiresAt) {
-		return sync.JoinResponse{}, fmt.Errorf("invite code expired")
+		return sync.JoinResponse{}, errors.New("invite code expired")
 	}
 	if inv.usedAttempts >= inv.maxAttempts {
 		inv.consumed = true
-		return sync.JoinResponse{}, fmt.Errorf("invite code max attempts exceeded")
+		return sync.JoinResponse{}, errors.New("invite code max attempts exceeded")
 	}
 
 	// Find inviter's public key.
 	inviterDev, ok := m.devices[inv.inviterDevID]
 	if !ok {
-		return sync.JoinResponse{}, fmt.Errorf("inviter device not found")
+		return sync.JoinResponse{}, errors.New("inviter device not found")
 	}
 
 	exchangeID := newCryptoToken()
@@ -362,10 +363,10 @@ func (m *MemStore) CompleteKeyExchange(
 		return fmt.Errorf("key exchange %s not found", exchangeID)
 	}
 	if ex.householdID != householdID {
-		return fmt.Errorf("key exchange does not belong to this household")
+		return errors.New("key exchange does not belong to this household")
 	}
 	if ex.completed {
-		return fmt.Errorf("key exchange already completed")
+		return errors.New("key exchange already completed")
 	}
 
 	// Register the joiner as a device.
@@ -481,7 +482,7 @@ func (m *MemStore) RevokeDevice(
 		return fmt.Errorf("device %s not found", deviceID)
 	}
 	if rec.device.HouseholdID != householdID {
-		return fmt.Errorf("device does not belong to this household")
+		return errors.New("device does not belong to this household")
 	}
 
 	// Remove token from index so the device can no longer authenticate.
@@ -546,7 +547,7 @@ func (m *MemStore) UpdateCustomerID(
 	householdID, customerID string,
 ) error {
 	if customerID == "" {
-		return fmt.Errorf("customer ID must not be empty")
+		return errors.New("customer ID must not be empty")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()

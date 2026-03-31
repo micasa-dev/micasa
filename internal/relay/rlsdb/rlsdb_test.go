@@ -134,23 +134,22 @@ func TestInitRLS(t *testing.T) {
 
 	// Clean up stale state from interrupted prior runs, then create.
 	err := d.WithoutHousehold(ctx, func(tx *gorm.DB) error {
-		if err := tx.Exec(fmt.Sprintf("ALTER TABLE IF EXISTS %s DISABLE ROW LEVEL SECURITY", table)).Error; err != nil {
+		if err := tx.Exec("ALTER TABLE IF EXISTS " + table + " DISABLE ROW LEVEL SECURITY").Error; err != nil {
 			return err
 		}
-		if err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error; err != nil {
+		if err := tx.Exec("DROP TABLE IF EXISTS " + table).Error; err != nil {
 			return err
 		}
-		return tx.Exec(fmt.Sprintf(
-			"CREATE TABLE %s (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
-			table,
-		)).Error
+		return tx.Exec(
+			"CREATE TABLE " + table + " (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
+		).Error
 	})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = d.WithoutHousehold(context.Background(), func(tx *gorm.DB) error {
-			_ = tx.Exec(fmt.Sprintf("ALTER TABLE %s DISABLE ROW LEVEL SECURITY", table)).Error
-			return tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error
+			_ = tx.Exec("ALTER TABLE " + table + " DISABLE ROW LEVEL SECURITY").Error
+			return tx.Exec("DROP TABLE IF EXISTS " + table).Error
 		})
 	})
 
@@ -168,7 +167,7 @@ func TestInitRLS(t *testing.T) {
 	// Tx("A") should see exactly 1 row.
 	var countA int64
 	err = d.Tx(ctx, "A", func(tx *gorm.DB) error {
-		return tx.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&countA).Error
+		return tx.Raw("SELECT COUNT(*) FROM " + table).Scan(&countA).Error
 	})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), countA)
@@ -176,7 +175,7 @@ func TestInitRLS(t *testing.T) {
 	// Tx("B") should see 0 rows.
 	var countB int64
 	err = d.Tx(ctx, "B", func(tx *gorm.DB) error {
-		return tx.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&countB).Error
+		return tx.Raw("SELECT COUNT(*) FROM " + table).Scan(&countB).Error
 	})
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), countB)
@@ -189,23 +188,22 @@ func TestInitRLSIdempotent(t *testing.T) {
 	table := "rlsdb_test_idempotent"
 
 	err := d.WithoutHousehold(ctx, func(tx *gorm.DB) error {
-		if err := tx.Exec(fmt.Sprintf("ALTER TABLE IF EXISTS %s DISABLE ROW LEVEL SECURITY", table)).Error; err != nil {
+		if err := tx.Exec("ALTER TABLE IF EXISTS " + table + " DISABLE ROW LEVEL SECURITY").Error; err != nil {
 			return err
 		}
-		if err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error; err != nil {
+		if err := tx.Exec("DROP TABLE IF EXISTS " + table).Error; err != nil {
 			return err
 		}
-		return tx.Exec(fmt.Sprintf(
-			"CREATE TABLE %s (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
-			table,
-		)).Error
+		return tx.Exec(
+			"CREATE TABLE " + table + " (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
+		).Error
 	})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = d.WithoutHousehold(context.Background(), func(tx *gorm.DB) error {
-			_ = tx.Exec(fmt.Sprintf("ALTER TABLE %s DISABLE ROW LEVEL SECURITY", table)).Error
-			return tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error
+			_ = tx.Exec("ALTER TABLE " + table + " DISABLE ROW LEVEL SECURITY").Error
+			return tx.Exec("DROP TABLE IF EXISTS " + table).Error
 		})
 	})
 
@@ -221,23 +219,22 @@ func TestWithoutHouseholdQueryingRLSTableFails(t *testing.T) {
 	table := "rlsdb_test_woh_fails"
 
 	err := d.WithoutHousehold(ctx, func(tx *gorm.DB) error {
-		if err := tx.Exec(fmt.Sprintf("ALTER TABLE IF EXISTS %s DISABLE ROW LEVEL SECURITY", table)).Error; err != nil {
+		if err := tx.Exec("ALTER TABLE IF EXISTS " + table + " DISABLE ROW LEVEL SECURITY").Error; err != nil {
 			return err
 		}
-		if err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error; err != nil {
+		if err := tx.Exec("DROP TABLE IF EXISTS " + table).Error; err != nil {
 			return err
 		}
-		return tx.Exec(fmt.Sprintf(
-			"CREATE TABLE %s (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
-			table,
-		)).Error
+		return tx.Exec(
+			"CREATE TABLE " + table + " (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
+		).Error
 	})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = d.WithoutHousehold(context.Background(), func(tx *gorm.DB) error {
-			_ = tx.Exec(fmt.Sprintf("ALTER TABLE %s DISABLE ROW LEVEL SECURITY", table)).Error
-			return tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error
+			_ = tx.Exec("ALTER TABLE " + table + " DISABLE ROW LEVEL SECURITY").Error
+			return tx.Exec("DROP TABLE IF EXISTS " + table).Error
 		})
 	})
 
@@ -258,7 +255,7 @@ func TestWithoutHouseholdQueryingRLSTableFails(t *testing.T) {
 	// Both prevent data leakage.
 	var count int64
 	err = d.WithoutHousehold(ctx, func(tx *gorm.DB) error {
-		return tx.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&count).Error
+		return tx.Raw("SELECT COUNT(*) FROM " + table).Scan(&count).Error
 	})
 	if err != nil {
 		assert.Contains(t, err.Error(), "app.household_id")
@@ -274,23 +271,22 @@ func TestInsertMismatchedHouseholdIDFails(t *testing.T) {
 	table := "rlsdb_test_mismatch"
 
 	err := d.WithoutHousehold(ctx, func(tx *gorm.DB) error {
-		if err := tx.Exec(fmt.Sprintf("ALTER TABLE IF EXISTS %s DISABLE ROW LEVEL SECURITY", table)).Error; err != nil {
+		if err := tx.Exec("ALTER TABLE IF EXISTS " + table + " DISABLE ROW LEVEL SECURITY").Error; err != nil {
 			return err
 		}
-		if err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error; err != nil {
+		if err := tx.Exec("DROP TABLE IF EXISTS " + table).Error; err != nil {
 			return err
 		}
-		return tx.Exec(fmt.Sprintf(
-			"CREATE TABLE %s (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
-			table,
-		)).Error
+		return tx.Exec(
+			"CREATE TABLE " + table + " (id TEXT PRIMARY KEY, household_id TEXT NOT NULL)",
+		).Error
 	})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = d.WithoutHousehold(context.Background(), func(tx *gorm.DB) error {
-			_ = tx.Exec(fmt.Sprintf("ALTER TABLE %s DISABLE ROW LEVEL SECURITY", table)).Error
-			return tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)).Error
+			_ = tx.Exec("ALTER TABLE " + table + " DISABLE ROW LEVEL SECURITY").Error
+			return tx.Exec("DROP TABLE IF EXISTS " + table).Error
 		})
 	})
 

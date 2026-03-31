@@ -239,7 +239,7 @@ func (h *HomeFaker) HouseProfile() HouseProfile {
 		),
 		InsuranceRenewal: &renewal,
 		PropertyTaxCents: &taxCents,
-		HOAName:          fmt.Sprintf("%s HOA", addr.Street),
+		HOAName:          addr.Street + " HOA",
 		HOAFeeCents:      &hoaCents,
 	}
 }
@@ -260,7 +260,7 @@ func (h *HomeFaker) Vendor() Vendor {
 		ContactName: h.f.Name(),
 		Phone:       h.phone(),
 		Email:       h.f.Email(),
-		Website:     fmt.Sprintf("https://%s", h.f.DomainName()),
+		Website:     "https://" + h.f.DomainName(),
 	}
 }
 
@@ -351,7 +351,7 @@ func (h *HomeFaker) MaintenanceItem(categoryName string) MaintenanceItem {
 	items, ok := maintenanceItems[categoryName]
 	if !ok || len(items) == 0 {
 		return MaintenanceItem{
-			Name:           fmt.Sprintf("Check %s", strings.ToLower(categoryName)),
+			Name:           "Check " + strings.ToLower(categoryName),
 			CategoryName:   categoryName,
 			IntervalMonths: 12,
 		}

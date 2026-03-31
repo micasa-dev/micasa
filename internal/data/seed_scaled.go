@@ -456,9 +456,7 @@ func serviceLogsForYear(
 		return nil
 	}
 	servicesPerYear := 12 / item.IntervalMonths
-	if servicesPerYear < 1 {
-		servicesPerYear = 1
-	}
+	servicesPerYear = max(servicesPerYear, 1)
 
 	intervalDays := 365 / servicesPerYear
 	var logs []ServiceLogEntry
@@ -473,12 +471,8 @@ func serviceLogsForYear(
 		// Add jitter of +/- 7 days.
 		jitter := h.IntN(15) - 7
 		dayOfYear := baseDayOfYear + jitter
-		if dayOfYear < 1 {
-			dayOfYear = 1
-		}
-		if dayOfYear > 365 {
-			dayOfYear = 365
-		}
+		dayOfYear = max(dayOfYear, 1)
+		dayOfYear = min(dayOfYear, 365)
 
 		servicedAt := time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC).
 			AddDate(0, 0, dayOfYear-1)

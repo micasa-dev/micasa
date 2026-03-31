@@ -5,6 +5,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"runtime"
 
@@ -45,7 +46,7 @@ func Decrypt(key HouseholdKey, sealed []byte) ([]byte, error) {
 	defer zeroize(key[:])
 	plaintext, ok := secretbox.Open(nil, sealed[NonceSize:], &nonce, (*[KeySize]byte)(&key))
 	if !ok {
-		return nil, fmt.Errorf("decryption failed: invalid key or tampered ciphertext")
+		return nil, errors.New("decryption failed: invalid key or tampered ciphertext")
 	}
 	return plaintext, nil
 }

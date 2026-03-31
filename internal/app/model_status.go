@@ -4,6 +4,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 
 	"charm.land/bubbles/v2/key"
@@ -45,14 +46,14 @@ func (m *Model) startAddForm() {
 func (m *Model) startEditForm() error {
 	tab := m.effectiveTab()
 	if tab == nil {
-		return fmt.Errorf("no active tab")
+		return errors.New("no active tab")
 	}
 	meta, ok := m.selectedRowMeta()
 	if !ok {
-		return fmt.Errorf("nothing selected")
+		return errors.New("nothing selected")
 	}
 	if meta.Deleted {
-		return fmt.Errorf("cannot edit a deleted item")
+		return errors.New("cannot edit a deleted item")
 	}
 	return tab.Handler.StartEditForm(m, meta.ID)
 }
@@ -60,14 +61,14 @@ func (m *Model) startEditForm() error {
 func (m *Model) startCellOrFormEdit() error {
 	tab := m.effectiveTab()
 	if tab == nil {
-		return fmt.Errorf("no active tab")
+		return errors.New("no active tab")
 	}
 	meta, ok := m.selectedRowMeta()
 	if !ok {
-		return fmt.Errorf("nothing selected")
+		return errors.New("nothing selected")
 	}
 	if meta.Deleted {
-		return fmt.Errorf("cannot edit a deleted item")
+		return errors.New("cannot edit a deleted item")
 	}
 	col := tab.ColCursor
 	if col < 0 || col >= len(tab.Specs) {

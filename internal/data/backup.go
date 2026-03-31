@@ -5,6 +5,7 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -37,7 +38,7 @@ func (s *Store) Backup(ctx context.Context, destPath string) error {
 	if err := conn.Raw(func(driverConn any) error {
 		b, ok := driverConn.(backupConn)
 		if !ok {
-			return fmt.Errorf(
+			return errors.New(
 				"SQLite driver does not support the backup API -- please report this as a bug",
 			)
 		}

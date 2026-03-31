@@ -658,7 +658,7 @@ func runProJoin(code, dbPath, relayURL string) error {
 		case <-ctx.Done():
 			return errors.New("interrupted")
 		case <-timeoutCh:
-			return fmt.Errorf(
+			return errors.New(
 				"timed out waiting for inviter approval (5 minutes)",
 			)
 		case <-ticker.C:
@@ -822,7 +822,7 @@ func runProDevicesRevoke(deviceID, dbPath string) error {
 	defer func() { _ = deps.store.Close() }()
 
 	if deviceID == deps.device.ID {
-		return fmt.Errorf("cannot revoke your own device")
+		return errors.New("cannot revoke your own device")
 	}
 
 	client := sync.NewManagementClient(deps.device.RelayURL, deps.token)

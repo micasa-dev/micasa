@@ -4,6 +4,7 @@
 package extract
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -178,7 +179,7 @@ func toposort(tables map[string]bool, deps map[string]map[string]bool) ([]string
 	}
 
 	if len(order) != len(tables) {
-		return nil, fmt.Errorf("cycle detected in FK dependencies")
+		return nil, errors.New("cycle detected in FK dependencies")
 	}
 
 	return order, nil

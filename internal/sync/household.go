@@ -29,7 +29,7 @@ func (c *Client) CreateHousehold(
 	}
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
-		"POST",
+		http.MethodPost,
 		hhURL,
 		bytes.NewReader(body),
 	)
@@ -62,7 +62,7 @@ func (c *Client) Invite(ctx context.Context, householdID string) (*InviteCode, e
 	if err != nil {
 		return nil, fmt.Errorf("construct invite URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", inviteURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, inviteURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create invite request: %w", err)
 	}
@@ -103,7 +103,7 @@ func (c *Client) Join(
 	}
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
-		"POST",
+		http.MethodPost,
 		joinURL,
 		bytes.NewReader(body),
 	)
@@ -136,7 +136,7 @@ func (c *Client) Status(ctx context.Context) (*StatusResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("construct status URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", statusURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, statusURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create status request: %w", err)
 	}
@@ -166,7 +166,7 @@ func (c *Client) ListDevices(ctx context.Context, householdID string) ([]Device,
 	if err != nil {
 		return nil, fmt.Errorf("construct list devices URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", devicesURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, devicesURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create list devices request: %w", err)
 	}
@@ -226,7 +226,7 @@ func (c *Client) GetPendingExchanges(
 	if err != nil {
 		return nil, fmt.Errorf("construct pending exchanges URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", exchURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, exchURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create pending exchanges request: %w", err)
 	}
@@ -275,7 +275,7 @@ func (c *Client) CompleteKeyExchange(
 	}
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
-		"POST",
+		http.MethodPost,
 		completeURL,
 		bytes.NewReader(body),
 	)
@@ -310,7 +310,7 @@ func (c *Client) GetKeyExchangeResult(
 	if err != nil {
 		return nil, fmt.Errorf("construct key exchange result URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", resultURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, resultURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create key exchange result request: %w", err)
 	}

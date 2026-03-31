@@ -4,7 +4,7 @@
 package app
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 
@@ -86,7 +86,7 @@ func TestInlineInputValidationBlocksSubmit(t *testing.T) {
 	var field string
 	validate := func(s string) error {
 		if strings.TrimSpace(s) == "" {
-			return fmt.Errorf("name is required")
+			return errors.New("name is required")
 		}
 		return nil
 	}

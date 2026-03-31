@@ -5,6 +5,7 @@ package app
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -372,7 +373,7 @@ func (m *Model) startQuoteForm() error {
 		return err
 	}
 	if len(projects) == 0 {
-		return fmt.Errorf("add a project before adding quotes")
+		return errors.New("add a project before adding quotes")
 	}
 	values := &quoteFormData{}
 	options := projectOptions(projects)
@@ -408,7 +409,7 @@ func (m *Model) startEditQuoteForm(id string) error {
 		return err
 	}
 	if len(projects) == 0 {
-		return fmt.Errorf("no projects available")
+		return errors.New("no projects available")
 	}
 	values := quoteFormValues(quote, m.cur)
 	options := projectOptions(projects)
@@ -2220,7 +2221,7 @@ func endDateAfterStart(startDate, endDate *string) func(string) error {
 			return nil //nolint:nilerr // end date format already checked by optionalDate above
 		}
 		if e.Before(*s) {
-			return fmt.Errorf("end date must not be before start date")
+			return errors.New("end date must not be before start date")
 		}
 		return nil
 	}
@@ -2735,7 +2736,7 @@ func optionalFilePath() func(string) error {
 			return fmt.Errorf("file not found: %s", path)
 		}
 		if info.IsDir() {
-			return fmt.Errorf("path is a directory, not a file")
+			return errors.New("path is a directory, not a file")
 		}
 		return nil
 	}

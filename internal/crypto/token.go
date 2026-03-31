@@ -4,6 +4,7 @@
 package crypto
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ const DeviceTokenFile = "device.token"
 // with restrictive permissions (0600).
 func SaveDeviceToken(dir, token string) error {
 	if token == "" {
-		return fmt.Errorf("save device token: token is empty")
+		return errors.New("save device token: token is empty")
 	}
 	return atomicWriteFile(filepath.Join(dir, DeviceTokenFile), []byte(token), 0o600)
 }
@@ -36,7 +37,7 @@ func LoadDeviceToken(dir string) (string, error) {
 	// and cannot be zeroized by the caller.
 	defer zeroize(data)
 	if len(data) == 0 {
-		return "", fmt.Errorf("device token file is empty")
+		return "", errors.New("device token file is empty")
 	}
 	token := string(data)
 	if !validDeviceToken(token) {

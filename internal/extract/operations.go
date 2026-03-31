@@ -5,6 +5,7 @@ package extract
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -36,7 +37,7 @@ func ParseOperations(raw string) ([]Operation, error) {
 	cleaned := strings.TrimSpace(raw)
 
 	if cleaned == "" {
-		return nil, fmt.Errorf("empty LLM output")
+		return nil, errors.New("empty LLM output")
 	}
 
 	// UseNumber preserves JSON numbers as json.Number strings instead of
@@ -58,7 +59,7 @@ func ParseOperations(raw string) ([]Operation, error) {
 	}
 
 	if len(ops) == 0 {
-		return nil, fmt.Errorf("no operations found in LLM output")
+		return nil, errors.New("no operations found in LLM output")
 	}
 
 	return ops, nil

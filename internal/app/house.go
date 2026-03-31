@@ -209,7 +209,7 @@ func (m *Model) houseSection(header string, lines ...string) string {
 func bedBathLabel(profile data.HouseProfile) string {
 	var parts []string
 	if profile.Bedrooms > 0 {
-		parts = append(parts, fmt.Sprintf("%dbd", profile.Bedrooms))
+		parts = append(parts, strconv.Itoa(profile.Bedrooms)+"bd")
 	}
 	if profile.Bathrooms > 0 {
 		parts = append(parts, formatFloat(profile.Bathrooms)+"ba")

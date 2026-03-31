@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
@@ -42,7 +43,7 @@ func createTestHousehold(t *testing.T, h *Handler) sync.CreateHouseholdResponse 
 		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
 	require.NoError(t, err)
-	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
@@ -70,7 +71,7 @@ func TestHealthEndpoint(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
 
-	req := httptest.NewRequest("GET", "/health", nil)
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -96,7 +97,7 @@ func TestCreateHouseholdMissingName(t *testing.T) {
 
 	body, err := json.Marshal(sync.CreateHouseholdRequest{})
 	require.NoError(t, err)
-	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -119,13 +120,13 @@ func TestAuthenticateDeviceMultipleDevices(t *testing.T) {
 	// Each token should authenticate to the correct device.
 	for _, token := range tokens {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, authRequest("GET", "/status", nil, token))
+		h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, token))
 		assert.Equal(t, http.StatusOK, rec.Code, "token should authenticate")
 	}
 
 	// Invalid token should fail.
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/status", nil, "bogus-token"))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, "bogus-token"))
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
@@ -133,7 +134,7 @@ func TestPushRequiresAuth(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
 
-	req := httptest.NewRequest("POST", "/sync/push", bytes.NewReader([]byte("{}")))
+	req := httptest.NewRequest(http.MethodPost, "/sync/push", bytes.NewReader([]byte("{}")))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -144,7 +145,7 @@ func TestPullRequiresAuth(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
 
-	req := httptest.NewRequest("GET", "/sync/pull", nil)
+	req := httptest.NewRequest(http.MethodGet, "/sync/pull", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -156,7 +157,7 @@ func TestInvalidTokenRejected(t *testing.T) {
 	h, _ := newTestHandler()
 
 	req := authRequest(
-		"POST",
+		http.MethodPost,
 		"/sync/push",
 		sync.PushRequest{Ops: []sync.Envelope{{}}},
 		"bogus-token",
@@ -186,7 +187,7 @@ func TestPushAndPull(t *testing.T) {
 	}
 	pushReq := sync.PushRequest{Ops: []sync.Envelope{op}}
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("POST", "/sync/push", pushReq, tokenA))
+	h.ServeHTTP(rec, authRequest(http.MethodPost, "/sync/push", pushReq, tokenA))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var pushResp sync.PushResponse
@@ -197,7 +198,7 @@ func TestPushAndPull(t *testing.T) {
 
 	// Device A pulls -- should see no ops (own ops excluded).
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, tokenA))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?after=0", nil, tokenA))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var pullResp sync.PullResponse
@@ -211,7 +212,10 @@ func TestPushEmptyOps(t *testing.T) {
 
 	hhResp := createTestHousehold(t, h)
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("POST", "/sync/push", sync.PushRequest{}, hhResp.DeviceToken))
+	h.ServeHTTP(
+		rec,
+		authRequest(http.MethodPost, "/sync/push", sync.PushRequest{}, hhResp.DeviceToken),
+	)
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
@@ -252,13 +256,18 @@ func TestTwoDeviceSync(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/sync/push", sync.PushRequest{Ops: []sync.Envelope{op}}, tokenA),
+		authRequest(
+			http.MethodPost,
+			"/sync/push",
+			sync.PushRequest{Ops: []sync.Envelope{op}},
+			tokenA,
+		),
 	)
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	// Device B pulls -- should see device A's op.
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, tokenB))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?after=0", nil, tokenB))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var pullResp sync.PullResponse
@@ -296,14 +305,19 @@ func TestPullPagination(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(
 			rec,
-			authRequest("POST", "/sync/push", sync.PushRequest{Ops: []sync.Envelope{op}}, tokenA),
+			authRequest(
+				http.MethodPost,
+				"/sync/push",
+				sync.PushRequest{Ops: []sync.Envelope{op}},
+				tokenA,
+			),
 		)
 		require.Equal(t, http.StatusOK, rec.Code)
 	}
 
 	// Device B pulls with limit=2.
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0&limit=2", nil, tokenB))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?after=0&limit=2", nil, tokenB))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var resp1 sync.PullResponse
@@ -317,7 +331,7 @@ func TestPullPagination(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"GET",
+			http.MethodGet,
 			"/sync/pull?after="+strconv.FormatInt(lastSeq, 10)+"&limit=2",
 			nil,
 			tokenB,
@@ -336,7 +350,7 @@ func TestPullPagination(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"GET",
+			http.MethodGet,
 			"/sync/pull?after="+strconv.FormatInt(lastSeq, 10)+"&limit=2",
 			nil,
 			tokenB,
@@ -371,7 +385,7 @@ func TestPushAssignsMonotonicSequences(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/sync/push", sync.PushRequest{Ops: ops}, hhResp.DeviceToken),
+		authRequest(http.MethodPost, "/sync/push", sync.PushRequest{Ops: ops}, hhResp.DeviceToken),
 	)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -394,7 +408,7 @@ func TestCreateInvite(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
@@ -413,7 +427,7 @@ func TestCreateInviteRequiresHouseholdMembership(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/wrong-id/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/wrong-id/invite", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
@@ -428,7 +442,12 @@ func TestCreateInviteMaxActiveLimit(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(
 			rec,
-			authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+			authRequest(
+				http.MethodPost,
+				"/households/"+hh.HouseholdID+"/invite",
+				nil,
+				hh.DeviceToken,
+			),
 		)
 		require.Equal(t, http.StatusCreated, rec.Code)
 	}
@@ -437,7 +456,7 @@ func TestCreateInviteMaxActiveLimit(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
@@ -451,7 +470,7 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -468,7 +487,7 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -488,7 +507,7 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"GET",
+			http.MethodGet,
 			"/households/"+hh.HouseholdID+"/pending-exchanges",
 			nil,
 			hh.DeviceToken,
@@ -513,7 +532,7 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/key-exchange/"+joinResp.ExchangeID+"/complete",
 			completeReq,
 			hh.DeviceToken,
@@ -523,7 +542,7 @@ func TestFullKeyExchangeFlow(t *testing.T) {
 
 	// Step 5: Joiner polls for result (no auth).
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	req = httptest.NewRequest(http.MethodGet, "/key-exchange/"+joinResp.ExchangeID, nil)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -549,7 +568,7 @@ func TestJoinInvalidInviteCode(t *testing.T) {
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -566,7 +585,7 @@ func TestJoinWrongHouseholdDoesNotConsumeAttempt(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -582,7 +601,7 @@ func TestJoinWrongHouseholdDoesNotConsumeAttempt(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/WRONG-HOUSEHOLD-ID/join",
 		bytes.NewReader(joinBody),
 	)
@@ -595,7 +614,7 @@ func TestJoinWrongHouseholdDoesNotConsumeAttempt(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -612,7 +631,7 @@ func TestJoinMissingFields(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -626,7 +645,7 @@ func TestJoinMissingFields(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -643,7 +662,7 @@ func TestKeyExchangeResultBeforeCompletion(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -657,7 +676,7 @@ func TestKeyExchangeResultBeforeCompletion(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -668,7 +687,7 @@ func TestKeyExchangeResultBeforeCompletion(t *testing.T) {
 
 	// Poll before inviter completes -- not ready.
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	req = httptest.NewRequest(http.MethodGet, "/key-exchange/"+joinResp.ExchangeID, nil)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -687,7 +706,7 @@ func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -701,7 +720,7 @@ func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -714,7 +733,7 @@ func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/key-exchange/"+joinResp.ExchangeID+"/complete",
 			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("key-data")},
 			hh.DeviceToken,
@@ -724,7 +743,7 @@ func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
 
 	// First retrieval -- should return credentials.
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	req = httptest.NewRequest(http.MethodGet, "/key-exchange/"+joinResp.ExchangeID, nil)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -736,7 +755,7 @@ func TestKeyExchangeResultClearsCredentialsAfterRetrieval(t *testing.T) {
 
 	// Second retrieval -- must fail (credentials are single-use).
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	req = httptest.NewRequest(http.MethodGet, "/key-exchange/"+joinResp.ExchangeID, nil)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code, "consumed credentials must return 404")
 }
@@ -750,7 +769,7 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -765,7 +784,7 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -779,7 +798,7 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/key-exchange/"+joinResp.ExchangeID+"/complete",
 			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("key-data")},
 			hh.DeviceToken,
@@ -796,7 +815,7 @@ func TestInviteConsumedAfterKeyExchange(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -814,7 +833,7 @@ func TestListDevices(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -853,14 +872,14 @@ func TestRevokeDevice(t *testing.T) {
 
 	// Device B can no longer authenticate.
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, regResp.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?after=0", nil, regResp.DeviceToken))
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 
 	// Only 1 device remains.
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -897,7 +916,7 @@ func TestListDevicesWrongHousehold(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/households/wrong-id/devices", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/households/wrong-id/devices", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
@@ -911,7 +930,7 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -925,7 +944,7 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -938,7 +957,7 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/key-exchange/"+joinResp.ExchangeID+"/complete",
 			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("key-data")},
 			hh.DeviceToken,
@@ -948,7 +967,7 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 
 	// Get joiner's token.
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	req = httptest.NewRequest(http.MethodGet, "/key-exchange/"+joinResp.ExchangeID, nil)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	var result sync.KeyExchangeResult
@@ -966,7 +985,7 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/sync/push",
 			sync.PushRequest{Ops: []sync.Envelope{op}},
 			hh.DeviceToken,
@@ -976,7 +995,7 @@ func TestJoinedDeviceCanPushAndPull(t *testing.T) {
 
 	// Joined device pulls -- should see device A's op.
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, result.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?after=0", nil, result.DeviceToken))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var pullResp sync.PullResponse
@@ -1007,7 +1026,7 @@ func TestPushReturns402WhenSubscriptionCanceled(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/sync/push",
 			sync.PushRequest{Ops: []sync.Envelope{op}},
 			hh.DeviceToken,
@@ -1029,7 +1048,7 @@ func TestPullReturns402WhenSubscriptionCanceled(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/sync/pull?after=0", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
 }
@@ -1053,7 +1072,7 @@ func TestPushSucceedsWhenSubscriptionActive(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/sync/push",
 			sync.PushRequest{Ops: []sync.Envelope{op}},
 			hh.DeviceToken,
@@ -1078,7 +1097,7 @@ func TestPushSucceedsWhenNoSubscription(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/sync/push",
 			sync.PushRequest{Ops: []sync.Envelope{op}},
 			hh.DeviceToken,
@@ -1106,7 +1125,7 @@ func TestPushReturns402WhenSubscriptionPastDue(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/sync/push",
 			sync.PushRequest{Ops: []sync.Envelope{op}},
 			hh.DeviceToken,
@@ -1145,7 +1164,7 @@ func TestStripeWebhookUpdatesSubscription(t *testing.T) {
 	require.NoError(t, err)
 	sigHeader := makeSignatureHeader(body, secret, time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(body))
 	req.Header.Set("Stripe-Signature", sigHeader)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -1172,7 +1191,7 @@ func TestStripeWebhookRejectsInvalidSignature(t *testing.T) {
 	// Sign with wrong secret.
 	sigHeader := makeSignatureHeader(body, "wrong_secret", time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(body))
 	req.Header.Set("Stripe-Signature", sigHeader)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -1194,7 +1213,7 @@ func TestStripeWebhookIgnoresNonSubscriptionEvents(t *testing.T) {
 	require.NoError(t, err)
 	sigHeader := makeSignatureHeader(body, secret, time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(body))
 	req.Header.Set("Stripe-Signature", sigHeader)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -1216,7 +1235,7 @@ func TestStripeWebhookNoSecretReturns503(t *testing.T) {
 
 	// Without a webhook secret, the handler must refuse to process
 	// webhooks to prevent accepting arbitrary payloads in production.
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
@@ -1232,7 +1251,7 @@ func TestStripeWebhookRejectsOversizedBody(t *testing.T) {
 		oversized[i] = 'A'
 	}
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(oversized))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(oversized))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -1265,7 +1284,7 @@ func TestStatusEndpoint(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/sync/push",
 			sync.PushRequest{Ops: []sync.Envelope{op}},
 			hh.DeviceToken,
@@ -1275,7 +1294,7 @@ func TestStatusEndpoint(t *testing.T) {
 
 	// Get status.
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, hh.DeviceToken))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var status sync.StatusResponse
@@ -1291,7 +1310,7 @@ func TestStatusRequiresAuth(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestHandler()
 
-	req := httptest.NewRequest("GET", "/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -1323,7 +1342,7 @@ func TestBlobUploadAndDownload(t *testing.T) {
 
 	// Download the blob.
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", blobURL(hh.HouseholdID, testHash), nil)
+	req = httptest.NewRequest(http.MethodGet, blobURL(hh.HouseholdID, testHash), nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -1367,7 +1386,7 @@ func TestBlobDownloadNotFound(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", blobURL(hh.HouseholdID, testHash), nil)
+	req := httptest.NewRequest(http.MethodGet, blobURL(hh.HouseholdID, testHash), nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -1412,7 +1431,7 @@ func TestBlobRequiresAuth(t *testing.T) {
 	// No auth token.
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, testHash),
 		bytes.NewReader([]byte("data")),
 	)
@@ -1428,7 +1447,7 @@ func TestBlobWrongHousehold(t *testing.T) {
 	// Try to upload to a different household.
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL("wrong-household", testHash),
 		bytes.NewReader([]byte("data")),
 	)
@@ -1444,7 +1463,7 @@ func TestBlobInvalidHash(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, "not-a-hash"),
 		bytes.NewReader([]byte("data")),
 	)
@@ -1463,7 +1482,7 @@ func TestBlobQuotaExceeded(t *testing.T) {
 	bigPayload := make([]byte, 200)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, testHash),
 		bytes.NewReader(bigPayload),
 	)
@@ -1485,7 +1504,7 @@ func TestBlobSubscriptionGating(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, testHash),
 		bytes.NewReader([]byte("data")),
 	)
@@ -1502,14 +1521,18 @@ func TestStatusIncludesBlobStorage(t *testing.T) {
 	// Upload a blob.
 	payload := []byte("encrypted-blob-content-for-status")
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader(payload),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
 	// Get status -- should include blob_storage.
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, hh.DeviceToken))
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var status sync.StatusResponse
@@ -1527,7 +1550,7 @@ func TestKeyExchangeExpiredReturnsError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -1541,7 +1564,7 @@ func TestKeyExchangeExpiredReturnsError(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -1559,7 +1582,7 @@ func TestKeyExchangeExpiredReturnsError(t *testing.T) {
 
 	// GetKeyExchangeResult should now return an error (expired).
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", "/key-exchange/"+joinResp.ExchangeID, nil)
+	req = httptest.NewRequest(http.MethodGet, "/key-exchange/"+joinResp.ExchangeID, nil)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 
@@ -1568,7 +1591,7 @@ func TestKeyExchangeExpiredReturnsError(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"GET",
+			http.MethodGet,
 			"/households/"+hh.HouseholdID+"/pending-exchanges",
 			nil,
 			hh.DeviceToken,
@@ -1594,7 +1617,7 @@ func TestAuthEdgeCases(t *testing.T) {
 		t.Parallel()
 		h, _ := newTestHandler()
 
-		req := httptest.NewRequest("GET", authEndpoint, nil)
+		req := httptest.NewRequest(http.MethodGet, authEndpoint, nil)
 		req.Header.Set("Authorization", "Bearer ")
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -1606,7 +1629,7 @@ func TestAuthEdgeCases(t *testing.T) {
 		t.Parallel()
 		h, _ := newTestHandler()
 
-		req := httptest.NewRequest("GET", authEndpoint, nil)
+		req := httptest.NewRequest(http.MethodGet, authEndpoint, nil)
 		req.Header.Set("Authorization", "Bearer    ")
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -1626,7 +1649,7 @@ func TestAuthEdgeCases(t *testing.T) {
 		}
 		longToken := string(b)
 
-		req := httptest.NewRequest("GET", authEndpoint, nil)
+		req := httptest.NewRequest(http.MethodGet, authEndpoint, nil)
 		req.Header.Set("Authorization", "Bearer "+longToken)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -1638,7 +1661,7 @@ func TestAuthEdgeCases(t *testing.T) {
 		t.Parallel()
 		h, _ := newTestHandler()
 
-		req := httptest.NewRequest("GET", authEndpoint, nil)
+		req := httptest.NewRequest(http.MethodGet, authEndpoint, nil)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 
@@ -1657,7 +1680,7 @@ func TestMalformedJSONBodies(t *testing.T) {
 		t.Parallel()
 		h, _ := newTestHandler()
 
-		req := httptest.NewRequest("POST", "/households", strings.NewReader(badJSON))
+		req := httptest.NewRequest(http.MethodPost, "/households", strings.NewReader(badJSON))
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 
@@ -1670,7 +1693,7 @@ func TestMalformedJSONBodies(t *testing.T) {
 		hh := createTestHousehold(t, h)
 
 		req := httptest.NewRequest(
-			"POST",
+			http.MethodPost,
 			"/households/"+hh.HouseholdID+"/join",
 			strings.NewReader(badJSON),
 		)
@@ -1685,7 +1708,7 @@ func TestMalformedJSONBodies(t *testing.T) {
 		h, _ := newTestHandler()
 		hh := createTestHousehold(t, h)
 
-		req := httptest.NewRequest("POST", "/sync/push", strings.NewReader(badJSON))
+		req := httptest.NewRequest(http.MethodPost, "/sync/push", strings.NewReader(badJSON))
 		req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -1702,7 +1725,12 @@ func TestMalformedJSONBodies(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(
 			rec,
-			authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+			authRequest(
+				http.MethodPost,
+				"/households/"+hh.HouseholdID+"/invite",
+				nil,
+				hh.DeviceToken,
+			),
 		)
 		require.Equal(t, http.StatusCreated, rec.Code)
 		var invite sync.InviteCode
@@ -1716,7 +1744,7 @@ func TestMalformedJSONBodies(t *testing.T) {
 		require.NoError(t, err)
 		rec = httptest.NewRecorder()
 		req := httptest.NewRequest(
-			"POST",
+			http.MethodPost,
 			"/households/"+hh.HouseholdID+"/join",
 			bytes.NewReader(joinBody),
 		)
@@ -1727,7 +1755,7 @@ func TestMalformedJSONBodies(t *testing.T) {
 
 		// Now send malformed JSON to the complete endpoint.
 		req = httptest.NewRequest(
-			"POST",
+			http.MethodPost,
 			"/key-exchange/"+joinResp.ExchangeID+"/complete",
 			strings.NewReader(badJSON),
 		)
@@ -1756,7 +1784,7 @@ func TestSelfHostedSubscriptionBypass(t *testing.T) {
 	// In self-hosted mode, push should succeed despite canceled subscription.
 	// Empty ops returns 400, not 402 — proves subscription check was bypassed.
 	rec := httptest.NewRecorder()
-	req := authRequest("POST", "/sync/push", sync.PushRequest{}, hh.DeviceToken)
+	req := authRequest(http.MethodPost, "/sync/push", sync.PushRequest{}, hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
@@ -1769,7 +1797,7 @@ func TestSelfHostedUnlimitedQuota(t *testing.T) {
 
 	// Status should report quota=0 (unlimited) in self-hosted mode.
 	rec := httptest.NewRecorder()
-	req := authRequest("GET", "/status", nil, hh.DeviceToken)
+	req := authRequest(http.MethodGet, "/status", nil, hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -1785,7 +1813,7 @@ func TestCloudModeDefaultQuota(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	rec := httptest.NewRecorder()
-	req := authRequest("GET", "/status", nil, hh.DeviceToken)
+	req := authRequest(http.MethodGet, "/status", nil, hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -1803,7 +1831,11 @@ func TestCustomBlobQuota(t *testing.T) {
 	// Upload a 200-byte blob — should succeed (200 < 500).
 	payload := make([]byte, 200)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, testHash), bytes.NewReader(payload))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, testHash),
+		bytes.NewReader(payload),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusCreated, rec.Code)
@@ -1812,7 +1844,11 @@ func TestCustomBlobQuota(t *testing.T) {
 	payload2 := make([]byte, 400)
 	hash2 := fmt.Sprintf("%x", sha256.Sum256(payload2))
 	rec2 := httptest.NewRecorder()
-	req2 := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, hash2), bytes.NewReader(payload2))
+	req2 := httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, hash2),
+		bytes.NewReader(payload2),
+	)
 	req2.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec2, req2)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, rec2.Code)
@@ -1841,14 +1877,18 @@ func TestSelfHostedIntegration(t *testing.T) {
 	payload := []byte("self-hosted-integration-test-blob")
 	hash := fmt.Sprintf("%x", sha256.Sum256(payload))
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, hash), bytes.NewReader(payload))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, hash),
+		bytes.NewReader(payload),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
 	// Download it back.
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", blobURL(hh.HouseholdID, hash), nil)
+	req = httptest.NewRequest(http.MethodGet, blobURL(hh.HouseholdID, hash), nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -1856,7 +1896,7 @@ func TestSelfHostedIntegration(t *testing.T) {
 
 	// Status reports quota=0.
 	rec = httptest.NewRecorder()
-	req = authRequest("GET", "/status", nil, hh.DeviceToken)
+	req = authRequest(http.MethodGet, "/status", nil, hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	var status sync.StatusResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&status))
@@ -1874,7 +1914,11 @@ func TestSelfHostedCustomQuota(t *testing.T) {
 	small := []byte("small")
 	hash := fmt.Sprintf("%x", sha256.Sum256(small))
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", blobURL(hh.HouseholdID, hash), bytes.NewReader(small))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, hash),
+		bytes.NewReader(small),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
@@ -1883,7 +1927,11 @@ func TestSelfHostedCustomQuota(t *testing.T) {
 	big := make([]byte, 100)
 	bigHash := fmt.Sprintf("%x", sha256.Sum256(big))
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("PUT", blobURL(hh.HouseholdID, bigHash), bytes.NewReader(big))
+	req = httptest.NewRequest(
+		http.MethodPut,
+		blobURL(hh.HouseholdID, bigHash),
+		bytes.NewReader(big),
+	)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
@@ -2080,10 +2128,10 @@ func TestStatusListDevicesError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.listDevicesErr = fmt.Errorf("database connection lost")
+	fs.listDevicesErr = errors.New("database connection lost")
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal error")
 }
@@ -2095,10 +2143,10 @@ func TestStatusGetHouseholdError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.getHouseholdErr = fmt.Errorf("household lookup failed")
+	fs.getHouseholdErr = errors.New("household lookup failed")
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal error")
 }
@@ -2110,10 +2158,10 @@ func TestStatusOpsCountError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.opsCountErr = fmt.Errorf("ops count query failed")
+	fs.opsCountErr = errors.New("ops count query failed")
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal error")
 }
@@ -2125,10 +2173,10 @@ func TestStatusBlobUsageError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.blobUsageErr = fmt.Errorf("blob usage query failed")
+	fs.blobUsageErr = errors.New("blob usage query failed")
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/status", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/status", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal error")
 }
@@ -2143,7 +2191,7 @@ func TestGetPendingExchangesForbidden(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/households/wrong-id/pending-exchanges", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/households/wrong-id/pending-exchanges", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Body.String(), "does not belong")
@@ -2156,13 +2204,13 @@ func TestGetPendingExchangesStoreError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.getPendingErr = fmt.Errorf("database unavailable")
+	fs.getPendingErr = errors.New("database unavailable")
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"GET",
+			http.MethodGet,
 			"/households/"+hh.HouseholdID+"/pending-exchanges",
 			nil,
 			hh.DeviceToken,
@@ -2182,7 +2230,7 @@ func TestHeadBlobForbidden(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("HEAD", blobURL("wrong-household", testHash), nil, hh.DeviceToken),
+		authRequest(http.MethodHead, blobURL("wrong-household", testHash), nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
@@ -2195,7 +2243,12 @@ func TestHeadBlobInvalidHash(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("HEAD", blobURL(hh.HouseholdID, "not-valid-hash"), nil, hh.DeviceToken),
+		authRequest(
+			http.MethodHead,
+			blobURL(hh.HouseholdID, "not-valid-hash"),
+			nil,
+			hh.DeviceToken,
+		),
 	)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
@@ -2208,7 +2261,7 @@ func TestHeadBlobNotFound(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+		authRequest(http.MethodHead, blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
@@ -2220,12 +2273,12 @@ func TestHeadBlobStoreError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.hasBlobErr = fmt.Errorf("storage backend unreachable")
+	fs.hasBlobErr = errors.New("storage backend unreachable")
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+		authRequest(http.MethodHead, blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
@@ -2241,7 +2294,7 @@ func TestCreateHouseholdMissingPublicKey(t *testing.T) {
 		// PublicKey omitted (nil/empty).
 	})
 	require.NoError(t, err)
-	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -2258,7 +2311,7 @@ func TestCreateHouseholdPublicKeyWrongSize(t *testing.T) {
 		PublicKey:  []byte("too-short-key"),
 	})
 	require.NoError(t, err)
-	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -2276,7 +2329,7 @@ func TestCreateHouseholdDeviceNameTooLong(t *testing.T) {
 		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
 	require.NoError(t, err)
-	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -2287,7 +2340,7 @@ func TestCreateHouseholdDeviceNameTooLong(t *testing.T) {
 func TestCreateHouseholdStoreError(t *testing.T) {
 	t.Parallel()
 	ms := NewMemStore()
-	fs := &failingStore{Store: ms, createHouseholdErr: fmt.Errorf("db write failed")}
+	fs := &failingStore{Store: ms, createHouseholdErr: errors.New("db write failed")}
 	h := newFailingHandler(fs)
 
 	body, err := json.Marshal(sync.CreateHouseholdRequest{
@@ -2295,7 +2348,7 @@ func TestCreateHouseholdStoreError(t *testing.T) {
 		PublicKey:  []byte("fake-public-key-32-bytes-paddin!"),
 	})
 	require.NoError(t, err)
-	req := httptest.NewRequest("POST", "/households", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/households", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -2313,7 +2366,7 @@ func TestGetBlobForbidden(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", blobURL("wrong-household", testHash), nil, hh.DeviceToken),
+		authRequest(http.MethodGet, blobURL("wrong-household", testHash), nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Body.String(), "does not belong")
@@ -2327,7 +2380,7 @@ func TestGetBlobInvalidHash(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", blobURL(hh.HouseholdID, "INVALID"), nil, hh.DeviceToken),
+		authRequest(http.MethodGet, blobURL(hh.HouseholdID, "INVALID"), nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "invalid hash")
@@ -2340,12 +2393,12 @@ func TestGetBlobStoreError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.getBlobErr = fmt.Errorf("storage read failure")
+	fs.getBlobErr = errors.New("storage read failure")
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+		authRequest(http.MethodGet, blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "get blob failed")
@@ -2362,7 +2415,7 @@ func TestCompleteKeyExchangeEmptyEncryptedKey(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -2376,7 +2429,7 @@ func TestCompleteKeyExchangeEmptyEncryptedKey(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -2390,7 +2443,7 @@ func TestCompleteKeyExchangeEmptyEncryptedKey(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/key-exchange/"+joinResp.ExchangeID+"/complete",
 			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte{}},
 			hh.DeviceToken,
@@ -2424,13 +2477,13 @@ func TestCompleteKeyExchangeStoreError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Inject the error.
-	fs.completeExchangeErr = fmt.Errorf("db constraint violation")
+	fs.completeExchangeErr = errors.New("db constraint violation")
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/key-exchange/"+joinResp.ExchangeID+"/complete",
 			sync.CompleteKeyExchangeRequest{EncryptedHouseholdKey: []byte("some-key-data")},
 			hh.DeviceToken,
@@ -2482,7 +2535,7 @@ func TestRevokeDeviceStoreError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fs.revokeDeviceErr = fmt.Errorf("device revocation constraint failure")
+	fs.revokeDeviceErr = errors.New("device revocation constraint failure")
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
@@ -2507,12 +2560,12 @@ func TestListDevicesStoreError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.listDevicesErr = fmt.Errorf("database timeout")
+	fs.listDevicesErr = errors.New("database timeout")
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/households/"+hh.HouseholdID+"/devices", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal error")
@@ -2526,7 +2579,10 @@ func TestPullInvalidAfterParam(t *testing.T) {
 	hh := createTestHousehold(t, h)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=not-a-number", nil, hh.DeviceToken))
+	h.ServeHTTP(
+		rec,
+		authRequest(http.MethodGet, "/sync/pull?after=not-a-number", nil, hh.DeviceToken),
+	)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "invalid after parameter")
 }
@@ -2539,7 +2595,7 @@ func TestPullInvalidLimitParam(t *testing.T) {
 	t.Run("non-numeric", func(t *testing.T) {
 		t.Parallel()
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=abc", nil, hh.DeviceToken))
+		h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?limit=abc", nil, hh.DeviceToken))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
 	})
@@ -2547,7 +2603,7 @@ func TestPullInvalidLimitParam(t *testing.T) {
 	t.Run("zero", func(t *testing.T) {
 		t.Parallel()
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=0", nil, hh.DeviceToken))
+		h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?limit=0", nil, hh.DeviceToken))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
 	})
@@ -2555,7 +2611,7 @@ func TestPullInvalidLimitParam(t *testing.T) {
 	t.Run("exceeds max", func(t *testing.T) {
 		t.Parallel()
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=1001", nil, hh.DeviceToken))
+		h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?limit=1001", nil, hh.DeviceToken))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
 	})
@@ -2563,7 +2619,7 @@ func TestPullInvalidLimitParam(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
 		t.Parallel()
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, authRequest("GET", "/sync/pull?limit=-1", nil, hh.DeviceToken))
+		h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?limit=-1", nil, hh.DeviceToken))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "limit must be 1-1000")
 	})
@@ -2576,10 +2632,10 @@ func TestPullStoreError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.pullErr = fmt.Errorf("query execution failed")
+	fs.pullErr = errors.New("query execution failed")
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken))
+	h.ServeHTTP(rec, authRequest(http.MethodGet, "/sync/pull?after=0", nil, hh.DeviceToken))
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "pull failed")
 }
@@ -2606,7 +2662,7 @@ func TestPutBlobInvalidHashFormats(t *testing.T) {
 			t.Parallel()
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(
-				"PUT",
+				http.MethodPut,
 				blobURL(hh.HouseholdID, tc.hash),
 				bytes.NewReader([]byte("data")),
 			)
@@ -2625,11 +2681,11 @@ func TestPutBlobStoreError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.putBlobErr = fmt.Errorf("disk full")
+	fs.putBlobErr = errors.New("disk full")
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, testHash),
 		bytes.NewReader([]byte("data")),
 	)
@@ -2648,7 +2704,7 @@ func TestPushStoreError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.pushErr = fmt.Errorf("write conflict")
+	fs.pushErr = errors.New("write conflict")
 
 	op := sync.Envelope{
 		ID:         uid.New(),
@@ -2660,7 +2716,7 @@ func TestPushStoreError(t *testing.T) {
 	h.ServeHTTP(
 		rec,
 		authRequest(
-			"POST",
+			http.MethodPost,
 			"/sync/push",
 			sync.PushRequest{Ops: []sync.Envelope{op}},
 			hh.DeviceToken,
@@ -2681,7 +2737,7 @@ func TestJoinDeviceNameTooLong(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -2696,7 +2752,7 @@ func TestJoinDeviceNameTooLong(t *testing.T) {
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -2718,7 +2774,7 @@ func TestJoinMissingInviteCode(t *testing.T) {
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"POST",
+		http.MethodPost,
 		"/households/"+hh.HouseholdID+"/join",
 		bytes.NewReader(joinBody),
 	)
@@ -2736,7 +2792,7 @@ func TestJoinInvalidPublicKeySize(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("POST", "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
+		authRequest(http.MethodPost, "/households/"+hh.HouseholdID+"/invite", nil, hh.DeviceToken),
 	)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var invite sync.InviteCode
@@ -2752,7 +2808,7 @@ func TestJoinInvalidPublicKeySize(t *testing.T) {
 		require.NoError(t, err)
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(
-			"POST",
+			http.MethodPost,
 			"/households/"+hh.HouseholdID+"/join",
 			bytes.NewReader(joinBody),
 		)
@@ -2771,7 +2827,7 @@ func TestJoinInvalidPublicKeySize(t *testing.T) {
 		require.NoError(t, err)
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(
-			"POST",
+			http.MethodPost,
 			"/households/"+hh.HouseholdID+"/join",
 			bytes.NewReader(joinBody),
 		)
@@ -2790,7 +2846,7 @@ func TestJoinInvalidPublicKeySize(t *testing.T) {
 		require.NoError(t, err)
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(
-			"POST",
+			http.MethodPost,
 			"/households/"+hh.HouseholdID+"/join",
 			bytes.NewReader(joinBody),
 		)
@@ -2813,7 +2869,7 @@ func TestStripeWebhookOversizedBodyReturns413(t *testing.T) {
 		oversized[i] = 'A'
 	}
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(oversized))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(oversized))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -2830,7 +2886,7 @@ func TestStripeWebhookUnparseableJSON(t *testing.T) {
 	body := []byte("this is not json at all {{{")
 	sigHeader := makeSignatureHeader(body, secret, time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(body))
 	req.Header.Set("Stripe-Signature", sigHeader)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -2856,7 +2912,7 @@ func TestStripeWebhookNoMatchingHousehold(t *testing.T) {
 	require.NoError(t, err)
 	sigHeader := makeSignatureHeader(body, secret, time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(body))
 	req.Header.Set("Stripe-Signature", sigHeader)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -2880,7 +2936,7 @@ func TestStripeWebhookUpdateSubscriptionError(t *testing.T) {
 	))
 
 	// Inject error on UpdateSubscription.
-	fs.updateSubErr = fmt.Errorf("database write error")
+	fs.updateSubErr = errors.New("database write error")
 
 	event := StripeEvent{
 		ID:   "evt_fail_update",
@@ -2891,7 +2947,7 @@ func TestStripeWebhookUpdateSubscriptionError(t *testing.T) {
 	require.NoError(t, err)
 	sigHeader := makeSignatureHeader(body, secret, time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(body))
 	req.Header.Set("Stripe-Signature", sigHeader)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -2911,7 +2967,7 @@ func TestPutBlobOversizedReturns413(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, testHash),
 		bytes.NewReader(oversized),
 	)
@@ -2933,7 +2989,7 @@ func TestPullSucceedsWhenNoSubscription(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/sync/pull?after=0", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
@@ -2950,7 +3006,7 @@ func TestPullReturns402WhenSubscriptionPastDue(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/sync/pull?after=0", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
 	assert.Contains(t, rec.Body.String(), "subscription inactive")
@@ -2968,7 +3024,7 @@ func TestPullSucceedsWhenSubscriptionActive(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/sync/pull?after=0", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
@@ -2981,7 +3037,7 @@ func TestBlobPutSucceedsWhenNoSubscription(t *testing.T) {
 	// No subscription (empty status) -- should allow blob upload.
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
-		"PUT",
+		http.MethodPut,
 		blobURL(hh.HouseholdID, testHash),
 		bytes.NewReader([]byte("data")),
 	)
@@ -3002,7 +3058,7 @@ func TestBlobGetReturns402WhenSubscriptionPastDue(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
+		authRequest(http.MethodGet, blobURL(hh.HouseholdID, testHash), nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusPaymentRequired, rec.Code)
 }
@@ -3014,12 +3070,12 @@ func TestRequireSubscriptionGetHouseholdError(t *testing.T) {
 	h := newFailingHandler(fs)
 	hh := createTestHouseholdDirect(t, ms)
 
-	fs.getHouseholdErr = fmt.Errorf("household lookup failed during subscription check")
+	fs.getHouseholdErr = errors.New("household lookup failed during subscription check")
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,
-		authRequest("GET", "/sync/pull?after=0", nil, hh.DeviceToken),
+		authRequest(http.MethodGet, "/sync/pull?after=0", nil, hh.DeviceToken),
 	)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal error")
