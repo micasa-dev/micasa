@@ -21,10 +21,7 @@
       "description": "Group all indirect Go dependencies",
       "matchManagers": ["gomod"],
       "matchDepTypes": ["indirect"],
-      "groupName": "go-indirect",
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "rebase"
+      "groupName": "go-indirect"
     },
     {
       "description": "Group GitHub Actions updates",
@@ -60,10 +57,7 @@
     {
       "description": "Automerge GitHub Actions patch updates",
       "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["patch", "digest"],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "rebase"
+      "matchUpdateTypes": ["patch", "digest"]
     }
   ]
 }
