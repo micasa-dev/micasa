@@ -50,7 +50,7 @@ terminals support it, but some need explicit configuration:
 | Terminal | Configuration |
 |----------|---------------|
 | tmux | `set -g set-clipboard on` in `~/.tmux.conf` |
-| GNU Screen | `bindkey -d -k kb stuff "\010"` — limited support |
+| GNU Screen | Not supported (Screen does not forward OSC 52) |
 | Alacritty | Enabled by default |
 | iTerm2 | Preferences → General → Selection → enable "Applications in terminal may access clipboard" |
 | kitty | Enabled by default |
