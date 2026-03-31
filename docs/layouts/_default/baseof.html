@@ -201,8 +201,39 @@ function getMermaidTheme() {
   };
 }
 
+function processCodeInMermaid() {
+  document.querySelectorAll('.mermaid svg').forEach(function(svg) {
+    var walker = document.createTreeWalker(svg, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    var node;
+    while ((node = walker.nextNode())) {
+      if (node.textContent.includes('`')) nodes.push(node);
+    }
+    var mono = '"JetBrains Mono", "Fira Code", "Consolas", monospace';
+    nodes.forEach(function(textNode) {
+      var parts = textNode.textContent.split(/`([^`]+)`/);
+      if (parts.length <= 1) return;
+      var parent = textNode.parentNode;
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i] === '') continue;
+        if (i % 2 === 0) {
+          frag.appendChild(document.createTextNode(parts[i]));
+        } else {
+          var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          tspan.style.fontFamily = mono;
+          tspan.textContent = parts[i];
+          frag.appendChild(tspan);
+        }
+      }
+      parent.replaceChild(frag, textNode);
+    });
+  });
+}
+
 mermaid.initialize(getMermaidTheme());
-mermaid.run();
+await mermaid.run();
+processCodeInMermaid();
 
 document.addEventListener('theme-changed', async function () {
   mermaid.initialize(getMermaidTheme());
@@ -215,6 +246,7 @@ document.addEventListener('theme-changed', async function () {
     el.innerHTML = source;
   }
   await mermaid.run();
+  processCodeInMermaid();
 });
 </script>
 

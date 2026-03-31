@@ -49,11 +49,11 @@ sequenceDiagram
     participant A as Device A
     participant R as Relay
     participant B as Device B
-    A->>R: secretbox.Seal(op, hhKey) then push
+    A->>R: `secretbox.Seal(op, hhKey)` then push
     R->>R: store ciphertext
     B->>R: pull after seq N
     R->>B: serve ciphertext
-    B->>B: secretbox.Open(op, hhKey)
+    B->>B: `secretbox.Open(op, hhKey)`
 ```
 
 ### Device tokens at rest ([AES-256-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode))
@@ -78,20 +78,20 @@ sequenceDiagram
     participant R as Relay
     participant J as Joiner
 
-    I->>R: POST /households/{id}/invite
+    I->>R: `POST /households/{id}/invite`
     R-->>I: invite code
 
     Note over I,J: share code out-of-band
 
-    J->>R: POST /households/{id}/join (code)
+    J->>R: `POST /households/{id}/join` (code)
     R-->>J: exchange ID
 
-    I->>R: GET /households/{id}/pending-exchanges
+    I->>R: `GET /households/{id}/pending-exchanges`
     R-->>I: joiner public key
 
-    I->>R: POST /key-exchange/complete (encrypted household key)
+    I->>R: `POST /key-exchange/complete` (encrypted household key)
 
-    J->>R: GET /key-exchange
+    J->>R: `GET /key-exchange`
     R-->>J: encrypted key + device token
     Note over R: credentials scrubbed
 ```
@@ -162,13 +162,13 @@ sequenceDiagram
     participant R as Relay (Postgres)
     participant B as Device B
 
-    Note over A: User runs micasa pro init
+    Note over A: User runs `micasa pro init`
 
     rect rgb(240, 235, 228)
     Note over A,R: Household creation
-    A->>A: GenerateDeviceKeyPair()
-    A->>A: GenerateHouseholdKey()
-    A->>R: POST /households (public key)
+    A->>A: `GenerateDeviceKeyPair()`
+    A->>A: `GenerateHouseholdKey()`
+    A->>R: `POST /households` (public key)
     R-->>A: household ID + device token
     A->>A: save keys to secrets directory
     end
@@ -178,46 +178,46 @@ sequenceDiagram
 
     rect rgb(240, 235, 228)
     Note over A,R: Push
-    A->>A: secretbox.Seal(op, hhKey) per entry
-    A->>R: POST /sync/push (encrypted ops)
+    A->>A: `secretbox.Seal(op, hhKey)` per entry
+    A->>R: `POST /sync/push` (encrypted ops)
     R->>R: assign sequence numbers, store ciphertext
     end
 
-    Note over A,B: User runs micasa pro invite, shares code
+    Note over A,B: User runs `micasa pro invite`, shares code
 
     rect rgb(240, 235, 228)
     Note over A,B: Key exchange
-    A->>R: POST /households/{id}/invite
+    A->>R: `POST /households/{id}/invite`
     R-->>A: invite code (4h expiry)
-    B->>R: POST /households/{id}/join (invite code + public key)
+    B->>R: `POST /households/{id}/join` (invite code + public key)
     R-->>B: exchange ID
-    A->>R: GET /households/{id}/pending-exchanges
+    A->>R: `GET /households/{id}/pending-exchanges`
     R-->>A: joiner public key
-    A->>A: box.Seal(hhKey, joinerPubKey)
-    A->>R: POST /key-exchange/complete
-    R->>R: encryptToken(deviceToken, serverKey)
-    B->>R: GET /key-exchange (15min expiry)
-    R->>R: decryptToken(stored, serverKey)
+    A->>A: `box.Seal(hhKey, joinerPubKey)`
+    A->>R: `POST /key-exchange/complete`
+    R->>R: `encryptToken(deviceToken, serverKey)`
+    B->>R: `GET /key-exchange` (15min expiry)
+    R->>R: `decryptToken(stored, serverKey)`
     R-->>B: encrypted household key + device token
     R->>R: scrub credentials
-    B->>B: box.Open(encKey, privateKey) = household key
+    B->>B: `box.Open(encKey, privateKey)` = household key
     end
 
     rect rgb(240, 235, 228)
     Note over B,R: Pull
-    B->>R: GET /sync/pull?after=0
+    B->>R: `GET /sync/pull?after=0`
     R-->>B: all encrypted ops
-    B->>B: secretbox.Open(op, hhKey) per op
+    B->>B: `secretbox.Open(op, hhKey)` per op
     B->>B: apply INSERT/UPDATE/DELETE to local SQLite
     end
 
     rect rgb(240, 235, 228)
     Note over A,B: Blob sync
-    A->>A: secretbox.Seal(docData, hhKey)
-    A->>R: PUT /blobs/{household}/{sha256}
-    B->>R: GET /blobs/{household}/{sha256}
+    A->>A: `secretbox.Seal(docData, hhKey)`
+    A->>R: `PUT /blobs/{household}/{sha256}`
+    B->>R: `GET /blobs/{household}/{sha256}`
     R-->>B: encrypted blob
-    B->>B: secretbox.Open(blob, hhKey)
+    B->>B: `secretbox.Open(blob, hhKey)`
     end
 
     Note over A,B: Both devices now have identical data
