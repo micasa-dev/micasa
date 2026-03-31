@@ -46,6 +46,7 @@ func (m *Model) helpSections() []helpSection {
 				fromBinding(m.keys.FilterNegate),
 				fromBinding(m.keys.FilterClear),
 				fromBinding(m.keys.Enter),
+				fromBinding(m.keys.YankCell),
 				fromBinding(m.keys.DocOpen),
 				fromBinding(m.keys.HouseToggle),
 				fromBinding(m.keys.ToggleUnits),

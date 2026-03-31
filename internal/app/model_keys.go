@@ -4,10 +4,18 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
+	"unicode"
+
+	"github.com/rivo/uniseg"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // handleDashboardKeys intercepts keys that belong to the dashboard (j/k
@@ -51,7 +59,7 @@ func (m *Model) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	case key.Matches(msg, m.keys.ColLeft, m.keys.ColRight):
 		// Block column movement on dashboard.
 		return nil, true
-	case key.Matches(msg, m.keys.Sort, m.keys.SortClear, m.keys.ColHide, m.keys.ColShowAll, m.keys.EnterEditMode, m.keys.ColFinder, m.keys.FilterPin, m.keys.FilterToggle, m.keys.FilterNegate):
+	case key.Matches(msg, m.keys.Sort, m.keys.SortClear, m.keys.ColHide, m.keys.ColShowAll, m.keys.EnterEditMode, m.keys.ColFinder, m.keys.FilterPin, m.keys.FilterToggle, m.keys.FilterNegate, m.keys.YankCell):
 		// Block table-specific keys on dashboard.
 		return nil, true
 	}
@@ -230,6 +238,49 @@ func (m *Model) handleNormalKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return nil, true
 	case key.Matches(msg, m.keys.Chat):
 		return m.openChat(), true
+	case key.Matches(msg, m.keys.YankCell):
+		// Guard nil tab before accessing ColCursor. selectedCell also checks
+		// internally, but we need the tab reference for the column index.
+		tab := m.effectiveTab()
+		if tab == nil {
+			return nil, true
+		}
+		c, ok := m.selectedCell(tab.ColCursor)
+		if !ok || c.Null || c.Value == "" {
+			m.setStatusInfo("Nothing to copy.")
+			return nil, true
+		}
+		clipValue := c.Value
+		if c.Kind == cellMoney {
+			clipValue = m.cur.StripSymbol(clipValue)
+		}
+		var opsLabel string
+		if c.Kind == cellOps {
+			if result := m.yankOpsJSON(); result != nil {
+				clipValue = result.data
+				if result.pretty {
+					opsLabel = fmt.Sprintf("JSON (%s ops)", c.Value)
+				} else {
+					opsLabel = fmt.Sprintf("raw data (%s ops)", c.Value)
+				}
+			}
+		}
+		prefix := appStyles.AccentText().Render("Copied: ")
+		prefixW := lipgloss.Width(prefix)
+		budget := m.width - prefixW
+		if budget < 10 {
+			budget = 10
+		}
+		displayValue := clipValue
+		if opsLabel != "" {
+			displayValue = opsLabel
+		}
+		displayValue = truncateForStatus(sanitizeForStatus(displayValue), budget)
+		m.status = statusMsg{
+			Text: prefix + yankStyle(c.Kind).Render(displayValue),
+			Kind: statusStyled,
+		}
+		return tea.SetClipboard(clipValue), true
 	case key.Matches(msg, m.keys.Escape):
 		if m.inDetail() {
 			m.closeDetail()
@@ -239,6 +290,97 @@ func (m *Model) handleNormalKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return nil, true
 	}
 	return nil, false
+}
+
+// opsJSON holds the result of fetching extraction-ops JSON for clipboard copy.
+type opsJSON struct {
+	data   string // pretty-printed or raw JSON
+	pretty bool   // true if json.Indent succeeded
+}
+
+// yankOpsJSON fetches the extraction-ops JSON for the selected row's document.
+// Returns nil if the data is unavailable (no row meta, fetch error, empty ops).
+func (m *Model) yankOpsJSON() *opsJSON {
+	meta, ok := m.selectedRowMeta()
+	if !ok {
+		return nil
+	}
+	doc, err := m.store.GetDocumentMetadata(meta.ID)
+	if err != nil || len(doc.ExtractionOps) == 0 {
+		return nil
+	}
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, doc.ExtractionOps, "", "  "); err != nil {
+		return &opsJSON{data: string(doc.ExtractionOps), pretty: false}
+	}
+	return &opsJSON{data: buf.String(), pretty: true}
+}
+
+// yankStyle returns the display style for a copied cell value based on its kind.
+func yankStyle(kind cellKind) lipgloss.Style {
+	switch kind {
+	case cellMoney:
+		return appStyles.Money()
+	case cellReadonly:
+		return appStyles.Readonly()
+	case cellDate, cellWarranty, cellUrgency, cellDrilldown, cellOps:
+		return appStyles.AccentText()
+	case cellStatus:
+		return appStyles.SecondaryText()
+	case cellEntity:
+		return appStyles.SecondaryText()
+	case cellText, cellNotes, cellTelephoneNumber:
+		return appStyles.DashValue()
+	}
+	return appStyles.DashValue()
+}
+
+// sanitizeForStatus replaces control characters and collapses whitespace
+// so that free-text cell values don't break the single-line status bar.
+// Uses unicode.IsControl and unicode.IsSpace to catch all Unicode
+// separators (U+0085, U+2028, U+2029, etc.), not just ASCII.
+func sanitizeForStatus(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	prevSpace := false
+	for _, r := range s {
+		if unicode.IsControl(r) || unicode.IsSpace(r) {
+			if !prevSpace {
+				b.WriteByte(' ')
+				prevSpace = true
+			}
+			continue
+		}
+		b.WriteRune(r)
+		prevSpace = false
+	}
+	return strings.TrimSpace(b.String())
+}
+
+// truncateForStatus trims a string so its rendered terminal width fits within
+// maxWidth columns (including room for "…" if truncated). Iterates by grapheme
+// cluster via uniseg to correctly handle ZWJ emoji sequences and other
+// multi-rune glyphs.
+func truncateForStatus(s string, maxWidth int) string {
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+	const ellipsis = "…"
+	ellipsisW := lipgloss.Width(ellipsis)
+	budget := maxWidth - ellipsisW
+
+	var b strings.Builder
+	w := 0
+	g := uniseg.NewGraphemes(s)
+	for g.Next() {
+		gw := g.Width()
+		if w+gw > budget {
+			break
+		}
+		b.WriteString(g.Str())
+		w += gw
+	}
+	return b.String() + ellipsis
 }
 
 // handleNormalEnter handles enter in Normal mode: drill into detail views

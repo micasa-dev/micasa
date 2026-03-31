@@ -133,6 +133,38 @@ func TestFormatCentsEUR(t *testing.T) {
 	assert.Contains(t, formatted, "1.234,56")
 }
 
+func TestStripSymbol(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		code     string
+		tag      language.Tag
+		cents    int64
+		wantSym  bool // false = symbol must NOT appear in stripped output
+		contains string
+	}{
+		{"USD prefix", "USD", language.AmericanEnglish, 77653, false, "776.53"},
+		{"USD negative", "USD", language.AmericanEnglish, -77653, false, "776.53"},
+		{"EUR German suffix", "EUR", language.German, 123456, false, "1.234,56"},
+		{"EUR French suffix", "EUR", language.MustParse("fr"), 99900, false, "999,00"},
+		{"GBP prefix", "GBP", language.BritishEnglish, 50000, false, "500.00"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := MustResolve(tt.code, tt.tag)
+			formatted := c.FormatCents(tt.cents)
+			stripped := c.StripSymbol(formatted)
+			assert.NotContains(t, stripped, c.Symbol(), "symbol should be removed")
+			assert.Contains(t, stripped, tt.contains, "number should be preserved")
+			if !tt.wantSym {
+				// Also verify no stray nbsp left over.
+				assert.NotContains(t, stripped, "\u00a0", "no stray non-breaking space")
+			}
+		})
+	}
+}
+
 func TestFormatCentsGBP(t *testing.T) {
 	t.Parallel()
 	c := MustResolve("GBP", language.BritishEnglish)

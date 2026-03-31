@@ -52,6 +52,7 @@ type AppKeyMap struct {
 	ToggleUnits   key.Binding
 	Chat          key.Binding
 	Escape        key.Binding
+	YankCell      key.Binding
 
 	// --- Edit mode (handleEditKeys) ---
 	Add         key.Binding
@@ -269,6 +270,7 @@ func newAppKeyMap() AppKeyMap {
 			key.WithKeys(keyEsc),
 			key.WithHelp("esc", "close detail / clear status"),
 		),
+		YankCell: key.NewBinding(key.WithKeys(keyY), key.WithHelp(keyY, "copy cell")),
 
 		// Edit mode
 		Add: key.NewBinding(key.WithKeys(keyA), key.WithHelp(keyA, "add entry")),

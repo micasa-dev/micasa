@@ -472,11 +472,16 @@ func (m *Model) withStatusMessage(helpLine string) string {
 	if m.status.Text == "" {
 		return helpLine
 	}
-	style := m.styles.Info()
-	if m.status.Kind == statusError {
-		style = m.styles.Error()
+	var rendered string
+	switch m.status.Kind {
+	case statusStyled:
+		rendered = m.status.Text
+	case statusError:
+		rendered = m.styles.Error().Render(m.status.Text)
+	case statusInfo:
+		rendered = m.styles.Info().Render(m.status.Text)
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, style.Render(m.status.Text), helpLine)
+	return lipgloss.JoinVertical(lipgloss.Left, rendered, helpLine)
 }
 
 // withPullProgress appends the model download progress line below the status

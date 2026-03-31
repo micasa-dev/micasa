@@ -143,6 +143,15 @@ func (c Currency) FormatCents(cents int64) string {
 	return sign + number + nbsp + c.symbol
 }
 
+// StripSymbol removes the currency symbol (and any surrounding whitespace
+// it introduces) from a FormatCents output, leaving just the number.
+func (c Currency) StripSymbol(s string) string {
+	if c.prefix {
+		return strings.Replace(s, c.symbol, "", 1)
+	}
+	return strings.TrimSuffix(s, nbsp+c.symbol)
+}
+
 // FormatOptionalCents formats a *int64 cent value, returning "" for nil.
 func (c Currency) FormatOptionalCents(cents *int64) string {
 	if cents == nil {

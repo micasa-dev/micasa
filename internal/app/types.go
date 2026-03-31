@@ -250,6 +250,7 @@ type statusKind int
 const (
 	statusInfo statusKind = iota
 	statusError
+	statusStyled // pre-rendered with ANSI; withStatusMessage skips wrapping
 )
 
 type statusMsg struct {
