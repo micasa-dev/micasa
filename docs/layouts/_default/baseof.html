@@ -295,8 +295,11 @@ async function renderMermaidDiagrams() {
     if (!source) {
       return;
     }
-    el.removeAttribute("data-processed");
-    el.textContent = source;
+    var fresh = document.createElement("pre");
+    fresh.className = "mermaid";
+    fresh.setAttribute("data-original-source", source);
+    fresh.textContent = source;
+    el.parentNode.replaceChild(fresh, el);
   });
   await mermaid.run();
   processCodeInMermaid();
