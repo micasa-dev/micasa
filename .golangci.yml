@@ -4,46 +4,48 @@
 version: "2"
 
 linters:
-  enable:
-    # Type safety
-    - forcetypeassert
-    - unconvert
-    - asasalint
+  default: all
+  disable:
+    # Style/formatting -- conflicts with project conventions or tooling
+    - nlreturn         # forces blank lines before returns; noisy
+    - wsl              # whitespace style; too opinionated
+    - varnamelen       # short var names are idiomatic Go
+    - ireturn          # forbids returning interfaces; conflicts with stdlib patterns
+    - lll              # line length; golines handles this
+    - godox            # flags TODOs; we use them intentionally
+    - tagliatelle      # enforces JSON tag casing; we set tags explicitly
+    - exhaustruct      # requires all struct fields; too noisy for large structs
+    - godot            # requires period at end of comments
+    - nonamedreturns   # forbids named returns; sometimes useful for docs
+    - tagalign         # aligns struct tags; cosmetic
+    - grouper          # import grouping; not needed
+    - canonicalheader  # checks http header casing; too noisy
 
-    # Error handling
-    - errorlint
-    - errchkjson
+    # Complexity metrics -- we trust reviewer judgment
+    - funlen           # function length limits
+    - cyclop           # cyclomatic complexity
+    - gocognit         # cognitive complexity
+    - maintidx         # maintainability index
+    - gocyclo          # cyclomatic complexity (redundant with cyclop)
+    - nestif           # deeply nested ifs; overlaps complexity linters
 
-    # Bug prevention
-    - govet
-    - gocritic
-    - gosec
-    - durationcheck
-    - exhaustive
-    - fatcontext
-    - copyloopvar
-
-    # Resource & network safety
-    - sqlclosecheck
-    - bodyclose
-    - nilerr
-    - rowserrcheck
-    - noctx
-
-    # Dead code
-    - unused
-    - wastedassign
-    - unparam
-
-    # Code quality
-    - goconst
-    - dupword
-    - asciicheck
-    - revive
-    - testifylint
-    - intrange
-    - wrapcheck
-    - musttag
+    # Opinionated rules that don't fit this project
+    - depguard         # dependency allowlist; not needed
+    - mnd              # magic numbers; too aggressive
+    - gochecknoglobals # flags all globals; we use them intentionally
+    - testpackage      # requires _test package suffix; we test internals
+    - paralleltest     # requires t.Parallel(); not always appropriate
+    - tparallel        # similar to paralleltest
+    - gomoddirectives  # restricts go.mod directives; not needed
+    - importas         # enforces import aliases; not needed
+    - interfacebloat   # limits interface methods; not useful for us
+    - gosmopolitan     # i18n checks; not applicable
+    - prealloc         # premature optimization; not useful
+    - err113           # forbids dynamic errors; too aggressive for user-facing messages
+    - forbidigo        # forbids fmt.Print*; CLI programs need them
+    - funcorder        # forces exported-before-unexported ordering; too noisy
+    - containedctx     # flags context in structs; TUI models legitimately store context
+    - wsl_v5           # whitespace style v5; too opinionated
 
   settings:
     exhaustive:
@@ -97,4 +99,8 @@ linters:
 
       # goconst: repeated strings in tests are fine
       - linters: [goconst]
+        path: _test\.go
+
+      # dupl: similar test structures are expected
+      - linters: [dupl]
         path: _test\.go
