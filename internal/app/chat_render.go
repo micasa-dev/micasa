@@ -47,10 +47,7 @@ func (m *Model) renderChatMessages() string {
 
 			// Show SQL if toggle is on and SQL exists.
 			if m.chat.ShowSQL && sql != "" {
-				sqlWidth := innerW - 8
-				if sqlWidth < 30 {
-					sqlWidth = 30
-				}
+				sqlWidth := max(innerW-8, 30)
 				sqlBlock := m.chat.renderMarkdown(
 					"```sql\n"+sqlfmt.FormatSQL(sql, sqlWidth)+"\n```",
 					innerW-2,
@@ -176,10 +173,7 @@ func (m *Model) buildChatOverlay() string {
 
 	boxContent := lipgloss.JoinVertical(lipgloss.Left, sections...)
 
-	maxH := m.effectiveHeight() * 3 / 5
-	if maxH < 12 {
-		maxH = 12
-	}
+	maxH := max(m.effectiveHeight()*3/5, 12)
 
 	return m.styles.OverlayBox().
 		Width(contentW).
@@ -222,21 +216,12 @@ func (m *Model) renderModelCompleterFor(mc *modelCompleter, query string, innerW
 		return strings.Join(lines, "\n")
 	}
 
-	maxVisible := completerMaxLines
-	if maxVisible > len(mc.Matches) {
-		maxVisible = len(mc.Matches)
-	}
-	start := mc.Cursor - maxVisible/2
-	if start < 0 {
-		start = 0
-	}
+	maxVisible := min(completerMaxLines, len(mc.Matches))
+	start := max(mc.Cursor-maxVisible/2, 0)
 	end := start + maxVisible
 	if end > len(mc.Matches) {
 		end = len(mc.Matches)
-		start = end - maxVisible
-		if start < 0 {
-			start = 0
-		}
+		start = max(end-maxVisible, 0)
 	}
 
 	pointer := m.styles.AccentBold()
@@ -293,13 +278,8 @@ func (m *Model) highlightModelMatch(match modelCompleterMatch) string {
 // --- Layout helpers ---
 
 func (m *Model) chatOverlayWidth() int {
-	w := m.effectiveWidth() - 8
-	if w > 90 {
-		w = 90
-	}
-	if w < 40 {
-		w = 40
-	}
+	w := min(m.effectiveWidth()-8, 90)
+	w = max(w, 40)
 	return w
 }
 
@@ -316,10 +296,7 @@ func (m *Model) chatViewportHeight() int {
 		// Reserve space for the completer + its surrounding blank line.
 		chrome += completerMaxLines + 1
 	}
-	h := maxOverlay - chrome
-	if h < 4 {
-		h = 4
-	}
+	h := max(maxOverlay-chrome, 4)
 	return h
 }
 

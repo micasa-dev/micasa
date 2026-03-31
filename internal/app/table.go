@@ -71,7 +71,7 @@ func visibleProjection(tab *Tab) (
 			sorts = append(sorts, sortEntry{Col: vis, Dir: se.Dir})
 		}
 	}
-	return
+	return specs, cellRows, colCursor, sorts, visToFull
 }
 
 func renderHeaderRow(
@@ -737,10 +737,8 @@ func dateDiffDays(now, target time.Time) int {
 // firstLine returns the first line of s, trimmed of surrounding whitespace.
 func firstLine(s string) string {
 	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return strings.TrimRight(s[:i], "\r \t")
-	}
-	return s
+	first, _, _ := strings.Cut(s, "\n")
+	return strings.TrimRight(first, "\r \t")
 }
 
 // extraLineCount returns the number of additional lines beyond the first.

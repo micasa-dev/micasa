@@ -605,15 +605,13 @@ func runProJoin(code, dbPath, relayURL string) error {
 	}
 
 	// Parse compound code: HOUSEHOLD_ID.CODE (split on first dot).
-	dotIdx := strings.IndexByte(code, '.')
-	if dotIdx < 0 {
+	householdID, inviteCode, ok := strings.Cut(code, ".")
+	if !ok {
 		return fmt.Errorf(
 			"invalid invite code format -- expected HOUSEHOLD_ID.CODE (got %q)",
 			code,
 		)
 	}
-	householdID := code[:dotIdx]
-	inviteCode := code[dotIdx+1:]
 	if householdID == "" || inviteCode == "" {
 		return fmt.Errorf(
 			"invalid invite code format -- " +

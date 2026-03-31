@@ -44,7 +44,7 @@ func applyDefaultsValue(rv reflect.Value) {
 		// Recurse into nested structs that don't have a default tag
 		// and aren't time.Time (handled as a leaf).
 		if tag == "" && field.Kind() == reflect.Struct &&
-			field.Type() != reflect.TypeOf(time.Time{}) {
+			field.Type() != reflect.TypeFor[time.Time]() {
 			applyDefaultsValue(field)
 			continue
 		}
@@ -110,7 +110,7 @@ func setFieldDefault(field reflect.Value, tag string) {
 		}
 
 	case reflect.Struct:
-		if field.Type() == reflect.TypeOf(time.Time{}) && tag == "now" {
+		if field.Type() == reflect.TypeFor[time.Time]() && tag == "now" {
 			field.Set(reflect.ValueOf(time.Now()))
 		}
 	}

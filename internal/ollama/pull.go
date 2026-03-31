@@ -98,7 +98,7 @@ func PullModel(ctx context.Context, baseURL, model string) (*PullScanner, error)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := pullClient.Do(req) //nolint:gosec // baseURL from user config
+	resp, err := pullClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"cannot reach %s -- start it with `ollama serve`", baseURL,

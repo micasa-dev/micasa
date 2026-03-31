@@ -840,8 +840,7 @@ func TestAllSyncableModelsHaveJSONTags(t *testing.T) {
 	namer := schema.NamingStrategy{}
 	for _, m := range models {
 		rt := reflect.TypeOf(m)
-		for i := range rt.NumField() {
-			f := rt.Field(i)
+		for f := range rt.Fields() {
 			if !f.IsExported() {
 				continue
 			}
@@ -864,9 +863,9 @@ func TestAllSyncableModelsHaveJSONTags(t *testing.T) {
 			// Verify json tag matches the GORM column name.
 			gormTag := f.Tag.Get("gorm")
 			var wantCol string
-			for _, part := range strings.Split(gormTag, ";") {
-				if strings.HasPrefix(part, "column:") {
-					wantCol = strings.TrimPrefix(part, "column:")
+			for part := range strings.SplitSeq(gormTag, ";") {
+				if col, ok := strings.CutPrefix(part, "column:"); ok {
+					wantCol = col
 					break
 				}
 			}

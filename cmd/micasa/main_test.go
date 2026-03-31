@@ -53,7 +53,7 @@ func executeCLI(args ...string) (string, error) {
 var (
 	testBin     string
 	testBinOnce sync.Once
-	testBinErr  error
+	errTestBin  error
 )
 
 func getTestBin(t *testing.T) string {
@@ -63,9 +63,12 @@ func getTestBin(t *testing.T) string {
 		if runtime.GOOS == "windows" {
 			ext = ".exe"
 		}
-		dir, err := os.MkdirTemp("", "micasa-test-*")
+		dir, err := os.MkdirTemp(
+			"",
+			"micasa-test-*",
+		) //nolint:usetesting // shared via sync.Once; t.TempDir would delete the binary when the first test ends
 		if err != nil {
-			testBinErr = fmt.Errorf("create temp dir: %w", err)
+			errTestBin = fmt.Errorf("create temp dir: %w", err)
 			return
 		}
 		bin := filepath.Join(dir, "micasa"+ext)
@@ -75,12 +78,12 @@ func getTestBin(t *testing.T) string {
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			testBinErr = fmt.Errorf("build: %w\n%s", err, out)
+			errTestBin = fmt.Errorf("build: %w\n%s", err, out)
 			return
 		}
 		testBin = bin
 	})
-	require.NoError(t, testBinErr, "building test binary")
+	require.NoError(t, errTestBin, "building test binary")
 	return testBin
 }
 

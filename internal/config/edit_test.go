@@ -59,7 +59,7 @@ func TestEditorCommand_SimpleEditor(t *testing.T) {
 }
 
 func TestEditorCommand_QuotedPath(t *testing.T) {
-	if runtime.GOOS == "windows" { //nolint:goconst // standard runtime value
+	if runtime.GOOS == "windows" {
 		t.Skip("POSIX quoting not applicable on Windows")
 	}
 	t.Setenv("VISUAL", "")

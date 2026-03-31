@@ -23,6 +23,7 @@ import (
 // HandlerSuite tests HTTP edge cases through ServeHTTP.
 type HandlerSuite struct {
 	suite.Suite
+
 	newHandler func(t *testing.T, opts ...HandlerOption) (*Handler, Store)
 }
 
@@ -89,7 +90,7 @@ func (s *HandlerSuite) TestOversizedJSONBody() {
 
 	// 1 MiB + 1 byte of garbage. io.LimitReader truncates, JSON decode fails -> 400.
 	bigBody := bytes.NewReader(make([]byte, maxRequestBody+1))
-	req := httptest.NewRequest("POST", "/households", bigBody)
+	req := httptest.NewRequest(http.MethodPost, "/households", bigBody)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -104,7 +105,7 @@ func (s *HandlerSuite) TestOversizedBlobBody() {
 
 	hash := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 	bigBody := bytes.NewReader(make([]byte, maxBlobSize+1))
-	req := httptest.NewRequest("PUT", "/blobs/"+hh.HouseholdID+"/"+hash, bigBody)
+	req := httptest.NewRequest(http.MethodPut, "/blobs/"+hh.HouseholdID+"/"+hash, bigBody)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -164,7 +165,7 @@ func (s *HandlerSuite) TestBearerNoTrailingSpace() {
 	t.Parallel()
 	h, _ := s.newHandler(t)
 
-	req := httptest.NewRequest("GET", "/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	req.Header.Set("Authorization", "Bearer")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -176,7 +177,7 @@ func (s *HandlerSuite) TestBearerTrailingSpaceNoToken() {
 	t.Parallel()
 	h, _ := s.newHandler(t)
 
-	req := httptest.NewRequest("GET", "/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	req.Header.Set("Authorization", "Bearer ")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -190,7 +191,7 @@ func (s *HandlerSuite) TestBearerLowercase() {
 	t.Parallel()
 	h, _ := s.newHandler(t)
 
-	req := httptest.NewRequest("GET", "/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	req.Header.Set("Authorization", "bearer some-token")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -245,7 +246,7 @@ func (s *HandlerSuite) TestPutBlobUppercaseHash() {
 	suiteActivateSubscription(t, store, hh.HouseholdID)
 
 	hash := "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789"
-	req := httptest.NewRequest("PUT", "/blobs/"+hh.HouseholdID+"/"+hash,
+	req := httptest.NewRequest(http.MethodPut, "/blobs/"+hh.HouseholdID+"/"+hash,
 		bytes.NewReader([]byte("data")))
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	rec := httptest.NewRecorder()
@@ -261,7 +262,7 @@ func (s *HandlerSuite) TestPutBlobShortHash() {
 	suiteActivateSubscription(t, store, hh.HouseholdID)
 
 	hash := strings.Repeat("a", 63) // 63 chars, needs 64
-	req := httptest.NewRequest("PUT", "/blobs/"+hh.HouseholdID+"/"+hash,
+	req := httptest.NewRequest(http.MethodPut, "/blobs/"+hh.HouseholdID+"/"+hash,
 		bytes.NewReader([]byte("data")))
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	rec := httptest.NewRecorder()
@@ -279,7 +280,7 @@ func (s *HandlerSuite) TestHeadBlobExists() {
 	hash := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 	require.NoError(t, store.PutBlob(t.Context(), hh.HouseholdID, hash, []byte("data"), 0))
 
-	req := httptest.NewRequest("HEAD", "/blobs/"+hh.HouseholdID+"/"+hash, nil)
+	req := httptest.NewRequest(http.MethodHead, "/blobs/"+hh.HouseholdID+"/"+hash, nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -295,7 +296,7 @@ func (s *HandlerSuite) TestHeadBlobNotFound() {
 	suiteActivateSubscription(t, store, hh.HouseholdID)
 
 	hash := "0000000000000000000000000000000000000000000000000000000000000000"
-	req := httptest.NewRequest("HEAD", "/blobs/"+hh.HouseholdID+"/"+hash, nil)
+	req := httptest.NewRequest(http.MethodHead, "/blobs/"+hh.HouseholdID+"/"+hash, nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -498,7 +499,7 @@ func (s *HandlerSuite) TestWebhookReplay() {
 	sig := makeSignatureHeader(payload, secret, time.Now())
 
 	for range 2 {
-		req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(payload))
 		req.Header.Set("Stripe-Signature", sig)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -515,7 +516,7 @@ func (s *HandlerSuite) TestWebhookNonSubscriptionEvent() {
 	payload := []byte(`{"id":"evt_1","type":"charge.succeeded","data":{}}`)
 	sig := makeSignatureHeader(payload, secret, time.Now())
 
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(payload))
 	req.Header.Set("Stripe-Signature", sig)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

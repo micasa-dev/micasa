@@ -243,9 +243,9 @@ func fieldGormTag(field *ast.Field) string {
 // gormColumnName extracts the column name override from a gorm tag value.
 // Returns "" when no column override is present.
 func gormColumnName(tag string) string {
-	for _, part := range strings.Split(tag, ";") {
-		if strings.HasPrefix(part, "column:") {
-			return strings.TrimPrefix(part, "column:")
+	for part := range strings.SplitSeq(tag, ";") {
+		if col, ok := strings.CutPrefix(part, "column:"); ok {
+			return col
 		}
 	}
 	return ""

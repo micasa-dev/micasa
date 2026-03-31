@@ -911,7 +911,7 @@ func writeConfigPerm(t *testing.T, content string, perm os.FileMode) string {
 }
 
 func TestPermissionWarningWithAPIKey(t *testing.T) {
-	if runtime.GOOS == "windows" { //nolint:goconst // standard runtime value
+	if runtime.GOOS == "windows" {
 		t.Skip("os.Chmod is a no-op on Windows")
 	}
 	path := writeConfigPerm(t, `[chat.llm]

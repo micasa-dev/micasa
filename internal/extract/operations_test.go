@@ -411,7 +411,7 @@ func TestValidateOperations_InvalidAction(t *testing.T) {
 			Action: "delete",
 			Table:  data.TableVendors,
 			Data:   map[string]any{"id": 1},
-		}, //nolint:exhaustive // intentionally invalid
+		},
 	}
 	err := ValidateOperations(ops, testAllowedOps)
 	require.Error(t, err)

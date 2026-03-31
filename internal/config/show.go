@@ -323,8 +323,8 @@ func isConfigSection(t reflect.Type) bool {
 	if t.Implements(reflect.TypeFor[encoding.TextMarshaler]()) {
 		return false
 	}
-	for i := range t.NumField() {
-		if tomlTagName(t.Field(i)) != "" {
+	for f := range t.Fields() {
+		if tomlTagName(f) != "" {
 			return true
 		}
 	}

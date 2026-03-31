@@ -155,10 +155,7 @@ func renderMiniTable(
 		}
 		if overflow := total - maxWidth; overflow > 0 {
 			minFirst := 6
-			newFirst := widths[0] - overflow
-			if newFirst < minFirst {
-				newFirst = minFirst
-			}
+			newFirst := max(widths[0]-overflow, minFirst)
 			widths[0] = newFirst
 		}
 	}
@@ -182,10 +179,7 @@ func renderMiniTable(
 				label = headers[i]
 			}
 			styled := headerStyle.Render(label)
-			pad := widths[i] - lipgloss.Width(label)
-			if pad < 0 {
-				pad = 0
-			}
+			pad := max(widths[i]-lipgloss.Width(label), 0)
 			parts[i] = styled + strings.Repeat(" ", pad)
 		}
 		lines = append(lines, "  "+strings.Join(parts, gap))
@@ -211,10 +205,7 @@ func renderMiniTable(
 			}
 			styled := c.Style.Render(text)
 			tw := lipgloss.Width(text)
-			pad := widths[i] - tw
-			if pad < 0 {
-				pad = 0
-			}
+			pad := max(widths[i]-tw, 0)
 			if c.Align == alignRight {
 				parts[i] = strings.Repeat(" ", pad) + styled
 			} else {
@@ -587,10 +578,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 				viewportH = 1
 			}
 			m.scrollDashTo(cursorLine, viewportH, len(lines))
-			end := m.dash.scrollOffset + viewportH
-			if end > len(lines) {
-				end = len(lines)
-			}
+			end := min(m.dash.scrollOffset+viewportH, len(lines))
 			needed := 0
 			if m.dash.scrollOffset > 0 {
 				needed++
@@ -609,10 +597,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 			viewportH = 1
 		}
 
-		end := m.dash.scrollOffset + viewportH
-		if end > len(lines) {
-			end = len(lines)
-		}
+		end := min(m.dash.scrollOffset+viewportH, len(lines))
 
 		visible := lines[m.dash.scrollOffset:end]
 		var result []string

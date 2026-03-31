@@ -41,7 +41,7 @@ func TestOcrPDF_ValidPDF(t *testing.T) {
 		skipOrFatalCI(t, "tesseract and/or pdftocairo not available")
 	}
 
-	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf")) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf"))
 	if err != nil {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample.pdf")
 	}
@@ -61,7 +61,7 @@ func TestOcrPDF_ScannedPDF(t *testing.T) {
 
 	data, err := os.ReadFile(
 		filepath.Join("testdata", "scanned-invoice.pdf"),
-	) //nolint:gosec // test fixture
+	)
 	if err != nil {
 		skipOrFatalCI(t, "test fixture not found: testdata/scanned-invoice.pdf")
 	}
@@ -88,7 +88,7 @@ func TestOcrPDF_ContextCancelled(t *testing.T) {
 		skipOrFatalCI(t, "tesseract and/or pdftocairo not available")
 	}
 
-	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf")) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf"))
 	if err != nil {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample.pdf")
 	}
@@ -108,7 +108,7 @@ func TestOcrPDF_MixedPDF_MultiPageTSV(t *testing.T) {
 
 	data, err := os.ReadFile(
 		filepath.Join("testdata", "mixed-inspection.pdf"),
-	) //nolint:gosec // test fixture
+	)
 	if err != nil {
 		t.Skipf("test fixture not found (pdfunite unavailable?): testdata/mixed-inspection.pdf")
 	}
@@ -125,7 +125,7 @@ func TestOcrPDF_SinglePage(t *testing.T) {
 		skipOrFatalCI(t, "tesseract and/or pdftocairo not available")
 	}
 
-	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf")) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf"))
 	if err != nil {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample.pdf")
 	}
@@ -294,7 +294,6 @@ func TestPdfPageCount_InvalidPDF(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "corrupt.pdf")
-	//nolint:gosec // path is tmpDir + constant filename
 	require.NoError(
 		t,
 		os.WriteFile(pdfPath, []byte("corrupt data"), 0o600),
@@ -367,7 +366,6 @@ func TestOcrPage_InvalidPDF(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	pdfPath := filepath.Join(tmpDir, "corrupt.pdf")
-	//nolint:gosec // path is tmpDir + constant filename
 	require.NoError(
 		t,
 		os.WriteFile(pdfPath, []byte("corrupt data"), 0o600),

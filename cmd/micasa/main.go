@@ -282,7 +282,7 @@ func (opts *demoOpts) resolveDBPath() string {
 
 func runDemo(opts *demoOpts) error {
 	if opts.years < 0 {
-		return fmt.Errorf("--years must be non-negative")
+		return errors.New("--years must be non-negative")
 	}
 	if opts.seedOnly {
 		return runSeedOnly(opts)
@@ -295,7 +295,7 @@ func runDemo(opts *demoOpts) error {
 func runSeedOnly(opts *demoOpts) error {
 	dbPath := opts.resolveDBPath()
 	if dbPath == ":memory:" {
-		return fmt.Errorf("--seed-only requires a database path")
+		return errors.New("--seed-only requires a database path")
 	}
 	store, err := data.Open(dbPath)
 	if err != nil {

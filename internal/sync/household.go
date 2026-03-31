@@ -198,7 +198,7 @@ func (c *Client) RevokeDevice(ctx context.Context, householdID, deviceID string)
 	if err != nil {
 		return fmt.Errorf("construct revoke device URL: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, "DELETE", revokeURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, revokeURL, nil)
 	if err != nil {
 		return fmt.Errorf("create revoke device request: %w", err)
 	}

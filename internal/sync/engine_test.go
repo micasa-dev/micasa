@@ -433,7 +433,7 @@ func TestEngineSyncDownloadsMultiplePendingBlobs(t *testing.T) {
 	docIDs := make([]string, n)
 	blobContents := make([][]byte, n)
 	for i := range n {
-		content := []byte(fmt.Sprintf("blob content number %d", i))
+		content := fmt.Appendf(nil, "blob content number %d", i)
 		checksum := fmt.Sprintf("%x", sha256.Sum256(content))
 		require.NoError(t, client.UploadBlob(t.Context(), householdID, checksum, content))
 

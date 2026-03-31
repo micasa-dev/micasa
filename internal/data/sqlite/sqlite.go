@@ -14,6 +14,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -153,9 +154,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		})
 	}
 
-	for k, v := range dialector.ClauseBuilders() {
-		db.ClauseBuilders[k] = v
-	}
+	maps.Copy(db.ClauseBuilders, dialector.ClauseBuilders())
 	return
 }
 
@@ -225,7 +224,7 @@ func (dialector Dialector) Migrator(db *gorm.DB) gorm.Migrator {
 }
 
 func (dialector Dialector) BindVarTo(
-	writer clause.Writer, _ *gorm.Statement, _ interface{},
+	writer clause.Writer, _ *gorm.Statement, _ any,
 ) {
 	_ = writer.WriteByte('?')
 }
@@ -278,7 +277,7 @@ func (dialector Dialector) QuoteTo(writer clause.Writer, str string) {
 	_, _ = writer.WriteString("`")
 }
 
-func (dialector Dialector) Explain(sql string, vars ...interface{}) string {
+func (dialector Dialector) Explain(sql string, vars ...any) string {
 	return logger.ExplainSQL(sql, nil, `"`, vars...)
 }
 

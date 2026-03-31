@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -334,15 +335,15 @@ func TestChatStreamSuccess(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	var content string
+	var content strings.Builder
 	for chunk := range ch {
 		require.NoError(t, chunk.Err)
-		content += chunk.Content
+		content.WriteString(chunk.Content)
 		if chunk.Done {
 			break
 		}
 	}
-	assert.Equal(t, "Hello world", content)
+	assert.Equal(t, "Hello world", content.String())
 }
 
 func TestChatStreamCancellation(t *testing.T) {
@@ -951,15 +952,15 @@ func TestHTTPStreamingSurvivesPastQuickOpTimeout(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		var content string
+		var content strings.Builder
 		for chunk := range ch {
 			require.NoError(t, chunk.Err)
-			content += chunk.Content
+			content.WriteString(chunk.Content)
 			if chunk.Done {
 				break
 			}
 		}
-		assert.Equal(t, "Hello world", content)
+		assert.Equal(t, "Hello world", content.String())
 	})
 }
 

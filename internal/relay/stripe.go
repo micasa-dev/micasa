@@ -67,7 +67,7 @@ type signatureParts struct {
 
 func parseSignatureHeader(header string) signatureParts {
 	var parts signatureParts
-	for _, item := range strings.Split(header, ",") {
+	for item := range strings.SplitSeq(header, ",") {
 		kv := strings.SplitN(item, "=", 2)
 		if len(kv) != 2 {
 			continue

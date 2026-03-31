@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -37,11 +38,11 @@ func fmtInt(n int) string {
 	if n == 0 {
 		return "-"
 	}
-	return fmt.Sprintf("%d", n)
+	return strconv.Itoa(n)
 }
 
 func fmtIntAlways(n int) string {
-	return fmt.Sprintf("%d", n)
+	return strconv.Itoa(n)
 }
 
 func fmtFloat(f float64) string {
@@ -679,7 +680,7 @@ func showServiceLog(w io.Writer, store *data.Store, asJSON, includeDeleted bool)
 // --- documents ---
 
 func fmtSize(n int64) string {
-	return fmt.Sprintf("%d", n)
+	return strconv.FormatInt(n, 10)
 }
 
 var documentCols = []showCol[data.Document]{

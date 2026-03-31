@@ -117,11 +117,11 @@ func (s *Store) UpdateDocumentData(id string, data []byte) error {
 
 func (s *Store) CreateDocument(doc *Document) error {
 	if doc.SizeBytes > 0 &&
-		uint64(doc.SizeBytes) > s.maxDocumentSize { //nolint:gosec // SizeBytes is non-negative here
+		uint64(doc.SizeBytes) > s.maxDocumentSize {
 		return fmt.Errorf(
 			"file is too large (%s) -- maximum allowed is %s",
 			humanize.IBytes(
-				uint64(doc.SizeBytes), //nolint:gosec // SizeBytes checked positive above
+				uint64(doc.SizeBytes),
 			),
 			humanize.IBytes(s.maxDocumentSize),
 		)

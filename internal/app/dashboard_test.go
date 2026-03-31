@@ -584,7 +584,7 @@ func TestDashboardOverlayDimsSurroundingContent(t *testing.T) {
 	// (the tab underline, table headers, etc.) should carry the ANSI faint
 	// attribute (\033[2m). Verify no line contains the tab underline
 	// character without being wrapped in faint.
-	for _, line := range strings.Split(view, "\n") {
+	for line := range strings.SplitSeq(view, "\n") {
 		if strings.Contains(line, "━") {
 			assert.Contains(t, line, "\033[2m",
 				"tab underline should be dimmed in overlay")
@@ -602,7 +602,7 @@ func TestDashboardHiddenWhenEmpty(t *testing.T) {
 
 	view := m.buildView()
 	// Empty dashboard should not show the overlay — no dimming.
-	for _, line := range strings.Split(view, "\n") {
+	for line := range strings.SplitSeq(view, "\n") {
 		if strings.Contains(line, "━") {
 			assert.NotContains(t, line, "\033[2m",
 				"empty dashboard should not dim the background")

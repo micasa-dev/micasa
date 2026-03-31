@@ -6,6 +6,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"charm.land/bubbles/v2/table"
@@ -606,12 +607,7 @@ func TestKeycapPreservesCase(t *testing.T) {
 }
 
 func containsKey(keys []string, target string) bool {
-	for _, k := range keys {
-		if k == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(keys, target)
 }
 
 func TestDeleteAutoShowsDeletedAndRestoreWorks(t *testing.T) {

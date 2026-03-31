@@ -15,7 +15,7 @@ import (
 // needed for online backups. The driver's conn type is unexported, so we
 // assert this interface instead.
 type backupConn interface {
-	NewBackup(string) (*sqlite.Backup, error)
+	NewBackup(destPath string) (*sqlite.Backup, error)
 }
 
 // Backup creates a consistent snapshot of the database at destPath using

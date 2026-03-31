@@ -74,7 +74,6 @@ func (s *Store) ExtractDocument(id string) (string, error) {
 	if err := tmp.Close(); err != nil {
 		return "", fmt.Errorf("close temp cache file: %w", err)
 	}
-	//nolint:gosec // tmpPath is constructed from os.CreateTemp, not user input
 	if err := os.Rename(tmpPath, cachePath); err != nil {
 		return "", fmt.Errorf("rename temp cache file: %w", err)
 	}

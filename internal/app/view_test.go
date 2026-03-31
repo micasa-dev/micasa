@@ -272,7 +272,9 @@ func TestVisibleProjectionHiddenCursor(t *testing.T) {
 		CellRows:  [][]cell{{{Value: "1"}, {Value: "2"}}},
 		ColCursor: 1,
 	}
-	_, _, cursor, _, _ := visibleProjection(tab)
+	_, _, cursor, _, _ := visibleProjection(
+		tab,
+	) //nolint:dogsled // visibleProjection returns 5 values by design
 	assert.Equal(t, -1, cursor)
 }
 
@@ -283,7 +285,9 @@ func TestVisibleProjectionHiddenSortOmitted(t *testing.T) {
 		CellRows: [][]cell{{{Value: "1"}, {Value: "2"}}},
 		Sorts:    []sortEntry{{Col: 1, Dir: sortAsc}},
 	}
-	_, _, _, sorts, _ := visibleProjection(tab)
+	_, _, _, sorts, _ := visibleProjection(
+		tab,
+	) //nolint:dogsled // visibleProjection returns 5 values by design
 	assert.Empty(t, sorts)
 }
 
@@ -585,9 +589,21 @@ func TestApplianceAge(t *testing.T) {
 		want     string
 	}{
 		{"nil purchase", nil, ""},
-		{"less than a month", ptr(time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)), "<1m"},
-		{"a few months", ptr(time.Date(2025, 10, 5, 0, 0, 0, 0, time.UTC)), "4m"},
-		{"one year exact", ptr(time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)), "1y"},
+		{
+			"less than a month",
+			ptr(time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)),
+			"<1m",
+		}, //nolint:modernize // non-zero value
+		{
+			"a few months",
+			ptr(time.Date(2025, 10, 5, 0, 0, 0, 0, time.UTC)),
+			"4m",
+		}, //nolint:modernize // non-zero value
+		{
+			"one year exact",
+			ptr(time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)),
+			"1y",
+		}, //nolint:modernize // non-zero value
 		{"years and months", ptr(time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)), "2y 7m"},
 		{"future date", ptr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)), ""},
 	}
@@ -598,7 +614,11 @@ func TestApplianceAge(t *testing.T) {
 	}
 }
 
-func ptr[T any](v T) *T { return &v }
+func ptr[T any](
+	v T,
+) *T {
+	return &v
+} //nolint:modernize // ptr wraps non-zero values; new() only creates zero values
 
 func TestNavBadgeLabel(t *testing.T) {
 	t.Parallel()

@@ -1177,10 +1177,7 @@ func (m *Model) openHelp() {
 	if maxH < 3 {
 		maxH = 3
 	}
-	vpH := len(lines)
-	if vpH > maxH {
-		vpH = maxH
-	}
+	vpH := min(len(lines), maxH)
 	if vpH < 3 {
 		vpH = 3
 	}
@@ -1303,13 +1300,8 @@ func (m *Model) effectiveHeight() int {
 // (dashboard, note preview, ops tree). Accounts for border (2), padding (4),
 // and breathing room (6) = 12 total, clamped to [30, 72].
 func (m *Model) overlayContentWidth() int {
-	w := m.effectiveWidth() - 12
-	if w > 72 {
-		w = 72
-	}
-	if w < 30 {
-		w = 30
-	}
+	w := min(m.effectiveWidth()-12, 72)
+	w = max(w, 30)
 	return w
 }
 
@@ -1732,7 +1724,7 @@ func (m *Model) updateTabViewport(tab *Tab) {
 	sepW := lipgloss.Width(" │ ")
 	fullWidths := columnWidths(visSpecs, visCells, width, sepW, nil)
 	ensureCursorVisible(tab, visColCursor, len(visSpecs))
-	vpStart, _, _, _ := viewportRange(
+	vpStart, _, _, _ := viewportRange( //nolint:dogsled // viewportRange returns 4 values by design
 		fullWidths, sepW, width, tab.ViewOffset, visColCursor,
 	)
 	tab.ViewOffset = vpStart
@@ -1831,7 +1823,7 @@ func (m *Model) launchExternalEditor() tea.Cmd {
 	}
 	if _, err := f.WriteString(*m.fs.notesFieldPtr); err != nil {
 		_ = f.Close()
-		_ = os.Remove(f.Name()) //nolint:gosec // temp file we just created
+		_ = os.Remove(f.Name())
 		m.setStatusError(fmt.Sprintf("write temp file: %s", err))
 		return nil
 	}

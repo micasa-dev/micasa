@@ -11,6 +11,7 @@ package rlsdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -38,7 +39,7 @@ func New(db *gorm.DB) *DB {
 // All store methods use this as the standard database access path.
 func (d *DB) Tx(ctx context.Context, householdID string, fn func(tx *gorm.DB) error) error {
 	if householdID == "" {
-		return fmt.Errorf("rlsdb.Tx: householdID must not be empty")
+		return errors.New("rlsdb.Tx: householdID must not be empty")
 	}
 	return d.raw.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Exec("SELECT set_config('app.household_id', ?, true)", householdID).Error; err != nil {

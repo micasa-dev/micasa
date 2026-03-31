@@ -52,13 +52,8 @@ func (m *Model) searchInputWidth() int {
 
 // searchOverlayWidth returns the outer width of the search overlay.
 func (m *Model) searchOverlayWidth() int {
-	w := m.effectiveWidth() - 12
-	if w > 72 {
-		w = 72
-	}
-	if w < 30 {
-		w = 30
-	}
+	w := min(m.effectiveWidth()-12, 72)
+	w = max(w, 30)
 	return w
 }
 
@@ -179,10 +174,7 @@ func (m *Model) buildDocSearchOverlay() string {
 		b.WriteString(m.styles.Empty().Render("no matches"))
 	} else {
 		// Show up to 8 results, centered around the cursor.
-		maxVisible := 8
-		if maxVisible > len(ds.Results) {
-			maxVisible = len(ds.Results)
-		}
+		maxVisible := min(8, len(ds.Results))
 		start := ds.Cursor - maxVisible/2
 		if start < 0 {
 			start = 0

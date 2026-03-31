@@ -53,9 +53,9 @@ type chatState struct {
 	History      []string        // past user inputs, newest last
 	HistoryCur   int             // index into History for up/down browsing (-1 = live input)
 	HistoryBuf   string          // stashed live input while browsing history
-	Visible      bool            // false when the overlay is hidden but session persists
-
 	markdownRenderer
+
+	Visible bool // false when the overlay is hidden but session persists
 }
 
 // modelCompleter is the inline autocomplete list for /model.

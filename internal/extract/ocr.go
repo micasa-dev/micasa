@@ -72,9 +72,9 @@ func pdfPageCount(ctx context.Context, pdfPath string) (int, error) {
 		return 0, fmt.Errorf("%s: %w", strings.TrimSpace(stderr.String()), err)
 	}
 
-	for _, line := range strings.Split(stdout.String(), "\n") {
-		if strings.HasPrefix(line, "Pages:") {
-			field := strings.TrimSpace(strings.TrimPrefix(line, "Pages:"))
+	for line := range strings.SplitSeq(stdout.String(), "\n") {
+		if field, ok := strings.CutPrefix(line, "Pages:"); ok {
+			field = strings.TrimSpace(field)
 			n, err := strconv.Atoi(field)
 			if err != nil {
 				return 0, fmt.Errorf("parse page count %q: %w", field, err)
@@ -108,7 +108,7 @@ func ocrPage(ctx context.Context, pdfPath string, page int, onRasterDone func())
 	var cairoErr bytes.Buffer
 	cairoCmd.Stderr = &cairoErr
 
-	tessCmd := exec.CommandContext( //nolint:gosec // args are constructed internally
+	tessCmd := exec.CommandContext(
 		ctx,
 		"tesseract",
 		"stdin",

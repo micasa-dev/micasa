@@ -1130,7 +1130,7 @@ func wordWrap(text string, maxW int) string {
 		return text
 	}
 	var result strings.Builder
-	for _, paragraph := range strings.Split(text, "\n") {
+	for paragraph := range strings.SplitSeq(text, "\n") {
 		if result.Len() > 0 {
 			result.WriteByte('\n')
 		}

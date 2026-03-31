@@ -136,15 +136,9 @@ func (m *Model) buildExtractionPipelineOverlay(
 		previewLines = strings.Count(previewSection, "\n") + 2 // +2 for separator + blank
 	}
 
-	maxH := m.effectiveHeight()*2/3 - 6 - previewLines
-	if maxH < 4 {
-		maxH = 4
-	}
+	maxH := max(m.effectiveHeight()*2/3-6-previewLines, 4)
 	contentLines := strings.Count(stepContent, "\n") + 1
-	vpH := contentLines
-	if vpH > maxH {
-		vpH = maxH
-	}
+	vpH := min(contentLines, maxH)
 
 	ex.Viewport.SetWidth(innerW)
 	ex.Viewport.SetHeight(vpH)
@@ -551,7 +545,7 @@ func (m *Model) renderExtractionStep(
 				logW := innerW - len(pipeIndent) - 2
 				raw := strings.Join(info.Logs, "\n")
 				rendered := m.styles.HeaderHint().Render(wordWrap(raw, logW))
-				for _, line := range strings.Split(rendered, "\n") {
+				for line := range strings.SplitSeq(rendered, "\n") {
 					b.WriteByte('\n')
 					b.WriteString(pipeIndent)
 					b.WriteString(pipe)
@@ -593,7 +587,7 @@ func (m *Model) renderExtractionStep(
 
 	var b strings.Builder
 	b.WriteString(header)
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		b.WriteByte('\n')
 		b.WriteString(pipeIndent)
 		b.WriteString(pipe)
@@ -610,7 +604,7 @@ func (m *Model) renderPageRatio(count, limit, docPages int) string {
 	hint := m.styles.HeaderHint()
 	bright := m.styles.ExtDone()
 	dim := m.styles.ExtPending()
-	countStr := bright.Render(fmt.Sprintf("%d", count))
+	countStr := bright.Render(strconv.Itoa(count))
 	if docPages > 0 {
 		return countStr + sep +
 			hint.Render(fmt.Sprintf("%d", limit)) + sep +

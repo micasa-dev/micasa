@@ -298,7 +298,7 @@ type chatConfig struct {
 	Provider     string
 	BaseURL      string
 	Model        string
-	APIKey       string //nolint:gosec // G101 false positive: field name triggers heuristic, not a hardcoded credential
+	APIKey       string
 	ExtraContext string
 	Timeout      time.Duration // inference context deadline
 	Thinking     string        // reasoning effort: none|low|medium|high|auto
@@ -309,7 +309,7 @@ type extractionConfig struct {
 	Provider string
 	BaseURL  string
 	Model    string
-	APIKey   string        //nolint:gosec // G117 false positive: field name, not a hardcoded credential
+	APIKey   string
 	Timeout  time.Duration // inference context deadline
 	Thinking string        // reasoning effort level
 

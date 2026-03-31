@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -627,7 +628,7 @@ func classifyValue(v any) (string, treeValueKind) {
 		return val.String(), tvNumber
 	case float64:
 		if val == float64(int64(val)) {
-			return fmt.Sprintf("%d", int64(val)), tvNumber
+			return strconv.FormatInt(int64(val), 10), tvNumber
 		}
 		return fmt.Sprintf("%g", val), tvNumber
 	case bool:

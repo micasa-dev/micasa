@@ -8,6 +8,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -218,9 +219,9 @@ func TestWriteConstBlock(t *testing.T) {
 	assert.Contains(t, out, `TableVendors = "vendors"`)
 
 	// Verify sorted order: Appliances < Projects < Vendors.
-	aIdx := bytes.Index([]byte(out), []byte("TableAppliances"))
-	pIdx := bytes.Index([]byte(out), []byte("TableProjects"))
-	vIdx := bytes.Index([]byte(out), []byte("TableVendors"))
+	aIdx := strings.Index(out, "TableAppliances")
+	pIdx := strings.Index(out, "TableProjects")
+	vIdx := strings.Index(out, "TableVendors")
 	assert.Less(t, aIdx, pIdx)
 	assert.Less(t, pIdx, vIdx)
 }

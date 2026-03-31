@@ -2588,13 +2588,13 @@ func (m *Model) parseDocumentFormData() (documentParseResult, error) {
 		if fileSize < 0 {
 			return documentParseResult{}, fmt.Errorf("file has invalid size %d", fileSize)
 		}
-		if uint64(fileSize) > maxSize { //nolint:gosec // negative ruled out above
+		if uint64(fileSize) > maxSize {
 			return documentParseResult{}, fmt.Errorf(
 				"file is too large (%s) -- maximum allowed is %s",
 				formatFileSize(
 					uint64(fileSize),
 				),
-				formatFileSize(maxSize), //nolint:gosec // negative ruled out above
+				formatFileSize(maxSize),
 			)
 		}
 		fileData, err := os.ReadFile(path)

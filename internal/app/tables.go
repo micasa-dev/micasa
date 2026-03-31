@@ -771,7 +771,7 @@ func documentEntityLabel(kind string, id string, names entityNameMap) string {
 // docSizeBytes returns d.SizeBytes as uint64. The DB column is int64 but
 // values are always non-negative since they come from os.FileInfo.Size().
 func docSizeBytes(d data.Document) uint64 {
-	return uint64(max(d.SizeBytes, 0)) //nolint:gosec // clamped to non-negative
+	return uint64(max(d.SizeBytes, 0))
 }
 
 // formatFileSize returns a human-readable file size string.

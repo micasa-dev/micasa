@@ -154,7 +154,6 @@ func (s *ShadowDB) stageCreate(op Operation) error {
 	vals = append([]any{shadowID}, vals...)
 	placeholders = append([]string{"?"}, placeholders...)
 
-	//nolint:gosec // table and column names validated by validateTable and validateColumn
 	sql := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s)",
 		quoteIdent(op.Table),

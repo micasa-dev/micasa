@@ -99,7 +99,9 @@ func BenchmarkLoadDashboard(b *testing.B) {
 func BenchmarkColumnWidths(b *testing.B) {
 	m := benchModel(b)
 	tab := m.activeTab()
-	visSpecs, visCells, _, _, _ := visibleProjection(tab)
+	visSpecs, visCells, _, _, _ := visibleProjection(
+		tab,
+	) //nolint:dogsled // visibleProjection returns 5 values by design
 	sepW := 3
 	b.ResetTimer()
 	for b.Loop() {
@@ -110,7 +112,9 @@ func BenchmarkColumnWidths(b *testing.B) {
 func BenchmarkNaturalWidths(b *testing.B) {
 	m := benchModel(b)
 	tab := m.activeTab()
-	visSpecs, visCells, _, _, _ := visibleProjection(tab)
+	visSpecs, visCells, _, _, _ := visibleProjection(
+		tab,
+	) //nolint:dogsled // visibleProjection returns 5 values by design
 	b.ResetTimer()
 	for b.Loop() {
 		_ = naturalWidths(visSpecs, visCells, "$")

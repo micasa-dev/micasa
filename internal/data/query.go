@@ -50,7 +50,6 @@ func (s *Store) TableColumns(table string) ([]PragmaColumn, error) {
 		return nil, fmt.Errorf("invalid table name: %q", table)
 	}
 	var cols []PragmaColumn
-	//nolint:gosec // table name validated by IsSafeIdentifier above
 	err := s.db.Raw(fmt.Sprintf("PRAGMA table_info(%s)", table)).Scan(&cols).Error
 	return cols, err
 }
@@ -463,7 +462,6 @@ func isIdentChar(b byte) bool {
 // them as string slices along with column names. The sql.Rows lifecycle
 // is scoped to this function so defer closes correctly.
 func dumpTable(s *Store, name string) ([][]string, []string, error) {
-	//nolint:gosec // table name comes from sqlite_master, not user input
 	sqlRows, err := s.db.Raw(fmt.Sprintf("SELECT * FROM %s", name)).Rows()
 	if err != nil {
 		return nil, nil, err

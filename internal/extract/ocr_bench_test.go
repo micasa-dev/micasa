@@ -14,7 +14,7 @@ func BenchmarkOcrPDF(b *testing.B) {
 		b.Skip("tesseract and/or pdftocairo not available")
 	}
 
-	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf")) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf"))
 	if err != nil {
 		b.Skip("test fixture not found: testdata/sample.pdf")
 	}
@@ -36,14 +36,14 @@ func BenchmarkOcrPage(b *testing.B) {
 		b.Skip("tesseract and/or pdftocairo not available")
 	}
 
-	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf")) //nolint:gosec // test fixture
+	data, err := os.ReadFile(filepath.Join("testdata", "sample.pdf"))
 	if err != nil {
 		b.Skip("test fixture not found: testdata/sample.pdf")
 	}
 
 	tmpDir := b.TempDir()
 	pdfPath := filepath.Join(tmpDir, "input.pdf")
-	if err := os.WriteFile(pdfPath, data, 0o600); err != nil { //nolint:gosec // path is tmpDir + constant filename
+	if err := os.WriteFile(pdfPath, data, 0o600); err != nil {
 		b.Fatal(err)
 	}
 
@@ -63,7 +63,7 @@ func BenchmarkOcrImage(b *testing.B) {
 
 	data, err := os.ReadFile(
 		filepath.Join("testdata", "sample-text.png"),
-	) //nolint:gosec // test fixture
+	)
 	if err != nil {
 		b.Skip("test fixture not found: testdata/sample-text.png")
 	}

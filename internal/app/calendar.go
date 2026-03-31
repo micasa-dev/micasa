@@ -109,10 +109,7 @@ func calendarGrid(cal calendarState) string {
 	hintsH := lipgloss.Height(hints)
 	rightH := lipgloss.Height(rightPanel)
 	// Vertically center hints against the right panel.
-	topPad := (rightH - hintsH) / 2
-	if topPad < 0 {
-		topPad = 0
-	}
+	topPad := max((rightH-hintsH)/2, 0)
 	paddedHints := strings.Repeat("\n", topPad) + hints
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, paddedHints, "   ", rightPanel)

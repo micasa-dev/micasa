@@ -1368,7 +1368,7 @@ func TestBlobHEADExists(t *testing.T) {
 
 	// HEAD before upload -- 404.
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("HEAD", blobURL(hh.HouseholdID, testHash), nil)
+	req := httptest.NewRequest(http.MethodHead, blobURL(hh.HouseholdID, testHash), nil)
 	req.Header.Set("Authorization", "Bearer "+hh.DeviceToken)
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)

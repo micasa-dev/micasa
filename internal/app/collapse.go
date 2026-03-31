@@ -27,7 +27,7 @@ func gapSeparators(
 	collapsedSeps = make([]string, n-1)
 	for i := range n - 1 {
 		plainSeps[i] = normalSep
-		if visToFull[i+1] > visToFull[i]+1 { //nolint:gosec // G602 false positive: indices are small column positions, no overflow risk
+		if visToFull[i+1] > visToFull[i]+1 {
 			collapsedSeps[i] = collapsedSep
 		} else {
 			collapsedSeps[i] = normalSep
