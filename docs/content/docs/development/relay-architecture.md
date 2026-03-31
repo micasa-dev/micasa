@@ -1,7 +1,7 @@
 +++
 title = "Encrypted Relay"
 weight = 3
-description = "How the sync relay works: store interface, auth, encryption, key exchange."
+description = "How the sync relay works: store interface, auth, encryption, key exchange, row-level security."
 linkTitle = "Encrypted Relay"
 +++
 
@@ -136,6 +136,63 @@ Documents are synced as encrypted blobs, separate from the oplog:
 - Oplog entries reference blobs via `blob_ref` field, which is
   stripped before applying to the local database
 
+## Row-level security
+
+The relay enforces tenant isolation at the database level using
+[Postgres row-level security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
+(RLS). Even if application code has a bug, one household's data
+cannot leak to another.
+
+### How it works
+
+RLS policies on `ops` and `blobs` restrict every query to rows
+matching the current session's `app.household_id`:
+
+```sql
+CREATE POLICY ops_household_isolation ON ops
+  USING (household_id = NULLIF(current_setting('app.household_id', true), ''))
+  WITH CHECK (household_id = NULLIF(current_setting('app.household_id', true), ''));
+```
+
+`FORCE ROW LEVEL SECURITY` ensures policies apply even to the
+table owner, so no connection can bypass them.
+
+### rlsdb package
+
+The `rlsdb` package (`internal/relay/rlsdb/`) wraps the raw
+`*gorm.DB` in an unexported struct, making direct database access
+structurally impossible from outside the package. All queries go
+through one of two methods:
+
+- **`Tx(ctx, householdID, fn)`** — opens a transaction, calls
+  `set_config('app.household_id', householdID, true)`, then
+  executes `fn`. This is the standard path for all household-scoped
+  operations.
+- **`WithoutHousehold(ctx, fn)`** — opens a transaction with
+  `app.household_id` cleared to empty string. RLS treats this as
+  NULL, so no `ops` or `blobs` rows are visible. Reserved for
+  methods that only touch non-RLS tables (`households`, `devices`,
+  `invites`, `key_exchanges`) where no household ID is available
+  yet (e.g. device authentication, join flow).
+
+Construction-time helpers:
+- **`Migrate(models...)`** — runs `AutoMigrate` with a dummy
+  household ID so GORM's schema introspection works under `FORCE
+  ROW LEVEL SECURITY`.
+- **`InitRLS(tables)`** — idempotently enables RLS and creates
+  isolation policies for the given tables.
+
+### Protected tables
+
+| Table | Scoping column | RLS enforced |
+|-------|---------------|--------------|
+| `ops` | `household_id` | Yes |
+| `blobs` | `household_id` | Yes |
+| `households` | — | No (looked up by ID) |
+| `devices` | — | No (looked up by token hash) |
+| `invites` | — | No (looked up by code) |
+| `key_exchanges` | — | No (short-lived, scrubbed after use) |
+
 ## Database schema (PostgreSQL)
 
 ```
@@ -146,6 +203,9 @@ invites        — code, household_id, created_by, expires_at, consumed
 key_exchanges  — id, household_id, joiner info, encrypted credentials
 blobs          — household_id, hash, data, size_bytes
 ```
+
+RLS policies on `ops` and `blobs` enforce household isolation at the
+database level (see [Row-level security](#row-level-security) above).
 
 All table names use bare English (not `pg_` prefixed). The Go
 struct names use a `pg` prefix (`pgHousehold`, `pgDevice`) to
@@ -233,6 +293,7 @@ internal/
     store.go         Store interface (21 methods)
     memstore.go      In-memory implementation (testing)
     pgstore.go       PostgreSQL implementation (production)
+    rlsdb/           RLS-aware DB wrapper (unexported *gorm.DB, Tx/WithoutHousehold)
     stripe.go        Webhook signature verification
     tokencrypt.go    AES-256-GCM token encryption at rest
     blob.go          Blob storage constants and validation

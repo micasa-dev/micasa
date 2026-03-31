@@ -11,10 +11,10 @@ application following The Elm Architecture (TEA): Model, Update, View.
 ## Package layout
 
 ```
-cmd/micasa/          CLI entry point (kong argument parsing)
+cmd/micasa/          CLI entry point (Cobra argument parsing)
 internal/
   app/               Bubble Tea application layer
-    model.go         Model struct, Init, Update, key dispatch
+    model.go         Model struct, Init, Update, key dispatch (key.Binding)
     types.go         Mode, Tab, cell, columnSpec, etc.
     handlers.go      TabHandler interface + entity implementations
     tables.go        Column specs, row builders, table construction
@@ -68,8 +68,9 @@ free.
 
 ### Modal key handling
 
-micasa uses three modes: Nav, Edit, and Form. The key dispatch chain in
-`Update()` is:
+micasa uses three modes: Nav, Edit, and Form. Key dispatch uses structured
+`key.Binding` / `key.Matches()` from bubbles, centralized in an `AppKeyMap`
+struct. The dispatch chain in `Update()` is:
 
 1. Window resize handling
 2. <kbd>ctrl+q</kbd> always quits
@@ -115,7 +116,7 @@ roles are defined in `styles.go`.
 User keystroke
   -> tea.KeyMsg
   -> Model.Update()
-  -> key dispatch (mode-aware)
+  -> key dispatch (mode-aware, via key.Matches)
   -> data mutation (Store CRUD)
   -> reloadAfterMutation() (refreshes effective tab, marks others stale)
   -> Model.View()

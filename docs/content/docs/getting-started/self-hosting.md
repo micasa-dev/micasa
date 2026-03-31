@@ -18,7 +18,11 @@ The relay runs two containers: PostgreSQL for storage and the relay
 binary for sync traffic. PostgreSQL holds encrypted sync operations,
 encrypted document blobs, device registrations, and invite state.
 All household data is end-to-end encrypted — the relay never sees
-plaintext.
+plaintext. PostgreSQL
+[row-level security]({{< relref "/docs/development/relay-architecture#row-level-security" >}})
+provides an additional isolation layer, ensuring one household's
+data is invisible to queries from another even if application code
+has a bug.
 
 ## Quick start
 
