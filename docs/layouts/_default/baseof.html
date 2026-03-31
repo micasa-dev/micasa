@@ -280,11 +280,15 @@ function processCodeInMermaid() {
   });
 }
 
-mermaid.initialize(getMermaidTheme());
-await mermaid.run();
-processCodeInMermaid();
+var renderQueued = false;
+var renderActive = false;
 
-document.addEventListener("theme-changed", async function () {
+async function renderMermaidDiagrams() {
+  if (renderActive) {
+    renderQueued = true;
+    return;
+  }
+  renderActive = true;
   mermaid.initialize(getMermaidTheme());
   document.querySelectorAll(".mermaid").forEach(function(el) {
     var source = el.getAttribute("data-original-source");
@@ -296,7 +300,15 @@ document.addEventListener("theme-changed", async function () {
   });
   await mermaid.run();
   processCodeInMermaid();
-});
+  renderActive = false;
+  if (renderQueued) {
+    renderQueued = false;
+    renderMermaidDiagrams();
+  }
+}
+
+await renderMermaidDiagrams();
+document.addEventListener("theme-changed", renderMermaidDiagrams);
 </script>
 
 {{ partial "theme-toggle.html" . }}
