@@ -12,7 +12,6 @@ linters:
     - varnamelen       # short var names are idiomatic Go
     - ireturn          # forbids returning interfaces; conflicts with stdlib patterns
     - lll              # line length; golines handles this
-    - godox            # flags TODOs; we use them intentionally
     - tagliatelle      # enforces JSON tag casing; we set tags explicitly
     - exhaustruct      # requires all struct fields; too noisy for large structs
     - godot            # requires period at end of comments
