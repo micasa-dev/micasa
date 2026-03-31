@@ -746,8 +746,70 @@ h2:hover .badge-experimental .badge-label {
   font-size: 0.9em;
 }
 
+/* Sequence diagram colors — CSS custom properties auto-update on theme
+   toggle, eliminating the need to re-render Mermaid diagrams. */
+
+.docs-main pre.mermaid .actor {
+  stroke: var(--terracotta) !important;
+  fill: var(--linen) !important;
+}
+
 .docs-main pre.mermaid text.actor > tspan {
+  fill: var(--charcoal) !important;
   font-family: "DM Serif Display", Georgia, serif !important;
+}
+
+.docs-main pre.mermaid .actor-line {
+  stroke: var(--rule) !important;
+}
+
+.docs-main pre.mermaid .messageLine0,
+.docs-main pre.mermaid .messageLine1 {
+  stroke: var(--charcoal-soft) !important;
+}
+
+.docs-main pre.mermaid [id^="arrowhead"] path,
+.docs-main pre.mermaid [id^="crosshead"] path {
+  fill: var(--charcoal-soft) !important;
+  stroke: var(--charcoal-soft) !important;
+}
+
+.docs-main pre.mermaid .messageText {
+  fill: var(--charcoal) !important;
+}
+
+.docs-main pre.mermaid .labelBox {
+  stroke: var(--rule) !important;
+  fill: var(--cream) !important;
+}
+
+.docs-main pre.mermaid .labelText,
+.docs-main pre.mermaid .labelText > tspan,
+.docs-main pre.mermaid .loopText,
+.docs-main pre.mermaid .loopText > tspan {
+  fill: var(--charcoal-soft) !important;
+}
+
+.docs-main pre.mermaid .loopLine {
+  stroke: var(--rule) !important;
+  fill: var(--rule) !important;
+}
+
+.docs-main pre.mermaid .note {
+  stroke: var(--rule) !important;
+  fill: var(--cream) !important;
+}
+
+.docs-main pre.mermaid .noteText,
+.docs-main pre.mermaid .noteText > tspan {
+  fill: var(--charcoal) !important;
+}
+
+.docs-main pre.mermaid .activation0,
+.docs-main pre.mermaid .activation1,
+.docs-main pre.mermaid .activation2 {
+  fill: var(--linen) !important;
+  stroke: var(--terracotta) !important;
 }
 
 /* ── Screenshots ───────────────────────────────────────────── */
