@@ -101,7 +101,7 @@ func writeOplogEntry(tx *gorm.DB, tableName, rowID, opType string, payload any) 
 }
 
 // writeOplogEntryRaw writes an oplog entry with a pre-serialized JSON string.
-func writeOplogEntryRaw(tx *gorm.DB, tableName, rowID, opType, payload string) error {
+func writeOplogEntryRaw(tx *gorm.DB, tableName, rowID, opType string) error {
 	if !syncableTable(tableName) {
 		return nil
 	}
@@ -117,7 +117,7 @@ func writeOplogEntryRaw(tx *gorm.DB, tableName, rowID, opType, payload string) e
 		TableName: tableName,
 		RowID:     rowID,
 		OpType:    opType,
-		Payload:   payload,
+		Payload:   "{}",
 		DeviceID:  deviceID,
 		CreatedAt: now,
 		AppliedAt: &now,

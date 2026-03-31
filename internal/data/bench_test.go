@@ -14,19 +14,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func benchStore(b *testing.B, seed uint64) *Store {
+func benchStore(b *testing.B) *Store {
 	b.Helper()
 	path := filepath.Join(b.TempDir(), "bench.db")
 	require.NoError(b, os.WriteFile(path, templateBytes, 0o600))
 	store, err := Open(path)
 	require.NoError(b, err)
 	b.Cleanup(func() { _ = store.Close() })
-	require.NoError(b, store.SeedDemoDataFrom(fake.New(seed)))
+	require.NoError(b, store.SeedDemoDataFrom(fake.New(42)))
 	return store
 }
 
 func BenchmarkListMaintenanceWithSchedule(b *testing.B) {
-	store := benchStore(b, 42)
+	store := benchStore(b)
 	b.ResetTimer()
 	for b.Loop() {
 		_, _ = store.ListMaintenanceWithSchedule()
@@ -34,7 +34,7 @@ func BenchmarkListMaintenanceWithSchedule(b *testing.B) {
 }
 
 func BenchmarkListActiveProjects(b *testing.B) {
-	store := benchStore(b, 42)
+	store := benchStore(b)
 	b.ResetTimer()
 	for b.Loop() {
 		_, _ = store.ListActiveProjects()
@@ -42,7 +42,7 @@ func BenchmarkListActiveProjects(b *testing.B) {
 }
 
 func BenchmarkListProjects(b *testing.B) {
-	store := benchStore(b, 42)
+	store := benchStore(b)
 	b.ResetTimer()
 	for b.Loop() {
 		_, _ = store.ListProjects(false)
@@ -50,7 +50,7 @@ func BenchmarkListProjects(b *testing.B) {
 }
 
 func BenchmarkListMaintenance(b *testing.B) {
-	store := benchStore(b, 42)
+	store := benchStore(b)
 	b.ResetTimer()
 	for b.Loop() {
 		_, _ = store.ListMaintenance(false)
@@ -58,7 +58,7 @@ func BenchmarkListMaintenance(b *testing.B) {
 }
 
 func BenchmarkListVendors(b *testing.B) {
-	store := benchStore(b, 42)
+	store := benchStore(b)
 	b.ResetTimer()
 	for b.Loop() {
 		_, _ = store.ListVendors(false)
@@ -66,7 +66,7 @@ func BenchmarkListVendors(b *testing.B) {
 }
 
 func BenchmarkListExpiringWarranties(b *testing.B) {
-	store := benchStore(b, 42)
+	store := benchStore(b)
 	now := time.Now()
 	b.ResetTimer()
 	for b.Loop() {
@@ -75,7 +75,7 @@ func BenchmarkListExpiringWarranties(b *testing.B) {
 }
 
 func BenchmarkYTDServiceSpendCents(b *testing.B) {
-	store := benchStore(b, 42)
+	store := benchStore(b)
 	yearStart := time.Date(time.Now().Year(), 1, 1, 0, 0, 0, 0, time.UTC)
 	b.ResetTimer()
 	for b.Loop() {
@@ -86,7 +86,7 @@ func BenchmarkYTDServiceSpendCents(b *testing.B) {
 func BenchmarkGetDocumentByID(b *testing.B) {
 	for _, size := range []int{1 << 10, 1 << 20, 10 << 20, 50 << 20} {
 		b.Run(fmt.Sprintf("blob_%dB", size), func(b *testing.B) {
-			store := benchStore(b, 42)
+			store := benchStore(b)
 			doc := &Document{
 				Title:    "bench",
 				FileName: "bench.pdf",

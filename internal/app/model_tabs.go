@@ -261,7 +261,10 @@ func (m *Model) openServiceLogDetail(maintID string, maintName string) error {
 	return m.openDetailFromDef(serviceLogDef, maintID, maintName)
 }
 
-func (m *Model) openApplianceMaintenanceDetail(applianceID string, applianceName string) error {
+func (m *Model) openApplianceMaintenanceDetail(
+	applianceID string,
+	applianceName string,
+) error { //nolint:unparam // applianceID varies at runtime; tests use a fixed ID
 	return m.openDetailFromDef(applianceMaintenanceDef, applianceID, applianceName)
 }
 

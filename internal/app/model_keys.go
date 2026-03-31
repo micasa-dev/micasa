@@ -21,61 +21,61 @@ import (
 // handleDashboardKeys intercepts keys that belong to the dashboard (j/k
 // navigation, enter to jump) and blocks keys that affect backgrounded
 // widgets. Keys like D, b/f, ?, q fall through to the normal handlers.
-func (m *Model) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+func (m *Model) handleDashboardKeys(msg tea.KeyPressMsg) bool {
 	if !key.Matches(msg, m.keys.DashJump) {
 		m.dash.flash = ""
 	}
 	switch {
 	case key.Matches(msg, m.keys.DashDown):
 		m.dashDown()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashUp):
 		m.dashUp()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashNextSection):
 		m.dashNextSection()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashPrevSection):
 		m.dashPrevSection()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashTop):
 		m.dashTop()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashBottom):
 		m.dashBottom()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashToggle):
 		m.dashToggleCurrent()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashToggleAll):
 		m.dashToggleAll()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.DashJump):
 		m.dashJump()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.HouseToggle):
 		// Block house profile toggle on dashboard.
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.ColLeft, m.keys.ColRight):
 		// Block column movement on dashboard.
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.Sort, m.keys.SortClear, m.keys.ColHide, m.keys.ColShowAll, m.keys.EnterEditMode, m.keys.ColFinder, m.keys.FilterPin, m.keys.FilterToggle, m.keys.FilterNegate, m.keys.YankCell):
 		// Block table-specific keys on dashboard.
-		return nil, true
+		return true
 	}
-	return nil, false
+	return false
 }
 
 // handleCommonKeys processes keys available in both Normal and Edit modes.
-func (m *Model) handleCommonKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+func (m *Model) handleCommonKeys(msg tea.KeyPressMsg) bool {
 	switch {
 	case key.Matches(msg, m.keys.Help):
 		m.openHelp()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.HouseToggle):
 		m.showHouse = !m.showHouse
 		m.resizeTables()
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.MagToggle):
 		m.magMode = !m.magMode
 		if m.chat != nil && m.chat.Visible {
@@ -102,38 +102,38 @@ func (m *Model) handleCommonKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		if tab := m.effectiveTab(); tab != nil {
 			m.updateTabViewport(tab)
 		}
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.ColLeft):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = nextVisibleCol(tab.Specs, tab.ColCursor, false)
 			m.updateTabViewport(tab)
 		}
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.ColRight):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = nextVisibleCol(tab.Specs, tab.ColCursor, true)
 			m.updateTabViewport(tab)
 		}
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.ColStart):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = firstVisibleCol(tab.Specs)
 			m.updateTabViewport(tab)
 		}
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.ColEnd):
 		if tab := m.effectiveTab(); tab != nil {
 			tab.ColCursor = lastVisibleCol(tab.Specs)
 			m.updateTabViewport(tab)
 		}
-		return nil, true
+		return true
 	case key.Matches(msg, m.keys.FgExtract):
 		if len(m.ex.bgExtractions) > 0 {
 			m.foregroundExtraction()
-			return nil, true
+			return true
 		}
 	}
-	return nil, false
+	return false
 }
 
 // handleNormalKeys processes keys unique to Normal mode.
@@ -462,9 +462,7 @@ func (m *Model) handleEditKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return m.formInitCmd(), true
 	case key.Matches(msg, m.keys.QuickAdd):
 		if tab := m.effectiveTab(); tab != nil && tab.Kind == tabDocuments {
-			if err := m.startQuickDocumentForm(); err != nil {
-				m.setStatusError(err.Error())
-			}
+			m.startQuickDocumentForm()
 			return m.formInitCmd(), true
 		}
 		return nil, false

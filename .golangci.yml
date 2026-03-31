@@ -33,6 +33,7 @@ linters:
     # Dead code
     - unused
     - wastedassign
+    - unparam
 
     # Code quality
     - goconst

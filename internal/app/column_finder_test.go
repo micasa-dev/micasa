@@ -349,9 +349,8 @@ func TestSlashBlockedOnDashboard(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.showDashboard = true
-	cmd, handled := m.handleDashboardKeys(tea.KeyPressMsg{Code: '/', Text: "/"})
+	handled := m.handleDashboardKeys(tea.KeyPressMsg{Code: '/', Text: "/"})
 	assert.True(t, handled, "/ should be blocked on dashboard")
-	assert.Nil(t, cmd)
 }
 
 func TestSlashOpensColumnFinder(t *testing.T) {

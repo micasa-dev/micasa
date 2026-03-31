@@ -391,7 +391,7 @@ func (m *Model) startQuoteForm() error {
 				Title(requiredTitle("Total")).
 				Placeholder("3250.00").
 				Value(&values.Total).
-				Validate(requiredMoney("total", m.cur)),
+				Validate(requiredMoney(m.cur)),
 		),
 	)
 	m.activateForm(form, values)
@@ -438,7 +438,7 @@ func (m *Model) openQuoteForm(values *quoteFormData, projectOpts []huh.Option[st
 				Title(requiredTitle("Total")).
 				Placeholder("3250.00").
 				Value(&values.Total).
-				Validate(requiredMoney("total", m.cur)),
+				Validate(requiredMoney(m.cur)),
 			huh.NewInput().
 				Title("Labor").
 				Placeholder("2000.00").
@@ -511,7 +511,7 @@ func (m *Model) startMaintenanceForm() error {
 				Title("Interval").
 				Placeholder("6m").
 				Value(&values.IntervalMonths).
-				Validate(optionalInterval("interval")),
+				Validate(optionalInterval()),
 		).WithHideFunc(func() bool { return values.ScheduleType != schedInterval }),
 		huh.NewGroup(
 			huh.NewInput().
@@ -578,7 +578,7 @@ func (m *Model) openMaintenanceForm(
 				Title("Interval").
 				Placeholder("6m").
 				Value(&values.IntervalMonths).
-				Validate(optionalInterval("interval")),
+				Validate(optionalInterval()),
 		).WithHideFunc(func() bool { return values.ScheduleType != schedInterval }),
 		huh.NewGroup(
 			huh.NewInput().
@@ -1235,7 +1235,7 @@ var quoteInlineSpecs = map[int]inlineColSpec{
 	int(quoteColTotal): {
 		kind: ieMoney, title: "Total", placeholder: "3250.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Total },
-		validate: func(m *Model) func(string) error { return requiredMoney("total", m.cur) },
+		validate: func(m *Model) func(string) error { return requiredMoney(m.cur) },
 	},
 	int(quoteColLabor): {
 		kind: ieMoney, title: "Labor", placeholder: "2000.00",
@@ -1312,7 +1312,7 @@ var maintenanceInlineSpecs = map[int]inlineColSpec{
 	int(maintenanceColEvery): {
 		kind: ieText, title: "Interval", placeholder: "6m",
 		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).IntervalMonths },
-		validate: func(*Model) func(string) error { return optionalInterval("interval") },
+		validate: func(*Model) func(string) error { return optionalInterval() },
 		beforeEdit: func(d formData) {
 			v := mustAssert[*maintenanceFormData](d)
 			v.ScheduleType = schedInterval
@@ -2191,8 +2191,8 @@ func optionalInt(label string) func(string) error {
 	return validateWith(label, data.ParseOptionalInt)
 }
 
-func optionalInterval(label string) func(string) error {
-	return validateWith(label, data.ParseIntervalMonths)
+func optionalInterval() func(string) error {
+	return validateWith("interval", data.ParseIntervalMonths)
 }
 
 func optionalFloat(label string) func(string) error {
@@ -2234,8 +2234,8 @@ func optionalMoney(label string, cur locale.Currency) func(string) error {
 	return validateWith(label, cur.ParseOptionalCents)
 }
 
-func requiredMoney(label string, cur locale.Currency) func(string) error {
-	return validateWith(label, cur.ParseRequiredCents)
+func requiredMoney(cur locale.Currency) func(string) error {
+	return validateWith("total", cur.ParseRequiredCents)
 }
 
 func projectFormValues(project data.Project, cur locale.Currency) *projectFormData {
@@ -2438,7 +2438,7 @@ func (m *Model) startDocumentForm(entityKind string) error {
 // startQuickDocumentForm opens a minimal document form that only asks for a
 // file path. Title and notes are auto-filled by the extraction pipeline on
 // submit, making this the fast path for ingesting files.
-func (m *Model) startQuickDocumentForm() error {
+func (m *Model) startQuickDocumentForm() {
 	values := &documentFormData{DeferCreate: true}
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -2447,7 +2447,6 @@ func (m *Model) startQuickDocumentForm() error {
 		),
 	)
 	m.activateForm(form, values)
-	return nil
 }
 
 func (m *Model) startEditDocumentForm(id string) error {

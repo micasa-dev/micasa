@@ -111,9 +111,10 @@ type dashRow struct {
 // and contains at least one non-empty label, a dim header row is prepended.
 func renderMiniTable(
 	headers []string, rows []dashRow,
-	colGap, maxWidth, cursor int,
+	maxWidth, cursor int,
 	selected, headerStyle lipgloss.Style,
 ) []string {
+	const colGap = 3
 	if len(rows) == 0 {
 		return nil
 	}
@@ -519,7 +520,6 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 
 	// Render sections. Collapsed ones show only a header with count.
 	sel := m.styles.TableSelected()
-	colGap := 3
 	navIdx := 0
 	var lines []string
 	cursorLine := 0
@@ -555,7 +555,7 @@ func (m *Model) dashboardView(budget, maxWidth int) string {
 		// Expanded: render data rows below the header.
 		localCursor := m.dash.cursor - navIdx
 		tbl := renderMiniTable(
-			s.headers, s.rows, colGap, maxWidth, localCursor, sel, m.styles.DashLabel(),
+			s.headers, s.rows, maxWidth, localCursor, sel, m.styles.DashLabel(),
 		)
 		// Column header row (if present) offsets data rows by 1.
 		headerOffset := len(tbl) - len(s.rows)

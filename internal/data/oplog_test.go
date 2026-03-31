@@ -24,9 +24,9 @@ func lastOplogEntry(t *testing.T, store *Store, table, rowID string) SyncOplogEn
 	return ops[len(ops)-1]
 }
 
-func oplogCount(t *testing.T, store *Store, table, rowID string) int {
+func oplogCount(t *testing.T, store *Store, rowID string) int {
 	t.Helper()
-	ops, err := store.OplogEntries(table, rowID)
+	ops, err := store.OplogEntries(TableVendors, rowID)
 	require.NoError(t, err)
 	return len(ops)
 }
@@ -323,7 +323,7 @@ func TestOplogSyncApplyingSuppressesSoftDelete(t *testing.T) {
 	v := &Vendor{Name: "Local Then Remote Delete"}
 	require.NoError(t, store.CreateVendor(v))
 
-	before := oplogCount(t, store, TableVendors, v.ID)
+	before := oplogCount(t, store, v.ID)
 
 	ctx := WithSyncApplying(t.Context())
 	db := store.db.WithContext(ctx)
@@ -331,7 +331,7 @@ func TestOplogSyncApplyingSuppressesSoftDelete(t *testing.T) {
 		return softDeleteWith(tx, &Vendor{}, DeletionEntityVendor, v.ID)
 	}))
 
-	after := oplogCount(t, store, TableVendors, v.ID)
+	after := oplogCount(t, store, v.ID)
 	assert.Equal(t, before, after, "sync-applying soft delete should not write oplog")
 }
 
@@ -342,7 +342,7 @@ func TestOplogSyncApplyingSuppressesUpdate(t *testing.T) {
 	v := &Vendor{Name: "Original"}
 	require.NoError(t, store.CreateVendor(v))
 
-	before := oplogCount(t, store, TableVendors, v.ID)
+	before := oplogCount(t, store, v.ID)
 
 	ctx := WithSyncApplying(t.Context())
 	require.NoError(
@@ -352,7 +352,7 @@ func TestOplogSyncApplyingSuppressesUpdate(t *testing.T) {
 		}),
 	)
 
-	after := oplogCount(t, store, TableVendors, v.ID)
+	after := oplogCount(t, store, v.ID)
 	assert.Equal(t, before, after, "sync-applying update should not write oplog")
 }
 
@@ -572,13 +572,13 @@ func TestOplogFindOrCreateVendorExisting(t *testing.T) {
 	v := &Vendor{Name: "Existing Co"}
 	require.NoError(t, store.CreateVendor(v))
 
-	before := oplogCount(t, store, TableVendors, v.ID)
+	before := oplogCount(t, store, v.ID)
 	_, err := store.FindOrCreateVendor(Vendor{Name: "Existing Co"})
 	require.NoError(t, err)
 
 	// findOrCreate of existing vendor writes an oplog update for
 	// contact-field changes so they propagate via sync.
-	after := oplogCount(t, store, TableVendors, v.ID)
+	after := oplogCount(t, store, v.ID)
 	assert.Equal(
 		t,
 		before+1,
@@ -595,7 +595,7 @@ func TestOplogFindOrCreateVendorRestore(t *testing.T) {
 	require.NoError(t, store.CreateVendor(v))
 	require.NoError(t, store.DeleteVendor(v.ID))
 
-	before := oplogCount(t, store, TableVendors, v.ID)
+	before := oplogCount(t, store, v.ID)
 	_, err := store.FindOrCreateVendor(Vendor{Name: "Deleted Then Found"})
 	require.NoError(t, err)
 

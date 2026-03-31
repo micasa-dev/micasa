@@ -56,7 +56,7 @@ func (s *Store) DeleteIncident(id string) error {
 			return gorm.ErrRecordNotFound
 		}
 		if !isSyncApplying(tx) {
-			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpDelete, "{}"); err != nil {
+			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpDelete); err != nil {
 				return err
 			}
 		}
@@ -101,7 +101,7 @@ func (s *Store) RestoreIncident(id string) error {
 		// Write oplog "restore" entry explicitly (Unscoped().Updates()
 		// does not fire model-level AfterUpdate hooks).
 		if !isSyncApplying(tx) {
-			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpRestore, "{}"); err != nil {
+			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpRestore); err != nil {
 				return err
 			}
 		}
@@ -126,7 +126,7 @@ func (s *Store) HardDeleteIncident(id string) error {
 
 		// Write oplog "delete" entry before the hard-delete.
 		if !isSyncApplying(tx) {
-			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpDelete, "{}"); err != nil {
+			if err := writeOplogEntryRaw(tx, TableIncidents, id, OpDelete); err != nil {
 				return err
 			}
 		}

@@ -458,7 +458,7 @@ func softDeleteWith(tx *gorm.DB, model any, entity string, id string) error {
 
 	// Write oplog "delete" entry for the soft-deleted entity.
 	if table := deletionEntityToTable[entity]; table != "" && !isSyncApplying(tx) {
-		if err := writeOplogEntryRaw(tx, table, id, OpDelete, "{}"); err != nil {
+		if err := writeOplogEntryRaw(tx, table, id, OpDelete); err != nil {
 			return err
 		}
 	}
@@ -491,7 +491,7 @@ func restoreSoftDeleted(tx *gorm.DB, model any, entity string, id string) error 
 	// Write oplog "restore" entry. GORM's Unscoped().Update() does not
 	// trigger model-level AfterUpdate hooks, so we must do this explicitly.
 	if table := deletionEntityToTable[entity]; table != "" && !isSyncApplying(tx) {
-		if err := writeOplogEntryRaw(tx, table, id, OpRestore, "{}"); err != nil {
+		if err := writeOplogEntryRaw(tx, table, id, OpRestore); err != nil {
 			return err
 		}
 	}

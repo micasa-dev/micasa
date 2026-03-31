@@ -98,7 +98,7 @@ func (s *Store) HardDeleteMaintenance(id string) error {
 				return err
 			}
 			if !isSyncApplying(tx) {
-				if err := writeOplogEntryRaw(tx, TableServiceLogEntries, log.ID, OpDelete, "{}"); err != nil {
+				if err := writeOplogEntryRaw(tx, TableServiceLogEntries, log.ID, OpDelete); err != nil {
 					return err
 				}
 			}
@@ -106,7 +106,7 @@ func (s *Store) HardDeleteMaintenance(id string) error {
 
 		// Write oplog delete entry for the maintenance item itself.
 		if !isSyncApplying(tx) {
-			if err := writeOplogEntryRaw(tx, TableMaintenanceItems, id, OpDelete, "{}"); err != nil {
+			if err := writeOplogEntryRaw(tx, TableMaintenanceItems, id, OpDelete); err != nil {
 				return err
 			}
 		}

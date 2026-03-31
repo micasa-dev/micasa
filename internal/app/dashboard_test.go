@@ -688,7 +688,7 @@ func TestRenderMiniTable(t *testing.T) {
 			{Text: "7", Style: lipgloss.NewStyle(), Align: alignRight},
 		}},
 	}
-	lines := renderMiniTable(nil, rows, 3, 0, -1, lipgloss.NewStyle(), lipgloss.NewStyle())
+	lines := renderMiniTable(nil, rows, 0, -1, lipgloss.NewStyle(), lipgloss.NewStyle())
 	require.Len(t, lines, 2)
 	// Both lines should have the same visible width due to column alignment.
 	assert.Equal(t, lipgloss.Width(lines[0]), lipgloss.Width(lines[1]))
@@ -709,7 +709,7 @@ func TestRenderMiniTableUnicode(t *testing.T) {
 				{Text: "in 14 days", Style: plain, Align: alignRight},
 			}},
 		}
-		lines := renderMiniTable(nil, rows, 3, 0, -1, plain, plain)
+		lines := renderMiniTable(nil, rows, 0, -1, plain, plain)
 		require.Len(t, lines, 2)
 		assert.Equal(t, lipgloss.Width(lines[0]), lipgloss.Width(lines[1]),
 			"rows with accented characters should align")
@@ -727,7 +727,7 @@ func TestRenderMiniTableUnicode(t *testing.T) {
 				{Text: "$1,000", Style: plain, Align: alignRight},
 			}},
 		}
-		lines := renderMiniTable(nil, rows, 3, 0, -1, plain, plain)
+		lines := renderMiniTable(nil, rows, 0, -1, plain, plain)
 		require.Len(t, lines, 2)
 		assert.Equal(t, lipgloss.Width(lines[0]), lipgloss.Width(lines[1]),
 			"rows with CJK characters should align")
@@ -744,7 +744,7 @@ func TestRenderMiniTableUnicode(t *testing.T) {
 				{Text: "pending", Style: plain},
 			}},
 		}
-		lines := renderMiniTable(nil, rows, 3, 0, -1, plain, plain)
+		lines := renderMiniTable(nil, rows, 0, -1, plain, plain)
 		require.Len(t, lines, 2)
 		assert.Equal(t, lipgloss.Width(lines[0]), lipgloss.Width(lines[1]),
 			"rows with emoji should align")
@@ -766,12 +766,12 @@ func TestRenderMiniTableTruncatesOnNarrowWidth(t *testing.T) {
 	}
 
 	// Without width cap, rows are as wide as content demands.
-	uncapped := renderMiniTable(nil, rows, 3, 0, -1, plain, plain)
+	uncapped := renderMiniTable(nil, rows, 0, -1, plain, plain)
 	require.Len(t, uncapped, 2)
 	uncappedWidth := lipgloss.Width(uncapped[0])
 
 	// With a tight width cap, rows should be truncated.
-	capped := renderMiniTable(nil, rows, 3, 40, -1, plain, plain)
+	capped := renderMiniTable(nil, rows, 40, -1, plain, plain)
 	require.Len(t, capped, 2)
 	for i, line := range capped {
 		w := lipgloss.Width(line)

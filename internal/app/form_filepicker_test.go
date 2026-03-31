@@ -52,7 +52,7 @@ func TestFilePickerBackNavigatesUp(t *testing.T) {
 	t.Chdir(child)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 	require.Equal(t, modeForm, m.mode)
 
 	fp := requireFilePicker(t, m)
@@ -62,7 +62,7 @@ func TestFilePickerBackNavigatesUp(t *testing.T) {
 	for _, key := range []string{"h", "backspace", keyLeft} {
 		// Reset to child before each iteration.
 		t.Chdir(child)
-		require.NoError(t, m.startQuickDocumentForm())
+		m.startQuickDocumentForm()
 		fp = requireFilePicker(t, m)
 		require.Equal(t, child, filePickerCurrentDir(fp))
 
@@ -80,7 +80,7 @@ func TestFilePickerDefaultHidesHiddenFiles(t *testing.T) {
 	t.Chdir(root)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 
 	fp := requireFilePicker(t, m)
 	assert.False(t, filePickerShowHidden(fp),
@@ -92,7 +92,7 @@ func TestFilePickerToggleHidden(t *testing.T) {
 	t.Chdir(root)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 
 	fp := requireFilePicker(t, m)
 	require.False(t, filePickerShowHidden(fp), "should start hidden")
@@ -115,7 +115,7 @@ func TestFilePickerToggleHiddenStatusMessage(t *testing.T) {
 	t.Chdir(root)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 
 	// Toggle on.
 	sendKey(m, keyShiftH)
@@ -131,7 +131,7 @@ func TestFilePickerDescriptionReflectsHiddenState(t *testing.T) {
 	t.Chdir(root)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 
 	fp := requireFilePicker(t, m)
 	desc := filePickerDescription(fp)
@@ -152,7 +152,7 @@ func TestFilePickerToggleHiddenPersistsAcrossNavigation(t *testing.T) {
 	t.Chdir(child)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 
 	// Toggle to show hidden files.
 	sendKey(m, keyShiftH)
@@ -192,7 +192,7 @@ func TestFilePickerTitleShowsCurrentDir(t *testing.T) {
 	t.Chdir(root)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 
 	fp := requireFilePicker(t, m)
 	title := filePickerTitle(fp)
@@ -223,7 +223,7 @@ func TestQuickDocumentCtrlSSavesWithoutExtraction(t *testing.T) {
 	m.ex.extractionEnabled = true
 	m.ex.extractionReady = true
 
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 	require.Equal(t, modeForm, m.mode)
 
 	// Simulate file selection by setting the form data path directly.
@@ -252,7 +252,7 @@ func TestQuickDocumentCtrlSParseErrorShowsStatus(t *testing.T) {
 	t.Chdir(root)
 
 	m := newTestModelWithStore(t)
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 
 	// Point at a non-existent file to trigger a parse error.
 	fd, ok := m.fs.formData.(*documentFormData)
@@ -277,7 +277,7 @@ func TestQuickDocumentCtrlSFileTooLargeShowsStatus(t *testing.T) {
 	// Set max size to 1 byte so the 4-byte file exceeds it.
 	require.NoError(t, m.store.SetMaxDocumentSize(1))
 
-	require.NoError(t, m.startQuickDocumentForm())
+	m.startQuickDocumentForm()
 	fd, ok := m.fs.formData.(*documentFormData)
 	require.True(t, ok)
 	fd.FilePath = file

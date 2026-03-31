@@ -22,8 +22,8 @@ func sendMouseClick(m *Model, x, y int, button tea.MouseButton) {
 }
 
 // sendMouseWheel sends a mouse wheel event to the model.
-func sendMouseWheel(m *Model, x, y int, button tea.MouseButton) {
-	m.Update(tea.MouseWheelMsg{X: x, Y: y, Button: button})
+func sendMouseWheel(m *Model, button tea.MouseButton) {
+	m.Update(tea.MouseWheelMsg{X: 10, Y: 10, Button: button})
 }
 
 // sendClick sends a left mouse button click at the given position.
@@ -146,10 +146,10 @@ func TestScrollWheelMovesCursor(t *testing.T) {
 	require.Greater(t, len(tab.CellRows), 1)
 	tab.Table.SetCursor(0)
 
-	sendMouseWheel(m, 10, 10, tea.MouseWheelDown)
+	sendMouseWheel(m, tea.MouseWheelDown)
 	assert.Equal(t, 1, tab.Table.Cursor(), "scroll down should move cursor to 1")
 
-	sendMouseWheel(m, 10, 10, tea.MouseWheelUp)
+	sendMouseWheel(m, tea.MouseWheelUp)
 	assert.Equal(t, 0, tab.Table.Cursor(), "scroll up should move cursor back to 0")
 }
 
@@ -338,7 +338,7 @@ func TestScrollWheelInHelpOverlay(t *testing.T) {
 
 	initialOffset := m.helpViewport.YOffset()
 
-	sendMouseWheel(m, 10, 10, tea.MouseWheelDown)
+	sendMouseWheel(m, tea.MouseWheelDown)
 
 	assert.Greater(t, m.helpViewport.YOffset(), initialOffset,
 		"scroll down in help overlay should advance viewport")
@@ -560,10 +560,10 @@ func TestDashboardScrollWheel(t *testing.T) {
 	require.Greater(t, len(m.dash.nav), 1, "need multiple dashboard nav items")
 
 	m.dash.cursor = 0
-	sendMouseWheel(m, 10, 10, tea.MouseWheelDown)
+	sendMouseWheel(m, tea.MouseWheelDown)
 	assert.Equal(t, 1, m.dash.cursor, "scroll down in dashboard should move cursor")
 
-	sendMouseWheel(m, 10, 10, tea.MouseWheelUp)
+	sendMouseWheel(m, tea.MouseWheelUp)
 	assert.Equal(t, 0, m.dash.cursor, "scroll up in dashboard should move cursor back")
 }
 

@@ -86,7 +86,8 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case extractionLLMChunkMsg:
 		return m, m.handleExtractionLLMChunk(typed)
 	case extractionLLMPingMsg:
-		return m, m.handleExtractionLLMPing(typed)
+		m.handleExtractionLLMPing(typed)
+		return m, nil
 	case modelsListMsg:
 		// Feed the extraction model picker first if it's waiting.
 		if ex := m.ex.extraction; ex != nil && ex.modelPicker != nil && ex.modelPicker.Loading {
@@ -233,12 +234,12 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Dashboard intercepts nav keys before other handlers.
 		if m.dashboardVisible() {
-			if cmd, handled := m.handleDashboardKeys(typed); handled {
-				return m, cmd
+			if m.handleDashboardKeys(typed) {
+				return m, nil
 			}
 		}
-		if cmd, handled := m.handleCommonKeys(typed); handled {
-			return m, cmd
+		if m.handleCommonKeys(typed) {
+			return m, nil
 		}
 		if m.mode == modeNormal {
 			if cmd, handled := m.handleNormalKeys(typed); handled {

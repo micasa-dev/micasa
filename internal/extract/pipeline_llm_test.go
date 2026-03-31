@@ -19,7 +19,7 @@ import (
 
 // newTestLLMServer creates an httptest server that returns the given response
 // as an OpenAI-compatible chat completion response.
-func newTestLLMServer(t *testing.T, responseContent string) (*httptest.Server, *llm.Client) {
+func newTestLLMServer(t *testing.T, responseContent string) *llm.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -31,7 +31,7 @@ func newTestLLMServer(t *testing.T, responseContent string) (*httptest.Server, *
 	t.Cleanup(srv.Close)
 	client, err := llm.NewClient("llamacpp", srv.URL+"/v1", "test-model", "", 5*time.Second)
 	require.NoError(t, err)
-	return srv, client
+	return client
 }
 
 func mustMarshalJSON(t *testing.T, s string) string {
@@ -50,7 +50,7 @@ func TestPipeline_LLMExtractsOperationsFromText(t *testing.T) {
 	opsJSON := `{"operations": [
 		{"action": "create", "table": "vendors", "data": {"name": "Garcia Plumbing"}}
 	], "document": {"action": "update", "data": {"id": 42, "title": "Garcia Plumbing Invoice", "notes": "Plumbing repair invoice"}}}`
-	_, client := newTestLLMServer(t, opsJSON)
+	client := newTestLLMServer(t, opsJSON)
 
 	p := &Pipeline{
 		LLMClient: client,
@@ -149,7 +149,7 @@ func TestPipeline_LLMSkippedWithoutText(t *testing.T) {
 func TestPipeline_LLMForbiddenAction(t *testing.T) {
 	t.Parallel()
 	opsJSON := `{"operations": [{"action": "delete", "table": "vendors", "data": {"id": 1}}]}`
-	_, client := newTestLLMServer(t, opsJSON)
+	client := newTestLLMServer(t, opsJSON)
 
 	p := &Pipeline{LLMClient: client, DocID: "1"}
 	r := p.Run(t.Context(), []byte("some text"), "doc.txt", "text/plain")
@@ -165,7 +165,7 @@ func TestPipeline_LLMForbiddenAction(t *testing.T) {
 func TestPipeline_LLMForbiddenTable(t *testing.T) {
 	t.Parallel()
 	opsJSON := `{"operations": [{"action": "create", "table": "users", "data": {"name": "hacker"}}]}`
-	_, client := newTestLLMServer(t, opsJSON)
+	client := newTestLLMServer(t, opsJSON)
 
 	p := &Pipeline{LLMClient: client, DocID: "1"}
 	r := p.Run(t.Context(), []byte("some text"), "doc.txt", "text/plain")

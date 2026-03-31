@@ -705,10 +705,10 @@ func (m *Model) maybeStartLLMStep(ex *extractionLogState) tea.Cmd {
 }
 
 // handleExtractionLLMPing processes the background LLM ping result.
-func (m *Model) handleExtractionLLMPing(msg extractionLLMPingMsg) tea.Cmd {
+func (m *Model) handleExtractionLLMPing(msg extractionLLMPingMsg) {
 	ex := m.findExtraction(msg.ID)
 	if ex == nil {
-		return nil
+		return
 	}
 	ex.llmPingDone = true
 	ex.llmPingErr = msg.Err
@@ -729,7 +729,6 @@ func (m *Model) handleExtractionLLMPing(msg extractionLLMPingMsg) tea.Cmd {
 			}
 		}
 	}
-	return nil
 }
 
 // handleExtractionLLMStarted stores the LLM stream channel and starts reading.
