@@ -13,14 +13,14 @@ import (
 
 // ByteSize represents a size in bytes, parseable from unitized strings
 // like "50 MiB" or bare integers (interpreted as bytes).
-type ByteSize uint64
+type ByteSize uint64 //nolint:recvcheck // value receiver needed for encoding.TextMarshaler on non-pointer fields
 
 // Bytes returns the size as uint64.
-func (b *ByteSize) Bytes() uint64 { return uint64(*b) }
+func (b ByteSize) Bytes() uint64 { return uint64(b) }
 
 // MarshalText implements encoding.TextMarshaler, producing human-readable
 // IEC notation like "50 MiB".
-func (b *ByteSize) MarshalText() ([]byte, error) {
+func (b ByteSize) MarshalText() ([]byte, error) {
 	return []byte(humanize.IBytes(b.Bytes())), nil
 }
 
