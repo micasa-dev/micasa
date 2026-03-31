@@ -286,16 +286,14 @@ processCodeInMermaid();
 
 document.addEventListener("theme-changed", async function () {
   mermaid.initialize(getMermaidTheme());
-  var els = document.querySelectorAll(".mermaid[data-processed]");
-  for (var i = 0; i < els.length; i++) {
-    var el = els[i];
+  document.querySelectorAll(".mermaid").forEach(function(el) {
     var source = el.getAttribute("data-original-source");
     if (!source) {
-      continue;
+      return;
     }
     el.removeAttribute("data-processed");
-    el.innerHTML = source;
-  }
+    el.textContent = source;
+  });
   await mermaid.run();
   processCodeInMermaid();
 });
