@@ -828,6 +828,10 @@ h2:hover .badge-experimental .badge-label {
   opacity: 1 !important;
 }
 
+.docs-main pre.mermaid .labelBkg {
+  background-color: transparent !important;
+}
+
 .docs-main pre.mermaid .relationshipLine {
   stroke: var(--warm-gray) !important;
 }
