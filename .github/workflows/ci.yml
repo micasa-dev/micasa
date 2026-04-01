@@ -67,7 +67,7 @@ jobs:
           - blacksmith-4vcpu-ubuntu-2404
           - blacksmith-4vcpu-ubuntu-2404-arm
           - macos-latest
-          - windows-latest
+          - blacksmith-4vcpu-windows-2025
           - windows-11-arm
     steps:
       - name: Harden Runner
@@ -111,33 +111,17 @@ jobs:
         if: runner.os == 'macOS'
         run: echo "$(brew --prefix imagemagick-full)/bin" >> "$GITHUB_PATH"
 
-      # Microsoft.DesktopAppInstaller_8wekyb3d8bbwe is the package family
-      # name for winget in the Windows Store.
-      - name: Configure winget (Windows)
-        if: runner.os == 'Windows'
+      - name: Install extraction tools (Windows x64)
+        if: runner.os == 'Windows' && runner.arch == 'X64'
         shell: pwsh
-        run: |
-          $settingsDir = "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState"
-          New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
-          Copy-Item .github\winget-settings.json "$settingsDir\settings.json"
+        run: choco install poppler tesseract imagemagick -y --no-progress
 
-      - name: Install extraction tools (Windows)
-        if: runner.os == 'Windows'
+      - name: Add extraction tools to PATH (Windows x64)
+        if: runner.os == 'Windows' && runner.arch == 'X64'
         shell: pwsh
         run: |
-          $flags = @('--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent', '--force')
-          winget install --id oschwartz10612.Poppler @flags
-          winget install --id tesseract-ocr.tesseract @flags
-          winget install --id ImageMagick.ImageMagick @flags
-
-      - name: Add extraction tools to PATH (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-          Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\oschwartz10612.Poppler_*\poppler-*\Library\bin" |
-            Select-Object -First 1 -ExpandProperty FullName |
-            Add-Content $env:GITHUB_PATH
+          # Chocolatey installs to C:\ProgramData\chocolatey\bin (already on PATH)
+          # but some packages install to their own directories
           Add-Content $env:GITHUB_PATH "$env:ProgramFiles\Tesseract-OCR"
           Get-ChildItem "$env:ProgramFiles\ImageMagick-*" -Directory |
             Select-Object -First 1 -ExpandProperty FullName |
