@@ -67,7 +67,7 @@ jobs:
           - blacksmith-4vcpu-ubuntu-2404
           - blacksmith-4vcpu-ubuntu-2404-arm
           - macos-latest
-          - blacksmith-4vcpu-windows-2025
+          - windows-latest
           - windows-11-arm
     steps:
       - name: Harden Runner
@@ -111,14 +111,8 @@ jobs:
         if: runner.os == 'macOS'
         run: echo "$(brew --prefix imagemagick-full)/bin" >> "$GITHUB_PATH"
 
-      - name: Install winget (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          if (Get-Command winget -ErrorAction SilentlyContinue) { return }
-          Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery | Out-Null
-          Repair-WinGetPackageManager
-
+      # Microsoft.DesktopAppInstaller_8wekyb3d8bbwe is the package family
+      # name for winget in the Windows Store.
       - name: Configure winget (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
