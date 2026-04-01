@@ -176,6 +176,9 @@ jobs:
           egress-policy: block
           disable-telemetry: true
           disable-sudo-and-containers: true
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
 
       - run: exit 1
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
