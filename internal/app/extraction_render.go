@@ -830,6 +830,26 @@ func groupOperationsByTable(ops []extract.Operation, cur locale.Currency) []prev
 			keyByTitle[d.spec.Title] = d.dataKey
 		}
 
+		// For vendor rows with a locale, override the phone formatter
+		// to use the row-level locale instead of the system default.
+		if op.Table == data.TableVendors {
+			if loc, _ := op.Data[data.ColLocale].(string); loc != "" {
+				for _, d := range allDefs {
+					if d.dataKey == data.ColPhone {
+						region := strings.ToUpper(loc)
+						fmtByTitle[d.spec.Title] = func(v any) string {
+							s, ok := v.(string)
+							if !ok || s == "" {
+								return fmtAnyText(v)
+							}
+							return locale.FormatPhoneNumber(s, region)
+						}
+						break
+					}
+				}
+			}
+		}
+
 		row := make([]cell, len(g.specs))
 		for i, spec := range g.specs {
 			key := keyByTitle[spec.Title]
