@@ -400,9 +400,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Blacksmith Builder
-        uses: useblacksmith/setup-docker-builder@5241b2e9423e8b1fa37ed6050ecb62d0fb9a4e38 # v1
-
       - name: Build relay image${{ matrix.build_tags && format(' ({0})', matrix.build_tags) }}
         run: docker build --build-arg BUILD_TAGS=${{ matrix.build_tags }} -f deploy/relay/Dockerfile .
 
