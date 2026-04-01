@@ -415,7 +415,7 @@ jobs:
     name: CI Result
     if: always()
     needs: [changes, test, pgtest, benchmarks, nix-build, docs, semantic-release-dry-run, docker-build]
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -423,9 +423,6 @@ jobs:
           egress-policy: block
           disable-telemetry: true
           disable-sudo-and-containers: true
-          allowed-endpoints: >
-            api.github.com:443
-            github.com:443
 
       - run: exit 1
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
