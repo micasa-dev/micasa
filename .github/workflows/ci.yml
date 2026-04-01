@@ -111,27 +111,13 @@ jobs:
         if: runner.os == 'macOS'
         run: echo "$(brew --prefix imagemagick-full)/bin" >> "$GITHUB_PATH"
 
-      # Microsoft.DesktopAppInstaller_8wekyb3d8bbwe is the package family
-      # name for winget in the Windows Store.
       - name: Install winget (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           if (Get-Command winget -ErrorAction SilentlyContinue) { return }
-          $tmp = New-Item -ItemType Directory -Path "$env:RUNNER_TEMP\winget" -Force
-          # VCLibs dependency
-          Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" `
-            -OutFile "$tmp\vclibs.appx"
-          Add-AppxPackage "$tmp\vclibs.appx"
-          # UI.Xaml dependency
-          Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" `
-            -OutFile "$tmp\xaml.zip"
-          Expand-Archive "$tmp\xaml.zip" "$tmp\xaml"
-          Add-AppxPackage "$tmp\xaml\tools\AppX\x64\Release\Microsoft.UI.Xaml.2.8.appx"
-          # winget itself
-          Invoke-WebRequest -Uri "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" `
-            -OutFile "$tmp\winget.msixbundle"
-          Add-AppxPackage "$tmp\winget.msixbundle"
+          Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery | Out-Null
+          Repair-WinGetPackageManager
 
       - name: Configure winget (Windows)
         if: runner.os == 'Windows'
