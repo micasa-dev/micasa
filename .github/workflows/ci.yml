@@ -67,7 +67,7 @@ jobs:
           - blacksmith-4vcpu-ubuntu-2404
           - blacksmith-4vcpu-ubuntu-2404-arm
           - macos-latest
-          - blacksmith-4vcpu-windows-2025
+          - windows-latest
           - windows-11-arm
     steps:
       - name: Harden Runner
