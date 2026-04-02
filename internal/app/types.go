@@ -99,7 +99,7 @@ type extractState struct {
 	extractionModel    string
 	extractionAPIKey   string
 	extractionTimeout  time.Duration // inference context deadline
-	extractionThinking string
+	extractionEffort   string
 	extractionEnabled  bool
 	ocrTSV             bool
 	ocrConfThreshold   int
@@ -301,7 +301,7 @@ type chatConfig struct {
 	APIKey       string
 	ExtraContext string
 	Timeout      time.Duration // inference context deadline
-	Thinking     string        // reasoning effort: none|low|medium|high|auto
+	Effort       string        // reasoning effort: none|low|medium|high|auto
 }
 
 // extractionConfig holds resolved extraction pipeline settings.
@@ -311,7 +311,7 @@ type extractionConfig struct {
 	Model    string
 	APIKey   string
 	Timeout  time.Duration // inference context deadline
-	Thinking string        // reasoning effort level
+	Effort   string        // reasoning effort level
 
 	Extractors       []extract.Extractor // configured extractors; nil = defaults
 	Enabled          bool                // LLM extraction enabled
@@ -323,7 +323,7 @@ type extractionConfig struct {
 func (o *Options) SetExtraction(
 	provider, baseURL, model, apiKey string,
 	timeout time.Duration,
-	thinking string,
+	effort string,
 	extractors []extract.Extractor,
 	enabled bool,
 	ocrTSV bool,
@@ -335,7 +335,7 @@ func (o *Options) SetExtraction(
 		Model:            model,
 		APIKey:           apiKey,
 		Timeout:          timeout,
-		Thinking:         thinking,
+		Effort:           effort,
 		Extractors:       extractors,
 		Enabled:          enabled,
 		OCRTSV:           ocrTSV,
@@ -349,7 +349,7 @@ func (o *Options) SetChat(
 	enabled bool,
 	provider, baseURL, model, apiKey, extraContext string,
 	timeout time.Duration,
-	thinking string,
+	effort string,
 ) {
 	o.ChatConfig = chatConfig{
 		Enabled:      enabled && model != "",
@@ -359,7 +359,7 @@ func (o *Options) SetChat(
 		APIKey:       apiKey,
 		ExtraContext: extraContext,
 		Timeout:      timeout,
-		Thinking:     thinking,
+		Effort:       effort,
 	}
 }
 

@@ -318,6 +318,7 @@ func TestCacheTTLDaysRemovedReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "cache_ttl_days")
 	assert.Contains(t, err.Error(), "removed")
 	assert.Contains(t, err.Error(), "cache_ttl")
+	assert.Contains(t, err.Error(), "integer days become duration strings")
 }
 
 // --- API Keys ---
@@ -537,29 +538,29 @@ func TestInvalidEnvVarReturnsError(t *testing.T) {
 	}
 }
 
-func TestInvalidThinkingLevelReturnsError(t *testing.T) {
-	t.Run("chat.llm.thinking", func(t *testing.T) {
-		path := writeConfig(t, "[chat.llm]\nthinking = \"dunno\"\n")
+func TestInvalidEffortLevelReturnsError(t *testing.T) {
+	t.Run("chat.llm.effort", func(t *testing.T) {
+		path := writeConfig(t, "[chat.llm]\neffort = \"dunno\"\n")
 		_, err := LoadFromPath(path)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "chat.llm.thinking")
+		assert.Contains(t, err.Error(), "chat.llm.effort")
 		assert.Contains(t, err.Error(), "invalid level")
 		assert.Contains(t, err.Error(), "dunno")
 	})
-	t.Run("extraction.llm.thinking", func(t *testing.T) {
-		path := writeConfig(t, "[extraction.llm]\nthinking = \"yolo\"\n")
+	t.Run("extraction.llm.effort", func(t *testing.T) {
+		path := writeConfig(t, "[extraction.llm]\neffort = \"yolo\"\n")
 		_, err := LoadFromPath(path)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "extraction.llm.thinking")
+		assert.Contains(t, err.Error(), "extraction.llm.effort")
 		assert.Contains(t, err.Error(), "invalid level")
 		assert.Contains(t, err.Error(), "yolo")
 	})
 	t.Run("valid levels", func(t *testing.T) {
 		for _, level := range []string{"none", "low", "medium", "high", "auto"} {
-			path := writeConfig(t, "[chat.llm]\nthinking = \""+level+"\"\n")
+			path := writeConfig(t, "[chat.llm]\neffort = \""+level+"\"\n")
 			cfg, err := LoadFromPath(path)
 			require.NoError(t, err, "level %q should be valid", level)
-			assert.Equal(t, level, cfg.Chat.LLM.Thinking)
+			assert.Equal(t, level, cfg.Chat.LLM.Effort)
 		}
 	})
 }
@@ -678,7 +679,7 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_CHAT_LLM_MODEL":         "chat.llm.model",
 		"MICASA_CHAT_LLM_API_KEY":       "chat.llm.api_key",
 		"MICASA_CHAT_LLM_TIMEOUT":       "chat.llm.timeout",
-		"MICASA_CHAT_LLM_THINKING":      "chat.llm.thinking",
+		"MICASA_CHAT_LLM_EFFORT":        "chat.llm.effort",
 		"MICASA_CHAT_LLM_EXTRA_CONTEXT": "chat.llm.extra_context",
 
 		"MICASA_EXTRACTION_MAX_PAGES":                    "extraction.max_pages",
@@ -688,7 +689,7 @@ func TestEnvVars(t *testing.T) {
 		"MICASA_EXTRACTION_LLM_MODEL":                    "extraction.llm.model",
 		"MICASA_EXTRACTION_LLM_API_KEY":                  "extraction.llm.api_key",
 		"MICASA_EXTRACTION_LLM_TIMEOUT":                  "extraction.llm.timeout",
-		"MICASA_EXTRACTION_LLM_THINKING":                 "extraction.llm.thinking",
+		"MICASA_EXTRACTION_LLM_EFFORT":                   "extraction.llm.effort",
 		"MICASA_EXTRACTION_OCR_ENABLE":                   "extraction.ocr.enable",
 		"MICASA_EXTRACTION_OCR_TSV_ENABLE":               "extraction.ocr.tsv.enable",
 		"MICASA_EXTRACTION_OCR_TSV_CONFIDENCE_THRESHOLD": "extraction.ocr.tsv.confidence_threshold",
@@ -828,14 +829,14 @@ provider = "anthropic"
 model = "claude-sonnet-4-5-20250929"
 api_key = "sk-ant-chat"
 timeout = "10s"
-thinking = "high"
+effort = "high"
 extra_context = "Portland house."
 
 [extraction.llm]
 provider = "ollama"
 model = "qwen2.5:7b"
 timeout = "3m"
-thinking = "low"
+effort = "low"
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
@@ -844,14 +845,14 @@ thinking = "low"
 	assert.Equal(t, "claude-sonnet-4-5-20250929", cfg.Chat.LLM.Model)
 	assert.Equal(t, "sk-ant-chat", cfg.Chat.LLM.APIKey)
 	assert.Equal(t, 10*time.Second, cfg.Chat.LLM.TimeoutDuration())
-	assert.Equal(t, "high", cfg.Chat.LLM.Thinking)
+	assert.Equal(t, "high", cfg.Chat.LLM.Effort)
 	assert.Equal(t, "Portland house.", cfg.Chat.LLM.ExtraContext)
 
 	assert.Equal(t, "ollama", cfg.Extraction.LLM.Provider)
 	assert.Equal(t, "qwen2.5:7b", cfg.Extraction.LLM.Model)
 	assert.Empty(t, cfg.Extraction.LLM.APIKey)
 	assert.Equal(t, 3*time.Minute, cfg.Extraction.LLM.TimeoutDuration())
-	assert.Equal(t, "low", cfg.Extraction.LLM.Thinking)
+	assert.Equal(t, "low", cfg.Extraction.LLM.Effort)
 }
 
 func TestExtractionAutoDetectsProvider(t *testing.T) {
@@ -1026,6 +1027,69 @@ func TestFilePickerDir_FromEnv(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 	assert.Equal(t, dir, cfg.Documents.FilePickerDir)
+}
+
+// --- Deprecated key detection ---
+
+func TestThinkingRemovedReturnsError(t *testing.T) {
+	t.Run("chat.llm", func(t *testing.T) {
+		path := writeConfig(t, "[chat.llm]\nthinking = \"medium\"\n")
+		_, err := LoadFromPath(path)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "chat.llm.thinking")
+		assert.Contains(t, err.Error(), "removed")
+		assert.Contains(t, err.Error(), "chat.llm.effort")
+	})
+	t.Run("extraction.llm", func(t *testing.T) {
+		path := writeConfig(t, "[extraction.llm]\nthinking = \"low\"\n")
+		_, err := LoadFromPath(path)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "extraction.llm.thinking")
+		assert.Contains(t, err.Error(), "removed")
+		assert.Contains(t, err.Error(), "extraction.llm.effort")
+	})
+}
+
+func TestThinkingEnvVarRemovedReturnsError(t *testing.T) {
+	t.Setenv("MICASA_CHAT_LLM_THINKING", "high")
+	_, err := LoadFromPath(noConfig(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MICASA_CHAT_LLM_THINKING")
+	assert.Contains(t, err.Error(), "removed")
+	assert.Contains(t, err.Error(), "MICASA_CHAT_LLM_EFFORT")
+}
+
+func TestBothDeprecatedAndNewEnvVarSetErrorsOnDeprecated(t *testing.T) {
+	t.Setenv("MICASA_CHAT_LLM_THINKING", "high")
+	t.Setenv("MICASA_CHAT_LLM_EFFORT", "medium")
+	_, err := LoadFromPath(noConfig(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MICASA_CHAT_LLM_THINKING")
+}
+
+func TestEmptyDeprecatedEnvVarDoesNotError(t *testing.T) {
+	t.Setenv("MICASA_CHAT_LLM_THINKING", "")
+	cfg, err := LoadFromPath(noConfig(t))
+	require.NoError(t, err)
+	assert.Empty(t, cfg.Chat.LLM.Effort)
+}
+
+func TestDeprecatedEnvVarDeterministicOrder(t *testing.T) {
+	t.Setenv("MICASA_CHAT_LLM_THINKING", "high")
+	t.Setenv("MICASA_EXTRACTION_LLM_THINKING", "low")
+	_, err := LoadFromPath(noConfig(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MICASA_CHAT_LLM_THINKING")
+}
+
+func TestCacheTTLDaysEnvVarRemovedReturnsError(t *testing.T) {
+	t.Setenv("MICASA_DOCUMENTS_CACHE_TTL_DAYS", "30")
+	_, err := LoadFromPath(noConfig(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MICASA_DOCUMENTS_CACHE_TTL_DAYS")
+	assert.Contains(t, err.Error(), "removed")
+	assert.Contains(t, err.Error(), "MICASA_DOCUMENTS_CACHE_TTL")
+	assert.Contains(t, err.Error(), "integer days become duration strings")
 }
 
 // findAll reports whether s contains all of the given substrings.

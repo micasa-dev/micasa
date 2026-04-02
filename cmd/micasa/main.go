@@ -196,7 +196,7 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 		chatLLM.APIKey,
 		chatLLM.ExtraContext,
 		chatLLM.TimeoutDuration(),
-		chatLLM.Thinking,
+		chatLLM.Effort,
 	)
 
 	exLLM := cfg.Extraction.LLM
@@ -211,7 +211,7 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 		exLLM.Model,
 		exLLM.APIKey,
 		exLLM.TimeoutDuration(),
-		exLLM.Thinking,
+		exLLM.Effort,
 		extractors,
 		exLLM.IsEnabled(),
 		cfg.Extraction.OCR.TSV.IsEnabled(),

@@ -216,11 +216,11 @@ func TestSetModel(t *testing.T) {
 	assert.Equal(t, "llama3", client.Model())
 }
 
-func TestSetThinking(t *testing.T) {
+func TestSetEffort(t *testing.T) {
 	t.Parallel()
 	client := newTestClient(t, "http://localhost:11434/v1", "qwen3")
-	client.SetThinking("medium")
-	assert.Equal(t, "medium", client.thinking)
+	client.SetEffort("medium")
+	assert.Equal(t, "medium", client.effort)
 }
 
 func TestListModelsSuccess(t *testing.T) {
@@ -644,18 +644,17 @@ func TestWrapErrorGeneric(t *testing.T) {
 	assert.Equal(t, orig, err)
 }
 
-// TestChatCompleteWithThinking verifies that setting a thinking level causes
+// TestChatCompleteWithEffort verifies that setting an effort level causes
 // the reasoning_effort parameter to be sent to the server.
-func TestChatCompleteWithThinking(t *testing.T) {
+func TestChatCompleteWithEffort(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&body)) {
 			return
 		}
-		// The reasoning_effort field should be present when thinking is set.
-		// The exact field name depends on the provider SDK, but we verify the
-		// client at least sets it on the params.
+		assert.Equal(t, "medium", body["reasoning_effort"],
+			"reasoning_effort should be set when effort is configured")
 		jsonResponse(
 			w, `{"choices":[{"message":{"content":"thought about it"}}]}`,
 		)
@@ -663,7 +662,7 @@ func TestChatCompleteWithThinking(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	client.SetThinking("medium")
+	client.SetEffort("medium")
 	result, err := client.ChatComplete(t.Context(), []Message{
 		{Role: "user", Content: "think hard"},
 	})

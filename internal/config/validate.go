@@ -76,22 +76,14 @@ func mustRegister(
 	}
 }
 
-// removedKeys maps TOML key paths that were removed to their replacement.
-// checkRemovedKeys returns an actionable error if any are present.
-var removedKeys = map[string]string{
-	"documents.cache_ttl_days": "documents.cache_ttl",
-}
-
 // checkRemovedKeys inspects decoded TOML metadata for keys that have been
 // removed and returns an error directing the user to the replacement.
+// The removedKeys map is derived from struct tags in deprecated.go.
 func checkRemovedKeys(md toml.MetaData) error {
 	for _, key := range md.Undecoded() {
 		path := key.String()
-		if replacement, ok := removedKeys[path]; ok {
-			return fmt.Errorf(
-				"%s was removed -- use %s instead",
-				path, replacement,
-			)
+		if msg, ok := derived.removedKeys[path]; ok {
+			return fmt.Errorf("%s", msg)
 		}
 	}
 	return nil

@@ -51,7 +51,7 @@ provider = "anthropic"
 model = "claude-sonnet-4-5-20250929"
 api_key = "sk-ant-test"
 timeout = "10s"
-thinking = "medium"
+effort = "medium"
 
 [extraction.llm]
 model = "qwen2.5:7b"
@@ -82,7 +82,7 @@ provider = "anthropic"
 model = "claude-sonnet-4-5-20250929"
 api_key = "sk-ant-test"
 timeout = "10s"
-thinking = "medium"
+effort = "medium"
 extra_context = "My house is old."
 
 [extraction]
@@ -111,7 +111,7 @@ cache_ttl = "7d"
 	assert.Equal(t, orig.Chat.LLM.Model, parsed.Chat.LLM.Model)
 	assert.Equal(t, orig.Chat.LLM.BaseURL, parsed.Chat.LLM.BaseURL)
 	assert.Equal(t, orig.Chat.LLM.Timeout, parsed.Chat.LLM.Timeout)
-	assert.Equal(t, orig.Chat.LLM.Thinking, parsed.Chat.LLM.Thinking)
+	assert.Equal(t, orig.Chat.LLM.Effort, parsed.Chat.LLM.Effort)
 	assert.Equal(t, orig.Chat.LLM.ExtraContext, parsed.Chat.LLM.ExtraContext)
 	assert.Equal(t, orig.Extraction.LLM.Provider, parsed.Extraction.LLM.Provider)
 	assert.Equal(t, orig.Extraction.LLM.Model, parsed.Extraction.LLM.Model)
@@ -175,26 +175,26 @@ cache_ttl = "7d"
 	assert.Contains(t, out, `cache_ttl = "7d"`)
 }
 
-func TestShowConfigOmitsEmptyThinking(t *testing.T) {
+func TestShowConfigOmitsEmptyEffort(t *testing.T) {
 	cfg, err := LoadFromPath(noConfig(t))
 	require.NoError(t, err)
 
 	out := showConfig(t, cfg)
 
-	assert.NotContains(t, out, "thinking =",
-		"empty thinking fields (omitempty) should be omitted")
+	assert.NotContains(t, out, "effort =",
+		"empty effort fields (omitempty) should be omitted")
 }
 
-func TestShowConfigShowsNonEmptyThinking(t *testing.T) {
+func TestShowConfigShowsNonEmptyEffort(t *testing.T) {
 	path := writeConfig(t, `[chat.llm]
-thinking = "high"
+effort = "high"
 `)
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
 
 	out := showConfig(t, cfg)
 
-	assert.Contains(t, out, `thinking = "high"`)
+	assert.Contains(t, out, `effort = "high"`)
 }
 
 func TestShowConfigShowsConfidenceThreshold(t *testing.T) {

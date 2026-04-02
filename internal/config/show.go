@@ -22,10 +22,6 @@ var hiddenPaths = map[string]bool{
 	"extraction.llm.api_key": true,
 }
 
-// deprecatedPaths maps deprecated TOML key paths to a human-readable
-// replacement hint shown in ShowConfig output.
-var deprecatedPaths = map[string]string{}
-
 // ShowConfig writes the fully resolved configuration as valid TOML to w,
 // annotating each field with its env var name and marking active overrides.
 func (c *Config) ShowConfig(w io.Writer) error {
@@ -169,14 +165,6 @@ func walkSections(
 		empty := isEmptyValue(fv)
 
 		comment := envComment(envByKey[path])
-		if replacement, ok := deprecatedPaths[path]; ok {
-			dep := "DEPRECATED: use " + replacement
-			if comment != "" {
-				comment = comment + "; " + dep
-			} else {
-				comment = dep
-			}
-		}
 		cur.lines = append(cur.lines, annotatedLine{
 			kv:      tomlName + " = " + formatted,
 			comment: comment,
