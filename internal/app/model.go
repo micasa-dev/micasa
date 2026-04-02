@@ -284,8 +284,8 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		if err != nil {
 			return nil, fmt.Errorf("create llm client: %w", err)
 		}
-		if chatCfg.Thinking != "" {
-			client.SetThinking(chatCfg.Thinking)
+		if chatCfg.Effort != "" {
+			client.SetEffort(chatCfg.Effort)
 		}
 	}
 
@@ -311,7 +311,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			extractionModel:    options.ExtractionConfig.Model,
 			extractionAPIKey:   options.ExtractionConfig.APIKey,
 			extractionTimeout:  options.ExtractionConfig.Timeout,
-			extractionThinking: options.ExtractionConfig.Thinking,
+			extractionEffort:   options.ExtractionConfig.Effort,
 			extractionEnabled:  options.ExtractionConfig.Enabled,
 			ocrTSV:             options.ExtractionConfig.OCRTSV,
 			ocrConfThreshold:   options.ExtractionConfig.OCRConfThreshold,
@@ -893,8 +893,8 @@ func (m *Model) extractionLLMClient() *llm.Client {
 	if err != nil {
 		return nil
 	}
-	if m.ex.extractionThinking != "" {
-		c.SetThinking(m.ex.extractionThinking)
+	if m.ex.extractionEffort != "" {
+		c.SetEffort(m.ex.extractionEffort)
 	}
 	m.ex.extractionClient = c
 	return c

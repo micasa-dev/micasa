@@ -101,9 +101,9 @@ type ChatLLM struct {
 	// streaming). Go duration string, e.g. "5m", "10m". Default: "5m".
 	Timeout string `toml:"timeout" default:"5m" validate:"omitempty,positive_duration"`
 
-	// Thinking controls the model's reasoning effort level.
+	// Effort controls the model's reasoning effort level.
 	// Supported: none, low, medium, high, auto. Empty = server default.
-	Thinking string `toml:"thinking,omitempty" validate:"omitempty,oneof=none low medium high auto"`
+	Effort string `toml:"effort,omitempty" deprecated:"thinking" validate:"omitempty,oneof=none low medium high auto"`
 
 	// ExtraContext is custom text appended to chat system prompts.
 	// Useful for domain-specific details: house style, location, etc.
@@ -154,9 +154,9 @@ type ExtractionLLM struct {
 	// Timeout is the inference timeout for extraction LLM responses.
 	Timeout string `toml:"timeout" default:"5m" validate:"omitempty,positive_duration"`
 
-	// Thinking controls the model's reasoning effort level.
+	// Effort controls the model's reasoning effort level.
 	// Supported: none, low, medium, high, auto. Empty = server default.
-	Thinking string `toml:"thinking,omitempty" validate:"omitempty,oneof=none low medium high auto"`
+	Effort string `toml:"effort,omitempty" deprecated:"thinking" validate:"omitempty,oneof=none low medium high auto"`
 }
 
 // IsEnabled returns whether LLM extraction is enabled. Defaults to true.
@@ -253,7 +253,7 @@ type Documents struct {
 	// CacheTTL is the cache lifetime for extracted documents. Accepts
 	// unitized strings ("30d", "720h") or bare integers (seconds).
 	// Set to "0s" to disable eviction. Default: 30d.
-	CacheTTL *Duration `toml:"cache_ttl,omitempty" validate:"omitempty,nonneg_duration"`
+	CacheTTL *Duration `toml:"cache_ttl,omitempty" deprecated:"cache_ttl_days" deprecated_transform:"days_to_duration" validate:"omitempty,nonneg_duration"`
 
 	// FilePickerDir is the starting directory for the document file picker.
 	// Default: the system Downloads folder (e.g. ~/Downloads).
@@ -326,6 +326,10 @@ func LoadFromPath(path string) (Config, error) {
 		if err := checkRemovedKeys(md); err != nil {
 			return cfg, err
 		}
+	}
+
+	if err := checkDeprecatedEnvVars(); err != nil {
+		return cfg, err
 	}
 
 	if err := applyEnvOverrides(&cfg, nil); err != nil {
@@ -769,7 +773,7 @@ model = "` + DefaultModel + `"
 
 # Model reasoning effort level. Supported: none, low, medium, high, auto.
 # Empty = don't send (server default).
-# thinking = "medium"
+# effort = "medium"
 
 # Custom context appended to chat system prompts.
 # extra_context = "My house is a 1920s craftsman in Portland, OR."
@@ -791,7 +795,7 @@ model = "` + DefaultModel + `"
 model = "` + DefaultModel + `"
 # api_key = ""
 # timeout = "5m"
-# thinking = "low"
+# effort = "low"
 
 [extraction.ocr]
 # Set to false to disable OCR on uploaded documents. When disabled, scanned

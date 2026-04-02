@@ -36,7 +36,7 @@ type Client struct {
 	providerName string
 	baseURL      string
 	model        string
-	thinking     string // reasoning effort: none|low|medium|high|auto
+	effort       string // reasoning effort: none|low|medium|high|auto
 }
 
 // Message represents a single turn in the conversation.
@@ -180,9 +180,9 @@ func (c *Client) SetModel(model string) {
 	c.model = model
 }
 
-// SetThinking sets the reasoning effort level.
-func (c *Client) SetThinking(level string) {
-	c.thinking = level
+// SetEffort sets the reasoning effort level.
+func (c *Client) SetEffort(level string) {
+	c.effort = level
 }
 
 // BaseURL returns the configured base URL.
@@ -219,8 +219,8 @@ func (c *Client) completionParams(messages []Message, opts []ChatOption) anyllm.
 		Messages:    toMessages(messages),
 		Temperature: &temp,
 	}
-	if c.thinking != "" {
-		params.ReasoningEffort = anyllm.ReasoningEffort(c.thinking)
+	if c.effort != "" {
+		params.ReasoningEffort = anyllm.ReasoningEffort(c.effort)
 	}
 
 	var cp chatParams
