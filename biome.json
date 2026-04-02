@@ -3,6 +3,7 @@
     "includes": [
       "docs/static/css/*.css",
       "docs/static/js/*.js",
+      "docs/data/*.json",
       "*.js",
       "*.json",
       ".github/winget-settings.json"

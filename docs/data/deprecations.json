@@ -1,0 +1,15 @@
+[
+  {
+    "old_path": "chat.llm.thinking",
+    "new_path": "chat.llm.effort"
+  },
+  {
+    "old_path": "extraction.llm.thinking",
+    "new_path": "extraction.llm.effort"
+  },
+  {
+    "old_path": "documents.cache_ttl_days",
+    "new_path": "documents.cache_ttl",
+    "hint": "integer days become duration strings, e.g. 30 becomes 30d"
+  }
+]

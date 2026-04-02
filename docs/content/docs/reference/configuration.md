@@ -165,7 +165,7 @@ base_url = "http://localhost:11434"
 model = "qwen3"
 # api_key = ""
 # timeout = "5m"
-# thinking = "medium"
+# effort = "medium"
 # extra_context = "My house is a 1920s craftsman in Portland, OR."
 
 [extraction]
@@ -177,7 +177,7 @@ model = "qwen3"
 # provider = "ollama"
 model = "qwen3"
 # timeout = "5m"
-# thinking = "low"
+# effort = "low"
 
 [extraction.ocr]
 # enable = true
@@ -214,7 +214,7 @@ default; no values are inherited from other config sections.
 | `model` {{< env "MICASA_CHAT_LLM_MODEL" >}} | string | `qwen3` | Model identifier sent in chat requests. |
 | `api_key` {{< env "MICASA_CHAT_LLM_API_KEY" >}} | string | (empty) | Authentication credential. Required for cloud providers. Leave empty for local servers. |
 | `timeout` {{< env "MICASA_CHAT_LLM_TIMEOUT" >}} | string | `"5m"` | Inference timeout for chat responses (including streaming). Go duration syntax, e.g. `"10m"`. |
-| `thinking` {{< env "MICASA_CHAT_LLM_THINKING" >}} | string | (unset) | Model reasoning effort level. Supported: `none`, `low`, `medium`, `high`, `auto`. Empty = server default. |
+| `effort` {{< env "MICASA_CHAT_LLM_EFFORT" >}} {{< replaces "chat.llm.effort" >}} | string | (unset) | Model reasoning effort level. Supported: `none`, `low`, `medium`, `high`, `auto`. Empty = server default. |
 | `extra_context` {{< env "MICASA_CHAT_LLM_EXTRA_CONTEXT" >}} | string | (empty) | Custom text appended to chat system prompts. Useful for domain-specific details about your house. Currency is handled automatically via `[locale]`. |
 
 ### `[extraction.llm]` section
@@ -231,7 +231,7 @@ model, and credentials.
 | `model` {{< env "MICASA_EXTRACTION_LLM_MODEL" >}} | string | `qwen3` | Model for extraction. Extraction works well with small, fast models optimized for structured JSON output. |
 | `api_key` {{< env "MICASA_EXTRACTION_LLM_API_KEY" >}} | string | (empty) | Authentication credential for extraction. |
 | `timeout` {{< env "MICASA_EXTRACTION_LLM_TIMEOUT" >}} | string | `"5m"` | Extraction inference timeout. |
-| `thinking` {{< env "MICASA_EXTRACTION_LLM_THINKING" >}} | string | (unset) | Reasoning effort level for extraction. |
+| `effort` {{< env "MICASA_EXTRACTION_LLM_EFFORT" >}} {{< replaces "extraction.llm.effort" >}} | string | (unset) | Reasoning effort level for extraction. |
 
 ### `[documents]` section
 
@@ -240,7 +240,7 @@ Document attachment limits and caching.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `max_file_size` {{< env "MICASA_DOCUMENTS_MAX_FILE_SIZE" >}} | string or integer | `"50 MiB"` | Maximum file size for document imports. Accepts unitized strings (`"50 MiB"`, `"1.5 GiB"`) or bare integers (bytes). Must be positive. |
-| `cache_ttl` {{< env "MICASA_DOCUMENTS_CACHE_TTL" >}} | string or integer | `"30d"` | Cache lifetime for extracted documents. Accepts `"30d"`, `"720h"`, or bare integers (seconds). Set to `"0s"` to disable eviction. Replaces the deprecated `MICASA_DOCUMENTS_CACHE_TTL_DAYS` env var. |
+| `cache_ttl` {{< env "MICASA_DOCUMENTS_CACHE_TTL" >}} {{< replaces "documents.cache_ttl" >}} | string or integer | `"30d"` | Cache lifetime for extracted documents. Accepts `"30d"`, `"720h"`, or bare integers (seconds). Set to `"0s"` to disable eviction. |
 | `file_picker_dir` {{< env "MICASA_DOCUMENTS_FILE_PICKER_DIR" >}} | string | (Downloads) | Starting directory for the file picker. Defaults to the platform's Downloads directory. |
 
 ### `[extraction]` section

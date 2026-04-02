@@ -1,0 +1,12 @@
+{{- $path := .Get 0 -}}
+{{- $deps := hugo.Data.deprecations -}}
+{{- range $deps -}}
+  {{- if eq (index . "new_path") $path -}}
+    {{- $oldPath := index . "old_path" -}}
+    {{- $parts := split $oldPath "." -}}
+    {{- $old := index $parts (sub (len $parts) 1) -}}
+    {{- $oldEnv := printf "MICASA_%s" (upper (replace $oldPath "." "_")) -}}
+    {{- $hint := index . "hint" -}}
+    <span class="replaces-hint">Replaces <code>{{ $old }}</code> (<code>{{ $oldEnv }}</code>).{{ with $hint }} {{ . }}.{{ end }}</span>
+  {{- end -}}
+{{- end -}}

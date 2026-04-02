@@ -123,7 +123,7 @@
               enable = true;
               name = "go-generate-check";
               entry = "${lib.getExe goGenerateCheck}";
-              files = "^internal/(data/(models|cmd/genmeta/main)|app/(coldefs|cmd/gencolumns/main))\\.go$";
+              files = "^(internal/(data/(models|cmd/genmeta/main)|app/(coldefs|cmd/gencolumns/main)|config/.*)\\.go|docs/data/deprecations\\.json)$";
               language = "system";
               pass_filenames = false;
               stages = [ "pre-push" ];
@@ -176,7 +176,8 @@
             export GOMODCACHE="''${GOMODCACHE:-$_tmpdir/gomodcache}"
             go generate ./internal/data/
             go generate ./internal/app/
-            git diff --exit-code internal/data/meta_generated.go internal/app/columns_generated.go || {
+            go generate ./internal/config/
+            git diff --exit-code internal/data/meta_generated.go internal/app/columns_generated.go docs/data/deprecations.json || {
               echo "go generate produced changes -- please re-stage the generated files" >&2
               exit 1
             }

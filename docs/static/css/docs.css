@@ -636,6 +636,13 @@ pre {
   white-space: nowrap;
 }
 
+.docs-main .replaces-hint {
+  display: block;
+  font-size: 0.75em;
+  color: var(--warm-gray);
+  margin-top: 0.15em;
+}
+
 .docs-main th {
   font-family: "DM Serif Display", "Georgia", serif;
   font-weight: 400;
