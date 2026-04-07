@@ -265,5 +265,39 @@ func ocrProgressLoop(
 			return true
 		}
 	}
+
+	// Drain any buffered rasterDone signals the main loop's select didn't
+	// pick. In the happy path every page sends rasterDone, but the random
+	// select may exit via pageDone before consuming them all. This prevents
+	// the last progress frame from showing cairo < tess.
+	drained := false
+drain:
+	for rasterized < total {
+		select {
+		case <-rasterDone:
+			rasterized++
+			drained = true
+		default:
+			break drain
+		}
+	}
+	if drained {
+		cairoState.Count = rasterized
+		if rasterized == total {
+			cairoState.Running = false
+		}
+		select {
+		case ch <- ExtractProgress{
+			Phase:        "extract",
+			Page:         completed,
+			Total:        total,
+			DocPages:     docPages,
+			AcquireTools: snapshot(),
+		}:
+		case <-ctx.Done():
+			return true
+		}
+	}
+
 	return false
 }

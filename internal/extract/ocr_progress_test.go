@@ -209,6 +209,53 @@ func TestOcrProgressLoop_NoDeadlockOnPhantomRasterSignals(t *testing.T) {
 	}
 }
 
+// TestOcrProgressLoop_CatchesUpCairoOnExit verifies that when the main
+// loop exits via pageDone before fully consuming rasterDone (which
+// happens non-deterministically because Go's select is uniformly random
+// when multiple cases are ready), the last progress message still shows
+// cairoState.Count == total. Without the post-loop drain, the last
+// message can show cairo < tess -- a visible one-frame stutter in the UI.
+func TestOcrProgressLoop_CatchesUpCairoOnExit(t *testing.T) {
+	t.Parallel()
+
+	const total = 20 // large enough that select virtually never fully drains rasterDone first
+	rasterDone := make(chan struct{}, total)
+	pageDone := make(chan struct{}, total)
+	ch := make(chan ExtractProgress, 4*total) // plenty of room
+
+	cairoState := &AcquireToolState{Tool: "pdftocairo", Running: true}
+	tessState := &AcquireToolState{Tool: "tesseract", Running: true}
+
+	// Pre-fill both channels -- simulates the happy path where every
+	// page rasterizes and OCRs successfully.
+	for range total {
+		rasterDone <- struct{}{}
+		pageDone <- struct{}{}
+	}
+
+	cancelled := ocrProgressLoop(
+		t.Context(), total, 0,
+		cairoState, tessState,
+		rasterDone, pageDone, ch,
+	)
+	require.False(t, cancelled, "loop should complete normally")
+
+	// Drain ch and find the last progress message.
+	close(ch)
+	var last ExtractProgress
+	for msg := range ch {
+		last = msg
+	}
+
+	// The last progress message must show cairo caught up to total.
+	require.NotEmpty(t, last.AcquireTools, "should have AcquireTools in last message")
+	cairoSnap := last.AcquireTools[0]
+	assert.Equal(t, total, cairoSnap.Count,
+		"last progress message should show cairo count == total (no stutter)")
+	assert.Equal(t, total, last.AcquireTools[1].Count,
+		"last progress message should show tess count == total")
+}
+
 // TestOcrProgressLoop_CancelledContext verifies that cancelling ctx
 // before any signals are sent makes the loop return cancelled=true
 // without blocking.
