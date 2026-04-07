@@ -512,6 +512,12 @@ func (m *Model) llmPingCmd(state *extractionLogState) tea.Cmd {
 }
 
 // llmExtractCmd starts LLM document analysis with streaming.
+//
+// The timeout context (and its cancel function) is created on the calling
+// goroutine -- not inside the returned closure -- so that ex.llmCancelFn
+// is installed synchronously. This prevents a data race between the
+// goroutine that runs the cmd and the main loop reading ex.llmCancelFn
+// in cancelLLMTimeout (e.g. via Ctrl+C → interruptExtraction).
 func (m *Model) llmExtractCmd(ctx context.Context, ex *extractionLogState) tea.Cmd {
 	client := m.extractionLLMClient()
 	if client == nil {
@@ -519,14 +525,16 @@ func (m *Model) llmExtractCmd(ctx context.Context, ex *extractionLogState) tea.C
 	}
 	schemaCtx := m.buildSchemaContext()
 	id := ex.ID
-	timeout := m.ex.extractionTimeout
+
+	llmCtx := ctx
+	if m.ex.extractionTimeout > 0 {
+		var cancel context.CancelFunc
+		// cancel is stored in ex.llmCancelFn and invoked by cancelLLMTimeout.
+		llmCtx, cancel = context.WithTimeout(ctx, m.ex.extractionTimeout)
+		ex.llmCancelFn = cancel
+	}
+
 	return func() tea.Msg {
-		llmCtx := ctx
-		if timeout > 0 {
-			var cancel context.CancelFunc
-			llmCtx, cancel = context.WithTimeout(ctx, timeout)
-			ex.llmCancelFn = cancel
-		}
 		messages := extract.BuildExtractionPrompt(extract.ExtractionPromptInput{
 			DocID:         ex.DocID,
 			Filename:      ex.Filename,

@@ -3400,3 +3400,49 @@ func TestMarshalOps_WithOps(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(b), `"action":"upsert"`)
 }
+
+// TestExtractionLLMCancelFn_SetSynchronouslyOnRerun verifies that triggering
+// an LLM rerun (via the 't' toggle key) installs ex.llmCancelFn synchronously
+// on the main goroutine, before the returned tea.Cmd is dispatched.
+//
+// Background: Bubble Tea spawns each tea.Cmd in its own goroutine
+// (`go func() { msg := cmd() ... }()`). If llmExtractCmd writes
+// ex.llmCancelFn from inside the closure, that write races with the main
+// loop reading ex.llmCancelFn in cancelLLMTimeout (e.g. when the user
+// presses Ctrl+C immediately after triggering the rerun). This test
+// guarantees the assignment happens on the main goroutine, eliminating
+// the race entirely.
+//
+// Before the fix: ex.llmCancelFn is nil immediately after the keypress
+// (assignment is deferred into the spawned goroutine), so this test fails.
+// After the fix: ex.llmCancelFn is non-nil immediately after the keypress.
+func TestExtractionLLMCancelFn_SetSynchronouslyOnRerun(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepText: stepDone,
+		stepLLM:  stepDone,
+	})
+	m.ex.extractionClient = testExtractionOllamaClient(t, "test-model")
+	m.ex.extractionTimeout = 5 * time.Second
+
+	ex := m.ex.extraction
+	ex.Done = true
+	ex.hasLLM = true
+	require.Nil(t, ex.llmCancelFn, "precondition: no cancel fn set yet")
+
+	// User presses 't' to toggle TSV mode, which reruns the LLM step.
+	// Capture the cmd so we can verify the cancel fn is set BEFORE the
+	// cmd's goroutine runs (i.e., synchronously inside m.Update).
+	_, cmd := m.Update(keyPress(keyT))
+	require.NotNil(t, cmd, "rerun should return a cmd")
+
+	// At this point the spawned goroutine has not run yet. The cancel fn
+	// must already be set, otherwise the main loop reading it (e.g. via
+	// cancelLLMTimeout from a Ctrl+C handler) races with the goroutine.
+	require.NotNil(t, ex.llmCancelFn,
+		"llmCancelFn must be set synchronously on the main goroutine "+
+			"to prevent a data race with cancelLLMTimeout")
+
+	// Clean up by cancelling the timeout context so the test doesn't leak.
+	ex.cancelLLMTimeout()
+}
