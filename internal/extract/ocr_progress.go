@@ -270,29 +270,43 @@ func ocrProgressLoop(
 	// pick. In the happy path every page sends rasterDone, but the random
 	// select may exit via pageDone before consuming them all. This prevents
 	// the last progress frame from showing cairo < tess.
-	n := drainBuffered(rasterDone)
-	rasterized += n
-	if n > 0 {
-		cairoState.Count = rasterized
-		if rasterized == total {
-			cairoState.Running = false
-		}
-		// Best-effort: extraction already completed successfully. If
-		// ctx is cancelled during this cosmetic send, drop the message
-		// rather than flipping a successful extraction into a cancelled one.
-		select {
-		case ch <- ExtractProgress{
-			Phase:        "extract",
-			Page:         completed,
-			Total:        total,
-			DocPages:     docPages,
-			AcquireTools: snapshot(),
-		}:
-		case <-ctx.Done():
-		}
-	}
+	catchUpRasterProgress(ctx, rasterDone, rasterized, total, completed, docPages,
+		cairoState, snapshot, ch)
 
 	return false
+}
+
+// catchUpRasterProgress drains any buffered rasterDone signals, updates
+// cairoState, and emits a best-effort progress message if any were
+// found. The send is best-effort: if ctx is cancelled, the message is
+// dropped silently to avoid flipping a completed extraction to cancelled.
+func catchUpRasterProgress(
+	ctx context.Context,
+	rasterDone <-chan struct{},
+	rasterized, total, completed, docPages int,
+	cairoState *AcquireToolState,
+	snapshot func() []AcquireToolState,
+	ch chan<- ExtractProgress,
+) {
+	n := drainBuffered(rasterDone)
+	if n == 0 {
+		return
+	}
+	rasterized += n
+	cairoState.Count = rasterized
+	if rasterized == total {
+		cairoState.Running = false
+	}
+	select {
+	case ch <- ExtractProgress{
+		Phase:        "extract",
+		Page:         completed,
+		Total:        total,
+		DocPages:     docPages,
+		AcquireTools: snapshot(),
+	}:
+	case <-ctx.Done():
+	}
 }
 
 // drainBuffered reads all immediately available values from a buffered
