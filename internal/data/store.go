@@ -526,18 +526,6 @@ func (s *Store) restoreWithParentChecks(
 	return s.restoreEntity(model, entity, id)
 }
 
-func (s *Store) LastDeletion(entity string) (DeletionRecord, error) {
-	var record DeletionRecord
-	err := s.db.
-		Where(ColEntity+" = ? AND "+ColRestoredAt+" IS NULL", entity).
-		Order(ColID + " desc").
-		First(&record).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return DeletionRecord{}, gorm.ErrRecordNotFound
-	}
-	return record, err
-}
-
 // countByFK groups rows in model by fkColumn and returns a count per FK value.
 // Only non-deleted rows are counted (soft-delete scope applies automatically).
 func (s *Store) countByFK(model any, fkColumn string, ids []string) (map[string]int, error) {

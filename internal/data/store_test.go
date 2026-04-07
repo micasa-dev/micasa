@@ -5,6 +5,7 @@ package data
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,22 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+// LastDeletion is a test-only helper that returns the most recent unrestored
+// deletion record for an entity name. Production code does not need to look
+// up deletions by entity (they are surfaced through the trash UI which lists
+// all of them).
+func (s *Store) LastDeletion(entity string) (DeletionRecord, error) {
+	var record DeletionRecord
+	err := s.db.
+		Where(ColEntity+" = ? AND "+ColRestoredAt+" IS NULL", entity).
+		Order(ColID + " desc").
+		First(&record).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return DeletionRecord{}, gorm.ErrRecordNotFound
+	}
+	return record, err
+}
 
 func TestSeedDefaults(t *testing.T) {
 	t.Parallel()
