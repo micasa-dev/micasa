@@ -2723,21 +2723,3 @@ func detectMIMEType(path string, fileData []byte) string {
 	}
 	return mime
 }
-
-func optionalFilePath() func(string) error {
-	return func(input string) error {
-		path := strings.TrimSpace(input)
-		if path == "" {
-			return nil
-		}
-		path = data.ExpandHome(path)
-		info, err := os.Stat(path)
-		if err != nil {
-			return fmt.Errorf("file not found: %s", path)
-		}
-		if info.IsDir() {
-			return errors.New("path is a directory, not a file")
-		}
-		return nil
-	}
-}

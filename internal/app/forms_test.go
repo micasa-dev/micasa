@@ -4,13 +4,39 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// optionalFilePath is a test-only helper used by TestOptionalFilePathExpandsTilde
+// to exercise data.ExpandHome inside a validator-shaped closure. Production
+// code uses huh.FilePicker, which performs its own path/dir checks, so this
+// helper is not wired up to any form.
+func optionalFilePath() func(string) error {
+	return func(input string) error {
+		path := strings.TrimSpace(input)
+		if path == "" {
+			return nil
+		}
+		path = data.ExpandHome(path)
+		info, err := os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("file not found: %s", path)
+		}
+		if info.IsDir() {
+			return errors.New("path is a directory, not a file")
+		}
+		return nil
+	}
+}
 
 func TestFormDataAsSuccess(t *testing.T) {
 	t.Parallel()
