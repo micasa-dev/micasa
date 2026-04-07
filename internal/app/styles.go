@@ -383,7 +383,6 @@ func (s *Styles) Base() lipgloss.Style             { return s.base }
 func (s *Styles) HeaderTitle() lipgloss.Style      { return s.accentPill }
 func (s *Styles) TabActive() lipgloss.Style        { return s.accentPill }
 func (s *Styles) ModeNormal() lipgloss.Style       { return s.accentPill }
-func (s *Styles) Drilldown() lipgloss.Style        { return s.accentPill }
 func (s *Styles) DashSection() lipgloss.Style      { return s.accentPill }
 func (s *Styles) HeaderBox() lipgloss.Style        { return s.headerBox }
 func (s *Styles) HeaderBadge() lipgloss.Style      { return s.headerBadge }
