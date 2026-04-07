@@ -63,10 +63,29 @@ func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 	// Overlay dismiss: if an overlay is active and the click is outside it,
 	// dismiss the overlay (same as pressing esc).
 	if m.hasActiveOverlay() {
-		if m.zones.Get(zoneOverlay).InBounds(msg) {
-			return m.handleOverlayClick(msg)
+		oz := m.zones.Get(zoneOverlay)
+		if !oz.IsZero() {
+			// Overlay zone bounds are known. Use them as truth.
+			if oz.InBounds(msg) {
+				ret, _ := m.handleOverlayClick(msg)
+				return ret, nil
+			}
+			m.dismissActiveOverlay()
+			return m, nil
 		}
-		m.dismissActiveOverlay()
+		// Overlay zone not yet in the manager -- the bubblezone async
+		// worker hasn't processed the latest scan. Try inner handlers:
+		// if one matches, the click was inside the overlay. Otherwise
+		// ignore the click entirely; without known bounds we cannot
+		// distinguish overlay padding from genuinely outside, so
+		// dismissing would misclassify padding/background clicks and
+		// overlays with no inner mouse zones (e.g. help). The worker
+		// will flush within the next frame and subsequent clicks will
+		// use the known-bounds path above.
+		ret, handled := m.handleOverlayClick(msg)
+		if handled {
+			return ret, nil
+		}
 		return m, nil
 	}
 
@@ -232,8 +251,11 @@ func (m *Model) handleHintClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleOverlayClick handles clicks within an active overlay.
-func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
+// handleOverlayClick handles clicks within an active overlay. The returned
+// bool indicates whether an inner zone handled the click (true) or nothing
+// matched (false). This distinction lets the caller decide whether to dismiss
+// the overlay when the outer overlay zone bounds are unknown.
+func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, bool) {
 	// Dashboard row clicks: single click selects, double-click jumps.
 	if m.dashboardVisible() {
 		for i := range m.dash.nav {
@@ -249,7 +271,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 					m.dash.cursor = i
 					m.lastDashClick = rowClickState{at: now, row: i}
 				}
-				return m, nil
+				return m, true
 			}
 		}
 	}
@@ -260,7 +282,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 			if m.zones.Get(fmt.Sprintf("%s%d", zoneSearchRow, i)).InBounds(msg) {
 				ds.Cursor = i
 				m.docSearchNavigate()
-				return m, nil
+				return m, true
 			}
 		}
 	}
@@ -275,7 +297,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 					tree.expanded[nodes[i].path] = !tree.expanded[nodes[i].path]
 					tree.clampCursor()
 				}
-				return m, nil
+				return m, true
 			}
 		}
 
@@ -283,7 +305,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 		for i := range tree.previewGroups {
 			if m.zones.Get(fmt.Sprintf("%s%d", zoneOpsTab, i)).InBounds(msg) {
 				tree.previewTab = i
-				return m, nil
+				return m, true
 			}
 		}
 	}
@@ -295,7 +317,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 				ex.previewTab = i
 				ex.previewRow = 0
 				ex.previewCol = 0
-				return m, nil
+				return m, true
 			}
 		}
 		if g := ex.activePreviewGroup(); g != nil {
@@ -303,19 +325,19 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 				if m.zones.Get(fmt.Sprintf("%s%d", zoneExtRow, i)).InBounds(msg) {
 					ex.previewRow = i
 					m.selectExtractionPreviewColumn(ex, g, msg)
-					return m, nil
+					return m, true
 				}
 			}
 			for i := range g.specs {
 				if m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, i)).InBounds(msg) {
 					ex.previewCol = i
-					return m, nil
+					return m, true
 				}
 			}
 		}
 	}
 
-	return m, nil
+	return m, false
 }
 
 // selectExtractionPreviewColumn updates the extraction preview column cursor
