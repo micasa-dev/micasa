@@ -242,7 +242,7 @@ func TestOcrProgressLoop_CatchesUpCairoOnExit(t *testing.T) {
 
 	// Deterministic assertion: the drain must have consumed every
 	// buffered rasterDone signal regardless of select ordering.
-	assert.Equal(t, 0, len(rasterDone),
+	assert.Empty(t, rasterDone,
 		"drain should have consumed all buffered rasterDone signals")
 	assert.Equal(t, total, cairoState.Count,
 		"cairoState pointer should reflect total after drain")
@@ -275,7 +275,7 @@ func TestDrainBuffered(t *testing.T) {
 		ch <- struct{}{}
 	}
 	assert.Equal(t, 7, drainBuffered(ch), "should drain all 7 buffered signals")
-	assert.Equal(t, 0, len(ch), "channel should be empty after drain")
+	assert.Empty(t, ch, "channel should be empty after drain")
 
 	// Draining again finds nothing.
 	assert.Equal(t, 0, drainBuffered(ch), "second drain should find nothing")
@@ -303,9 +303,9 @@ func TestCatchUpRasterProgress_DrainAndUpdate(t *testing.T) {
 
 	assert.Equal(t, 5, cairoState.Count, "should drain 3 signals and add to rasterized=2")
 	assert.False(t, cairoState.Running, "should mark not running at total")
-	assert.Equal(t, 0, len(rasterDone), "channel should be fully drained")
+	assert.Empty(t, rasterDone, "channel should be fully drained")
 
-	require.Equal(t, 1, len(ch), "should have emitted one progress message")
+	require.Len(t, ch, 1, "should have emitted one progress message")
 	msg := <-ch
 	assert.Equal(t, 5, msg.AcquireTools[0].Count)
 }
@@ -329,7 +329,7 @@ func TestCatchUpRasterProgress_NothingToDrain(t *testing.T) {
 
 	assert.Equal(t, 0, cairoState.Count, "count should be unchanged")
 	assert.True(t, cairoState.Running, "running should be unchanged")
-	assert.Equal(t, 0, len(ch), "no progress message should be sent")
+	assert.Empty(t, ch, "no progress message should be sent")
 }
 
 // TestCatchUpRasterProgress_LateCancelDoesNotBlock verifies that
