@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -575,17 +577,68 @@ func TestOpsTreeMouseClickTab(t *testing.T) {
 	require.NotNil(t, m.opsTree)
 	require.GreaterOrEqual(t, len(m.opsTree.previewGroups), 2)
 
-	// Render twice to populate zones (mark pass + scan pass).
+	// Render to populate zones, including the outer overlay wrapper. The
+	// overlay zone must be checked first so the click dispatcher can
+	// recognize the click as inside the overlay.
 	m.View()
-	m.View()
+	if oz := m.zones.Get(zoneOverlay); oz == nil || oz.IsZero() {
+		t.Skip("overlay zone not rendered")
+	}
+	z := requireZone(t, m, fmt.Sprintf("%s%d", zoneOpsTab, 1))
 
 	// Click on second tab.
-	z := m.zones.Get(fmt.Sprintf("%s%d", zoneOpsTab, 1))
-	if z == nil || z.IsZero() {
-		t.Skip("ops tab zone not rendered (terminal too small)")
-	}
 	sendClick(m, z.StartX, z.StartY)
 
+	require.NotNil(t, m.opsTree, "click on tab inside overlay should not dismiss the overlay")
+	assert.Equal(t, 1, m.opsTree.previewTab)
+}
+
+// TestOpsTreeMouseClickTabZoneRace deterministically reproduces a flake seen
+// on slow CI runners (e.g. windows-11-arm) where the click dispatcher would
+// dismiss the ops tree overlay because the outer overlay zone hadn't been
+// processed by the bubblezone async worker yet, even though the inner tab
+// zone had. The scanner emits inner zones first (they close first) and the
+// overlay zone last, so a partial drain can leave the inner zone visible
+// while the overlay zone is still nil.
+//
+// We simulate this exact partial-drain state by waiting for both zones to
+// be populated, then explicitly clearing the overlay zone before sending
+// the click. Without the fix, handleLeftClick treats the missing overlay
+// zone as "click outside overlay" and dismisses the overlay, niling out
+// m.opsTree and panicking when the test reads previewTab.
+func TestOpsTreeMouseClickTabZoneRace(t *testing.T) {
+	t.Parallel()
+	m := newMultiTableOpsTreeModel(t)
+
+	tab := m.effectiveTab()
+	tab.ColCursor = int(documentColOps)
+	sendKey(m, "enter")
+	require.NotNil(t, m.opsTree)
+	require.GreaterOrEqual(t, len(m.opsTree.previewGroups), 2)
+
+	// Render once to enqueue zone updates on the async worker.
+	m.View()
+
+	// Drain the worker: poll until both the inner tab zone and the outer
+	// overlay zone are populated. Because the scanner emits the overlay
+	// last, waiting on it guarantees all inner zones are processed too.
+	tabID := fmt.Sprintf("%s%d", zoneOpsTab, 1)
+	var z *zone.ZoneInfo
+	require.Eventually(t, func() bool {
+		z = m.zones.Get(tabID)
+		oz := m.zones.Get(zoneOverlay)
+		return z != nil && !z.IsZero() && oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "zones never populated")
+
+	// Recreate the partial-drain race: inner zone present, overlay missing.
+	m.zones.Clear(zoneOverlay)
+	require.Nil(t, m.zones.Get(zoneOverlay))
+	require.NotNil(t, m.zones.Get(tabID))
+
+	sendClick(m, z.StartX, z.StartY)
+
+	require.NotNil(t, m.opsTree,
+		"click inside overlay must not dismiss it when overlay zone is unflushed")
 	assert.Equal(t, 1, m.opsTree.previewTab)
 }
 
