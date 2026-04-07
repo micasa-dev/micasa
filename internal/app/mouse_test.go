@@ -192,6 +192,37 @@ func TestOverlayDismissOnOutsideClick(t *testing.T) {
 	assert.Nil(t, m.helpViewport, "clicking outside overlay should dismiss help")
 }
 
+// TestOverlayDismissIgnoredDuringZoneRace verifies that clicking while an
+// overlay is active but the outer overlay zone hasn't flushed does NOT
+// dismiss the overlay. The help overlay has no inner mouse zones, so
+// handleOverlayClick returns handled=false. Without the fix the fallback
+// would dismiss, misclassifying the click as "outside".
+func TestOverlayDismissIgnoredDuringZoneRace(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+
+	sendKey(m, "?")
+	require.NotNil(t, m.helpViewport, "help viewport should be open")
+
+	// Render and drain the zone worker so the overlay zone is known.
+	m.View()
+	require.Eventually(t, func() bool {
+		oz := m.zones.Get(zoneOverlay)
+		return oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "overlay zone never populated")
+
+	// Simulate the race: overlay zone cleared, as if the worker hasn't
+	// processed the latest scan yet.
+	m.zones.Clear(zoneOverlay)
+	require.Nil(t, m.zones.Get(zoneOverlay))
+
+	// Click at (0,0) — cannot determine if inside or outside without
+	// overlay bounds. The click must be ignored, not dismiss the overlay.
+	sendClick(m, 0, 0)
+	assert.NotNil(t, m.helpViewport,
+		"help must not be dismissed when overlay zone bounds are unknown")
+}
+
 // TestHintClickOpensHelp verifies that clicking the help hint opens
 // the help overlay.
 func TestHintClickOpensHelp(t *testing.T) {
@@ -664,6 +695,33 @@ func TestDashboardDismissOnOutsideClick(t *testing.T) {
 
 	sendClick(m, 0, 0)
 	assert.False(t, m.dashboardVisible(), "clicking outside dashboard should dismiss it")
+}
+
+// TestDashboardDismissIgnoredDuringZoneRace verifies that clicking while
+// the dashboard overlay is active but the outer overlay zone hasn't flushed
+// does NOT dismiss the dashboard.
+func TestDashboardDismissIgnoredDuringZoneRace(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	sendKey(m, "D")
+	if !m.dashboardVisible() {
+		t.Skip("dashboard has no data to display")
+	}
+
+	m.View()
+	require.Eventually(t, func() bool {
+		oz := m.zones.Get(zoneOverlay)
+		return oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "overlay zone never populated")
+
+	// Simulate the race: clear overlay zone.
+	m.zones.Clear(zoneOverlay)
+	require.Nil(t, m.zones.Get(zoneOverlay))
+
+	sendClick(m, 0, 0)
+	assert.True(t, m.dashboardVisible(),
+		"dashboard must not be dismissed when overlay zone bounds are unknown")
 }
 
 // newExploreModel creates a model with an extraction overlay in explore mode
