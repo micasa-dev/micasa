@@ -240,6 +240,13 @@ func TestOcrProgressLoop_CatchesUpCairoOnExit(t *testing.T) {
 	)
 	require.False(t, cancelled, "loop should complete normally")
 
+	// Deterministic assertion: the drain must have consumed every
+	// buffered rasterDone signal regardless of select ordering.
+	assert.Equal(t, 0, len(rasterDone),
+		"drain should have consumed all buffered rasterDone signals")
+	assert.Equal(t, total, cairoState.Count,
+		"cairoState pointer should reflect total after drain")
+
 	// Drain ch and find the last progress message.
 	close(ch)
 	var last ExtractProgress

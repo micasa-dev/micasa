@@ -286,6 +286,9 @@ drain:
 		if rasterized == total {
 			cairoState.Running = false
 		}
+		// Best-effort: extraction already completed successfully. If
+		// ctx is cancelled during this cosmetic send, drop the message
+		// rather than flipping a successful extraction into a cancelled one.
 		select {
 		case ch <- ExtractProgress{
 			Phase:        "extract",
@@ -295,7 +298,6 @@ drain:
 			AcquireTools: snapshot(),
 		}:
 		case <-ctx.Done():
-			return true
 		}
 	}
 
