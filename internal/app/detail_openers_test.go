@@ -20,7 +20,10 @@ func (m *Model) openServiceLogDetail(maintID string, maintName string) error {
 	return m.openDetailFromDef(serviceLogDef, maintID, maintName)
 }
 
-func (m *Model) openApplianceMaintenanceDetail(applianceID string, applianceName string) error {
+func (m *Model) openApplianceMaintenanceDetail(
+	applianceID string, //nolint:unparam // signature mirrors the other openXxx helpers; tests always pass the same fixture ID
+	applianceName string, //nolint:unparam // signature mirrors the other openXxx helpers; tests always pass the same fixture name
+) error {
 	return m.openDetailFromDef(applianceMaintenanceDef, applianceID, applianceName)
 }
 
