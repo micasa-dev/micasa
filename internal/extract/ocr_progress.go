@@ -171,6 +171,58 @@ func ocrPDFWithProgress(
 		close(done)
 	}()
 
+	cancelled := ocrProgressLoop(
+		ctx, total, docPages,
+		cairoState, tessState,
+		rasterDone, pageDone, ch,
+	)
+	<-done
+	if cancelled {
+		ch <- ExtractProgress{Err: ctx.Err(), Done: true}
+		return
+	}
+
+	cairoState.Running = false
+	cairoState.Count = total
+	tessState.Running = false
+	tessState.Count = total
+
+	text, tsv := collectOCRResults(ocrResults)
+	ch <- ExtractProgress{
+		Tool:         "tesseract",
+		Desc:         "Text recognized from rasterized page images.",
+		Done:         true,
+		Total:        total,
+		DocPages:     docPages,
+		Text:         text,
+		Data:         tsv,
+		AcquireTools: snapshot(),
+	}
+}
+
+// ocrProgressLoop consumes rasterDone and pageDone events from the
+// per-page OCR producer (ocrPDFPages) and forwards per-stage progress
+// messages to ch. It returns false when completed reaches total
+// normally, true when ctx is cancelled. The caller is responsible for
+// waiting on the producer goroutine before draining the result and for
+// emitting the final cancellation message when this returns true.
+//
+// We rely on pageDone alone for completion tracking because ocrPage
+// can return without invoking its onRasterDone callback (e.g. when
+// cairoCmd.Start() fails before the subprocess is launched), in which
+// case rasterDone is never signalled for that page even though
+// ocrPDFPages still signals pageDone. Counting rasterDone for
+// completion would deadlock the loop in that scenario.
+func ocrProgressLoop(
+	ctx context.Context,
+	total, docPages int,
+	cairoState, tessState *AcquireToolState,
+	rasterDone, pageDone <-chan struct{},
+	ch chan<- ExtractProgress,
+) (cancelled bool) {
+	snapshot := func() []AcquireToolState {
+		return []AcquireToolState{*cairoState, *tessState}
+	}
 	rasterized := 0
 	completed := 0
 	for completed < total {
@@ -190,9 +242,7 @@ func ocrPDFWithProgress(
 				AcquireTools: snapshot(),
 			}:
 			case <-ctx.Done():
-				<-done
-				ch <- ExtractProgress{Err: ctx.Err(), Done: true}
-				return
+				return true
 			}
 		case <-pageDone:
 			completed++
@@ -209,38 +259,11 @@ func ocrPDFWithProgress(
 				AcquireTools: snapshot(),
 			}:
 			case <-ctx.Done():
-				<-done
-				ch <- ExtractProgress{Err: ctx.Err(), Done: true}
-				return
+				return true
 			}
 		case <-ctx.Done():
-			<-done
-			ch <- ExtractProgress{Err: ctx.Err(), Done: true}
-			return
+			return true
 		}
 	}
-	// Drain any remaining rasterDone signals (all pages are OCR'd,
-	// so all rasterizations must have completed too).
-	for rasterized < total {
-		<-rasterDone
-		rasterized++
-	}
-	<-done
-
-	cairoState.Running = false
-	cairoState.Count = total
-	tessState.Running = false
-	tessState.Count = total
-
-	text, tsv := collectOCRResults(ocrResults)
-	ch <- ExtractProgress{
-		Tool:         "tesseract",
-		Desc:         "Text recognized from rasterized page images.",
-		Done:         true,
-		Total:        total,
-		DocPages:     docPages,
-		Text:         text,
-		Data:         tsv,
-		AcquireTools: snapshot(),
-	}
+	return false
 }

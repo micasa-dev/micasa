@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -156,4 +157,79 @@ func TestExtractWithProgress_PDF_Integration(t *testing.T) {
 	assert.True(t, hasAcquireTools, "should see AcquireTools progress messages")
 	assert.Contains(t, phases, "extract")
 	assert.NotEmpty(t, finalText, "should extract text from the scanned PDF")
+}
+
+// TestOcrProgressLoop_NoDeadlockOnPhantomRasterSignals verifies that
+// the consumer loop completes when pageDone is signalled for every
+// page but rasterDone is never signalled. This is the exact pattern
+// ocrPDFPages produces when every per-page goroutine hits ocrPage's
+// early-return path before invoking onRasterDone -- e.g. when
+// cairoCmd.Start() fails because pdftocairo is missing from PATH or
+// the context is cancelled before the subprocess is launched.
+//
+// Drives ocrProgressLoop directly with synthetic channels so the test
+// has zero subprocess dependencies.
+func TestOcrProgressLoop_NoDeadlockOnPhantomRasterSignals(t *testing.T) {
+	t.Parallel()
+
+	const total = 3
+	rasterDone := make(chan struct{}, total)
+	pageDone := make(chan struct{}, total)
+	// Buffer ch so the loop's send-or-cancel selects never block;
+	// the test does not need to drain progress messages.
+	ch := make(chan ExtractProgress, 2*total)
+
+	cairoState := &AcquireToolState{Tool: "pdftocairo", Running: true}
+	tessState := &AcquireToolState{Tool: "tesseract", Running: true}
+
+	// Simulate ocrPDFPages with a producer that fails to call
+	// onRasterDone (cairoCmd.Start() failure path) but still signals
+	// pageDone for every page.
+	for range total {
+		pageDone <- struct{}{}
+	}
+
+	result := make(chan bool, 1)
+	go func() {
+		result <- ocrProgressLoop(
+			t.Context(), total, 0,
+			cairoState, tessState,
+			rasterDone, pageDone, ch,
+		)
+	}()
+
+	select {
+	case cancelled := <-result:
+		assert.False(t, cancelled, "loop should complete normally")
+		assert.Equal(t, total, tessState.Count,
+			"tesseract count should reach total even without rasterDone signals")
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "ocrProgressLoop deadlocked waiting for "+
+			"rasterDone signals that ocrPDFPages never sent")
+	}
+}
+
+// TestOcrProgressLoop_CancelledContext verifies that cancelling ctx
+// before any signals are sent makes the loop return cancelled=true
+// without blocking.
+func TestOcrProgressLoop_CancelledContext(t *testing.T) {
+	t.Parallel()
+
+	const total = 3
+	rasterDone := make(chan struct{}, total)
+	pageDone := make(chan struct{}, total)
+	ch := make(chan ExtractProgress, 2*total)
+
+	cairoState := &AcquireToolState{Tool: "pdftocairo", Running: true}
+	tessState := &AcquireToolState{Tool: "tesseract", Running: true}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	cancelled := ocrProgressLoop(
+		ctx, total, 0,
+		cairoState, tessState,
+		rasterDone, pageDone, ch,
+	)
+	assert.True(t, cancelled)
 }
