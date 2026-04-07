@@ -257,37 +257,6 @@ func (m *Model) openDetailFromDef(def detailDef, parentID string, parentName str
 	})
 }
 
-func (m *Model) openServiceLogDetail(maintID string, maintName string) error {
-	return m.openDetailFromDef(serviceLogDef, maintID, maintName)
-}
-
-func (m *Model) openApplianceMaintenanceDetail(
-	applianceID string, //nolint:unparam // varies at runtime; tests use a fixed ID
-	applianceName string, //nolint:unparam // varies at runtime; tests use a fixed name
-) error {
-	return m.openDetailFromDef(applianceMaintenanceDef, applianceID, applianceName)
-}
-
-func (m *Model) openVendorQuoteDetail(vendorID string, vendorName string) error {
-	return m.openDetailFromDef(vendorQuoteDef, vendorID, vendorName)
-}
-
-func (m *Model) openVendorJobsDetail(vendorID string, vendorName string) error {
-	return m.openDetailFromDef(vendorJobsDef, vendorID, vendorName)
-}
-
-func (m *Model) openProjectQuoteDetail(projectID string, projectTitle string) error {
-	return m.openDetailFromDef(projectQuoteDef, projectID, projectTitle)
-}
-
-func (m *Model) openProjectDocumentDetail(projectID string, projectTitle string) error {
-	return m.openDetailFromDef(projectDocumentDef, projectID, projectTitle)
-}
-
-func (m *Model) openApplianceDocumentDetail(applianceID string, applianceName string) error {
-	return m.openDetailFromDef(applianceDocumentDef, applianceID, applianceName)
-}
-
 // detailRoute maps a (TabKind, colTitle) pair to a detailDef for dispatch.
 // When formKind is set (non-zero), the route only matches if the tab handler's
 // FormKind equals it. This disambiguates nested detail views that share a
