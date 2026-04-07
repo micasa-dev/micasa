@@ -95,14 +95,6 @@ func ParseOptionalInt(input string) (int, error) {
 	return value, nil
 }
 
-func ParseRequiredInt(input string) (int, error) {
-	value, err := ParseOptionalInt(input)
-	if err != nil || strings.TrimSpace(input) == "" {
-		return 0, ErrInvalidInt
-	}
-	return value, nil
-}
-
 // intervalRe matches duration strings like "1y", "6m", "2y 6m", "1y6m".
 var intervalRe = regexp.MustCompile(
 	`(?i)^\s*(?:(\d+)\s*y)?\s*(?:(\d+)\s*m)?\s*$`,
@@ -168,14 +160,6 @@ func ParseOptionalFloat(input string) (float64, error) {
 	}
 	value, err := strconv.ParseFloat(trimmed, 64)
 	if err != nil || value < 0 {
-		return 0, ErrInvalidFloat
-	}
-	return value, nil
-}
-
-func ParseRequiredFloat(input string) (float64, error) {
-	value, err := ParseOptionalFloat(input)
-	if err != nil || strings.TrimSpace(input) == "" {
 		return 0, ErrInvalidFloat
 	}
 	return value, nil

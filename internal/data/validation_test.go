@@ -4,12 +4,33 @@
 package data
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ParseRequiredInt is a test-only helper that wraps ParseOptionalInt and
+// rejects empty input. Production code paths supply defaults explicitly.
+func ParseRequiredInt(input string) (int, error) {
+	value, err := ParseOptionalInt(input)
+	if err != nil || strings.TrimSpace(input) == "" {
+		return 0, ErrInvalidInt
+	}
+	return value, nil
+}
+
+// ParseRequiredFloat is a test-only helper that wraps ParseOptionalFloat and
+// rejects empty input. Production code paths supply defaults explicitly.
+func ParseRequiredFloat(input string) (float64, error) {
+	value, err := ParseOptionalFloat(input)
+	if err != nil || strings.TrimSpace(input) == "" {
+		return 0, ErrInvalidFloat
+	}
+	return value, nil
+}
 
 func TestParseOptionalDate(t *testing.T) {
 	t.Parallel()
