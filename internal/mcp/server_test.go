@@ -43,7 +43,7 @@ func callTool(
 	t.Helper()
 
 	testSrv := mcptest.NewUnstartedServer(t)
-	for _, tool := range srv.Tools() {
+	for _, tool := range mcp.Tools(srv) {
 		testSrv.AddTools(tool)
 	}
 	err := testSrv.Start(context.Background())
@@ -64,7 +64,7 @@ func TestListTools(t *testing.T) {
 	srv, _ := newTestServer(t)
 
 	testSrv := mcptest.NewUnstartedServer(t)
-	for _, tool := range srv.Tools() {
+	for _, tool := range mcp.Tools(srv) {
 		testSrv.AddTools(tool)
 	}
 	err := testSrv.Start(context.Background())

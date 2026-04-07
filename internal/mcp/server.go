@@ -30,29 +30,12 @@ func NewServer(store *data.Store) *Server {
 	return s
 }
 
-// Tools returns all registered server tools for use with mcptest.
-func (s *Server) Tools() []mcpserver.ServerTool {
-	listed := s.mcpSrv.ListTools()
-	tools := make([]mcpserver.ServerTool, 0, len(listed))
-	for _, t := range listed {
-		tools = append(tools, *t)
-	}
-	return tools
-}
-
-// Serve runs the MCP server over the given reader/writer pair.
+// Serve runs the MCP server over the given reader/writer pair until ctx
+// is cancelled or the underlying transport returns an error.
 func (s *Server) Serve(ctx context.Context, stdin io.Reader, stdout io.Writer) error {
 	stdio := mcpserver.NewStdioServer(s.mcpSrv)
 	if err := stdio.Listen(ctx, stdin, stdout); err != nil {
 		return fmt.Errorf("serve mcp: %w", err)
-	}
-	return nil
-}
-
-// ServeStdio runs the MCP server over os.Stdin/os.Stdout.
-func (s *Server) ServeStdio() error {
-	if err := mcpserver.ServeStdio(s.mcpSrv); err != nil {
-		return fmt.Errorf("serve stdio: %w", err)
 	}
 	return nil
 }

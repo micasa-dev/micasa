@@ -4,8 +4,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -43,6 +46,9 @@ func resolveMCPDBPath(args []string) (string, error) {
 }
 
 func runMCP(dbPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	store, err := data.Open(dbPath)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
@@ -65,5 +71,5 @@ func runMCP(dbPath string) error {
 	}
 
 	srv := mcp.NewServer(store)
-	return srv.ServeStdio()
+	return srv.Serve(ctx, os.Stdin, os.Stdout)
 }
