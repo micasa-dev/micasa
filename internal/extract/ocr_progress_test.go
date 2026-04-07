@@ -332,10 +332,12 @@ func TestCatchUpRasterProgress_NothingToDrain(t *testing.T) {
 	assert.Equal(t, 0, len(ch), "no progress message should be sent")
 }
 
-// TestCatchUpRasterProgress_LateCancelDoesNotBlock verifies that a
-// cancelled ctx makes the catch-up send fall through without blocking,
-// and that cairoState is still updated even though the message was
-// dropped.
+// TestCatchUpRasterProgress_LateCancelDoesNotBlock verifies that
+// cancelling ctx while the catch-up send is already blocked on the
+// unbuffered ch makes it fall through without deadlocking. The
+// snapshot callback is used as a synchronization point: Go evaluates
+// select case values before entering the select, so when snapshot is
+// called the goroutine is about to block on the send.
 func TestCatchUpRasterProgress_LateCancelDoesNotBlock(t *testing.T) {
 	t.Parallel()
 
@@ -346,16 +348,37 @@ func TestCatchUpRasterProgress_LateCancelDoesNotBlock(t *testing.T) {
 	ch := make(chan ExtractProgress) // unbuffered, nobody receiving
 	cairoState := &AcquireToolState{Tool: "pdftocairo", Running: true}
 	tessState := &AcquireToolState{Tool: "tesseract", Running: false, Count: 3}
+
+	snapshotReady := make(chan struct{}, 1)
 	snapshot := func() []AcquireToolState {
+		select {
+		case snapshotReady <- struct{}{}:
+		default:
+		}
 		return []AcquireToolState{*cairoState, *tessState}
 	}
 
 	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		catchUpRasterProgress(ctx, rasterDone, 0, 3, 3, 0,
+			cairoState, snapshot, ch)
+		close(done)
+	}()
+
+	// Wait until the goroutine has built the progress message (snapshot
+	// called) and is about to enter the select with a live context.
+	<-snapshotReady
 	cancel()
 
-	// Must return without blocking even though ch has no receiver.
-	catchUpRasterProgress(ctx, rasterDone, 0, 3, 3, 0,
-		cairoState, snapshot, ch)
+	select {
+	case <-done:
+		// Returned without blocking.
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "catchUpRasterProgress blocked after ctx cancel")
+	}
 
 	assert.Equal(t, 3, cairoState.Count, "state should be updated even if send was dropped")
 	assert.False(t, cairoState.Running)
