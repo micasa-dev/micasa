@@ -577,14 +577,17 @@ func TestOpsTreeMouseClickTab(t *testing.T) {
 	require.NotNil(t, m.opsTree)
 	require.GreaterOrEqual(t, len(m.opsTree.previewGroups), 2)
 
-	// Render to populate zones, including the outer overlay wrapper. The
-	// overlay zone must be checked first so the click dispatcher can
-	// recognize the click as inside the overlay.
+	// Render to populate zones. Wait for the async zone worker to flush
+	// both the inner tab zone and the outer overlay zone so the click
+	// dispatcher can recognize the click as inside the overlay.
 	m.View()
-	if oz := m.zones.Get(zoneOverlay); oz == nil || oz.IsZero() {
-		t.Skip("overlay zone not rendered")
-	}
-	z := requireZone(t, m, fmt.Sprintf("%s%d", zoneOpsTab, 1))
+	tabID := fmt.Sprintf("%s%d", zoneOpsTab, 1)
+	var z *zone.ZoneInfo
+	require.Eventually(t, func() bool {
+		z = m.zones.Get(tabID)
+		oz := m.zones.Get(zoneOverlay)
+		return z != nil && !z.IsZero() && oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "tab and overlay zones never populated")
 
 	// Click on second tab.
 	sendClick(m, z.StartX, z.StartY)
