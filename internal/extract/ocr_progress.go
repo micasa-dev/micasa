@@ -270,18 +270,9 @@ func ocrProgressLoop(
 	// pick. In the happy path every page sends rasterDone, but the random
 	// select may exit via pageDone before consuming them all. This prevents
 	// the last progress frame from showing cairo < tess.
-	drained := false
-drain:
-	for rasterized < total {
-		select {
-		case <-rasterDone:
-			rasterized++
-			drained = true
-		default:
-			break drain
-		}
-	}
-	if drained {
+	n := drainBuffered(rasterDone)
+	rasterized += n
+	if n > 0 {
 		cairoState.Count = rasterized
 		if rasterized == total {
 			cairoState.Running = false
@@ -302,4 +293,18 @@ drain:
 	}
 
 	return false
+}
+
+// drainBuffered reads all immediately available values from a buffered
+// channel without blocking. Returns the number of values consumed.
+func drainBuffered(ch <-chan struct{}) int {
+	n := 0
+	for {
+		select {
+		case <-ch:
+			n++
+		default:
+			return n
+		}
+	}
 }

@@ -263,6 +263,78 @@ func TestOcrProgressLoop_CatchesUpCairoOnExit(t *testing.T) {
 		"last progress message should show tess count == total")
 }
 
+// TestDrainBuffered verifies the drain helper deterministically:
+// it reads exactly the signals present in the buffer and returns.
+func TestDrainBuffered(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan struct{}, 10)
+	assert.Equal(t, 0, drainBuffered(ch), "empty channel should drain 0")
+
+	for range 7 {
+		ch <- struct{}{}
+	}
+	assert.Equal(t, 7, drainBuffered(ch), "should drain all 7 buffered signals")
+	assert.Equal(t, 0, len(ch), "channel should be empty after drain")
+
+	// Draining again finds nothing.
+	assert.Equal(t, 0, drainBuffered(ch), "second drain should find nothing")
+}
+
+// TestOcrProgressLoop_LateCancelDuringCatchUp verifies that cancelling
+// ctx after the main loop completes but while the cosmetic catch-up
+// send is pending does NOT flip the result to cancelled. Uses an
+// unbuffered ch so the test can synchronize with the main loop's sends
+// and then withhold a receiver for the catch-up send.
+func TestOcrProgressLoop_LateCancelDuringCatchUp(t *testing.T) {
+	t.Parallel()
+
+	const total = 10
+	rasterDone := make(chan struct{}, total)
+	pageDone := make(chan struct{}, total)
+	ch := make(chan ExtractProgress) // unbuffered: sends block until received
+
+	cairoState := &AcquireToolState{Tool: "pdftocairo", Running: true}
+	tessState := &AcquireToolState{Tool: "tesseract", Running: true}
+
+	for range total {
+		rasterDone <- struct{}{}
+		pageDone <- struct{}{}
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	result := make(chan bool, 1)
+	go func() {
+		result <- ocrProgressLoop(ctx, total, 0,
+			cairoState, tessState, rasterDone, pageDone, ch)
+	}()
+
+	// Drain main loop messages one by one. The loop sends one message
+	// per select iteration. When Page == total, the pageDone case just
+	// incremented completed to total and the loop is about to exit.
+	for msg := range ch {
+		if msg.Page == total {
+			break
+		}
+	}
+
+	// The main loop has exited and the non-blocking drain has run.
+	// If the drain found pending rasterDone signals, the catch-up send
+	// is now blocking on ch (unbuffered, no receiver). Cancel ctx so
+	// the catch-up falls through to ctx.Done without sending.
+	cancel()
+
+	select {
+	case cancelled := <-result:
+		assert.False(t, cancelled,
+			"late ctx cancel during catch-up should not flip to cancelled")
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "ocrProgressLoop blocked after late cancel")
+	}
+}
+
 // TestOcrProgressLoop_CancelledContext verifies that cancelling ctx
 // before any signals are sent makes the loop return cancelled=true
 // without blocking.
