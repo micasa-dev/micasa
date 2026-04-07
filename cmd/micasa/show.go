@@ -186,7 +186,7 @@ appliances, incidents, documents, all.`,
 	cmd.PersistentFlags().BoolVar(&deletedFlag, "deleted", false, "Include soft-deleted rows")
 
 	cmd.AddCommand(
-		newShowHouseCmd(&jsonFlag, &deletedFlag),
+		newShowHouseCmd(&jsonFlag),
 		newShowEntityCmd("projects", "Show projects", &jsonFlag, &deletedFlag, showProjects),
 		newShowEntityCmd("vendors", "Show vendors", &jsonFlag, &deletedFlag, showVendors),
 		newShowEntityCmd("appliances", "Show appliances", &jsonFlag, &deletedFlag, showAppliances),
@@ -249,7 +249,7 @@ func newShowEntityCmd(
 	}
 }
 
-func newShowHouseCmd(jsonFlag, deletedFlag *bool) *cobra.Command {
+func newShowHouseCmd(jsonFlag *bool) *cobra.Command {
 	return &cobra.Command{
 		Use:           "house [database-path]",
 		Short:         "Show house profile",
@@ -262,47 +262,8 @@ func newShowHouseCmd(jsonFlag, deletedFlag *bool) *cobra.Command {
 				return err
 			}
 			defer func() { _ = store.Close() }()
-			return runShow(cmd.OutOrStdout(), store, "house", *jsonFlag, *deletedFlag)
+			return showHouse(cmd.OutOrStdout(), store, *jsonFlag)
 		},
-	}
-}
-
-// validEntities lists entity names for error messages.
-var validEntities = []string{
-	"house", "projects", "project-types", "quotes", "vendors",
-	"maintenance", "maintenance-categories", "service-log",
-	"appliances", "incidents", "documents", "all",
-}
-
-func runShow(w io.Writer, store *data.Store, entity string, asJSON, includeDeleted bool) error {
-	switch entity {
-	case "house":
-		return showHouse(w, store, asJSON)
-	case "projects":
-		return showProjects(w, store, asJSON, includeDeleted)
-	case "vendors":
-		return showVendors(w, store, asJSON, includeDeleted)
-	case "appliances":
-		return showAppliances(w, store, asJSON, includeDeleted)
-	case "incidents":
-		return showIncidents(w, store, asJSON, includeDeleted)
-	case "quotes":
-		return showQuotes(w, store, asJSON, includeDeleted)
-	case "maintenance":
-		return showMaintenance(w, store, asJSON, includeDeleted)
-	case "service-log":
-		return showServiceLog(w, store, asJSON, includeDeleted)
-	case "documents":
-		return showDocuments(w, store, asJSON, includeDeleted)
-	case "project-types":
-		return showProjectTypes(w, store, asJSON, includeDeleted)
-	case "maintenance-categories":
-		return showMaintenanceCategories(w, store, asJSON, includeDeleted)
-	case "all":
-		return showAll(w, store, asJSON, includeDeleted)
-	default:
-		return fmt.Errorf("unknown entity %q; valid entities: %s",
-			entity, strings.Join(validEntities, ", "))
 	}
 }
 

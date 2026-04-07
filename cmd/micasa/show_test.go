@@ -6,6 +6,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +16,57 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// validEntities lists every entity name accepted by runShow. Production
+// code wires up one cobra subcommand per entity (see newShowCmd in
+// show.go), so the names are statically known and never need a
+// runtime list. Tests use this slice to drive table-driven coverage of
+// every dispatch case.
+var validEntities = []string{
+	"house", "projects", "project-types", "quotes", "vendors",
+	"maintenance", "maintenance-categories", "service-log",
+	"appliances", "incidents", "documents", "all",
+}
+
+// runShow is a test-only convenience that dispatches a single entity
+// name to the corresponding show* function. Production code reaches
+// the show* functions through the per-entity cobra subcommands built
+// in newShowCmd, so this dispatcher is never invoked outside tests.
+//
+// Keeping it here lets the show_test.go suite drive every entity
+// through one shared call site instead of duplicating the
+// open-store-and-render boilerplate twelve times.
+func runShow(w io.Writer, store *data.Store, entity string, asJSON, includeDeleted bool) error {
+	switch entity {
+	case "house":
+		return showHouse(w, store, asJSON)
+	case "projects":
+		return showProjects(w, store, asJSON, includeDeleted)
+	case "vendors":
+		return showVendors(w, store, asJSON, includeDeleted)
+	case "appliances":
+		return showAppliances(w, store, asJSON, includeDeleted)
+	case "incidents":
+		return showIncidents(w, store, asJSON, includeDeleted)
+	case "quotes":
+		return showQuotes(w, store, asJSON, includeDeleted)
+	case "maintenance":
+		return showMaintenance(w, store, asJSON, includeDeleted)
+	case "service-log":
+		return showServiceLog(w, store, asJSON, includeDeleted)
+	case "documents":
+		return showDocuments(w, store, asJSON, includeDeleted)
+	case "project-types":
+		return showProjectTypes(w, store, asJSON, includeDeleted)
+	case "maintenance-categories":
+		return showMaintenanceCategories(w, store, asJSON, includeDeleted)
+	case "all":
+		return showAll(w, store, asJSON, includeDeleted)
+	default:
+		return fmt.Errorf("unknown entity %q; valid entities: %s",
+			entity, strings.Join(validEntities, ", "))
+	}
+}
 
 func newTestStoreWithMigration(t *testing.T) *data.Store {
 	t.Helper()
