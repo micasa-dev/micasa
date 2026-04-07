@@ -75,15 +75,17 @@ func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 		}
 		// Overlay zone not yet in the manager -- the bubblezone async
 		// worker hasn't processed the latest scan. Try inner handlers:
-		// if one matches, the click was inside the overlay.
+		// if one matches, the click was inside the overlay. Otherwise
+		// ignore the click entirely; without known bounds we cannot
+		// distinguish overlay padding from genuinely outside, so
+		// dismissing would misclassify padding/background clicks and
+		// overlays with no inner mouse zones (e.g. help). The worker
+		// will flush within the next frame and subsequent clicks will
+		// use the known-bounds path above.
 		ret, handled := m.handleOverlayClick(msg)
 		if handled {
 			return ret, nil
 		}
-		// No inner zone matched either. Dismiss (consistent with the
-		// pre-existing behavior of treating an unknown overlay zone as
-		// "click outside").
-		m.dismissActiveOverlay()
 		return m, nil
 	}
 

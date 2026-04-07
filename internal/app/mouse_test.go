@@ -179,7 +179,13 @@ func TestOverlayDismissOnOutsideClick(t *testing.T) {
 	sendKey(m, "?")
 	require.NotNil(t, m.helpViewport, "help viewport should be open")
 
+	// Render and wait for the overlay zone to flush so the click
+	// dispatcher can use known bounds to identify (0,0) as outside.
 	m.View()
+	require.Eventually(t, func() bool {
+		oz := m.zones.Get(zoneOverlay)
+		return oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "overlay zone never populated")
 
 	// Click at (0,0) which should be outside the centered overlay.
 	sendClick(m, 0, 0)
@@ -648,7 +654,13 @@ func TestDashboardDismissOnOutsideClick(t *testing.T) {
 		t.Skip("dashboard has no data to display")
 	}
 
+	// Render and wait for the overlay zone to flush so the click
+	// dispatcher can use known bounds to identify (0,0) as outside.
 	m.View()
+	require.Eventually(t, func() bool {
+		oz := m.zones.Get(zoneOverlay)
+		return oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "overlay zone never populated")
 
 	sendClick(m, 0, 0)
 	assert.False(t, m.dashboardVisible(), "clicking outside dashboard should dismiss it")
