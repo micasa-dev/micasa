@@ -67,8 +67,8 @@ func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 		if !oz.IsZero() {
 			// Overlay zone bounds are known. Use them as truth.
 			if oz.InBounds(msg) {
-				ret, cmd, _ := m.handleOverlayClick(msg)
-				return ret, cmd
+				ret, _ := m.handleOverlayClick(msg)
+				return ret, nil
 			}
 			m.dismissActiveOverlay()
 			return m, nil
@@ -76,9 +76,9 @@ func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 		// Overlay zone not yet in the manager -- the bubblezone async
 		// worker hasn't processed the latest scan. Try inner handlers:
 		// if one matches, the click was inside the overlay.
-		ret, cmd, handled := m.handleOverlayClick(msg)
+		ret, handled := m.handleOverlayClick(msg)
 		if handled {
-			return ret, cmd
+			return ret, nil
 		}
 		// No inner zone matched either. Dismiss (consistent with the
 		// pre-existing behavior of treating an unknown overlay zone as
@@ -253,7 +253,7 @@ func (m *Model) handleHintClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 // bool indicates whether an inner zone handled the click (true) or nothing
 // matched (false). This distinction lets the caller decide whether to dismiss
 // the overlay when the outer overlay zone bounds are unknown.
-func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd, bool) {
+func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, bool) {
 	// Dashboard row clicks: single click selects, double-click jumps.
 	if m.dashboardVisible() {
 		for i := range m.dash.nav {
@@ -269,7 +269,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd, b
 					m.dash.cursor = i
 					m.lastDashClick = rowClickState{at: now, row: i}
 				}
-				return m, nil, true
+				return m, true
 			}
 		}
 	}
@@ -280,7 +280,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd, b
 			if m.zones.Get(fmt.Sprintf("%s%d", zoneSearchRow, i)).InBounds(msg) {
 				ds.Cursor = i
 				m.docSearchNavigate()
-				return m, nil, true
+				return m, true
 			}
 		}
 	}
@@ -295,7 +295,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd, b
 					tree.expanded[nodes[i].path] = !tree.expanded[nodes[i].path]
 					tree.clampCursor()
 				}
-				return m, nil, true
+				return m, true
 			}
 		}
 
@@ -303,7 +303,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd, b
 		for i := range tree.previewGroups {
 			if m.zones.Get(fmt.Sprintf("%s%d", zoneOpsTab, i)).InBounds(msg) {
 				tree.previewTab = i
-				return m, nil, true
+				return m, true
 			}
 		}
 	}
@@ -315,7 +315,7 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd, b
 				ex.previewTab = i
 				ex.previewRow = 0
 				ex.previewCol = 0
-				return m, nil, true
+				return m, true
 			}
 		}
 		if g := ex.activePreviewGroup(); g != nil {
@@ -323,19 +323,19 @@ func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd, b
 				if m.zones.Get(fmt.Sprintf("%s%d", zoneExtRow, i)).InBounds(msg) {
 					ex.previewRow = i
 					m.selectExtractionPreviewColumn(ex, g, msg)
-					return m, nil, true
+					return m, true
 				}
 			}
 			for i := range g.specs {
 				if m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, i)).InBounds(msg) {
 					ex.previewCol = i
-					return m, nil, true
+					return m, true
 				}
 			}
 		}
 	}
 
-	return m, nil, false
+	return m, false
 }
 
 // selectExtractionPreviewColumn updates the extraction preview column cursor
