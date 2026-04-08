@@ -211,14 +211,24 @@ func TestBuildExtractionPrompt_ContainsDomainHints(t *testing.T) {
 	assert.Contains(t, sys, "Inspection report")
 	assert.Contains(t, sys, "Service receipt")
 	// Quotes hold both estimates and invoices for one-off project work --
-	// there is no separate invoice table. The hints must say so explicitly
-	// or the model will drop project invoices on the floor when it cannot
-	// match them to a recurring maintenance task.
+	// there is no separate invoice table. The hints must route project
+	// invoices specifically to quotes; a bare "invoice" substring is not
+	// enough because the service-maintenance hint also mentions invoices,
+	// and the model would drop project invoices on the floor if only the
+	// maintenance routing survived a future trim. Lock the exact wording
+	// for both the contractor hint and the preamble so neither can be
+	// removed without breaking this test.
 	assert.Contains(
 		t,
 		sys,
-		"invoice",
-		"hints must mention invoices so contractor project invoices are routed to quotes, not dropped",
+		"proposal, bid, or invoice for project work",
+		"contractor hint must explicitly route project invoices to quotes",
+	)
+	assert.Contains(
+		t,
+		sys,
+		"invoices for one-off project work",
+		"preamble must state that quotes hold invoices for one-off project work",
 	)
 	assert.Contains(
 		t,
