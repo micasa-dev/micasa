@@ -76,6 +76,7 @@ func newRootCmd() *cobra.Command {
 		newMCPCmd(),
 		newShowCmd(),
 		newQueryCmd(),
+		newGenCLIRefCmd(),
 	)
 
 	return root

@@ -9,65 +9,14 @@ micasa has minimal configuration -- it's designed to work out of the box.
 
 ## CLI
 
-micasa has three subcommands. `run` is the default and launches the TUI;
-`config` manages configuration (query values or open the config file in an
-editor); `backup` creates a database snapshot.
+Every command, flag, and subcommand is documented on the
+[CLI Reference](/docs/reference/cli/) page. That page is generated
+directly from the cobra command tree, so it never drifts from the binary.
 
-```
-Usage: micasa <command> [flags]
-
-Commands:
-  run [<db-path>]         Launch the TUI (default).
-  config get [<filter>]   Query config values with a jq filter.
-  config edit             Open the config file in an editor.
-  backup [<dest>]         Back up the database to a file.
-
-Flags:
-  -h, --help       Show context-sensitive help.
-      --version    Show version and exit.
-```
-
-### `run` (default)
-
-```
-micasa [<db-path>] [flags]
-```
-
-| Flag | Description |
-|------|-------------|
-| `<db-path>` | SQLite database path. Overrides `MICASA_DB_PATH`. |
-| `--print-path` | Print the resolved database path and exit. |
-
-### `demo`
-
-```
-micasa demo [<db-path>] [flags]
-```
-
-Launch with fictitious sample data. Without a path argument, uses an
-in-memory database.
-
-| Flag | Description |
-|------|-------------|
-| `<db-path>` | SQLite database path. Demo data is written to this file. |
-| `--years=N` | Generate N years of simulated data. |
-
-To persist demo data for later:
-
-```sh
-micasa demo /tmp/my-demo.db   # creates and populates
-micasa /tmp/my-demo.db        # reopens with the demo data
-```
-
-### `config get`
-
-```
-micasa config get [<filter>]
-```
-
-Query resolved configuration values using a
-[jq](https://jqlang.github.io/jq/) filter expression. With no filter (or
-the identity `.`), the entire resolved configuration is printed as JSON.
+`config get` accepts an optional [jq](https://jqlang.github.io/jq/) filter
+expression. With no filter (or the identity `.`), the entire resolved
+configuration is printed as JSON. API keys are stripped from the output
+to avoid accidentally leaking secrets.
 
 ```sh
 micasa config get                      # full config (identity)
@@ -76,32 +25,15 @@ micasa config get .extraction.llm      # extraction section
 micasa config get '.chat.llm | keys'   # list keys in a section
 ```
 
-API keys are stripped from the output to avoid accidentally leaking
-secrets (e.g. pasting output into a chat or issue).
+To persist demo data for later:
 
-### `config edit`
-
-```
-micasa config edit
+```sh
+micasa demo /tmp/my-demo.db   # creates and populates
+micasa /tmp/my-demo.db        # reopens with the demo data
 ```
 
-Opens the config file in your preferred editor (`$VISUAL`, then `$EDITOR`,
-then a platform default). Creates the file with sensible defaults if it
-doesn't exist yet.
-
-### `backup`
-
-```
-micasa backup [<dest>] [--source <path>]
-```
-
-| Flag | Description |
-|------|-------------|
-| `<dest>` | Destination file path. Defaults to `<source>.backup`. |
-| `--source` | Source database path. Defaults to the standard location. Honors `MICASA_DB_PATH`. |
-
-Creates a consistent snapshot using SQLite's Online Backup API, safe to
-run while the TUI is open:
+`backup` creates a consistent snapshot using SQLite's Online Backup API,
+safe to run while the TUI is open:
 
 ```sh
 micasa backup ~/backups/micasa-$(date +%F).db
