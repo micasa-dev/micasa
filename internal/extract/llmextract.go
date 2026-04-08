@@ -102,7 +102,7 @@ func operationExtractionUserMessage(in ExtractionPromptInput) string {
 
 const operationExtractionPreamble = `You are a document extraction assistant for a home management application. Given a document's metadata and extracted text, output operations to record what the document describes. The output is constrained by a JSON schema -- focus on choosing the right rows and field values, not on the JSON shape.
 
-In this app, "quotes" means contractor or vendor cost estimates (bids for home projects). Create a quotes row only when a document contains such an estimate -- not for incidental dollar amounts in receipts, manuals, or other text.
+In this app, "quotes" holds contractor or vendor project costs -- estimates, bids, or invoices for one-off project work. There is no separate invoices table: a quote row records the cost whether it is proposed or final. Create a quotes row only when a document contains such a cost; do not create quotes for incidental dollar amounts in manuals, inspection reports, or other text.
 
 You may receive text from multiple extraction sources, each labeled with its tool. Sources may overlap; deduplicate facts so each is recorded once. Prefer digital text extraction for clean output and use OCR for scanned content. Reconcile conflicts by trusting the more plausible reading.`
 
@@ -126,12 +126,12 @@ const operationExtractionRules = `## Rules
 5. If a vendor, project, appliance, maintenance item, or incident is mentioned but does not exist, create it before referencing it.
 6. When a Document ID is provided, update that document; otherwise create one. To link a document to its primary entity, set entity_kind and entity_id.
 7. For maintenance schedules from appliance manuals, create maintenance_items linked to the appliance.
-8. For contractor or vendor cost estimates (bids, proposals), create quotes with the correct project_id and vendor_id.
+8. For contractor or vendor project costs (estimates, bids, proposals, or invoices for one-off project work), create quotes with the correct project_id and vendor_id.
 
 ## Document type hints
 
-- Contractor proposal or bid for upcoming work: create the vendor (if new) and project (if new), then a quote with labor_cents, materials_cents, and total_cents.
-- Service receipt or record of completed maintenance: create a service_log_entries row with the maintenance_item_id (creating the maintenance_items row first if needed), serviced_at, and cost_cents; set vendor_name when a contractor performed the work. Service log entries record finished work; quotes record proposed cost. Do not create both for the same document.
+- Contractor proposal, bid, or invoice for project work: create the vendor (if new) and project (if new), then a quote with labor_cents, materials_cents, and total_cents. Use this for both estimates and invoices on one-off project work (remodels, repairs, installations) -- quotes hold both proposed and final amounts.
+- Service receipt or invoice for completed maintenance work tied to a recurring task: create a service_log_entries row with the maintenance_item_id (creating the maintenance_items row first if needed), serviced_at, and cost_cents; set vendor_name when a contractor performed the work. The disambiguator from quotes is whether the work corresponds to a recurring maintenance_item: routine HVAC service, gutter cleaning, and the like belong here; one-off project work belongs in quotes. Do not create both for the same document.
 - Appliance manual: create the appliance with brand and model_number, then one maintenance_items row per scheduled task with interval_months.
 - Inspection report: create one incidents row per finding with severity and date_noticed; if the inspector is identifiable, create them as a vendor.`
 

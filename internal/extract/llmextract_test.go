@@ -204,11 +204,22 @@ func TestBuildExtractionPrompt_ContainsDomainHints(t *testing.T) {
 	// distinguishes the document classes producing it. Without these
 	// hints the schema accepts the row but the model has no domain
 	// context for when to choose it -- omissions here have caused
-	// service receipts to be misclassified as quotes.
+	// service receipts to be misclassified as quotes and contractor
+	// invoices for project work to be dropped entirely.
 	assert.Contains(t, sys, "Contractor proposal")
 	assert.Contains(t, sys, "Appliance manual")
 	assert.Contains(t, sys, "Inspection report")
 	assert.Contains(t, sys, "Service receipt")
+	// Quotes hold both estimates and invoices for one-off project work --
+	// there is no separate invoice table. The hints must say so explicitly
+	// or the model will drop project invoices on the floor when it cannot
+	// match them to a recurring maintenance task.
+	assert.Contains(
+		t,
+		sys,
+		"invoice",
+		"hints must mention invoices so contractor project invoices are routed to quotes, not dropped",
+	)
 	assert.Contains(
 		t,
 		sys,
