@@ -130,7 +130,8 @@ const operationExtractionRules = `## Rules
 
 ## Document type hints
 
-- Contractor invoice or proposal: create the vendor (if new) and project (if new), then a quote with labor_cents, materials_cents, and total_cents.
+- Contractor proposal or bid for upcoming work: create the vendor (if new) and project (if new), then a quote with labor_cents, materials_cents, and total_cents.
+- Service receipt or record of completed maintenance: create a service_log_entries row with the maintenance_item_id (creating the maintenance_items row first if needed), serviced_at, and cost_cents; set vendor_name when a contractor performed the work. Service log entries record finished work; quotes record proposed cost. Do not create both for the same document.
 - Appliance manual: create the appliance with brand and model_number, then one maintenance_items row per scheduled task with interval_months.
 - Inspection report: create one incidents row per finding with severity and date_noticed; if the inspector is identifiable, create them as a vendor.`
 

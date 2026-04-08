@@ -200,9 +200,21 @@ func TestBuildExtractionPrompt_ContainsDomainHints(t *testing.T) {
 
 	sys := msgs[0].Content
 	assert.Contains(t, sys, "Document type hints")
-	assert.Contains(t, sys, "Contractor invoice")
+	// Each writable extraction target needs at least one hint that
+	// distinguishes the document classes producing it. Without these
+	// hints the schema accepts the row but the model has no domain
+	// context for when to choose it -- omissions here have caused
+	// service receipts to be misclassified as quotes.
+	assert.Contains(t, sys, "Contractor proposal")
 	assert.Contains(t, sys, "Appliance manual")
 	assert.Contains(t, sys, "Inspection report")
+	assert.Contains(t, sys, "Service receipt")
+	assert.Contains(
+		t,
+		sys,
+		data.TableServiceLogEntries,
+		"hints must mention service_log_entries by table name so the model picks the right action target",
+	)
 }
 
 // TestBuildExtractionPrompt_OmitsSchemaRedundantSections asserts that the
