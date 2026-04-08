@@ -110,6 +110,49 @@ func TestGenCLIRef_RendersFlags(t *testing.T) {
 	assert.Contains(t, got, "`https://relay.micasa.dev`")
 }
 
+// TestGenCLIRef_RendersFrameworkInjectedFlags asserts that flags cobra
+// and fang inject lazily during execute() -- `--help` on every command
+// and `--version` on the root -- are present in the generated reference.
+// Without this guard the docs claim to cover "every command, flag, and
+// subcommand" but quietly omit the framework-injected ones. The fix
+// pre-initializes default flags before walking the tree.
+func TestGenCLIRef_RendersFrameworkInjectedFlags(t *testing.T) {
+	t.Parallel()
+	out := filepath.Join(t.TempDir(), "cli.md")
+	_, err := executeCLI("_gen-cli-ref", out)
+	require.NoError(t, err)
+
+	body, err := os.ReadFile(out) //nolint:gosec // test reads its own temp file
+	require.NoError(t, err)
+	got := string(body)
+
+	// `--version` is set on the root by fang.WithVersion. It must
+	// appear in the root section's flag table.
+	rootSection := sliceSection(t, got, "## micasa\n", "## micasa ")
+	assert.Contains(t, rootSection, "`-v`, `--version`",
+		"root section missing --version flag")
+
+	// `--help` is added by cobra on every command. Sample two: root
+	// and a leaf subcommand.
+	assert.Contains(t, rootSection, "`-h`, `--help`",
+		"root section missing --help flag")
+	demoSection := sliceSection(t, got, "## micasa demo\n", "## micasa ")
+	assert.Contains(t, demoSection, "`-h`, `--help`",
+		"demo section missing --help flag")
+}
+
+// sliceSection returns the substring of body that begins at the first
+// occurrence of start and ends at the next occurrence of end after that
+// (or the end of the document). Used to scope assertions to a single
+// command's h2 section.
+func sliceSection(t *testing.T, body, start, end string) string {
+	t.Helper()
+	_, rest, ok := strings.Cut(body, start)
+	require.True(t, ok, "section start %q not found", start)
+	before, _, _ := strings.Cut(rest, end)
+	return before
+}
+
 // TestGenCLIRef_RendersSubcommandLinks asserts the root section links
 // to `pro`, and `pro` links to its children via in-page anchors that
 // match the headings rendered later in the document.

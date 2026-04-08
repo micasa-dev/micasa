@@ -25,7 +25,9 @@ micasa [database-path] [flags]
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `-h`, `--help` | - | help for micasa |
 | `--print-path` | - | Print the resolved database path and exit |
+| `-v`, `--version` | - | version for micasa |
 
 ### Subcommands
 
@@ -51,6 +53,7 @@ micasa backup [destination] [flags]
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `-h`, `--help` | - | help for backup |
 | `--source` | - | Source database path (default: standard location, honors MICASA_DB_PATH) |
 
 ### See also
@@ -64,8 +67,14 @@ Manage application configuration.
 ### Usage
 
 ```
-micasa config [filter]
+micasa config [filter] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for config |
 
 ### Subcommands
 
@@ -83,8 +92,14 @@ Open the config file in an editor.
 ### Usage
 
 ```
-micasa config edit
+micasa config edit [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for edit |
 
 ### See also
 
@@ -97,8 +112,14 @@ Query config values with a jq filter (default: identity).
 ### Usage
 
 ```
-micasa config get [filter]
+micasa config get [filter] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for get |
 
 ### See also
 
@@ -118,6 +139,7 @@ micasa demo [database-path] [flags]
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `-h`, `--help` | - | help for demo |
 | `--seed-only` | - | Seed data and exit without launching the TUI |
 | `--years` | `0` | Generate N years of simulated home ownership data |
 
@@ -132,8 +154,14 @@ Start a Model Context Protocol server over stdio, exposing micasa data to LLM cl
 ### Usage
 
 ```
-micasa mcp [database-path]
+micasa mcp [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for mcp |
 
 ### See also
 
@@ -159,6 +187,12 @@ Typical workflow:
   micasa pro status
 ```
 
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for pro |
+
 ### Subcommands
 
 - [`micasa pro conflicts`](#micasa-pro-conflicts) -- List sync ops that lost LWW conflict resolution
@@ -181,8 +215,14 @@ List sync ops that lost LWW conflict resolution.
 ### Usage
 
 ```
-micasa pro conflicts [database-path]
+micasa pro conflicts [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for conflicts |
 
 ### See also
 
@@ -195,8 +235,14 @@ List devices.
 ### Usage
 
 ```
-micasa pro devices [database-path]
+micasa pro devices [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for devices |
 
 ### Subcommands
 
@@ -213,8 +259,14 @@ Revoke a device.
 ### Usage
 
 ```
-micasa pro devices revoke <device-id> [database-path]
+micasa pro devices revoke <device-id> [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for revoke |
 
 ### See also
 
@@ -234,6 +286,7 @@ micasa pro init [database-path] [flags]
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `-h`, `--help` | - | help for init |
 | `--relay-url` | `https://relay.micasa.dev` | Relay server URL (honors MICASA_RELAY_URL) |
 
 ### See also
@@ -247,8 +300,14 @@ Generate invite code, wait for joiner handshake.
 ### Usage
 
 ```
-micasa pro invite [database-path]
+micasa pro invite [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for invite |
 
 ### See also
 
@@ -268,6 +327,7 @@ micasa pro join <code> [database-path] [flags]
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `-h`, `--help` | - | help for join |
 | `--relay-url` | `https://relay.micasa.dev` | Relay server URL (honors MICASA_RELAY_URL) |
 
 ### See also
@@ -281,8 +341,14 @@ Show sync status.
 ### Usage
 
 ```
-micasa pro status [database-path]
+micasa pro status [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for status |
 
 ### See also
 
@@ -295,8 +361,14 @@ Show blob storage usage.
 ### Usage
 
 ```
-micasa pro storage [database-path]
+micasa pro storage [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for storage |
 
 ### See also
 
@@ -309,8 +381,14 @@ Force immediate push+pull cycle.
 ### Usage
 
 ```
-micasa pro sync [database-path]
+micasa pro sync [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for sync |
 
 ### See also
 
@@ -332,6 +410,7 @@ micasa query <sql> [database-path] [flags]
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `-h`, `--help` | - | help for query |
 | `--json` | - | Output as JSON |
 
 ### See also
@@ -349,6 +428,7 @@ appliances, incidents, documents, all.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--deleted` | - | Include soft-deleted rows |
+| `-h`, `--help` | - | help for show |
 | `--json` | - | Output as JSON |
 
 ### Subcommands
@@ -377,8 +457,14 @@ Show all entities.
 ### Usage
 
 ```
-micasa show all [database-path]
+micasa show all [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for all |
 
 ### Inherited flags
 
@@ -398,8 +484,14 @@ Show appliances.
 ### Usage
 
 ```
-micasa show appliances [database-path]
+micasa show appliances [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for appliances |
 
 ### Inherited flags
 
@@ -419,8 +511,14 @@ Show documents.
 ### Usage
 
 ```
-micasa show documents [database-path]
+micasa show documents [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for documents |
 
 ### Inherited flags
 
@@ -440,8 +538,14 @@ Show house profile.
 ### Usage
 
 ```
-micasa show house [database-path]
+micasa show house [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for house |
 
 ### Inherited flags
 
@@ -461,8 +565,14 @@ Show incidents.
 ### Usage
 
 ```
-micasa show incidents [database-path]
+micasa show incidents [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for incidents |
 
 ### Inherited flags
 
@@ -482,8 +592,14 @@ Show maintenance items.
 ### Usage
 
 ```
-micasa show maintenance [database-path]
+micasa show maintenance [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for maintenance |
 
 ### Inherited flags
 
@@ -503,8 +619,14 @@ Show maintenance categories.
 ### Usage
 
 ```
-micasa show maintenance-categories [database-path]
+micasa show maintenance-categories [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for maintenance-categories |
 
 ### Inherited flags
 
@@ -524,8 +646,14 @@ Show project types.
 ### Usage
 
 ```
-micasa show project-types [database-path]
+micasa show project-types [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for project-types |
 
 ### Inherited flags
 
@@ -545,8 +673,14 @@ Show projects.
 ### Usage
 
 ```
-micasa show projects [database-path]
+micasa show projects [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for projects |
 
 ### Inherited flags
 
@@ -566,8 +700,14 @@ Show quotes.
 ### Usage
 
 ```
-micasa show quotes [database-path]
+micasa show quotes [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for quotes |
 
 ### Inherited flags
 
@@ -587,8 +727,14 @@ Show service log entries.
 ### Usage
 
 ```
-micasa show service-log [database-path]
+micasa show service-log [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for service-log |
 
 ### Inherited flags
 
@@ -608,8 +754,14 @@ Show vendors.
 ### Usage
 
 ```
-micasa show vendors [database-path]
+micasa show vendors [database-path] [flags]
 ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for vendors |
 
 ### Inherited flags
 

@@ -84,7 +84,18 @@ func renderCLIReference(root *cobra.Command) string {
 	var buf bytes.Buffer
 	writeFrontmatter(&buf, root)
 
-	for _, cmd := range visibleCommandsDFS(root) {
+	cmds := visibleCommandsDFS(root)
+	// Cobra adds `--help` (and `--version` when Command.Version is set)
+	// lazily inside execute(); when walking the tree we have to call the
+	// init helpers ourselves so the generated reference matches what
+	// users see in `--help` output. Fang sets root.Version before
+	// invoking the cliref command, so InitDefaultVersionFlag picks it up.
+	for _, cmd := range cmds {
+		cmd.InitDefaultHelpFlag()
+		cmd.InitDefaultVersionFlag()
+	}
+
+	for _, cmd := range cmds {
 		renderCommandSection(&buf, cmd)
 	}
 	return buf.String()
