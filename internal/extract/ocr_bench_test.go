@@ -21,7 +21,7 @@ func BenchmarkOcrPDF(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		text, _, err := ocrPDF(b.Context(), data, 5)
+		text, _, err := ocrPDF(b.Context(), DefaultOCRTools(), data, 5)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -49,7 +49,7 @@ func BenchmarkOcrPage(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		result := ocrPage(b.Context(), pdfPath, 1, nil)
+		result := ocrPage(b.Context(), DefaultOCRTools(), pdfPath, 1, nil)
 		if result.err != nil {
 			b.Fatal(result.err)
 		}
@@ -70,7 +70,7 @@ func BenchmarkOcrImage(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		text, _, err := ocrImage(b.Context(), data)
+		text, _, err := ocrImage(b.Context(), DefaultOCRTools().Tesseract, data)
 		if err != nil {
 			b.Fatal(err)
 		}

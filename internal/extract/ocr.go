@@ -31,7 +31,13 @@ type ocrPageResult struct {
 // ocrPDF extracts text from a PDF using parallel per-page rasterization
 // with pdftocairo fused with tesseract OCR. Each page is rasterized and
 // OCR'd in a single goroutine, eliminating the sequential bottleneck.
-func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, error) {
+// tools must have PDFInfo, PDFToCairo, and Tesseract populated.
+func ocrPDF(
+	ctx context.Context,
+	tools *OCRTools,
+	data []byte,
+	maxPages int,
+) (string, []byte, error) {
 	tmpDir, err := os.MkdirTemp("", "micasa-ocr-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("create temp dir: %w", err)
@@ -43,7 +49,7 @@ func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, err
 		return "", nil, fmt.Errorf("write temp pdf: %w", err)
 	}
 
-	pageCount, err := pdfPageCount(ctx, pdfPath)
+	pageCount, err := pdfPageCount(ctx, tools.PDFInfo, pdfPath)
 	if err != nil {
 		return "", nil, fmt.Errorf("pdfinfo: %w", err)
 	}
@@ -54,17 +60,18 @@ func ocrPDF(ctx context.Context, data []byte, maxPages int) (string, []byte, err
 		return "", nil, nil
 	}
 
-	results := ocrPDFPages(ctx, pdfPath, pageCount, nil, nil)
+	results := ocrPDFPages(ctx, tools, pdfPath, pageCount, nil, nil)
 	text, tsv := collectOCRResults(results)
 	return text, tsv, nil
 }
 
 // pdfPageCount returns the number of pages in a PDF using pdfinfo.
-func pdfPageCount(ctx context.Context, pdfPath string) (int, error) {
+// pdfInfoPath is the absolute path to the pdfinfo binary.
+func pdfPageCount(ctx context.Context, pdfInfoPath, pdfPath string) (int, error) {
 	var stdout, stderr bytes.Buffer
-	cmd := exec.CommandContext( //nolint:gosec // pdfPath is a temp file we created
+	cmd := exec.CommandContext( //nolint:gosec // pdfInfoPath is resolved at startup, pdfPath is a temp file we created
 		ctx,
-		"pdfinfo",
+		pdfInfoPath,
 		pdfPath,
 	)
 	cmd.Stdout = &stdout
@@ -90,7 +97,14 @@ func pdfPageCount(ctx context.Context, pdfPath string) (int, error) {
 // directly into tesseract for OCR, with no intermediate file on disk.
 // If onRasterDone is non-nil, it is called after pdftocairo finishes
 // (before tesseract completes) to enable per-stage progress reporting.
-func ocrPage(ctx context.Context, pdfPath string, page int, onRasterDone func()) ocrPageResult {
+// tools must have PDFToCairo and Tesseract populated.
+func ocrPage(
+	ctx context.Context,
+	tools *OCRTools,
+	pdfPath string,
+	page int,
+	onRasterDone func(),
+) ocrPageResult {
 	// pdftocairo streams the PNG to stdout; tesseract reads from stdin.
 	cairoArgs := []string{
 		"-png",
@@ -101,17 +115,17 @@ func ocrPage(ctx context.Context, pdfPath string, page int, onRasterDone func())
 		pdfPath,
 		"-", // stdout
 	}
-	cairoCmd := exec.CommandContext( //nolint:gosec // args are constructed internally
+	cairoCmd := exec.CommandContext( //nolint:gosec // tools.PDFToCairo is resolved at startup, args constructed internally
 		ctx,
-		"pdftocairo",
+		tools.PDFToCairo,
 		cairoArgs...,
 	)
 	var cairoErr bytes.Buffer
 	cairoCmd.Stderr = &cairoErr
 
-	tessCmd := exec.CommandContext(
+	tessCmd := exec.CommandContext( //nolint:gosec // tools.Tesseract is resolved at startup
 		ctx,
-		"tesseract",
+		tools.Tesseract,
 		"stdin",
 		"stdout",
 		"tsv",
@@ -137,9 +151,16 @@ func ocrPage(ctx context.Context, pdfPath string, page int, onRasterDone func())
 		)}
 	}
 	if err := tessCmd.Start(); err != nil {
-		// Close the pipe reader so pdftocairo gets EPIPE and exits
-		// instead of blocking on a full pipe buffer.
+		// Close the pipe reader so pdftocairo gets EPIPE on its next
+		// write. On Linux that alone terminates pdftocairo, but on
+		// Windows the pipe-close propagation is not guaranteed to
+		// unblock a writer that has not yet flushed output, so kill
+		// the process explicitly before waiting. Without this, a stub
+		// tesseract with a real pdftocairo can hang indefinitely while
+		// cairoCmd.Wait() waits for pdftocairo to notice its consumer
+		// is gone.
 		_ = pipe.Close()
+		_ = cairoCmd.Process.Kill()
 		_ = cairoCmd.Wait()
 		return ocrPageResult{err: fmt.Errorf(
 			"tesseract page %d: %s: %w",
@@ -176,9 +197,11 @@ func ocrPage(ctx context.Context, pdfPath string, page int, onRasterDone func())
 // capping concurrency at runtime.NumCPU(). Results are returned in page
 // order. If rasterDone is non-nil, a value is sent after each page's
 // pdftocairo finishes. If pageDone is non-nil, a value is sent after each
-// page's tesseract finishes.
+// page's tesseract finishes. tools must have PDFToCairo and Tesseract
+// populated.
 func ocrPDFPages(
 	ctx context.Context,
+	tools *OCRTools,
 	pdfPath string,
 	pageCount int,
 	rasterDone chan<- struct{},
@@ -214,7 +237,7 @@ func ocrPDFPages(
 				}
 			}
 
-			results[idx] = ocrPage(ctx, pdfPath, idx+1, onRasterDone)
+			results[idx] = ocrPage(ctx, tools, pdfPath, idx+1, onRasterDone)
 
 			if pageDone != nil {
 				select {
@@ -260,8 +283,9 @@ func collectOCRResults(results []ocrPageResult) (string, []byte) {
 	return normalizeWhitespace(allText.String()), allTSV.Bytes()
 }
 
-// ocrImage runs tesseract on raw image bytes.
-func ocrImage(ctx context.Context, data []byte) (string, []byte, error) {
+// ocrImage runs tesseract on raw image bytes. tesseractPath is the
+// absolute path to the tesseract binary.
+func ocrImage(ctx context.Context, tesseractPath string, data []byte) (string, []byte, error) {
 	tmpDir, err := os.MkdirTemp("", "micasa-ocr-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("create temp dir: %w", err)
@@ -273,20 +297,21 @@ func ocrImage(ctx context.Context, data []byte) (string, []byte, error) {
 		return "", nil, fmt.Errorf("write temp image: %w", err)
 	}
 
-	return ocrImageFile(ctx, imgPath)
+	return ocrImageFile(ctx, tesseractPath, imgPath)
 }
 
 // ocrImageFile runs tesseract on an image file, returning extracted text
-// and raw TSV output.
-func ocrImageFile(ctx context.Context, imgPath string) (string, []byte, error) {
+// and raw TSV output. tesseractPath is the absolute path to the tesseract
+// binary.
+func ocrImageFile(ctx context.Context, tesseractPath, imgPath string) (string, []byte, error) {
 	// Run tesseract with TSV output to capture confidence/coordinates.
 	// OMP_THREAD_LIMIT=1 forces single-threaded mode per process so our
 	// worker pool controls parallelism without OpenMP oversubscription.
 	var tsvBuf bytes.Buffer
 	var stderr bytes.Buffer
-	tsvCmd := exec.CommandContext( //nolint:gosec // imgPath is a temp file we created
+	tsvCmd := exec.CommandContext( //nolint:gosec // tesseractPath is resolved at startup, imgPath is a temp file we created
 		ctx,
-		"tesseract",
+		tesseractPath,
 		imgPath,
 		"stdout",
 		"tsv",
