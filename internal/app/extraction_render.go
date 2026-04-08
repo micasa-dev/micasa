@@ -316,7 +316,13 @@ func (m *Model) renderPreviewTable(
 		seps[i] = sep
 		divSeps[i] = divSep
 	}
-	widths := columnWidths(g.specs, g.cells, innerW, sepW, nil)
+	// Mag mode transforms numeric cells to order-of-magnitude notation,
+	// matching the main table view. Original cells are not modified.
+	displayCells := g.cells
+	if m.magMode {
+		displayCells = magTransformCells(g.cells, m.cur.Symbol())
+	}
+	widths := columnWidths(g.specs, displayCells, innerW, sepW, nil)
 
 	colCursor := -1
 	if interactive {
@@ -327,19 +333,19 @@ func (m *Model) renderPreviewTable(
 	}
 
 	header := renderHeaderRow(
-		g.specs, widths, seps, colCursor, nil, false, false, g.cells, m.zones, zoneExtCol,
+		g.specs, widths, seps, colCursor, nil, false, false, displayCells, m.zones, zoneExtCol,
 	)
 	divider := renderDivider(widths, seps, divSep, m.styles.TableSeparator())
 
 	rowCursor := -1
 	if interactive {
 		rowCursor = ex.previewRow
-		if rowCursor >= len(g.cells) {
-			rowCursor = len(g.cells) - 1
+		if rowCursor >= len(displayCells) {
+			rowCursor = len(displayCells) - 1
 		}
 	}
 	rows := renderRows(
-		g.specs, g.cells, g.meta, widths,
+		g.specs, displayCells, g.meta, widths,
 		seps, seps, rowCursor, colCursor, 0, pinRenderContext{}, m.zones, zoneExtRow,
 	)
 

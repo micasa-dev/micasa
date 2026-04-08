@@ -1136,6 +1136,8 @@ func (m *Model) handleExtractionPipelineKey(msg tea.KeyPressMsg) tea.Cmd {
 		if ex.Done && ex.hasLLM && ex.cursorStep() == stepLLM {
 			return m.activateExtractionModelPicker()
 		}
+	case key.Matches(msg, m.keys.MagToggle):
+		m.toggleMagMode()
 	case key.Matches(msg, m.keys.ExtToggleTSV):
 		if ex.Done && ex.hasLLM {
 			return m.toggleExtractionTSV()
@@ -1344,6 +1346,8 @@ func (m *Model) handleExtractionExploreKey(msg tea.KeyPressMsg) tea.Cmd {
 		if ex.Done {
 			m.acceptExtraction()
 		}
+	case key.Matches(msg, m.keys.MagToggle):
+		m.toggleMagMode()
 	}
 	return nil
 }

@@ -562,6 +562,101 @@ func TestExploreMode_AcceptWorksInExploreMode(t *testing.T) {
 	assert.Nil(t, m.ex.extraction, "accept in explore mode clears state")
 }
 
+func TestExploreMode_MagToggleTransformsMoneyCells(t *testing.T) {
+	t.Parallel()
+	m := newPreviewModel(t, []extract.Operation{
+		{
+			Action: "create",
+			Table:  data.TableQuotes,
+			Data: map[string]any{
+				"project_id":  float64(1),
+				"vendor_id":   float64(2),
+				"total_cents": float64(150000),
+			},
+		},
+	})
+	ex := m.ex.extraction
+
+	// Enter explore mode.
+	sendExtractionKey(m, "x")
+	require.True(t, ex.exploring, "x should enter explore mode")
+	require.False(t, m.magMode, "mag mode should start off")
+
+	// Raw money formatting before mag toggle.
+	out := m.renderOperationPreviewSection(80, true)
+	plain := ansi.Strip(out)
+	assert.Contains(t, plain, "$1,500.00",
+		"raw money should appear before mag toggle")
+	assert.NotContains(t, plain, magArrow,
+		"mag notation should not appear before toggle")
+
+	// Toggle mag mode in explore mode via ctrl+o.
+	sendExtractionKey(m, "ctrl+o")
+	require.True(t, m.magMode,
+		"mag mode should be on after ctrl+o in explore mode")
+	require.True(t, ex.exploring, "explore mode should still be active")
+
+	// Magnitude notation replaces raw money.
+	out = m.renderOperationPreviewSection(80, true)
+	plain = ansi.Strip(out)
+	assert.Contains(t, plain, magArrow,
+		"mag notation should appear after toggle")
+	assert.NotContains(t, plain, "$1,500.00",
+		"raw money should be replaced by mag notation")
+
+	// Toggle off restores raw formatting.
+	sendExtractionKey(m, "ctrl+o")
+	require.False(t, m.magMode, "mag mode should toggle off")
+
+	out = m.renderOperationPreviewSection(80, true)
+	plain = ansi.Strip(out)
+	assert.Contains(t, plain, "$1,500.00",
+		"raw money should be restored after toggling off")
+	assert.NotContains(t, plain, magArrow,
+		"mag notation should disappear after toggling off")
+}
+
+func TestPipelineMode_MagToggleTransformsMoneyCells(t *testing.T) {
+	t.Parallel()
+	m := newPreviewModel(t, []extract.Operation{
+		{
+			Action: "create",
+			Table:  data.TableQuotes,
+			Data: map[string]any{
+				"project_id":  float64(1),
+				"vendor_id":   float64(2),
+				"total_cents": float64(150000),
+			},
+		},
+	})
+	ex := m.ex.extraction
+	require.False(t, ex.exploring, "should start in pipeline mode")
+	require.False(t, m.magMode, "mag mode should start off")
+
+	// Toggle mag mode while in pipeline mode (preview is dimmed but visible).
+	sendExtractionKey(m, "ctrl+o")
+	require.True(t, m.magMode,
+		"mag mode should be on after ctrl+o in pipeline mode")
+
+	// Dimmed preview section should reflect the toggle.
+	out := m.renderOperationPreviewSection(80, false)
+	plain := ansi.Strip(out)
+	assert.Contains(t, plain, magArrow,
+		"mag notation should appear in pipeline preview after toggle")
+	assert.NotContains(t, plain, "$1,500.00",
+		"raw money should be replaced by mag notation")
+
+	// Toggle off restores raw money.
+	sendExtractionKey(m, "ctrl+o")
+	require.False(t, m.magMode, "mag mode should toggle off")
+	out = m.renderOperationPreviewSection(80, false)
+	plain = ansi.Strip(out)
+	assert.Contains(t, plain, "$1,500.00",
+		"raw money should be restored")
+	assert.NotContains(t, plain, magArrow,
+		"mag notation should disappear")
+}
+
 // --- Model picker ---
 
 func TestModelPicker_ROpensPickerOnDoneLLMStep(t *testing.T) {
