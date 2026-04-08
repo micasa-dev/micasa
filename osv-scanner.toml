@@ -47,3 +47,18 @@ reason = "ollama server missing auth; micasa is an HTTP client, not a server"
 [[IgnoredVulns]]
 id = "GO-2026-4514"
 reason = "jsonparser.Delete panic on malformed JSON; micasa never imports or calls jsonparser — transitive dep only, no fix version available upstream"
+
+# jackc/pgx pgproto3 server-side message parsing: micasa uses pgx (via
+# gorm.io/driver/postgres) as a PostgreSQL client. The affected code paths
+# live in pgproto3.Backend (server-side wire-protocol parser) which is only
+# instantiated by Postgres servers. micasa never runs a Postgres server,
+# so Backend.Receive, Bind.Decode, and FunctionCall.Decode are unreachable.
+# pgconn (the production client path) uses pgproto3.NewFrontend, not
+# NewBackend. No fix version available upstream.
+[[IgnoredVulns]]
+id = "GO-2026-4771"
+reason = "pgx pgproto3.Backend.Receive / Bind.Decode memory-safety bug; micasa uses pgx as a Postgres client only, never instantiates Backend"
+
+[[IgnoredVulns]]
+id = "GO-2026-4772"
+reason = "pgx pgproto3.Backend.Receive / FunctionCall.Decode memory-safety bug; micasa uses pgx as a Postgres client only, never instantiates Backend"
