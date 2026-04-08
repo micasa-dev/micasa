@@ -32,22 +32,50 @@ type Extractor interface {
 // pdftotext, plaintext, PDF OCR, image OCR. maxPages of 0 means no limit
 // (all pages). Zero timeout causes the concrete extractor to use its default.
 // ocrEnabled controls whether OCR extractors are included (default true).
+//
+// All concrete extractors are wired with DefaultOCRTools() so binary
+// paths are resolved once at startup rather than per command invocation.
 func DefaultExtractors(
 	maxPages int,
 	timeout time.Duration,
 	ocrEnabled bool,
 ) []Extractor {
+	tools := DefaultOCRTools()
 	ext := []Extractor{
-		&PDFTextExtractor{Timeout: timeout},
+		&PDFTextExtractor{Tools: tools, Timeout: timeout},
 		&PlainTextExtractor{},
 	}
 	if ocrEnabled {
 		ext = append(ext,
-			&PDFOCRExtractor{MaxPages: maxPages},
-			&ImageOCRExtractor{},
+			&PDFOCRExtractor{Tools: tools, MaxPages: maxPages},
+			&ImageOCRExtractor{Tools: tools},
 		)
 	}
 	return ext
+}
+
+// ExtractorTools returns the first non-nil *OCRTools from any extractor in
+// the slice. If none of the extractors carry tools, it falls back to
+// DefaultOCRTools(). This lets progress helpers locate the resolved binary
+// paths without callers having to thread *OCRTools through every API.
+func ExtractorTools(extractors []Extractor) *OCRTools {
+	for _, ext := range extractors {
+		switch e := ext.(type) {
+		case *PDFTextExtractor:
+			if e.Tools != nil {
+				return e.Tools
+			}
+		case *PDFOCRExtractor:
+			if e.Tools != nil {
+				return e.Tools
+			}
+		case *ImageOCRExtractor:
+			if e.Tools != nil {
+				return e.Tools
+			}
+		}
+	}
+	return DefaultOCRTools()
 }
 
 // HasMatchingExtractor reports whether any extractor in the list with
@@ -102,13 +130,25 @@ func NeedsOCR(extractors []Extractor, mime string) bool {
 // --- Concrete extractors ---
 
 // PDFTextExtractor wraps pdftotext for digital PDF text extraction.
+// Tools may be nil, in which case the extractor falls back to
+// DefaultOCRTools(). Tests can supply a stub *OCRTools to drive
+// failure paths without mutating PATH.
 type PDFTextExtractor struct {
+	Tools   *OCRTools
 	Timeout time.Duration
 }
 
 func (e *PDFTextExtractor) Tool() string             { return "pdftotext" }
 func (e *PDFTextExtractor) Matches(mime string) bool { return mime == MIMEApplicationPDF }
-func (e *PDFTextExtractor) Available() bool          { return HasPDFToText() }
+func (e *PDFTextExtractor) Available() bool          { return e.tools().PDFToText != "" }
+
+// tools returns the injected *OCRTools or the lazy default.
+func (e *PDFTextExtractor) tools() *OCRTools {
+	if e.Tools != nil {
+		return e.Tools
+	}
+	return DefaultOCRTools()
+}
 
 func (e *PDFTextExtractor) Extract(ctx context.Context, data []byte) (TextSource, error) {
 	if len(data) == 0 {
@@ -120,7 +160,7 @@ func (e *PDFTextExtractor) Extract(ctx context.Context, data []byte) (TextSource
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	text, err := extractPDF(ctx, data)
+	text, err := extractPDF(ctx, e.tools().PDFToText, data)
 	if err != nil {
 		return TextSource{}, err
 	}
@@ -150,19 +190,31 @@ func (e *PlainTextExtractor) Extract(_ context.Context, data []byte) (TextSource
 }
 
 // PDFOCRExtractor wraps ocrPDF for scanned PDF pages.
+// Tools may be nil, in which case the extractor falls back to
+// DefaultOCRTools(). Tests can supply a stub *OCRTools to drive
+// failure paths without mutating PATH.
 type PDFOCRExtractor struct {
+	Tools    *OCRTools
 	MaxPages int
 }
 
 func (e *PDFOCRExtractor) Tool() string             { return "tesseract" }
 func (e *PDFOCRExtractor) Matches(mime string) bool { return mime == MIMEApplicationPDF }
-func (e *PDFOCRExtractor) Available() bool          { return OCRAvailable() }
+func (e *PDFOCRExtractor) Available() bool          { return e.tools().PDFOCRAvailable() }
+
+// tools returns the injected *OCRTools or the lazy default.
+func (e *PDFOCRExtractor) tools() *OCRTools {
+	if e.Tools != nil {
+		return e.Tools
+	}
+	return DefaultOCRTools()
+}
 
 func (e *PDFOCRExtractor) Extract(ctx context.Context, data []byte) (TextSource, error) {
 	if len(data) == 0 {
 		return TextSource{}, nil
 	}
-	text, tsv, err := ocrPDF(ctx, data, e.MaxPages)
+	text, tsv, err := ocrPDF(ctx, e.tools(), data, e.MaxPages)
 	if err != nil {
 		return TextSource{}, err
 	}
@@ -175,17 +227,30 @@ func (e *PDFOCRExtractor) Extract(ctx context.Context, data []byte) (TextSource,
 }
 
 // ImageOCRExtractor wraps ocrImage for direct image OCR.
-type ImageOCRExtractor struct{}
+// Tools may be nil, in which case the extractor falls back to
+// DefaultOCRTools(). Tests can supply a stub *OCRTools to drive
+// failure paths without mutating PATH.
+type ImageOCRExtractor struct {
+	Tools *OCRTools
+}
 
 func (e *ImageOCRExtractor) Tool() string             { return "tesseract" }
 func (e *ImageOCRExtractor) Matches(mime string) bool { return IsImageMIME(mime) }
-func (e *ImageOCRExtractor) Available() bool          { return ImageOCRAvailable() }
+func (e *ImageOCRExtractor) Available() bool          { return e.tools().ImageOCRAvailable() }
+
+// tools returns the injected *OCRTools or the lazy default.
+func (e *ImageOCRExtractor) tools() *OCRTools {
+	if e.Tools != nil {
+		return e.Tools
+	}
+	return DefaultOCRTools()
+}
 
 func (e *ImageOCRExtractor) Extract(ctx context.Context, data []byte) (TextSource, error) {
 	if len(data) == 0 {
 		return TextSource{}, nil
 	}
-	text, tsv, err := ocrImage(ctx, data)
+	text, tsv, err := ocrImage(ctx, e.tools().Tesseract, data)
 	if err != nil {
 		return TextSource{}, err
 	}

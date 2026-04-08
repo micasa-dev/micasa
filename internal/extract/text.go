@@ -37,7 +37,7 @@ func ExtractText(
 	}
 
 	textExtractors := []Extractor{
-		&PDFTextExtractor{Timeout: timeout},
+		&PDFTextExtractor{Tools: DefaultOCRTools(), Timeout: timeout},
 		&PlainTextExtractor{},
 	}
 	for _, ext := range textExtractors {
@@ -55,8 +55,9 @@ func ExtractText(
 
 // extractPDF shells out to pdftotext for text extraction. pdftotext
 // preserves reading order and table layout better than pure-Go readers.
-// The caller is responsible for setting any timeout on ctx.
-func extractPDF(ctx context.Context, data []byte) (string, error) {
+// pdfToTextPath is the absolute path to the pdftotext binary. The caller
+// is responsible for setting any timeout on ctx.
+func extractPDF(ctx context.Context, pdfToTextPath string, data []byte) (string, error) {
 	tmpDir, err := os.MkdirTemp("", "micasa-text-*")
 	if err != nil {
 		return "", fmt.Errorf("create temp dir: %w", err)
@@ -68,9 +69,9 @@ func extractPDF(ctx context.Context, data []byte) (string, error) {
 		return "", fmt.Errorf("write temp pdf: %w", err)
 	}
 
-	cmd := exec.CommandContext( //nolint:gosec // args are constructed internally
+	cmd := exec.CommandContext( //nolint:gosec // pdfToTextPath is resolved at startup, args constructed internally
 		ctx,
-		"pdftotext",
+		pdfToTextPath,
 		"-layout",
 		pdfPath,
 		"-", // stdout

@@ -40,6 +40,10 @@ type ExtractProgress struct {
 // sent on the returned channel. The channel closes when processing completes.
 // The extractors list is consulted to determine whether to run image or PDF
 // OCR. Unsupported types produce a single Done message with empty text.
+//
+// Tool paths are resolved via ExtractorTools(extractors), so the same
+// pre-resolved *OCRTools that the synchronous extractors use is reused
+// here without forcing callers to thread it through every API.
 func ExtractWithProgress(
 	ctx context.Context,
 	data []byte,
@@ -47,19 +51,27 @@ func ExtractWithProgress(
 	extractors []Extractor,
 ) <-chan ExtractProgress {
 	ch := make(chan ExtractProgress, 8)
+	tools := ExtractorTools(extractors)
 	go func() {
 		defer close(ch)
 		if HasMatchingExtractor(extractors, "tesseract", "image/png") && IsImageMIME(mime) {
-			ocrImageWithProgress(ctx, data, ch)
+			ocrImageWithProgress(ctx, tools.Tesseract, data, ch)
 		} else {
-			ocrPDFWithProgress(ctx, data, ExtractorMaxPages(extractors), ch)
+			ocrPDFWithProgress(ctx, tools, data, ExtractorMaxPages(extractors), ch)
 		}
 	}()
 	return ch
 }
 
 // ocrImageWithProgress runs tesseract directly on an image file.
-func ocrImageWithProgress(ctx context.Context, data []byte, ch chan<- ExtractProgress) {
+// tesseractPath is the absolute path to the tesseract binary, resolved
+// once at startup.
+func ocrImageWithProgress(
+	ctx context.Context,
+	tesseractPath string,
+	data []byte,
+	ch chan<- ExtractProgress,
+) {
 	if len(data) == 0 {
 		ch <- ExtractProgress{Done: true}
 		return
@@ -85,7 +97,7 @@ func ocrImageWithProgress(ctx context.Context, data []byte, ch chan<- ExtractPro
 		return
 	}
 
-	text, tsv, err := ocrImageFile(ctx, imgPath)
+	text, tsv, err := ocrImageFile(ctx, tesseractPath, imgPath)
 	if err != nil {
 		ch <- ExtractProgress{Err: fmt.Errorf("tesseract: %w", err), Done: true}
 		return
@@ -100,8 +112,12 @@ func ocrImageWithProgress(ctx context.Context, data []byte, ch chan<- ExtractPro
 	}
 }
 
+// ocrPDFWithProgress runs the fused pdftocairo|tesseract pipeline with
+// per-page progress events. tools must have PDFInfo, PDFToCairo, and
+// Tesseract populated.
 func ocrPDFWithProgress(
 	ctx context.Context,
+	tools *OCRTools,
 	data []byte,
 	maxPages int,
 	ch chan<- ExtractProgress,
@@ -124,7 +140,7 @@ func ocrPDFWithProgress(
 	}
 
 	// Get page count.
-	pageCount, err := pdfPageCount(ctx, pdfPath)
+	pageCount, err := pdfPageCount(ctx, tools.PDFInfo, pdfPath)
 	if err != nil {
 		ch <- ExtractProgress{
 			Err:  fmt.Errorf("pdfinfo: %w", err),
@@ -167,7 +183,7 @@ func ocrPDFWithProgress(
 	var ocrResults []ocrPageResult
 	done := make(chan struct{})
 	go func() {
-		ocrResults = ocrPDFPages(ctx, pdfPath, total, rasterDone, pageDone)
+		ocrResults = ocrPDFPages(ctx, tools, pdfPath, total, rasterDone, pageDone)
 		close(done)
 	}()
 

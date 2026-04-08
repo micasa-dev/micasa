@@ -46,7 +46,7 @@ func TestOcrPDF_ValidPDF(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample.pdf")
 	}
 
-	text, tsv, err := ocrPDF(t.Context(), data, 5)
+	text, tsv, err := ocrPDF(t.Context(), DefaultOCRTools(), data, 5)
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.NotEmpty(t, tsv)
@@ -66,7 +66,7 @@ func TestOcrPDF_ScannedPDF(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: testdata/scanned-invoice.pdf")
 	}
 
-	text, tsv, err := ocrPDF(t.Context(), data, 5)
+	text, tsv, err := ocrPDF(t.Context(), DefaultOCRTools(), data, 5)
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.NotEmpty(t, tsv)
@@ -78,7 +78,7 @@ func TestOcrPDF_InvalidData(t *testing.T) {
 		skipOrFatalCI(t, "tesseract and/or pdftocairo not available")
 	}
 
-	_, _, err := ocrPDF(t.Context(), []byte("not a pdf at all"), 5)
+	_, _, err := ocrPDF(t.Context(), DefaultOCRTools(), []byte("not a pdf at all"), 5)
 	require.Error(t, err)
 }
 
@@ -96,7 +96,7 @@ func TestOcrPDF_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	_, _, err = ocrPDF(ctx, data, 5)
+	_, _, err = ocrPDF(ctx, DefaultOCRTools(), data, 5)
 	assert.Error(t, err)
 }
 
@@ -113,7 +113,7 @@ func TestOcrPDF_MixedPDF_MultiPageTSV(t *testing.T) {
 		t.Skipf("test fixture not found (pdfunite unavailable?): testdata/mixed-inspection.pdf")
 	}
 
-	text, tsv, err := ocrPDF(t.Context(), data, 5)
+	text, tsv, err := ocrPDF(t.Context(), DefaultOCRTools(), data, 5)
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.NotEmpty(t, tsv)
@@ -130,7 +130,7 @@ func TestOcrPDF_SinglePage(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample.pdf")
 	}
 
-	text, _, err := ocrPDF(t.Context(), data, 1)
+	text, _, err := ocrPDF(t.Context(), DefaultOCRTools(), data, 1)
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 }
@@ -150,7 +150,7 @@ func TestOcrImage_ValidImage(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: testdata/sample-text.png")
 	}
 
-	text, tsv, err := ocrImage(t.Context(), data)
+	text, tsv, err := ocrImage(t.Context(), DefaultOCRTools().Tesseract, data)
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.NotEmpty(t, tsv)
@@ -167,7 +167,7 @@ func TestOcrImage_InvoicePNG(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: testdata/invoice.png")
 	}
 
-	text, tsv, err := ocrImage(t.Context(), data)
+	text, tsv, err := ocrImage(t.Context(), DefaultOCRTools().Tesseract, data)
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.NotEmpty(t, tsv)
@@ -179,7 +179,7 @@ func TestOcrImage_InvalidData(t *testing.T) {
 		skipOrFatalCI(t, "tesseract not available")
 	}
 
-	_, _, err := ocrImage(t.Context(), []byte("not an image"))
+	_, _, err := ocrImage(t.Context(), DefaultOCRTools().Tesseract, []byte("not an image"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "tesseract")
 }
@@ -198,7 +198,7 @@ func TestOcrImage_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	_, _, err = ocrImage(ctx, data)
+	_, _, err = ocrImage(ctx, DefaultOCRTools().Tesseract, data)
 	assert.Error(t, err)
 }
 
@@ -217,7 +217,7 @@ func TestOcrImageFile_ValidFile(t *testing.T) {
 		skipOrFatalCI(t, "test fixture not found: "+imgPath)
 	}
 
-	text, tsv, err := ocrImageFile(t.Context(), imgPath)
+	text, tsv, err := ocrImageFile(t.Context(), DefaultOCRTools().Tesseract, imgPath)
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.NotEmpty(t, tsv)
@@ -229,7 +229,7 @@ func TestOcrImageFile_NonExistentFile(t *testing.T) {
 		skipOrFatalCI(t, "tesseract not available")
 	}
 
-	_, _, err := ocrImageFile(t.Context(), "/nonexistent/image.png")
+	_, _, err := ocrImageFile(t.Context(), DefaultOCRTools().Tesseract, "/nonexistent/image.png")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "tesseract")
 }
@@ -248,7 +248,7 @@ func TestOcrImageFile_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	_, _, err := ocrImageFile(ctx, imgPath)
+	_, _, err := ocrImageFile(ctx, DefaultOCRTools().Tesseract, imgPath)
 	assert.Error(t, err)
 }
 
@@ -275,7 +275,7 @@ func TestPdfPageCount_ValidPDF(t *testing.T) {
 		os.WriteFile(pdfPath, data, 0o600),
 	)
 
-	count, err := pdfPageCount(t.Context(), pdfPath)
+	count, err := pdfPageCount(t.Context(), DefaultOCRTools().PDFInfo, pdfPath)
 	require.NoError(t, err)
 	assert.Positive(t, count, "page count should be positive")
 }
@@ -293,7 +293,7 @@ func TestPdfPageCount_InvalidPDF(t *testing.T) {
 		os.WriteFile(pdfPath, []byte("corrupt data"), 0o600),
 	)
 
-	_, err := pdfPageCount(t.Context(), pdfPath)
+	_, err := pdfPageCount(t.Context(), DefaultOCRTools().PDFInfo, pdfPath)
 	assert.Error(t, err)
 }
 
@@ -319,7 +319,7 @@ func TestPdfPageCount_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	_, err = pdfPageCount(ctx, pdfPath)
+	_, err = pdfPageCount(ctx, DefaultOCRTools().PDFInfo, pdfPath)
 	assert.Error(t, err)
 }
 
@@ -346,7 +346,7 @@ func TestOcrPage_ValidPDF(t *testing.T) {
 		os.WriteFile(pdfPath, data, 0o600),
 	)
 
-	result := ocrPage(t.Context(), pdfPath, 1, nil)
+	result := ocrPage(t.Context(), DefaultOCRTools(), pdfPath, 1, nil)
 	require.NoError(t, result.err)
 	assert.NotEmpty(t, result.text)
 	assert.NotEmpty(t, result.tsv)
@@ -365,7 +365,7 @@ func TestOcrPage_InvalidPDF(t *testing.T) {
 		os.WriteFile(pdfPath, []byte("corrupt data"), 0o600),
 	)
 
-	result := ocrPage(t.Context(), pdfPath, 1, nil)
+	result := ocrPage(t.Context(), DefaultOCRTools(), pdfPath, 1, nil)
 	assert.Error(t, result.err)
 }
 
@@ -391,7 +391,7 @@ func TestOcrPage_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	result := ocrPage(ctx, pdfPath, 1, nil)
+	result := ocrPage(ctx, DefaultOCRTools(), pdfPath, 1, nil)
 	assert.Error(t, result.err)
 }
 
@@ -413,7 +413,7 @@ func TestExtractPDF_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	_, err = extractPDF(ctx, data)
+	_, err = extractPDF(ctx, DefaultOCRTools().PDFToText, data)
 	assert.Error(t, err)
 }
 
@@ -423,7 +423,7 @@ func TestExtractPDF_CorruptData(t *testing.T) {
 		skipOrFatalCI(t, "pdftotext not available")
 	}
 
-	_, err := extractPDF(t.Context(), []byte("definitely not a PDF"))
+	_, err := extractPDF(t.Context(), DefaultOCRTools().PDFToText, []byte("definitely not a PDF"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pdftotext")
 }
@@ -444,7 +444,7 @@ func TestOcrPDFWithProgress_ZeroMaxPages(t *testing.T) {
 	}
 
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrPDFWithProgress(t.Context(), data, 0, ch)
+		ocrPDFWithProgress(t.Context(), DefaultOCRTools(), data, 0, ch)
 	})
 
 	var finalMsg ExtractProgress
@@ -470,7 +470,7 @@ func TestOcrPDFWithProgress_NegativeMaxPages(t *testing.T) {
 	}
 
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrPDFWithProgress(t.Context(), data, -1, ch)
+		ocrPDFWithProgress(t.Context(), DefaultOCRTools(), data, -1, ch)
 	})
 
 	var finalMsg ExtractProgress
@@ -487,7 +487,7 @@ func TestOcrPDFWithProgress_NegativeMaxPages(t *testing.T) {
 func TestOcrPDFWithProgress_EmptyData(t *testing.T) {
 	t.Parallel()
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrPDFWithProgress(t.Context(), nil, 5, ch)
+		ocrPDFWithProgress(t.Context(), DefaultOCRTools(), nil, 5, ch)
 	})
 
 	require.Len(t, msgs, 1)
@@ -503,7 +503,7 @@ func TestOcrPDFWithProgress_InvalidPDF(t *testing.T) {
 	}
 
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrPDFWithProgress(t.Context(), []byte("not a pdf"), 5, ch)
+		ocrPDFWithProgress(t.Context(), DefaultOCRTools(), []byte("not a pdf"), 5, ch)
 	})
 
 	var gotErr bool
@@ -531,7 +531,7 @@ func TestOcrPDFWithProgress_ContextCancelled(t *testing.T) {
 	cancel()
 
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrPDFWithProgress(ctx, data, 5, ch)
+		ocrPDFWithProgress(ctx, DefaultOCRTools(), data, 5, ch)
 	})
 
 	var gotErr bool
@@ -559,7 +559,7 @@ func TestOcrImageWithProgress_ValidImage(t *testing.T) {
 	}
 
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrImageWithProgress(t.Context(), data, ch)
+		ocrImageWithProgress(t.Context(), DefaultOCRTools().Tesseract, data, ch)
 	})
 
 	var progressCount int
@@ -585,7 +585,7 @@ func TestOcrImageWithProgress_ValidImage(t *testing.T) {
 func TestOcrImageWithProgress_EmptyData(t *testing.T) {
 	t.Parallel()
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrImageWithProgress(t.Context(), nil, ch)
+		ocrImageWithProgress(t.Context(), DefaultOCRTools().Tesseract, nil, ch)
 	})
 
 	require.Len(t, msgs, 1)
@@ -601,7 +601,7 @@ func TestOcrImageWithProgress_InvalidImage(t *testing.T) {
 	}
 
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrImageWithProgress(t.Context(), []byte("not an image"), ch)
+		ocrImageWithProgress(t.Context(), DefaultOCRTools().Tesseract, []byte("not an image"), ch)
 	})
 
 	var gotErr bool
@@ -629,7 +629,7 @@ func TestOcrImageWithProgress_ContextCancelled(t *testing.T) {
 	cancel()
 
 	msgs := collectProgress(func(ch chan<- ExtractProgress) {
-		ocrImageWithProgress(ctx, data, ch)
+		ocrImageWithProgress(ctx, DefaultOCRTools().Tesseract, data, ch)
 	})
 
 	var gotErr bool
@@ -828,7 +828,7 @@ func TestOcrPDFPages_ValidPDF(t *testing.T) {
 		os.WriteFile(pdfPath, data, 0o600),
 	)
 
-	pageCount, err := pdfPageCount(t.Context(), pdfPath)
+	pageCount, err := pdfPageCount(t.Context(), DefaultOCRTools().PDFInfo, pdfPath)
 	require.NoError(t, err)
 	require.Positive(t, pageCount)
 
@@ -836,7 +836,7 @@ func TestOcrPDFPages_ValidPDF(t *testing.T) {
 		pageCount = 2
 	}
 
-	results := ocrPDFPages(t.Context(), pdfPath, pageCount, nil, nil)
+	results := ocrPDFPages(t.Context(), DefaultOCRTools(), pdfPath, pageCount, nil, nil)
 	require.Len(t, results, pageCount)
 
 	for i, r := range results {
@@ -867,7 +867,7 @@ func TestOcrPDFPages_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	results := ocrPDFPages(ctx, pdfPath, 1, nil, nil)
+	results := ocrPDFPages(ctx, DefaultOCRTools(), pdfPath, 1, nil, nil)
 	require.Len(t, results, 1)
 	assert.Error(t, results[0].err)
 }
@@ -892,7 +892,7 @@ func TestOcrPDFPages_ProgressReporting(t *testing.T) {
 	)
 
 	pageDone := make(chan struct{}, 2)
-	results := ocrPDFPages(t.Context(), pdfPath, 1, nil, pageDone)
+	results := ocrPDFPages(t.Context(), DefaultOCRTools(), pdfPath, 1, nil, pageDone)
 	require.Len(t, results, 1)
 	require.NoError(t, results[0].err)
 
@@ -989,7 +989,7 @@ func TestOcrPage_NonExistentPDF(t *testing.T) {
 		skipOrFatalCI(t, "tesseract and/or pdftocairo not available")
 	}
 
-	result := ocrPage(t.Context(), "/nonexistent/file.pdf", 1, nil)
+	result := ocrPage(t.Context(), DefaultOCRTools(), "/nonexistent/file.pdf", 1, nil)
 	require.Error(t, result.err)
 	assert.Contains(t, result.err.Error(), "pdftocairo")
 }
