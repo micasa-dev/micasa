@@ -413,7 +413,8 @@ func walkEnvFields(v reflect.Value, prefix string, extra map[string]string) erro
 // setFieldFromEnv assigns a string value from an environment variable to a
 // reflected config field, converting types as needed.
 func setFieldFromEnv(fv reflect.Value, envVar, val string) error {
-	switch fv.Kind() { //nolint:exhaustive // only config-relevant kinds
+	//exhaustive:ignore // only config-relevant kinds
+	switch fv.Kind() {
 	case reflect.String:
 		fv.SetString(val)
 	case reflect.Int:
@@ -435,7 +436,8 @@ func setFieldFromEnv(fv reflect.Value, envVar, val string) error {
 }
 
 func setFieldFromEnvPtr(fv reflect.Value, envVar, val string) error {
-	switch fv.Type().Elem().Kind() { //nolint:exhaustive // only config-relevant kinds
+	//exhaustive:ignore // only config-relevant kinds
+	switch fv.Type().Elem().Kind() {
 	case reflect.Bool:
 		b, err := strconv.ParseBool(val)
 		if err != nil {
@@ -591,7 +593,8 @@ func formatValue(v reflect.Value) (string, error) {
 		return val.String(), nil
 	}
 
-	switch v.Kind() { //nolint:exhaustive // only config-relevant kinds
+	//exhaustive:ignore // only config-relevant kinds
+	switch v.Kind() {
 	case reflect.String:
 		return v.String(), nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:

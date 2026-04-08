@@ -38,7 +38,8 @@ func newExtractionModel(t *testing.T, steps map[extractionStep]stepStatus) *Mode
 	}
 	for si, status := range steps {
 		ex.Steps[si] = extractionStepInfo{Status: status}
-		switch si { //nolint:exhaustive // test helper only sets known steps
+		//exhaustive:ignore // test helper only sets known steps
+		switch si {
 		case stepText:
 			ex.hasText = true
 		case stepExtract:

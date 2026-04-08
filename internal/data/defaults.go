@@ -86,7 +86,8 @@ func StructDefault[T any](fieldName string) string {
 }
 
 func setFieldDefault(field reflect.Value, tag string) {
-	switch field.Kind() { //nolint:exhaustive // only handle types used in model/config defaults
+	//exhaustive:ignore // only handle types used in model/config defaults
+	switch field.Kind() {
 	case reflect.String:
 		if tag == "today" {
 			field.SetString(time.Now().Format(DateLayout))
