@@ -50,6 +50,111 @@ func TestExtractWithProgress_EmptyImage(t *testing.T) {
 	assert.NoError(t, msg.Err)
 }
 
+// TestExtractWithProgress_Image_UsesImageExtractorTools verifies that when
+// the image path is taken, the selected tesseract binary comes from the
+// matching *ImageOCRExtractor and not from an earlier *PDFOCRExtractor in
+// the slice. Regression guard for the bug where ExtractWithProgress reached
+// for the first-non-nil OCRTools across the whole slice.
+func TestExtractWithProgress_Image_UsesImageExtractorTools(t *testing.T) {
+	t.Parallel()
+
+	pdfTesseract := filepath.Join(t.TempDir(), "pdfocr-tesseract")
+	imgTesseract := filepath.Join(t.TempDir(), "imageocr-tesseract")
+
+	// PDFOCRExtractor appears first so it would win a first-non-nil scan.
+	extractors := []Extractor{
+		&PDFOCRExtractor{Tools: &OCRTools{
+			PDFInfo:    filepath.Join(t.TempDir(), "pdfinfo"),
+			PDFToCairo: filepath.Join(t.TempDir(), "pdftocairo"),
+			Tesseract:  pdfTesseract,
+		}},
+		&ImageOCRExtractor{Tools: &OCRTools{
+			Tesseract: imgTesseract,
+		}},
+	}
+
+	ch := ExtractWithProgress(
+		t.Context(),
+		[]byte("not a real png"),
+		"image/png",
+		extractors,
+	)
+
+	var errMsg string
+	for msg := range ch {
+		if msg.Err != nil {
+			errMsg = msg.Err.Error()
+		}
+	}
+	require.NotEmpty(t, errMsg, "stub tesseract path must produce an error")
+	assert.Contains(t, errMsg, imgTesseract,
+		"image OCR must use ImageOCRExtractor.Tools.Tesseract")
+	assert.NotContains(t, errMsg, pdfTesseract,
+		"image OCR must not use PDFOCRExtractor.Tools.Tesseract")
+}
+
+// TestExtractWithProgress_PDF_UsesPDFExtractorTools is the PDF-path sibling
+// of the image test: when a PDF is processed, the pdfinfo/pdftocairo paths
+// must come from *PDFOCRExtractor even if an *ImageOCRExtractor with its
+// own tesseract path appears earlier in the slice.
+func TestExtractWithProgress_PDF_UsesPDFExtractorTools(t *testing.T) {
+	t.Parallel()
+
+	pdfInfo := filepath.Join(t.TempDir(), "pdfocr-pdfinfo")
+	imgTesseract := filepath.Join(t.TempDir(), "imageocr-tesseract")
+
+	// ImageOCRExtractor appears first so it would win a first-non-nil scan.
+	extractors := []Extractor{
+		&ImageOCRExtractor{Tools: &OCRTools{
+			Tesseract: imgTesseract,
+		}},
+		&PDFOCRExtractor{Tools: &OCRTools{
+			PDFInfo:    pdfInfo,
+			PDFToCairo: filepath.Join(t.TempDir(), "pdftocairo"),
+			Tesseract:  filepath.Join(t.TempDir(), "pdfocr-tesseract"),
+		}},
+	}
+
+	ch := ExtractWithProgress(
+		t.Context(),
+		[]byte("%PDF-stub"),
+		"application/pdf",
+		extractors,
+	)
+
+	var errMsg string
+	for msg := range ch {
+		if msg.Err != nil {
+			errMsg = msg.Err.Error()
+		}
+	}
+	require.NotEmpty(t, errMsg, "stub pdfinfo path must produce an error")
+	assert.Contains(t, errMsg, pdfInfo,
+		"PDF OCR must use PDFOCRExtractor.Tools.PDFInfo")
+	assert.NotContains(t, errMsg, imgTesseract,
+		"PDF OCR must not use ImageOCRExtractor.Tools.Tesseract")
+}
+
+// TestExtractWithProgress_PDF_FallsBackToDefaultToolsWhenAbsent verifies
+// that ExtractWithProgress still runs the PDF path when the extractor
+// slice contains no *PDFOCRExtractor. The fallback must not panic and
+// must deliver an error or Done message so the caller's channel drains.
+func TestExtractWithProgress_PDF_FallsBackToDefaultToolsWhenAbsent(t *testing.T) {
+	t.Parallel()
+
+	ch := ExtractWithProgress(
+		t.Context(),
+		[]byte("%PDF-stub"),
+		"application/pdf",
+		[]Extractor{&PlainTextExtractor{}},
+	)
+	for msg := range ch {
+		if msg.Done {
+			return
+		}
+	}
+}
+
 // TestExtractWithProgress_ContextCancelled verifies that cancelling the
 // context during extraction sends an error and closes the channel. This
 // is the path hit when the user quits the app mid-extraction.

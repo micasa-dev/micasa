@@ -54,30 +54,6 @@ func DefaultExtractors(
 	return ext
 }
 
-// ExtractorTools returns the first non-nil *OCRTools from any extractor in
-// the slice. If none of the extractors carry tools, it falls back to
-// DefaultOCRTools(). This lets progress helpers locate the resolved binary
-// paths without callers having to thread *OCRTools through every API.
-func ExtractorTools(extractors []Extractor) *OCRTools {
-	for _, ext := range extractors {
-		switch e := ext.(type) {
-		case *PDFTextExtractor:
-			if e.Tools != nil {
-				return e.Tools
-			}
-		case *PDFOCRExtractor:
-			if e.Tools != nil {
-				return e.Tools
-			}
-		case *ImageOCRExtractor:
-			if e.Tools != nil {
-				return e.Tools
-			}
-		}
-	}
-	return DefaultOCRTools()
-}
-
 // HasMatchingExtractor reports whether any extractor in the list with
 // the given tool name matches the MIME type and is available.
 func HasMatchingExtractor(extractors []Extractor, tool string, mime string) bool {

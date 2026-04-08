@@ -41,9 +41,11 @@ type ExtractProgress struct {
 // The extractors list is consulted to determine whether to run image or PDF
 // OCR. Unsupported types produce a single Done message with empty text.
 //
-// Tool paths are resolved via ExtractorTools(extractors), so the same
-// pre-resolved *OCRTools that the synchronous extractors use is reused
-// here without forcing callers to thread it through every API.
+// Tool paths are resolved from the specific extractor that will handle the
+// current MIME type, not the first extractor in the slice. This keeps
+// heterogeneous tool sets across extractors from cross-wiring binaries:
+// e.g. an ImageOCRExtractor's tesseract path is never silently replaced
+// by a PDFOCRExtractor's tesseract path that happens to appear earlier.
 func ExtractWithProgress(
 	ctx context.Context,
 	data []byte,
@@ -51,16 +53,45 @@ func ExtractWithProgress(
 	extractors []Extractor,
 ) <-chan ExtractProgress {
 	ch := make(chan ExtractProgress, 8)
-	tools := ExtractorTools(extractors)
 	go func() {
 		defer close(ch)
-		if HasMatchingExtractor(extractors, "tesseract", "image/png") && IsImageMIME(mime) {
-			ocrImageWithProgress(ctx, tools.Tesseract, data, ch)
-		} else {
-			ocrPDFWithProgress(ctx, tools, data, ExtractorMaxPages(extractors), ch)
+		if IsImageMIME(mime) {
+			if img := findImageOCRExtractor(extractors, mime); img != nil {
+				ocrImageWithProgress(ctx, img.tools().Tesseract, data, ch)
+				return
+			}
 		}
+		tools, maxPages := pdfOCRToolsAndMaxPages(extractors)
+		ocrPDFWithProgress(ctx, tools, data, maxPages, ch)
 	}()
 	return ch
+}
+
+// findImageOCRExtractor returns the first *ImageOCRExtractor in extractors
+// that matches mime and reports itself available, or nil if none match.
+// Selection is by concrete type so the caller reaches the extractor's
+// Tools field directly without scanning unrelated extractors.
+func findImageOCRExtractor(extractors []Extractor, mime string) *ImageOCRExtractor {
+	for _, ext := range extractors {
+		if e, ok := ext.(*ImageOCRExtractor); ok && e.Matches(mime) && e.Available() {
+			return e
+		}
+	}
+	return nil
+}
+
+// pdfOCRToolsAndMaxPages returns the *OCRTools and MaxPages cap from the
+// first *PDFOCRExtractor in extractors. If no PDFOCRExtractor is present
+// it falls back to DefaultOCRTools() with an unlimited page cap so the
+// progress pipeline still runs for callers that construct extractor
+// slices without an explicit PDF OCR stage.
+func pdfOCRToolsAndMaxPages(extractors []Extractor) (*OCRTools, int) {
+	for _, ext := range extractors {
+		if e, ok := ext.(*PDFOCRExtractor); ok {
+			return e.tools(), e.MaxPages
+		}
+	}
+	return DefaultOCRTools(), 0
 }
 
 // ocrImageWithProgress runs tesseract directly on an image file.

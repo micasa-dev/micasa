@@ -165,10 +165,9 @@ func TestOCRTools_StubPath_OcrPage_TesseractOnly(t *testing.T) {
 		t.Skip("test fixture not found: testdata/sample.pdf")
 	}
 	pdfPath := filepath.Join(t.TempDir(), "input.pdf")
-	require.NoError(
-		t,
-		os.WriteFile(pdfPath, data, 0o600),
-	) //nolint:gosec // path is t.TempDir() + constant filename
+	//nolint:gosec // pdfPath is t.TempDir() + constant filename; data is a test fixture
+	err = os.WriteFile(pdfPath, data, 0o600)
+	require.NoError(t, err)
 
 	tools := &OCRTools{
 		PDFToCairo: DefaultOCRTools().PDFToCairo,
@@ -266,24 +265,6 @@ func TestOCRTools_StubPath_PDFOCRExtractor(t *testing.T) {
 	src, err := ext.Extract(t.Context(), []byte("%PDF-stub"))
 	require.Error(t, err)
 	assert.Empty(t, src.Text)
-}
-
-func TestExtractorTools_PrefersInjected(t *testing.T) {
-	t.Parallel()
-
-	custom := &OCRTools{Tesseract: "/custom/tesseract"}
-	got := ExtractorTools([]Extractor{
-		&PlainTextExtractor{},
-		&PDFOCRExtractor{Tools: custom},
-	})
-	assert.Same(t, custom, got)
-}
-
-func TestExtractorTools_FallbackToDefault(t *testing.T) {
-	t.Parallel()
-
-	got := ExtractorTools([]Extractor{&PlainTextExtractor{}})
-	assert.Same(t, DefaultOCRTools(), got)
 }
 
 func TestOCRTools_StubPath_ErrorIsRich(t *testing.T) {
