@@ -526,28 +526,44 @@ func TestHouseOverlayScrollBlockedBehindOverlay(t *testing.T) {
 
 func TestHouseOverlayNarrowEditFits(t *testing.T) {
 	t.Parallel()
-	m := newTestModelWithDemoData(t, 42)
 
-	// Shrink width to just above narrow threshold so columns still render
-	// side-by-side but space is tight.
-	m.width = houseOverlayNarrowThreshold + 8
-	m.height = 40
-	m.resizeTables()
+	tests := []struct {
+		name    string
+		width   int
+		section int
+		row     int
+	}{
+		{"near threshold / Year", houseOverlayNarrowThreshold + 8, int(houseSectionStructure), 0},
+		{"at threshold / Ins carrier", houseOverlayNarrowThreshold, int(houseSectionFinancial), 0},
+		{"below threshold / Heat", houseOverlayNarrowThreshold - 1, int(houseSectionUtilities), 0},
+	}
 
-	sendKey(m, keyTab) // open overlay
-	require.NotNil(t, m.houseOverlay)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := newTestModelWithDemoData(t, 42)
+			m.width = tt.width
+			m.height = 40
+			m.resizeTables()
 
-	// Enter edit on the first structure field (Year).
-	sendKey(m, keyEnter)
-	require.True(t, m.houseOverlay.editing)
+			sendKey(m, keyTab) // open overlay
+			require.NotNil(t, m.houseOverlay)
 
-	view := m.buildHouseOverlay()
-	overlayW := m.houseOverlayWidth()
+			m.houseOverlay.section = tt.section
+			m.houseOverlay.row = tt.row
+			sendKey(m, keyEnter)
+			require.True(t, m.houseOverlay.editing)
 
-	// Every line of the overlay must fit within the overlay content width.
-	for _, line := range strings.Split(view, "\n") {
-		w := lipgloss.Width(line)
-		assert.LessOrEqual(t, w, overlayW,
-			"line exceeds overlay width (%d > %d): %q", w, overlayW, line)
+			view := m.buildHouseOverlay()
+			// buildHouseOverlay renders the full OverlayBox at
+			// houseOverlayWidth(), so rendered lines include borders.
+			maxW := m.houseOverlayWidth()
+
+			for _, line := range strings.Split(view, "\n") {
+				w := lipgloss.Width(line)
+				assert.LessOrEqual(t, w, maxW,
+					"line exceeds overlay width (%d > %d): %q", w, maxW, line)
+			}
+		})
 	}
 }
