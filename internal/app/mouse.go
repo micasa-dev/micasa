@@ -111,7 +111,11 @@ func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 
 	// House header click.
 	if m.zones.Get(zoneHouse).InBounds(msg) {
-		m.showHouse = !m.showHouse
+		if m.houseOverlay != nil {
+			m.houseOverlay = nil
+		} else if m.hasHouse {
+			m.houseOverlay = &houseOverlayState{section: 1, row: 0}
+		}
 		m.resizeTables()
 		return m, nil
 	}
@@ -418,6 +422,8 @@ func (m *Model) handleScroll(delta int) (tea.Model, tea.Cmd) {
 // dismissActiveOverlay closes the topmost active overlay.
 func (m *Model) dismissActiveOverlay() {
 	switch {
+	case m.houseOverlay != nil:
+		m.houseOverlay = nil
 	case m.helpViewport != nil:
 		m.helpViewport = nil
 	case m.notePreview != nil:

@@ -48,7 +48,6 @@ func TestHouseEmptyFieldCountFullProfile(t *testing.T) {
 func TestHouseCollapsedNicknamePill(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
-	m.showHouse = false
 	view := m.houseCollapsed()
 	assert.Contains(t, view, m.house.Nickname, "should show nickname")
 	assert.NotContains(t, view, "House", "should not show House label")

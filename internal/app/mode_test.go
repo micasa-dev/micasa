@@ -297,22 +297,14 @@ func TestHouseToggle(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(t)
 	m.hasHouse = true
-	assert.False(t, m.showHouse)
+	assert.Nil(t, m.houseOverlay)
 
-	// House starts collapsed (shows ▸).
-	view := m.buildView()
-	assert.Contains(t, view, "▸", "expected collapsed house initially")
-
-	// Tab toggles house in both modes.
+	// Tab opens house overlay.
 	sendKey(m, "tab")
-	assert.True(t, m.showHouse)
-	view = m.buildView()
-	assert.Contains(t, view, "▾", "expected expanded house after tab")
+	assert.NotNil(t, m.houseOverlay, "expected overlay open after tab")
 
 	sendKey(m, "tab")
-	assert.False(t, m.showHouse)
-	view = m.buildView()
-	assert.Contains(t, view, "▸", "expected collapsed house after second tab")
+	assert.Nil(t, m.houseOverlay, "expected overlay closed after second tab")
 }
 
 func TestHelpToggle(t *testing.T) {
@@ -555,13 +547,9 @@ func TestTabTogglesHouseInEditMode(t *testing.T) {
 	sendKey(m, "i")
 	require.Equal(t, modeEdit, m.mode)
 	require.Contains(t, m.statusView(), "EDIT")
-	assert.False(t, m.showHouse)
-	view := m.buildView()
-	assert.Contains(t, view, "▸", "house should start collapsed")
+	assert.Nil(t, m.houseOverlay)
 	sendKey(m, "tab")
-	assert.True(t, m.showHouse)
-	view = m.buildView()
-	assert.Contains(t, view, "▾", "tab should toggle house to expanded in edit mode")
+	assert.NotNil(t, m.houseOverlay, "tab should open house overlay in edit mode")
 }
 
 func TestTabSwitchKeysBlockedInEditMode(t *testing.T) {

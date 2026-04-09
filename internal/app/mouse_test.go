@@ -158,16 +158,23 @@ func TestScrollWheelMovesCursor(t *testing.T) {
 func TestHouseHeaderClickToggles(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	initial := m.showHouse
+	assert.Nil(t, m.houseOverlay)
 
 	z := requireZone(t, m, "house-header")
 
 	sendClick(m, z.StartX, z.StartY)
-	assert.NotEqual(t, initial, m.showHouse, "clicking house header should toggle showHouse")
+	assert.NotNil(t, m.houseOverlay, "clicking house header should open overlay")
 
-	z = requireZone(t, m, "house-header")
-	sendClick(m, z.StartX, z.StartY)
-	assert.Equal(t, initial, m.showHouse, "second click should restore original state")
+	// Wait for overlay zone to flush so click dispatch uses known bounds.
+	m.View()
+	require.Eventually(t, func() bool {
+		oz := m.zones.Get(zoneOverlay)
+		return oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "overlay zone never populated")
+
+	// Click at (0,0) — outside centered overlay — should dismiss.
+	sendClick(m, 0, 0)
+	assert.Nil(t, m.houseOverlay, "clicking outside overlay should close it")
 }
 
 // TestOverlayDismissOnOutsideClick verifies that clicking outside an

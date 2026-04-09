@@ -33,6 +33,7 @@ func (m *Model) buildView() string {
 		render func() string
 	}{
 		{m.dashboardVisible(), m.buildDashboardOverlay},
+		{m.houseOverlay != nil, m.buildHouseOverlay},
 		{m.calendar != nil, m.buildCalendarOverlay},
 		{m.notePreview != nil, m.buildNotePreviewOverlay},
 		{m.opsTree != nil, m.buildOpsTreeOverlay},

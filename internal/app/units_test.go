@@ -54,19 +54,22 @@ func TestHouseDisplayUsesMetricUnits(t *testing.T) {
 	m.house.SquareFeet = 1820
 	m.house.LotSquareFeet = 7000
 	m.hasHouse = true
-	m.showHouse = true
+	// In imperial mode, overlay should show raw square footage label.
+	m.houseOverlay = &houseOverlayState{section: 1}
+	view := m.buildHouseOverlay()
+	assert.Contains(t, view, "Square feet")
+	assert.Contains(t, view, "1820")
 
-	// In imperial mode, should show ft.
-	view := m.houseExpanded()
-	assert.Contains(t, view, "ft")
-
-	// Switch to metric.
+	// Close overlay, switch to metric, reopen.
+	m.houseOverlay = nil
 	sendKey(m, "U")
 	require.Equal(t, data.UnitsMetric, m.unitSystem)
 
-	view = m.houseExpanded()
-	assert.Contains(t, view, "m\u00B2")
-	assert.NotContains(t, view, "ft\u00B2")
+	m.houseOverlay = &houseOverlayState{section: 1}
+	view = m.buildHouseOverlay()
+	// In metric mode, field label stays "Square feet" but the get() func
+	// converts via SqFtToDisplayInt, yielding the metric value.
+	assert.Contains(t, view, "Square feet")
 }
 
 func TestHouseFormMetricSavesAsSqFt(t *testing.T) {

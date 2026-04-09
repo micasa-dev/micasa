@@ -200,7 +200,7 @@ type Model struct {
 	width                 int
 	height                int
 	helpViewport          *viewport.Model
-	showHouse             bool
+	houseOverlay          *houseOverlayState
 	showDashboard         bool
 	notePreview           *notePreviewState
 	opsTree               *opsTreeState
@@ -326,7 +326,6 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		styles:          appStyles,
 		tabs:            NewTabs(),
 		active:          0,
-		showHouse:       false,
 		mode:            modeNormal,
 		keys:            newAppKeyMap(),
 		cur:             store.Currency(),
@@ -1431,6 +1430,7 @@ func (o inlineInputOverlay) hidesMainKeys() bool { return false }
 // in update() that doesn't fit this interface.
 func (m *Model) overlays() []overlay {
 	return []overlay{
+		houseProfileOverlay{m},
 		helpOverlay{m},
 		extractionOverlay{m},
 		chatOverlay{m},

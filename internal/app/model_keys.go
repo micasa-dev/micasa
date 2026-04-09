@@ -73,7 +73,11 @@ func (m *Model) handleCommonKeys(msg tea.KeyPressMsg) bool {
 		m.openHelp()
 		return true
 	case key.Matches(msg, m.keys.HouseToggle):
-		m.showHouse = !m.showHouse
+		if m.houseOverlay != nil {
+			m.houseOverlay = nil
+		} else if m.hasHouse {
+			m.houseOverlay = &houseOverlayState{section: 1, row: 0}
+		}
 		m.resizeTables()
 		return true
 	case key.Matches(msg, m.keys.MagToggle):

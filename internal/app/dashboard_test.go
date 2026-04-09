@@ -305,10 +305,10 @@ func TestDashboardBlocksTableKeys(t *testing.T) {
 	sendKey(m, "i")
 	assert.Equal(t, modeNormal, m.mode, "i should be blocked on dashboard")
 
-	// tab should not toggle house profile.
-	houseBefore := m.showHouse
+	// tab should not toggle house overlay.
+	overlayBefore := m.houseOverlay
 	sendKey(m, "tab")
-	assert.Equal(t, houseBefore, m.showHouse, "tab should be blocked on dashboard")
+	assert.Equal(t, overlayBefore, m.houseOverlay, "tab should be blocked on dashboard")
 
 	// Dashboard should still be showing.
 	assert.True(t, m.showDashboard)
