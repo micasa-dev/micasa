@@ -73,9 +73,9 @@ with dimmed background, matching the dashboard/chat/help pattern.
   edit on the focused identity field.
 - **Three-column grid**: Structure, Utilities, Financial. Each column
   has a section header in accent color with a horizontal rule below.
-- **Field rendering**: dim label left-aligned, bright value
-  right-aligned within label/value pair. Empty fields show `○ —` or
-  `○ not set` in warning color.
+- **Field rendering**: dim label, bright value. Labels form an aligned
+  column per section. Empty fields show `○ —` or `○ not set` in warning
+  color.
 - **Overlay sizing**: width fits content up to a reasonable max. Height
   fits content. Centered with dimmed background matching existing
   overlay pattern.
@@ -86,12 +86,14 @@ with dimmed background, matching the dashboard/chat/help pattern.
 
 ### Keyboard Navigation
 
-Column-major navigation within the overlay:
+Column-major navigation within the overlay. Cursor starts at the first
+Structure field when the overlay opens.
 
-- **↑/↓**: move cursor within current section (column). Wraps at
-  section boundaries.
+- **↑/↓**: move cursor within current column. At the top of a grid
+  column, ↑ moves into the identity section. At the bottom, ↓ clamps.
 - **←/→**: jump between columns. Row position is remembered; if the
-  target column is shorter, cursor clamps to its last field.
+  target column is shorter, cursor clamps to its last field. In the
+  identity section, ←/→ cycles between identity fields.
 - **Enter**: open inline edit for the focused field.
 - **Esc**: if editing, cancel edit. If browsing, close overlay.
 
@@ -107,15 +109,11 @@ Column-major navigation within the overlay:
 ### Inline Edit
 
 When the user presses Enter on a field, a single-field `huh.Form`
-renders in-place, replacing the value display with an input/select
-widget.
+renders in-place, replacing the value display with the appropriate
+widget for that field's type (text input, select dropdown, etc.).
+Current value is pre-filled. Each field's metadata determines the
+widget and validation.
 
-- **Text fields**: text input with current value pre-filled.
-- **Select fields** (foundation, heating, etc.): select dropdown.
-- **Number fields**: text input with numeric validation.
-- **Date fields**: text input with date validation (or calendar picker
-  if already wired).
-- **Money fields**: text input with currency parsing.
 - **Confirm**: Enter submits, writes to DB, refreshes overlay.
 - **Cancel**: Esc reverts, returns to browse mode.
 
