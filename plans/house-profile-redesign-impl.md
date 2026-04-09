@@ -28,19 +28,22 @@ Extract field metadata into a reusable slice that describes every `HouseProfile`
 ```go
 func TestHouseFieldDefsComplete(t *testing.T) {
 	t.Parallel()
-	// Every non-metadata field on HouseProfile must have a def.
+	// Every editable field on houseFormData must have a def.
 	defs := houseFieldDefs()
 	keys := make(map[string]bool, len(defs))
 	for _, d := range defs {
 		require.False(t, keys[d.key], "duplicate key: %s", d.key)
 		keys[d.key] = true
 	}
-	// Check that expected fields exist.
-	for _, k := range []string{
-		"nickname", "address_line1", "city", "year_built",
-		"heating_type", "insurance_carrier",
-	} {
-		assert.True(t, keys[k], "missing field def for %s", k)
+	// Derive expected keys from houseFormData struct fields.
+	rt := reflect.TypeOf(houseFormData{})
+	for i := range rt.NumField() {
+		f := rt.Field(i)
+		if f.Name == "m" { // skip Model backref
+			continue
+		}
+		key := toSnakeCase(f.Name) // e.g. YearBuilt → year_built
+		assert.True(t, keys[key], "houseFormData.%s (key %q) has no field def", f.Name, key)
 	}
 }
 
@@ -354,10 +357,11 @@ In `internal/app/house_overlay.go`:
 
 ```go
 type houseOverlayState struct {
-	section int // 0=identity, 1=structure, 2=utilities, 3=financial
-	row     int // cursor row within current section
-	editing bool
-	form    *huh.Form
+	section  int // 0=identity, 1=structure, 2=utilities, 3=financial
+	row      int // cursor row within current section
+	editing  bool
+	form     *huh.Form
+	formData *houseFormData // temporary form data during inline edit
 }
 ```
 
@@ -620,9 +624,9 @@ func TestHouseOverlayFieldZones(t *testing.T) {
 	sendKey(m, keyTab)
 	_ = m.buildView() // trigger zone registration
 	requireZone(t, m, "house-field-nickname")
-	requireZone(t, m, "house-field-year-built")
-	requireZone(t, m, "house-field-heating-type")
-	requireZone(t, m, "house-field-insurance-carrier")
+	requireZone(t, m, "house-field-year_built")
+	requireZone(t, m, "house-field-heating_type")
+	requireZone(t, m, "house-field-insurance_carrier")
 }
 ```
 
@@ -649,7 +653,7 @@ func TestHouseOverlayClickSelectsField(t *testing.T) {
 	_ = m.buildView()
 
 	// Click a field in utilities section.
-	zone := m.zones.Get("house-field-heating-type")
+	zone := m.zones.Get("house-field-heating_type")
 	require.True(t, zone.Visible(), "heating zone should be visible")
 	sendClick(m, zone.X()+1, zone.Y())
 
@@ -768,6 +772,8 @@ func TestHouseOverlayEditPersists(t *testing.T) {
 	require.True(t, m.houseOverlay.editing)
 	require.NotNil(t, m.houseOverlay.form)
 
+	// Clear existing value (ctrl+a to select all, then type replaces).
+	sendKey(m, "ctrl+a")
 	// Type new value — huh form captures keystrokes.
 	for _, r := range "Bungalow" {
 		sendKey(m, string(r))

@@ -123,6 +123,10 @@ A single ordered list of field metadata drives both the initial
 full-screen form and the overlay's inline editor. Each entry captures
 the field's key, display label, section assignment, how to build a
 `huh.Field` for it, and how to read/write the value on `HouseProfile`.
+Sections are Identity, Structure, Utilities, and Financial. Identity
+fields (nickname, address, city, state, postal code) use the same
+metadata list but render in the identity row above the grid rather than
+inside a grid column.
 
 - **Initial full form** (no house exists): iterates all defs, groups by
   section, builds full `huh.Form`.
@@ -150,6 +154,10 @@ Per issue #842:
 
 - Side-by-side before/after demo recording (`/record-demo`)
 - Tests cover keyboard navigation and click-to-edit on at least one
-  field per section
-- Narrow-width rendering verified down to 80 cols
+  field per section (including identity fields)
+- Identity section: keyboard traversal into/out of identity row,
+  left/right cycling across identity fields, inline edit of at least
+  one identity field
+- Narrow-width rendering verified down to 80 cols, identity section
+  still reachable via keyboard
 - No regressions in collapsed header rendering
