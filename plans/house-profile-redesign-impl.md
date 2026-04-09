@@ -92,8 +92,9 @@ type houseFieldDef struct {
 	build func(m *Model, value *string) huh.Field
 	// get reads the display value from a HouseProfile.
 	get func(p data.HouseProfile, cur locale.Currency, us data.UnitSystem) string
-	// set writes a string pointer in houseFormData.
-	set func(fd *houseFormData, value string)
+	// ptr returns a pointer to this field's backing string in houseFormData.
+	// Used by build (huh binding) and by inline edit submit (*ptr = value).
+	ptr func(fd *houseFormData) *string
 }
 
 func houseFieldDefs() []houseFieldDef { ... }
@@ -109,7 +110,7 @@ Each `build` func replicates the corresponding `huh.NewInput()` call from `start
 
 Each `get` func reads from `data.HouseProfile` and formats for display (int → `strconv.Itoa`, `*int64` cents → `cur.FormatOptionalCents`, `*time.Time` → `data.FormatDate`).
 
-Each `set` func writes to the corresponding `houseFormData` string field.
+Each `ptr` func returns a pointer to the corresponding `houseFormData` string field (e.g. `&fd.Nickname`).
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -126,9 +127,8 @@ func TestHouseFieldDefGetSet(t *testing.T) {
 	fd := m.houseFormValues(m.house)
 	for _, d := range defs {
 		val := d.get(m.house, m.cur, m.unitSystem)
-		// For non-empty fields, get should return non-empty string.
-		// We just verify no panics and round-trip consistency.
-		d.set(fd, val)
+		// Verify no panics and round-trip consistency.
+		*d.ptr(fd) = val
 	}
 }
 ```
@@ -145,7 +145,7 @@ feat(ui): add shared house field definitions
 
 Introduce houseFieldDef type and ordered slice covering all
 HouseProfile fields. Each def captures key, label, section,
-huh.Field builder, getter, and setter — foundation for both
+huh.Field builder, getter, and field pointer — foundation for both
 the full form and the overlay inline editor.
 ```
 
@@ -168,12 +168,12 @@ Expected: PASS (all existing tests)
 Rewrite `startHouseForm()` to:
 1. Call `houseFieldDefs()` to get the ordered list.
 2. Group defs by section.
-3. For each section, build a `huh.Group` by calling `d.build(m, &values.Field)` for each def in that section.
+3. For each section, build a `huh.Group` by calling `d.build(m, d.ptr(fd))` for each def in that section.
 4. Assemble groups into `huh.NewForm(...)`.
 5. Preserve the postal code autofill references (postalCodeInput, cityInput, stateInput) — these are the only special-case fields that need to be captured during iteration.
 6. Preserve the "only nickname required" description on basics group when `!m.hasHouse`.
 
-The `set` function on each def maps key → `houseFormData` field pointer, so the iteration can bind `build` to the correct `*string`.
+The `ptr` function on each def returns the `*string` for that field on `houseFormData`, so the iteration can pass `d.ptr(fd)` directly to `d.build`.
 
 - [ ] **Step 3: Run full test suite to verify no regressions**
 
@@ -347,8 +347,8 @@ func TestHouseOverlayToggle(t *testing.T) {
 	sendKey(m, keyTab)
 	assert.NotNil(t, m.houseOverlay, "tab should open overlay")
 
-	sendKey(m, keyEsc)
-	assert.Nil(t, m.houseOverlay, "esc should close overlay")
+	sendKey(m, keyTab) // toggle off via handleCommonKeys
+	assert.Nil(t, m.houseOverlay, "tab should close overlay")
 }
 ```
 
@@ -465,8 +465,6 @@ feat(ui): add house profile overlay with three-column grid
 Replace inline expanded header with centered overlay. Implements
 overlay interface, renders Structure/Utilities/Financial columns
 with cursor highlighting and empty field indicators.
-
-closes #842
 ```
 
 ---
@@ -476,6 +474,7 @@ closes #842
 Implement column-major cursor movement with identity section above the grid.
 
 **Files:**
+- Modify: `internal/app/keybindings.go` — add `HouseUp`/`HouseDown`/`HouseLeft`/`HouseRight`/`HouseClose` bindings
 - Modify: `internal/app/house_overlay.go` — `handleKey()` method
 - Test: `internal/app/house_overlay_test.go`
 
@@ -523,7 +522,18 @@ Expected: FAIL — `handleKey` not yet dispatching navigation
 
 - [ ] **Step 3: Implement handleKey navigation**
 
-In `houseProfileOverlay.handleKey()`:
+First, add house overlay bindings to `keybindings.go` (following `DashUp`/`CalUp` pattern):
+
+```go
+// House overlay navigation
+HouseUp    key.Binding // keyK, keyUp
+HouseDown  key.Binding // keyJ, keyDown
+HouseLeft  key.Binding // keyH, keyLeft
+HouseRight key.Binding // keyL, keyRight
+HouseClose key.Binding // keyEsc
+```
+
+Then in `houseProfileOverlay.handleKey()`:
 
 ```go
 func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
@@ -532,17 +542,17 @@ func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return o.m.handleHouseEditKey(msg)
 	}
 	switch {
-	case key.Matches(msg, o.m.keys.CursorDown):
+	case key.Matches(msg, o.m.keys.HouseDown):
 		o.m.houseOverlayDown()
-	case key.Matches(msg, o.m.keys.CursorUp):
+	case key.Matches(msg, o.m.keys.HouseUp):
 		o.m.houseOverlayUp()
-	case key.Matches(msg, o.m.keys.ColRight):
+	case key.Matches(msg, o.m.keys.HouseRight):
 		o.m.houseOverlayRight()
-	case key.Matches(msg, o.m.keys.ColLeft):
+	case key.Matches(msg, o.m.keys.HouseLeft):
 		o.m.houseOverlayLeft()
-	case key.Matches(msg, o.m.keys.Confirm):
+	case key.Matches(msg, o.m.keys.Enter):
 		o.m.houseOverlayStartEdit()
-	case key.Matches(msg, o.m.keys.HelpClose):
+	case key.Matches(msg, o.m.keys.HouseClose):
 		o.m.houseOverlay = nil
 	case key.Matches(msg, o.m.keys.HouseToggle):
 		o.m.houseOverlay = nil
@@ -736,8 +746,8 @@ func (m *Model) houseOverlayStartEdit() {
 	}
 	// Create temporary form data from current profile.
 	fd := m.houseFormValues(m.house)
-	// Build single-field form.
-	field := def.build(m, m.houseFieldPtr(fd, def.key))
+	// Build single-field form bound to the formData field pointer.
+	field := def.build(m, def.ptr(fd))
 	form := huh.NewForm(huh.NewGroup(field))
 	form.WithWidth(m.houseOverlayFieldWidth())
 	s.form = form
@@ -745,8 +755,6 @@ func (m *Model) houseOverlayStartEdit() {
 	s.editing = true
 }
 ```
-
-`houseFieldPtr(fd, key)` returns a `*string` pointer to the appropriate `houseFormData` field based on the def's key. This uses the `set` function or a switch on key.
 
 - [ ] **Step 4: Implement handleHouseEditKey()**
 
@@ -852,8 +860,6 @@ Delete from `house.go`:
 - `houseArt()` — pixel art removed per spec
 - `houseSection()` — only used by `houseExpanded()`
 
-Remove the `showHouse` field from Model if not already done in Task 4.
-
 Delete from `styles.go`:
 - `HouseRoof()`, `HouseWall()`, `HouseWindow()`, `HouseDoor()` accessors
 - Their backing private fields (if dedicated — check if they alias existing fields like `fgAccent`, `fgTextMid`, `fgSecondary`, `fgWarning`)
@@ -914,4 +920,6 @@ Capture before/after comparison showing:
 
 ```
 docs(ui): record house profile redesign demo
+
+closes #842
 ```
