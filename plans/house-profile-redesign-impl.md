@@ -351,6 +351,22 @@ func TestHouseOverlayToggle(t *testing.T) {
 	sendKey(m, keyTab) // toggle off via handleCommonKeys
 	assert.Nil(t, m.houseOverlay, "tab should close overlay")
 }
+
+func TestHouseOverlayMouseToggle(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	_ = m.buildView() // register zones
+	assert.Nil(t, m.houseOverlay)
+
+	zone := m.zones.Get("house-header")
+	require.True(t, zone.Visible())
+	sendClick(m, zone.X()+1, zone.Y())
+	assert.NotNil(t, m.houseOverlay, "click should open overlay")
+
+	_ = m.buildView()
+	sendClick(m, zone.X()+1, zone.Y())
+	assert.Nil(t, m.houseOverlay, "click should close overlay")
+}
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -440,7 +456,7 @@ In `internal/app/house_overlay.go`, implement `buildHouseOverlay()`:
 2. **Three columns**: iterate `houseFieldDefs()`, group by section, render each section as a column with header + horizontal rule + label/value rows.
 3. **Cursor**: highlight the focused field (section + row) with a `▸` prefix and background highlight style.
 4. **Empty fields**: render `○ —` or `○ not set` in warning color.
-5. **Hint bar**: `↑↓ navigate  ←→ section  enter edit  esc close`
+5. **Hint bar**: `↑↓ navigate  ←→ section  esc close` (Task 7 adds `enter edit` once inline editing is wired)
 6. **Compose**: join columns horizontally with gap, wrap in `OverlayBox()` style, size to content.
 
 The three columns have different lengths. Pad shorter columns with empty lines to align. Use `lipgloss.JoinHorizontal(lipgloss.Top, ...)` for column layout.
