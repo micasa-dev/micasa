@@ -53,6 +53,11 @@ type houseFieldDef struct {
 	get func(p data.HouseProfile, cur locale.Currency, us data.UnitSystem) string
 	// ptr returns a pointer to this field's backing string in houseFormData.
 	ptr func(fd *houseFormData) *string
+	// validate checks a string value for this field. nil = no validation.
+	validate func(string) error
+	// toggle, if non-nil, means Enter toggles the value instead of opening
+	// a textinput. The function flips the value and returns the new string.
+	toggle func(current string) string
 }
 
 func houseFieldDefs() []houseFieldDef {
@@ -60,7 +65,7 @@ func houseFieldDefs() []houseFieldDef {
 		// Identity — ordered to match form tab order (postal code after nickname
 		// for autofill, then address lines, city, state).
 		{
-			key: "nickname", label: "Nickname", section: houseSectionIdentity,
+			key: "nickname", label: "Name", section: houseSectionIdentity,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title(requiredTitle("Nickname")).
@@ -71,37 +76,41 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.Nickname
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.Nickname },
+			ptr:      func(fd *houseFormData) *string { return &fd.Nickname },
+			validate: requiredText("nickname"),
 		},
 		{
-			key: "postal_code", label: "Postal code", section: houseSectionIdentity,
+			key: "postal_code", label: "ZIP", section: houseSectionIdentity,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Postal code").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.PostalCode
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.PostalCode },
+			ptr:      func(fd *houseFormData) *string { return &fd.PostalCode },
+			validate: nil,
 		},
 		{
-			key: "address_line1", label: "Address line 1", section: houseSectionIdentity,
+			key: "address_line1", label: "Addr 1", section: houseSectionIdentity,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Address line 1").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.AddressLine1
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.AddressLine1 },
+			ptr:      func(fd *houseFormData) *string { return &fd.AddressLine1 },
+			validate: nil,
 		},
 		{
-			key: "address_line2", label: "Address line 2", section: houseSectionIdentity,
+			key: "address_line2", label: "Addr 2", section: houseSectionIdentity,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Address line 2").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.AddressLine2
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.AddressLine2 },
+			ptr:      func(fd *houseFormData) *string { return &fd.AddressLine2 },
+			validate: nil,
 		},
 		{
 			key: "city", label: "City", section: houseSectionIdentity,
@@ -111,7 +120,8 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.City
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.City },
+			ptr:      func(fd *houseFormData) *string { return &fd.City },
+			validate: nil,
 		},
 		{
 			key: "state", label: "State", section: houseSectionIdentity,
@@ -121,11 +131,12 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.State
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.State },
+			ptr:      func(fd *houseFormData) *string { return &fd.State },
+			validate: nil,
 		},
 		// Structure
 		{
-			key: "year_built", label: "Year built", section: houseSectionStructure,
+			key: "year_built", label: "Year", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title("Year built").
@@ -136,10 +147,11 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return intToString(p.YearBuilt)
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.YearBuilt },
+			ptr:      func(fd *houseFormData) *string { return &fd.YearBuilt },
+			validate: optionalInt("year built"),
 		},
 		{
-			key: "square_feet", label: "Square feet", section: houseSectionStructure,
+			key: "square_feet", label: "Ft\u00B2", section: houseSectionStructure,
 			build: func(m *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title(data.AreaFormTitle(m.unitSystem)).
@@ -150,10 +162,11 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, us data.UnitSystem) string {
 				return intToString(data.SqFtToDisplayInt(p.SquareFeet, us))
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.SquareFeet },
+			ptr:      func(fd *houseFormData) *string { return &fd.SquareFeet },
+			validate: optionalInt(data.AreaFormTitle(data.UnitsImperial)),
 		},
 		{
-			key: "lot_square_feet", label: "Lot square feet", section: houseSectionStructure,
+			key: "lot_square_feet", label: "Lot", section: houseSectionStructure,
 			build: func(m *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title(data.LotAreaFormTitle(m.unitSystem)).
@@ -164,10 +177,11 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, us data.UnitSystem) string {
 				return intToString(data.SqFtToDisplayInt(p.LotSquareFeet, us))
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.LotSquareFeet },
+			ptr:      func(fd *houseFormData) *string { return &fd.LotSquareFeet },
+			validate: optionalInt(data.LotAreaFormTitle(data.UnitsImperial)),
 		},
 		{
-			key: "bedrooms", label: "Bedrooms", section: houseSectionStructure,
+			key: "bedrooms", label: "Bed", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title("Bedrooms").
@@ -178,10 +192,11 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return intToString(p.Bedrooms)
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.Bedrooms },
+			ptr:      func(fd *houseFormData) *string { return &fd.Bedrooms },
+			validate: optionalInt("bedrooms"),
 		},
 		{
-			key: "bathrooms", label: "Bathrooms", section: houseSectionStructure,
+			key: "bathrooms", label: "Bath", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title("Bathrooms").
@@ -192,132 +207,154 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return formatFloat(p.Bathrooms)
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.Bathrooms },
+			ptr:      func(fd *houseFormData) *string { return &fd.Bathrooms },
+			validate: optionalFloat("bathrooms"),
 		},
 		{
-			key: "foundation_type", label: "Foundation type", section: houseSectionStructure,
+			key: "foundation_type", label: "Fndtn", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Foundation type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.FoundationType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.FoundationType },
+			ptr:      func(fd *houseFormData) *string { return &fd.FoundationType },
+			validate: nil,
 		},
 		{
-			key: "wiring_type", label: "Wiring type", section: houseSectionStructure,
+			key: "wiring_type", label: "Wire", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Wiring type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.WiringType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.WiringType },
+			ptr:      func(fd *houseFormData) *string { return &fd.WiringType },
+			validate: nil,
 		},
 		{
-			key: "roof_type", label: "Roof type", section: houseSectionStructure,
+			key: "roof_type", label: "Roof", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Roof type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.RoofType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.RoofType },
+			ptr:      func(fd *houseFormData) *string { return &fd.RoofType },
+			validate: nil,
 		},
 		{
-			key: "exterior_type", label: "Exterior type", section: houseSectionStructure,
+			key: "exterior_type", label: "Ext", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Exterior type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.ExteriorType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.ExteriorType },
+			ptr:      func(fd *houseFormData) *string { return &fd.ExteriorType },
+			validate: nil,
 		},
 		{
-			key: "basement_type", label: "Basement type", section: houseSectionStructure,
+			key: "basement_type", label: "Bsmnt", section: houseSectionStructure,
 			build: func(_ *Model, v *string) huh.Field {
-				return huh.NewInput().Title("Basement type").Value(v)
+				return huh.NewInput().Title("Basement").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
-				return p.BasementType
+				if p.BasementType != "" {
+					return "Yes"
+				}
+				return "No"
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.BasementType },
+			ptr:      func(fd *houseFormData) *string { return &fd.BasementType },
+			validate: nil,
+			toggle: func(cur string) string {
+				if cur != "" {
+					return ""
+				}
+				return "Yes"
+			},
 		},
 		// Utilities
 		{
-			key: "heating_type", label: "Heating type", section: houseSectionUtilities,
+			key: "heating_type", label: "Heat", section: houseSectionUtilities,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Heating type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.HeatingType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.HeatingType },
+			ptr:      func(fd *houseFormData) *string { return &fd.HeatingType },
+			validate: nil,
 		},
 		{
-			key: "cooling_type", label: "Cooling type", section: houseSectionUtilities,
+			key: "cooling_type", label: "Cool", section: houseSectionUtilities,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Cooling type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.CoolingType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.CoolingType },
+			ptr:      func(fd *houseFormData) *string { return &fd.CoolingType },
+			validate: nil,
 		},
 		{
-			key: "water_source", label: "Water source", section: houseSectionUtilities,
+			key: "water_source", label: "Water", section: houseSectionUtilities,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Water source").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.WaterSource
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.WaterSource },
+			ptr:      func(fd *houseFormData) *string { return &fd.WaterSource },
+			validate: nil,
 		},
 		{
-			key: "sewer_type", label: "Sewer type", section: houseSectionUtilities,
+			key: "sewer_type", label: "Sewer", section: houseSectionUtilities,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Sewer type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.SewerType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.SewerType },
+			ptr:      func(fd *houseFormData) *string { return &fd.SewerType },
+			validate: nil,
 		},
 		{
-			key: "parking_type", label: "Parking type", section: houseSectionUtilities,
+			key: "parking_type", label: "Parking", section: houseSectionUtilities,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Parking type").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.ParkingType
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.ParkingType },
+			ptr:      func(fd *houseFormData) *string { return &fd.ParkingType },
+			validate: nil,
 		},
 		// Financial
 		{
-			key: "insurance_carrier", label: "Insurance carrier", section: houseSectionFinancial,
+			key: "insurance_carrier", label: "Ins carrier", section: houseSectionFinancial,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Insurance carrier").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.InsuranceCarrier
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.InsuranceCarrier },
+			ptr:      func(fd *houseFormData) *string { return &fd.InsuranceCarrier },
+			validate: nil,
 		},
 		{
-			key: "insurance_policy", label: "Insurance policy", section: houseSectionFinancial,
+			key: "insurance_policy", label: "Ins policy", section: houseSectionFinancial,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("Insurance policy").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.InsurancePolicy
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.InsurancePolicy },
+			ptr:      func(fd *houseFormData) *string { return &fd.InsurancePolicy },
+			validate: nil,
 		},
 		{
-			key: "insurance_renewal", label: "Insurance renewal", section: houseSectionFinancial,
+			key: "insurance_renewal", label: "Ins renewal", section: houseSectionFinancial,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title("Insurance renewal (YYYY-MM-DD)").
@@ -327,10 +364,11 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return data.FormatDate(p.InsuranceRenewal)
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.InsuranceRenewal },
+			ptr:      func(fd *houseFormData) *string { return &fd.InsuranceRenewal },
+			validate: optionalDate("insurance renewal"),
 		},
 		{
-			key: "property_tax", label: "Property tax", section: houseSectionFinancial,
+			key: "property_tax", label: "Prop tax", section: houseSectionFinancial,
 			build: func(m *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title("Property tax (annual)").
@@ -341,17 +379,19 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, cur locale.Currency, _ data.UnitSystem) string {
 				return cur.FormatOptionalCents(p.PropertyTaxCents)
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.PropertyTax },
+			ptr:      func(fd *houseFormData) *string { return &fd.PropertyTax },
+			validate: nil, // currency-dependent; validated by saveHouseFormData
 		},
 		{
-			key: "hoa_name", label: "HOA name", section: houseSectionFinancial,
+			key: "hoa_name", label: "HOA", section: houseSectionFinancial,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().Title("HOA name").Value(v)
 			},
 			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
 				return p.HOAName
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.HOAName },
+			ptr:      func(fd *houseFormData) *string { return &fd.HOAName },
+			validate: nil,
 		},
 		{
 			key: "hoa_fee", label: "HOA fee", section: houseSectionFinancial,
@@ -365,7 +405,8 @@ func houseFieldDefs() []houseFieldDef {
 			get: func(p data.HouseProfile, cur locale.Currency, _ data.UnitSystem) string {
 				return cur.FormatOptionalCents(p.HOAFeeCents)
 			},
-			ptr: func(fd *houseFormData) *string { return &fd.HOAFee },
+			ptr:      func(fd *houseFormData) *string { return &fd.HOAFee },
+			validate: nil, // currency-dependent; validated by saveHouseFormData
 		},
 	}
 }

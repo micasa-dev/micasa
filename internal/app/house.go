@@ -29,30 +29,22 @@ func (m *Model) houseView() string {
 	return m.zones.Mark(zoneHouse, m.headerBox(m.houseCollapsed()))
 }
 
-// housePill renders the nickname (or "House" when no profile) in pill style.
-// Uses AccentOutline when an overlay is active, HeaderTitle (accent pill) otherwise.
+// housePill renders the nickname (or "House") as bold accent text.
 func (m *Model) housePill() string {
 	label := "House"
 	if m.hasHouse && m.house.Nickname != "" {
 		label = m.house.Nickname
 	}
-	if m.hasActiveOverlay() {
-		return m.styles.AccentOutline().Render(label)
-	}
-	return m.styles.HeaderTitle().Render(label)
+	return m.styles.AccentBold().Render(label)
 }
 
 // houseTitle is a backward-compatible alias used by houseView for no-house state.
 func (m *Model) houseTitle() string {
-	if m.hasActiveOverlay() {
-		return m.styles.AccentOutline().Render("House")
-	}
-	return m.styles.HeaderTitle().Render("House")
+	return m.styles.AccentBold().Render("House")
 }
 
 func (m *Model) houseCollapsed() string {
 	pill := m.housePill()
-	badge := m.styles.HeaderBadge().Render("▸")
 	sep := m.styles.HeaderHint().Render(" · ")
 	hint := m.styles.HeaderHint()
 	val := m.styles.HeaderValue()
@@ -64,7 +56,7 @@ func (m *Model) houseCollapsed() string {
 		styledPart(val, formatInt(m.house.YearBuilt)),
 	)
 
-	line := joinInline(pill, badge) + "  " + vitals
+	line := pill + "  " + vitals
 
 	empty := houseEmptyFieldCount(m.house, m.cur, m.unitSystem)
 	if empty > 0 {
@@ -80,10 +72,10 @@ func (m *Model) collapsedBedBath() string {
 	hint := m.styles.HeaderHint()
 	var parts []string
 	if m.house.Bedrooms > 0 {
-		parts = append(parts, val.Render(strconv.Itoa(m.house.Bedrooms))+hint.Render("bd"))
+		parts = append(parts, val.Render(strconv.Itoa(m.house.Bedrooms))+" "+hint.Render("bd"))
 	}
 	if m.house.Bathrooms > 0 {
-		parts = append(parts, val.Render(formatFloat(m.house.Bathrooms))+hint.Render("ba"))
+		parts = append(parts, val.Render(formatFloat(m.house.Bathrooms))+" "+hint.Render("ba"))
 	}
 	if len(parts) == 0 {
 		return ""
@@ -98,11 +90,11 @@ func (m *Model) collapsedSqft() string {
 	if formatted == "" {
 		return ""
 	}
-	suffix := "sf"
+	suffix := "ft\u00B2"
 	if m.unitSystem == data.UnitsMetric {
 		suffix = "m\u00B2"
 	}
-	return m.styles.HeaderValue().Render(formatted) + m.styles.HeaderHint().Render(suffix)
+	return m.styles.HeaderValue().Render(formatted) + " " + m.styles.HeaderHint().Render(suffix)
 }
 
 func (m *Model) headerBox(content string) string {

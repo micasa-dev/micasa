@@ -305,6 +305,7 @@ func (s *Styles) UrgencyUpcoming() lipgloss.Style { return s.fgWarning }
 
 // --- Foreground(danger) ---
 
+func (s *Styles) Danger() lipgloss.Style          { return s.fgDanger }
 func (s *Styles) DeletedLabel() lipgloss.Style    { return s.fgDanger }
 func (s *Styles) ExtFailed() lipgloss.Style       { return s.fgDanger }
 func (s *Styles) ExtFail() lipgloss.Style         { return s.fgDanger }

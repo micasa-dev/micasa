@@ -34,6 +34,9 @@ func formatKSqft(sqft int) string {
 func houseEmptyFieldCount(p data.HouseProfile, cur locale.Currency, us data.UnitSystem) int {
 	count := 0
 	for _, d := range houseFieldDefs() {
+		if d.toggle != nil {
+			continue // toggle fields always have a value
+		}
 		if strings.TrimSpace(d.get(p, cur, us)) == "" {
 			count++
 		}

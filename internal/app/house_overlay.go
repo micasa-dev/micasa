@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 )
 
@@ -19,7 +19,7 @@ type houseOverlayState struct {
 	section  int // 0=identity, 1=structure, 2=utilities, 3=financial
 	row      int // cursor row within current section
 	editing  bool
-	form     *huh.Form
+	input    textinput.Model
 	formData *houseFormData
 }
 
@@ -49,7 +49,7 @@ func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		o.m.houseOverlay = nil
 		o.m.resizeTables()
 	case msg.String() == keyEnter:
-		o.m.houseOverlayStartEdit()
+		return o.m.houseOverlayStartEdit()
 	}
 	return nil
 }
@@ -65,12 +65,9 @@ func (m *Model) handleHouseEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.houseOverlaySubmitEdit()
 		return nil
 	}
-	// Forward to huh form for text input handling.
-	if s.form != nil {
-		_, cmd := s.form.Update(msg)
-		return cmd
-	}
-	return nil
+	var cmd tea.Cmd
+	s.input, cmd = s.input.Update(msg)
+	return cmd
 }
 
 // houseSectionLen returns the number of fields in the given section.
@@ -182,52 +179,74 @@ func (m *Model) houseOverlayCurrentDef() *houseFieldDef {
 	return nil
 }
 
-// houseOverlayStartEdit opens a single-field huh form for the focused field.
-func (m *Model) houseOverlayStartEdit() {
+// houseOverlayStartEdit opens an inline textinput for the focused field.
+func (m *Model) houseOverlayStartEdit() tea.Cmd {
 	s := m.houseOverlay
 	def := m.houseOverlayCurrentDef()
 	if def == nil {
-		return
+		return nil
+	}
+	// Toggle fields flip on Enter without opening a textinput.
+	if def.toggle != nil {
+		fd := m.houseFormValues(m.house)
+		ptr := def.ptr(fd)
+		*ptr = def.toggle(*ptr)
+		if err := m.saveHouseFormData(fd); err != nil {
+			m.setStatusError(err.Error())
+		}
+		return nil
 	}
 	fd := m.houseFormValues(m.house)
-	field := def.build(m, def.ptr(fd))
-	form := huh.NewForm(huh.NewGroup(field))
-	form.WithWidth(m.houseOverlayFieldWidth())
-	form.Init()
-	s.form = form
+	ti := textinput.New()
+	ti.Prompt = ""
+	st := ti.Styles()
+	st.Focused.Text = m.styles.HeaderValue()
+	ti.SetStyles(st)
+	ti.SetValue(*def.ptr(fd))
+	ti.CharLimit = 128
+	ti.SetWidth(m.houseOverlayFieldWidth())
+	cmd := ti.Focus()
+	s.input = ti
 	s.formData = fd
 	s.editing = true
+	return cmd
 }
 
 // houseOverlayCancelEdit discards the edit and returns to browse mode.
 func (m *Model) houseOverlayCancelEdit() {
 	s := m.houseOverlay
 	s.editing = false
-	s.form = nil
+	s.input = textinput.Model{}
 	s.formData = nil
 }
 
 // houseOverlaySubmitEdit validates, parses, and saves the edited field value.
 func (m *Model) houseOverlaySubmitEdit() {
 	s := m.houseOverlay
-	if s.form == nil || s.formData == nil {
+	if s.formData == nil {
 		return
 	}
-	// Run field validation before saving.
 	def := m.houseOverlayCurrentDef()
 	if def == nil {
 		m.houseOverlayCancelEdit()
 		return
 	}
-	val := strings.TrimSpace(*def.ptr(s.formData))
+	val := strings.TrimSpace(s.input.Value())
 	*def.ptr(s.formData) = val
+
+	if def.validate != nil {
+		if err := def.validate(val); err != nil {
+			m.setStatusError(err.Error())
+			return
+		}
+	}
 
 	if err := m.saveHouseFormData(s.formData); err != nil {
 		m.setStatusError(err.Error())
 		return
 	}
 	s.editing = false
-	s.form = nil
+	s.input = textinput.Model{}
 	s.formData = nil
 }
 
@@ -284,7 +303,7 @@ func (m *Model) buildHouseOverlay() string {
 // houseOverlayWidth returns a wider content width for the house overlay
 // since it has three columns.
 func (m *Model) houseOverlayWidth() int {
-	w := min(m.effectiveWidth()-8, 90)
+	w := min(m.effectiveWidth()-4, 106)
 	w = max(w, 40)
 	return w
 }
@@ -408,7 +427,7 @@ type houseOverlaySec struct {
 	fields []houseFieldDef
 }
 
-// houseOverlayRenderSections renders each section as a block of lines.
+// houseOverlayRenderSections renders each section as a block of aligned rows.
 func (m *Model) houseOverlayRenderSections(
 	sections []houseOverlaySec,
 	gridSections []houseSection,
@@ -416,12 +435,28 @@ func (m *Model) houseOverlayRenderSections(
 ) []string {
 	hint := m.styles.HeaderHint()
 	val := m.styles.HeaderValue()
-	warn := m.styles.Warning()
+	danger := m.styles.Danger()
 	section := m.styles.HeaderSection()
+	hl := m.styles.TableSelected()
 	s := m.houseOverlay
+
+	const cursorPrefix = symTriRightSm + " "
+	const blankPrefix = "  "
 
 	rendered := make([]string, len(sections))
 	for i, sec := range sections {
+		// Compute max label width for aligned columns.
+		maxLabelW := 0
+		for _, f := range sec.fields {
+			if w := lipgloss.Width(f.label); w > maxLabelW {
+				maxLabelW = w
+			}
+		}
+		// Value budget: column width minus cursor/prefix, padded label, and gap.
+		prefixW := lipgloss.Width(blankPrefix)
+		gapW := 2
+		maxValW := max(colW-prefixW-maxLabelW-gapW, 4)
+
 		lines := []string{
 			section.Render(sec.title),
 			hint.Render(strings.Repeat("─", colW)),
@@ -429,21 +464,33 @@ func (m *Model) houseOverlayRenderSections(
 
 		for rowIdx, f := range sec.fields {
 			isFocused := s.section == int(gridSections[i]) && s.row == rowIdx
-			if isFocused && s.editing && s.form != nil {
-				lines = append(lines, s.form.View())
+			if isFocused && s.editing {
+				// Render label + textinput inline.
+				pad := strings.Repeat(" ", maxLabelW-lipgloss.Width(f.label))
+				label := hint.Render(f.label+pad) + "  "
+				line := cursorPrefix + hl.Render(label) + s.input.View()
+				lines = append(lines, m.zones.Mark(zoneHouseField+f.key, line))
 			} else {
 				v := strings.TrimSpace(f.get(m.house, m.cur, m.unitSystem))
-				label := hint.Render(f.label)
+				pad := strings.Repeat(" ", maxLabelW-lipgloss.Width(f.label))
+				label := hint.Render(f.label + pad)
 				var line string
 				if v == "" {
-					line = label + "  " + warn.Render("—")
+					line = label + "  " + danger.Render(symEmptySet)
 				} else {
-					line = label + "  " + val.Render(v)
+					displayed := lipgloss.NewStyle().MaxWidth(maxValW).Render(v)
+					line = label + "  " + val.Render(displayed)
+				}
+				if isFocused {
+					line = cursorPrefix + hl.Render(line)
+				} else {
+					line = blankPrefix + line
 				}
 				lines = append(lines, m.zones.Mark(zoneHouseField+f.key, line))
 			}
 		}
-		rendered[i] = strings.Join(lines, "\n")
+		block := strings.Join(lines, "\n")
+		rendered[i] = lipgloss.NewStyle().MaxWidth(colW).Render(block)
 	}
 	return rendered
 }

@@ -393,6 +393,10 @@ func (m *Model) selectClickedColumn(tab *Tab, msg tea.MouseClickMsg) {
 
 // handleScroll scrolls the active surface by delta lines.
 func (m *Model) handleScroll(delta int) (tea.Model, tea.Cmd) {
+	// House overlay absorbs scroll events.
+	if m.houseOverlay != nil {
+		return m, nil
+	}
 	// Overlay scroll.
 	if m.dashboardVisible() {
 		if delta > 0 {

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -272,12 +273,10 @@ func TestHouseOverlayInlineEdit(t *testing.T) {
 	// Enter to start editing.
 	sendKey(m, keyEnter)
 	assert.True(t, m.houseOverlay.editing)
-	assert.NotNil(t, m.houseOverlay.form)
 
 	// Esc to cancel edit (not close overlay).
 	sendKey(m, keyEsc)
 	assert.False(t, m.houseOverlay.editing)
-	assert.Nil(t, m.houseOverlay.form)
 	assert.NotNil(t, m.houseOverlay, "overlay should still be open after edit cancel")
 }
 
@@ -286,24 +285,23 @@ func TestHouseOverlayEditPersists(t *testing.T) {
 	m := newTestModelWithDemoData(t, 42)
 	sendKey(m, keyTab) // open overlay
 
-	// Navigate to identity section (nickname).
-	m.houseOverlay.section = int(houseSectionIdentity)
-	m.houseOverlay.row = 0
+	// Navigate to structure section, foundation_type (row 5).
+	m.houseOverlay.section = int(houseSectionStructure)
+	m.houseOverlay.row = 5
 	sendKey(m, keyEnter) // start edit
 
 	require.True(t, m.houseOverlay.editing)
-	require.NotNil(t, m.houseOverlay.form)
 
 	// Clear existing value and type new one.
 	sendKey(m, "ctrl+e") // move to end
 	sendKey(m, "ctrl+u") // kill line
-	for _, r := range "Bungalow" {
+	for _, r := range "Slab" {
 		sendKey(m, string(r))
 	}
 	sendKey(m, keyEnter) // submit
 
 	assert.False(t, m.houseOverlay.editing, "should exit edit mode")
-	assert.Equal(t, "Bungalow", m.house.Nickname, "nickname should persist")
+	assert.Equal(t, "Slab", m.house.FoundationType, "foundation type should persist")
 }
 
 func TestHouseOverlayEditHintBar(t *testing.T) {
@@ -453,4 +451,74 @@ func TestHouseOverlayClickSelectsField(t *testing.T) {
 	sendClick(m, z2.StartX+1, z2.StartY)
 	assert.Equal(t, int(houseSectionStructure), m.houseOverlay.section, "should be in structure")
 	assert.Equal(t, 3, m.houseOverlay.row, "bedrooms is 4th structure field (index 3)")
+}
+
+func TestHouseOverlayFocusedFieldHasCursor(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+	require.NotNil(t, m.houseOverlay)
+
+	view := m.buildHouseOverlay()
+	// Focused field (structure row 0) should have cursor prefix.
+	assert.Contains(t, view, symTriRightSm, "focused row should have cursor prefix")
+
+	// Move cursor down -- previous row loses prefix, new row gains it.
+	sendKey(m, keyDown)
+	view = m.buildHouseOverlay()
+	lines := strings.Split(view, "\n")
+	cursorCount := 0
+	for _, line := range lines {
+		if strings.Contains(line, symTriRightSm) {
+			cursorCount++
+		}
+	}
+	assert.Equal(t, 1, cursorCount, "exactly one row should have cursor prefix")
+}
+
+func TestHouseOverlayIdentityEdit(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+	require.NotNil(t, m.houseOverlay)
+
+	// Navigate to identity section (nickname = row 0).
+	m.houseOverlay.section = int(houseSectionIdentity)
+	m.houseOverlay.row = 0
+
+	sendKey(m, keyEnter) // start edit
+	assert.True(t, m.houseOverlay.editing, "identity editing should work")
+
+	// Type a new nickname.
+	sendKey(m, "ctrl+e")
+	sendKey(m, "ctrl+u")
+	for _, r := range "Beach House" {
+		sendKey(m, string(r))
+	}
+	sendKey(m, keyEnter) // submit
+	assert.False(t, m.houseOverlay.editing)
+	assert.Equal(t, "Beach House", m.house.Nickname)
+}
+
+func TestHouseOverlayScrollBlockedBehindOverlay(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	// Record table cursor before overlay.
+	tab := m.effectiveTab()
+	require.NotNil(t, tab)
+	cursorBefore := tab.Table.Cursor()
+
+	sendKey(m, keyTab) // open overlay
+	require.NotNil(t, m.houseOverlay)
+
+	// Scroll should be absorbed.
+	sendMouseWheel(m, tea.MouseWheelDown)
+	tab = m.effectiveTab()
+	assert.Equal(
+		t,
+		cursorBefore,
+		tab.Table.Cursor(),
+		"scroll behind overlay should not move table cursor",
+	)
 }

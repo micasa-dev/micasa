@@ -33,8 +33,14 @@ func TestHouseEmptyFieldCount(t *testing.T) {
 	m := newTestModelWithDemoData(t, 42)
 	p := emptyHouseProfile("Test")
 	count := houseEmptyFieldCount(p, m.cur, m.unitSystem)
-	// Should be total defs minus 1 (nickname is set).
-	assert.Equal(t, len(defs)-1, count)
+	// Toggle fields are excluded (always have a value). Nickname is set.
+	toggleCount := 0
+	for _, d := range defs {
+		if d.toggle != nil {
+			toggleCount++
+		}
+	}
+	assert.Equal(t, len(defs)-1-toggleCount, count)
 }
 
 func TestHouseEmptyFieldCountFullProfile(t *testing.T) {

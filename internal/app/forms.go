@@ -2150,7 +2150,9 @@ func optionalInterval() func(string) error {
 	return validateWith("interval", data.ParseIntervalMonths)
 }
 
-func optionalFloat(label string) func(string) error {
+func optionalFloat(
+	label string,
+) func(string) error { //nolint:unparam // signature matches optionalInt for consistency
 	return validateWith(label, data.ParseOptionalFloat)
 }
 

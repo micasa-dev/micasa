@@ -121,22 +121,16 @@ func TestDashboardActiveTabUsesOutlineNotFill(t *testing.T) {
 		"active tab should use sky blue foreground as outline when overlay is active")
 }
 
-func TestDashboardHouseTitleUsesOutlineNotFill(t *testing.T) {
+func TestDashboardHouseTitleUsesBoldAccent(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
 
-	// Normal: house title uses accent pill (has sky blue bg).
-	normal := m.houseView()
-	assert.Contains(t, normal, "48;2;86;180;233",
-		"house title should have sky blue bg normally")
-
-	// With dashboard.
-	m.showDashboard = true
-	m.dash.data = nonEmptyDashboard()
-	require.True(t, m.dashboardVisible())
-	dimmed := m.houseView()
-	assert.NotContains(t, dimmed, "48;2;86;180;233",
-		"house title should not have filled bg when overlay is active")
+	// House title uses bold accent foreground (no background pill).
+	view := m.houseView()
+	assert.Contains(t, view, "38;2;86;180;233",
+		"house title should have sky blue foreground")
+	assert.NotContains(t, view, "48;2;86;180;233",
+		"house title should not have a filled background")
 }
 
 func TestDrilldownCountUsesAccentForegroundNotBackground(t *testing.T) {
