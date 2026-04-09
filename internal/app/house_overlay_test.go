@@ -246,3 +246,36 @@ func TestHouseOverlayVimKeys(t *testing.T) {
 	sendKey(m, keyH)
 	assert.Equal(t, 1, m.houseOverlay.section)
 }
+
+func TestHouseOverlayFieldZones(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	_ = m.buildView()
+	// Grid fields (structure, utilities, financial) are zone-marked.
+	// Identity fields live in the header line, not the column grid.
+	requireZone(t, m, zoneHouseField+"year_built")
+	requireZone(t, m, zoneHouseField+"heating_type")
+	requireZone(t, m, zoneHouseField+"insurance_carrier")
+}
+
+func TestHouseOverlayClickSelectsField(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	_ = m.buildView()
+
+	// Click a field in utilities section.
+	z := requireZone(t, m, zoneHouseField+"heating_type")
+	sendClick(m, z.StartX+1, z.StartY)
+
+	// Cursor should have moved to utilities section.
+	assert.Equal(t, int(houseSectionUtilities), m.houseOverlay.section, "should be in utilities")
+	assert.Equal(t, 0, m.houseOverlay.row, "should be first row in utilities")
+
+	// Click a non-first field in structure column.
+	z2 := requireZone(t, m, zoneHouseField+"bedrooms")
+	sendClick(m, z2.StartX+1, z2.StartY)
+	assert.Equal(t, int(houseSectionStructure), m.houseOverlay.section, "should be in structure")
+	assert.Equal(t, 3, m.houseOverlay.row, "bedrooms is 4th structure field (index 3)")
+}

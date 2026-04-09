@@ -255,11 +255,13 @@ func (m *Model) houseOverlayColumns(innerW int) string {
 		for _, f := range sec.fields {
 			v := strings.TrimSpace(f.get(m.house, m.cur, m.unitSystem))
 			label := hint.Render(f.label)
+			var line string
 			if v == "" {
-				lines = append(lines, label+"  "+warn.Render("—"))
+				line = label + "  " + warn.Render("—")
 			} else {
-				lines = append(lines, label+"  "+val.Render(v))
+				line = label + "  " + val.Render(v)
 			}
+			lines = append(lines, m.zones.Mark(zoneHouseField+f.key, line))
 		}
 		if len(lines) > maxLines {
 			maxLines = len(lines)
