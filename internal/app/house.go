@@ -34,6 +34,20 @@ func (m *Model) houseView() string {
 	return m.zones.Mark(zoneHouse, m.headerBox(m.houseCollapsed()))
 }
 
+// housePill renders the nickname (or "House" when no profile) in pill style.
+// Uses AccentOutline when an overlay is active, HeaderTitle (accent pill) otherwise.
+func (m *Model) housePill() string {
+	label := "House"
+	if m.hasHouse && m.house.Nickname != "" {
+		label = m.house.Nickname
+	}
+	if m.hasActiveOverlay() {
+		return m.styles.AccentOutline().Render(label)
+	}
+	return m.styles.HeaderTitle().Render(label)
+}
+
+// houseTitle is a backward-compatible alias used by houseView for no-house state.
 func (m *Model) houseTitle() string {
 	if m.hasActiveOverlay() {
 		return m.styles.AccentOutline().Render("House")
@@ -42,23 +56,62 @@ func (m *Model) houseTitle() string {
 }
 
 func (m *Model) houseCollapsed() string {
-	title := m.houseTitle()
+	pill := m.housePill()
 	badge := m.styles.HeaderBadge().Render("▸")
 	sep := m.styles.HeaderHint().Render(" · ")
 	hint := m.styles.HeaderHint()
 	val := m.styles.HeaderValue()
-	stats := joinStyledParts(sep,
-		styledPart(val, m.house.Nickname),
+
+	vitals := joinStyledParts(sep,
 		styledPart(hint, formatCityState(m.house)),
-		styledPart(hint, bedBathLabel(m.house)),
-		styledPart(hint, data.FormatArea(m.house.SquareFeet, m.unitSystem)),
-		styledPart(hint, formatInt(m.house.YearBuilt)),
+		m.collapsedBedBath(),
+		m.collapsedSqft(),
+		styledPart(val, formatInt(m.house.YearBuilt)),
 	)
-	return joinInline(title, badge) + "  " + stats
+
+	line := joinInline(pill, badge) + "  " + vitals
+
+	empty := houseEmptyFieldCount(m.house, m.cur, m.unitSystem)
+	if empty > 0 {
+		warn := m.styles.Warning().Render(fmt.Sprintf("○ %d", empty))
+		line += hint.Render(" · ") + warn
+	}
+	return line
+}
+
+// collapsedBedBath renders bed/bath with bright values and dim suffixes.
+func (m *Model) collapsedBedBath() string {
+	val := m.styles.HeaderValue()
+	hint := m.styles.HeaderHint()
+	var parts []string
+	if m.house.Bedrooms > 0 {
+		parts = append(parts, val.Render(strconv.Itoa(m.house.Bedrooms))+hint.Render("bd"))
+	}
+	if m.house.Bathrooms > 0 {
+		parts = append(parts, val.Render(formatFloat(m.house.Bathrooms))+hint.Render("ba"))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, hint.Render(" / "))
+}
+
+// collapsedSqft renders k-formatted sqft with bright value and dim "sf" suffix.
+func (m *Model) collapsedSqft() string {
+	displaySqft := data.SqFtToDisplayInt(m.house.SquareFeet, m.unitSystem)
+	formatted := formatKSqft(displaySqft)
+	if formatted == "" {
+		return ""
+	}
+	suffix := "sf"
+	if m.unitSystem == data.UnitsMetric {
+		suffix = "m\u00B2"
+	}
+	return m.styles.HeaderValue().Render(formatted) + m.styles.HeaderHint().Render(suffix)
 }
 
 func (m *Model) houseExpanded() string {
-	title := m.houseTitle()
+	title := m.housePill()
 	badge := m.styles.HeaderBadge().Render("▾")
 	hint := m.styles.HeaderHint()
 	val := m.styles.HeaderValue()
@@ -69,11 +122,10 @@ func (m *Model) houseExpanded() string {
 		mapsURL := "https://maps.google.com/maps?q=" + url.QueryEscape(addr)
 		addr = osc8Link(mapsURL, addr)
 	}
-	identity := joinStyledParts(sep,
-		styledPart(val, m.house.Nickname),
-		styledPart(hint, addr),
-	)
-	titleLine := joinInline(title, badge) + "  " + identity
+	titleLine := joinInline(title, badge)
+	if addr != "" {
+		titleLine += "  " + styledPart(hint, addr)
+	}
 
 	structNums := joinStyledParts(sep,
 		styledPart(val, formatInt(m.house.YearBuilt)),

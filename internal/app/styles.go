@@ -302,6 +302,7 @@ func (s *Styles) SyncSynced() lipgloss.Style     { return s.fgSuccess }
 
 // --- Foreground(warning) ---
 
+func (s *Styles) Warning() lipgloss.Style         { return s.fgWarning }
 func (s *Styles) DashUpcoming() lipgloss.Style    { return s.fgWarning }
 func (s *Styles) HouseWindow() lipgloss.Style     { return s.fgWarning }
 func (s *Styles) UrgencyUpcoming() lipgloss.Style { return s.fgWarning }
