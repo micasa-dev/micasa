@@ -333,7 +333,8 @@ Add overlay state to Model, build the three-column grid renderer, wire into over
 - Create: `internal/app/house_overlay.go` — overlay type, state, rendering, key dispatch
 - Modify: `internal/app/model.go` — add `houseOverlay *houseOverlayState` field, register in `overlays()`
 - Modify: `internal/app/view.go` — add to overlay render stack in `buildView()`
-- Modify: `internal/app/house.go` — `houseView()` toggle now opens overlay instead of expanding header
+- Modify: `internal/app/house.go` — `houseView()` always returns collapsed header (or setup prompt)
+- Modify: `internal/app/mouse.go` — update header click toggle from `showHouse` to `houseOverlay`
 - Test: `internal/app/house_overlay_test.go`
 
 - [ ] **Step 1: Write test for overlay visibility toggle**
@@ -406,6 +407,8 @@ m.resizeTables()
 ```
 
 Update `houseView()` in `house.go`: remove the `m.showHouse` expanded branch. The expanded view now lives in the overlay. `houseView()` always returns the collapsed header (or setup prompt).
+
+Update `mouse.go` header click handler (`mouse.go:113-116`): replace `m.showHouse = !m.showHouse` with the same overlay toggle logic as `handleCommonKeys`.
 
 Remove `showHouse` field from Model.
 
@@ -537,10 +540,6 @@ Then in `houseProfileOverlay.handleKey()`:
 
 ```go
 func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
-	s := o.m.houseOverlay
-	if s.editing {
-		return o.m.handleHouseEditKey(msg)
-	}
 	switch {
 	case key.Matches(msg, o.m.keys.HouseDown):
 		o.m.houseOverlayDown()
@@ -550,8 +549,6 @@ func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		o.m.houseOverlayRight()
 	case key.Matches(msg, o.m.keys.HouseLeft):
 		o.m.houseOverlayLeft()
-	case key.Matches(msg, o.m.keys.Enter):
-		o.m.houseOverlayStartEdit()
 	case key.Matches(msg, o.m.keys.HouseClose):
 		o.m.houseOverlay = nil
 	case key.Matches(msg, o.m.keys.HouseToggle):
@@ -561,6 +558,8 @@ func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	return nil
 }
 ```
+
+Task 7 adds the `s.editing` guard and `Enter` case to this switch.
 
 Navigation methods:
 - `houseOverlayDown()`: if identity section, move to structure col 0 row 0. If grid, increment row. Clamp to section length.
