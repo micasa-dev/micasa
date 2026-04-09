@@ -18,6 +18,29 @@ const (
 	houseSectionFinancial
 )
 
+// houseSectionOrder lists sections in the order they appear in the form.
+var houseSectionOrder = []houseSection{
+	houseSectionIdentity,
+	houseSectionStructure,
+	houseSectionUtilities,
+	houseSectionFinancial,
+}
+
+func (s houseSection) title() string {
+	switch s {
+	case houseSectionIdentity:
+		return "Basics"
+	case houseSectionStructure:
+		return "Structure"
+	case houseSectionUtilities:
+		return "Utilities"
+	case houseSectionFinancial:
+		return "Financial"
+	default:
+		return ""
+	}
+}
+
 // houseFieldDef describes a single editable field on HouseProfile.
 // Used by both the full form and the overlay inline editor.
 type houseFieldDef struct {
@@ -34,7 +57,8 @@ type houseFieldDef struct {
 
 func houseFieldDefs() []houseFieldDef {
 	return []houseFieldDef{
-		// Identity
+		// Identity — ordered to match form tab order (postal code after nickname
+		// for autofill, then address lines, city, state).
 		{
 			key: "nickname", label: "Nickname", section: houseSectionIdentity,
 			build: func(_ *Model, v *string) huh.Field {
@@ -48,6 +72,16 @@ func houseFieldDefs() []houseFieldDef {
 				return p.Nickname
 			},
 			ptr: func(fd *houseFormData) *string { return &fd.Nickname },
+		},
+		{
+			key: "postal_code", label: "Postal code", section: houseSectionIdentity,
+			build: func(_ *Model, v *string) huh.Field {
+				return huh.NewInput().Title("Postal code").Value(v)
+			},
+			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
+				return p.PostalCode
+			},
+			ptr: func(fd *houseFormData) *string { return &fd.PostalCode },
 		},
 		{
 			key: "address_line1", label: "Address line 1", section: houseSectionIdentity,
@@ -88,16 +122,6 @@ func houseFieldDefs() []houseFieldDef {
 				return p.State
 			},
 			ptr: func(fd *houseFormData) *string { return &fd.State },
-		},
-		{
-			key: "postal_code", label: "Postal code", section: houseSectionIdentity,
-			build: func(_ *Model, v *string) huh.Field {
-				return huh.NewInput().Title("Postal code").Value(v)
-			},
-			get: func(p data.HouseProfile, _ locale.Currency, _ data.UnitSystem) string {
-				return p.PostalCode
-			},
-			ptr: func(fd *houseFormData) *string { return &fd.PostalCode },
 		},
 		// Structure
 		{
