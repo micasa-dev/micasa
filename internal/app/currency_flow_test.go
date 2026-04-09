@@ -384,7 +384,7 @@ func TestCurrencyFlow_HouseProfile(t *testing.T) {
 			m := newTestModelWithCurrency(t, code, testLocale(code))
 			tax := int64(450000)
 			m.house.PropertyTaxCents = &tax
-			m.showHouse = true
+			m.houseOverlay = &houseOverlayState{section: 1}
 			view := m.View().Content
 			assert.Contains(t, view, m.cur.FormatOptionalCents(&tax))
 		})
@@ -395,7 +395,7 @@ func TestCurrencyFlow_HouseProfile_NilTax(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithCurrency(t, "USD", language.AmericanEnglish)
 	m.house.PropertyTaxCents = nil
-	m.showHouse = true
+	m.houseOverlay = &houseOverlayState{section: 1}
 	view := m.View().Content
 	// Nil tax should not render "$0.00".
 	assert.NotContains(t, view, "$0.00",

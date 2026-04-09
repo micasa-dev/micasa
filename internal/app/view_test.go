@@ -40,16 +40,16 @@ func TestExpandedHouseViewNoEllipsis(t *testing.T) {
 	m := newTestModelWithDemoData(t, 42)
 	m.height = 40
 
-	// Toggle house expanded.
+	// Open house overlay.
 	sendKey(m, "tab")
-	require.True(t, m.showHouse)
+	require.NotNil(t, m.houseOverlay)
 
 	// At screenshot dimensions (2400px/32pt font ~ 120-125 columns) the
-	// house profile must render without ellipsis truncation.
+	// house overlay must render without ellipsis truncation.
 	for _, width := range []int{120, 160, 200} {
 		m.width = width
-		house := m.houseView()
-		clamped := clampLines(house, width)
+		view := m.buildHouseOverlay()
+		clamped := clampLines(view, width)
 		for i, line := range strings.Split(clamped, "\n") {
 			assert.NotContains(t, line, symEllipsis,
 				"width %d: line %d truncated", width, i)

@@ -31,6 +31,9 @@ const (
 	zoneBreadcrumb = "breadcrumb-back"
 	zoneOverlay    = "overlay"
 
+	// House overlay field zones (house-field-<key>).
+	zoneHouseField = "house-field-"
+
 	// Extraction preview uses distinct prefixes to avoid colliding with
 	// main table row-N/col-N zones during overlay compositing. Without
 	// separate IDs the scanner mis-pairs interleaved markers.
@@ -111,7 +114,11 @@ func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 
 	// House header click.
 	if m.zones.Get(zoneHouse).InBounds(msg) {
-		m.showHouse = !m.showHouse
+		if m.houseOverlay != nil {
+			m.houseOverlay = nil
+		} else if m.hasHouse {
+			m.houseOverlay = &houseOverlayState{section: 1, row: 0}
+		}
 		m.resizeTables()
 		return m, nil
 	}
@@ -256,6 +263,13 @@ func (m *Model) handleHintClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 // matched (false). This distinction lets the caller decide whether to dismiss
 // the overlay when the outer overlay zone bounds are unknown.
 func (m *Model) handleOverlayClick(msg tea.MouseClickMsg) (tea.Model, bool) {
+	// House overlay field clicks: select the clicked field.
+	if m.houseOverlay != nil {
+		if handled := m.handleHouseFieldClick(msg); handled {
+			return m, true
+		}
+	}
+
 	// Dashboard row clicks: single click selects, double-click jumps.
 	if m.dashboardVisible() {
 		for i := range m.dash.nav {
@@ -379,6 +393,10 @@ func (m *Model) selectClickedColumn(tab *Tab, msg tea.MouseClickMsg) {
 
 // handleScroll scrolls the active surface by delta lines.
 func (m *Model) handleScroll(delta int) (tea.Model, tea.Cmd) {
+	// House overlay absorbs scroll events.
+	if m.houseOverlay != nil {
+		return m, nil
+	}
 	// Overlay scroll.
 	if m.dashboardVisible() {
 		if delta > 0 {
@@ -415,9 +433,35 @@ func (m *Model) handleScroll(delta int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleHouseFieldClick checks if a click landed on a house overlay field zone
+// and selects that field (sets section + row). Returns true if handled.
+func (m *Model) handleHouseFieldClick(msg tea.MouseClickMsg) bool {
+	// Build a per-section row counter to map field key -> (section, row).
+	rowInSection := make(map[houseSection]int)
+	for _, d := range houseFieldDefs() {
+		if d.section == houseSectionIdentity {
+			continue
+		}
+		z := m.zones.Get(zoneHouseField + d.key)
+		if z == nil || z.IsZero() {
+			rowInSection[d.section]++
+			continue
+		}
+		if z.InBounds(msg) {
+			m.houseOverlay.section = int(d.section)
+			m.houseOverlay.row = rowInSection[d.section]
+			return true
+		}
+		rowInSection[d.section]++
+	}
+	return false
+}
+
 // dismissActiveOverlay closes the topmost active overlay.
 func (m *Model) dismissActiveOverlay() {
 	switch {
+	case m.houseOverlay != nil:
+		m.houseOverlay = nil
 	case m.helpViewport != nil:
 		m.helpViewport = nil
 	case m.notePreview != nil:

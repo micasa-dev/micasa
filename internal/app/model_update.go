@@ -222,6 +222,16 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	// Forward non-key messages (cursor blink ticks) to the house overlay's
+	// textinput when editing so the cursor animation keeps running.
+	if m.houseOverlay != nil && m.houseOverlay.editing {
+		if _, isKey := msg.(tea.KeyPressMsg); !isKey {
+			var cmd tea.Cmd
+			m.houseOverlay.input, cmd = m.houseOverlay.input.Update(msg)
+			return m, cmd
+		}
+	}
+
 	if m.mode == modeForm && m.fs.form != nil {
 		return m.updateForm(msg)
 	}

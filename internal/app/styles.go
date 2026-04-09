@@ -260,7 +260,6 @@ func (s *Styles) SyncOffline() lipgloss.Style { return s.fgTextDim }
 // --- Foreground(textMid) ---
 
 func (s *Styles) HeaderHint() lipgloss.Style { return s.fgTextMid }
-func (s *Styles) HouseWall() lipgloss.Style  { return s.fgTextMid }
 
 // --- Foreground(textBright) ---
 
@@ -275,7 +274,6 @@ func (s *Styles) BreadcrumbArrow() lipgloss.Style { return s.fgAccent }
 func (s *Styles) ChatAssistant() lipgloss.Style   { return s.fgAccent }
 func (s *Styles) ExtRunning() lipgloss.Style      { return s.fgAccent }
 func (s *Styles) ExtCursor() lipgloss.Style       { return s.fgAccent }
-func (s *Styles) HouseRoof() lipgloss.Style       { return s.fgAccent }
 func (s *Styles) AccentText() lipgloss.Style      { return s.fgAccent }
 func (s *Styles) TreeNumber() lipgloss.Style      { return s.fgAccent }
 func (s *Styles) TreeBool() lipgloss.Style        { return s.fgAccent }
@@ -287,7 +285,6 @@ func (s *Styles) ChatUser() lipgloss.Style      { return s.fgSecondary }
 func (s *Styles) SortArrow() lipgloss.Style     { return s.fgSecondary }
 func (s *Styles) SecondaryText() lipgloss.Style { return s.fgSecondary }
 func (s *Styles) UrgencySoon() lipgloss.Style   { return s.fgSecondary }
-func (s *Styles) HouseDoor() lipgloss.Style     { return s.fgSecondary }
 func (s *Styles) SyncConflict() lipgloss.Style  { return s.fgSecondary }
 
 // --- Foreground(success) ---
@@ -302,12 +299,13 @@ func (s *Styles) SyncSynced() lipgloss.Style     { return s.fgSuccess }
 
 // --- Foreground(warning) ---
 
+func (s *Styles) Warning() lipgloss.Style         { return s.fgWarning }
 func (s *Styles) DashUpcoming() lipgloss.Style    { return s.fgWarning }
-func (s *Styles) HouseWindow() lipgloss.Style     { return s.fgWarning }
 func (s *Styles) UrgencyUpcoming() lipgloss.Style { return s.fgWarning }
 
 // --- Foreground(danger) ---
 
+func (s *Styles) Danger() lipgloss.Style          { return s.fgDanger }
 func (s *Styles) DeletedLabel() lipgloss.Style    { return s.fgDanger }
 func (s *Styles) ExtFailed() lipgloss.Style       { return s.fgDanger }
 func (s *Styles) ExtFail() lipgloss.Style         { return s.fgDanger }

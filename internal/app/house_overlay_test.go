@@ -1,0 +1,569 @@
+// Copyright 2026 Phillip Cloud
+// Licensed under the Apache License, Version 2.0
+
+package app
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestHouseOverlayToggle(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	assert.Nil(t, m.houseOverlay, "overlay should start nil")
+
+	sendKey(m, keyTab)
+	assert.NotNil(t, m.houseOverlay, "tab should open overlay")
+
+	sendKey(m, keyTab)
+	assert.Nil(t, m.houseOverlay, "tab should close overlay")
+}
+
+func TestHouseOverlayMouseToggle(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	assert.Nil(t, m.houseOverlay)
+
+	z := requireZone(t, m, zoneHouse)
+
+	sendClick(m, z.StartX, z.StartY)
+	assert.NotNil(t, m.houseOverlay, "click should open overlay")
+
+	// Wait for overlay zone to flush so click dispatch uses known bounds.
+	m.View()
+	require.Eventually(t, func() bool {
+		oz := m.zones.Get(zoneOverlay)
+		return oz != nil && !oz.IsZero()
+	}, 2*time.Second, time.Millisecond, "overlay zone never populated")
+
+	// Click at (0,0) — outside centered overlay — should dismiss.
+	sendClick(m, 0, 0)
+	assert.Nil(t, m.houseOverlay, "click outside overlay should close it")
+}
+
+func TestHouseOverlayEscCloses(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	require.NotNil(t, m.houseOverlay)
+
+	sendKey(m, keyEsc)
+	assert.Nil(t, m.houseOverlay, "esc should close overlay")
+}
+
+func TestHouseOverlayRenders(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	view := m.buildView()
+	assert.Contains(t, view, "Structure")
+	assert.Contains(t, view, "Utilities")
+	assert.Contains(t, view, "Financial")
+	assert.Contains(t, view, m.house.Nickname)
+}
+
+func TestHouseOverlayNoHouseNoOpen(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(t)
+	m.hasHouse = false
+	sendKey(m, keyTab)
+	assert.Nil(t, m.houseOverlay, "tab should not open overlay without house")
+}
+
+func TestHouseOverlayNavigation(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+
+	// Starts at first structure field (section=1, row=0).
+	require.NotNil(t, m.houseOverlay)
+	assert.Equal(t, 1, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// Down moves within column.
+	sendKey(m, keyDown)
+	assert.Equal(t, 1, m.houseOverlay.section)
+	assert.Equal(t, 1, m.houseOverlay.row)
+
+	// Right jumps to utilities column.
+	sendKey(m, keyRight)
+	assert.Equal(t, 2, m.houseOverlay.section)
+
+	// Right again to financial.
+	sendKey(m, keyRight)
+	assert.Equal(t, 3, m.houseOverlay.section)
+
+	// Right at rightmost column clamps.
+	sendKey(m, keyRight)
+	assert.Equal(t, 3, m.houseOverlay.section)
+
+	// Up from row 0 in grid moves to identity section.
+	m.houseOverlay.section = 1
+	m.houseOverlay.row = 0
+	sendKey(m, keyUp)
+	assert.Equal(t, 0, m.houseOverlay.section, "should enter identity section")
+}
+
+func TestHouseOverlayRowClamping(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Move deep into structure column (longest).
+	defs := houseFieldDefs()
+	structLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionStructure {
+			structLen++
+		}
+	}
+	for range structLen - 1 {
+		sendKey(m, keyDown)
+	}
+	assert.Equal(t, structLen-1, m.houseOverlay.row)
+
+	// Jump to utilities (shorter) -- row should clamp.
+	sendKey(m, keyRight)
+	utilLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionUtilities {
+			utilLen++
+		}
+	}
+	assert.LessOrEqual(t, m.houseOverlay.row, utilLen-1)
+}
+
+func TestHouseOverlayIdentityNavigation(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Move to identity section.
+	m.houseOverlay.section = 0
+	m.houseOverlay.row = 0
+
+	// Count identity fields.
+	defs := houseFieldDefs()
+	identLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionIdentity {
+			identLen++
+		}
+	}
+
+	// Right in identity cycles through identity fields.
+	sendKey(m, keyRight)
+	assert.Equal(t, 0, m.houseOverlay.section, "should stay in identity")
+	assert.Equal(t, 1, m.houseOverlay.row)
+
+	// Right at last identity field clamps.
+	m.houseOverlay.row = identLen - 1
+	sendKey(m, keyRight)
+	assert.Equal(t, 0, m.houseOverlay.section)
+	assert.Equal(t, identLen-1, m.houseOverlay.row)
+
+	// Left in identity cycles backward.
+	m.houseOverlay.row = 1
+	sendKey(m, keyLeft)
+	assert.Equal(t, 0, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// Left at row 0 in identity clamps.
+	sendKey(m, keyLeft)
+	assert.Equal(t, 0, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// Down from identity moves to structure section.
+	sendKey(m, keyDown)
+	assert.Equal(t, 1, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+}
+
+func TestHouseOverlayLeftFromGrid(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Start at utilities.
+	m.houseOverlay.section = 2
+	m.houseOverlay.row = 0
+
+	// Left goes to structure.
+	sendKey(m, keyLeft)
+	assert.Equal(t, 1, m.houseOverlay.section)
+
+	// Left from structure goes to identity.
+	sendKey(m, keyLeft)
+	assert.Equal(t, 0, m.houseOverlay.section)
+}
+
+func TestHouseOverlayDownClamps(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Count structure fields.
+	defs := houseFieldDefs()
+	structLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionStructure {
+			structLen++
+		}
+	}
+
+	// Move to last row in structure.
+	m.houseOverlay.section = 1
+	m.houseOverlay.row = structLen - 1
+
+	// Down at bottom clamps.
+	sendKey(m, keyDown)
+	assert.Equal(t, structLen-1, m.houseOverlay.row)
+}
+
+func TestHouseOverlayVimKeys(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	require.NotNil(t, m.houseOverlay)
+
+	// j moves down.
+	sendKey(m, keyJ)
+	assert.Equal(t, 1, m.houseOverlay.row)
+
+	// k moves up.
+	sendKey(m, keyK)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// l moves right to utilities.
+	sendKey(m, keyL)
+	assert.Equal(t, 2, m.houseOverlay.section)
+
+	// h moves left to structure.
+	sendKey(m, keyH)
+	assert.Equal(t, 1, m.houseOverlay.section)
+}
+
+func TestHouseOverlayFieldZones(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	_ = m.buildView()
+	// Grid fields (structure, utilities, financial) are zone-marked.
+	// Identity fields live in the header line, not the column grid.
+	requireZone(t, m, zoneHouseField+"year_built")
+	requireZone(t, m, zoneHouseField+"heating_type")
+	requireZone(t, m, zoneHouseField+"insurance_carrier")
+}
+
+func TestHouseOverlayInlineEdit(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+
+	// Starts at structure section row 0 (year_built).
+	require.NotNil(t, m.houseOverlay)
+	assert.False(t, m.houseOverlay.editing)
+
+	// Enter to start editing.
+	sendKey(m, keyEnter)
+	assert.True(t, m.houseOverlay.editing)
+
+	// Esc to cancel edit (not close overlay).
+	sendKey(m, keyEsc)
+	assert.False(t, m.houseOverlay.editing)
+	assert.NotNil(t, m.houseOverlay, "overlay should still be open after edit cancel")
+}
+
+func TestHouseOverlayEditPersists(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+
+	// Navigate to structure section, foundation_type (row 5).
+	m.houseOverlay.section = int(houseSectionStructure)
+	m.houseOverlay.row = 5
+	sendKey(m, keyEnter) // start edit
+
+	require.True(t, m.houseOverlay.editing)
+
+	// Clear existing value and type new one.
+	sendKey(m, "ctrl+e") // move to end
+	sendKey(m, "ctrl+u") // kill line
+	for _, r := range "Slab" {
+		sendKey(m, string(r))
+	}
+	sendKey(m, keyEnter) // submit
+
+	assert.False(t, m.houseOverlay.editing, "should exit edit mode")
+	assert.Equal(t, "Slab", m.house.FoundationType, "foundation type should persist")
+}
+
+func TestHouseOverlayEditHintBar(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	require.NotNil(t, m.houseOverlay)
+
+	// Not editing: hints should include "edit".
+	view := m.buildHouseOverlay()
+	assert.Contains(t, view, "edit")
+	assert.Contains(t, view, "navigate")
+
+	// Start editing.
+	sendKey(m, keyEnter)
+	require.True(t, m.houseOverlay.editing)
+
+	view = m.buildHouseOverlay()
+	assert.Contains(t, view, "confirm")
+	assert.Contains(t, view, "cancel")
+}
+
+func TestHouseOverlayEditInvalidValue(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	require.NotNil(t, m.houseOverlay)
+
+	// Cursor starts on year_built (structure row 0).
+	assert.Equal(t, int(houseSectionStructure), m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	original := m.house.YearBuilt
+	sendKey(m, keyEnter) // start edit
+	require.True(t, m.houseOverlay.editing)
+
+	// Type invalid value.
+	sendKey(m, "ctrl+e")
+	sendKey(m, "ctrl+u")
+	for _, r := range "notanumber" {
+		sendKey(m, string(r))
+	}
+	sendKey(m, keyEnter) // attempt submit
+
+	// Should still be editing (validation error shown in status).
+	assert.True(t, m.houseOverlay.editing, "should remain in edit mode on validation error")
+	assert.Equal(t, original, m.house.YearBuilt, "value should not change on error")
+}
+
+func TestHouseOverlayNarrowWidth(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	m.width = 80 // at minimum usable width — triggers narrow stacking
+	sendKey(m, keyTab)
+	view := m.buildView()
+
+	// All three section headers must appear.
+	require.Contains(t, view, "Structure", "Structure header missing")
+	require.Contains(t, view, "Utilities", "Utilities header missing")
+	require.Contains(t, view, "Financial", "Financial header missing")
+
+	// Narrow layout stacks sections vertically: "Structure" and "Utilities"
+	// must appear on different lines (not side-by-side on same row).
+	structLine, utilLine, finLine := -1, -1, -1
+	for i, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "Structure") {
+			structLine = i
+		}
+		if strings.Contains(line, "Utilities") {
+			utilLine = i
+		}
+		if strings.Contains(line, "Financial") {
+			finLine = i
+		}
+	}
+	assert.NotEqual(
+		t,
+		structLine,
+		utilLine,
+		"Structure and Utilities should be on different lines (stacked)",
+	)
+	assert.NotEqual(
+		t,
+		utilLine,
+		finLine,
+		"Utilities and Financial should be on different lines (stacked)",
+	)
+	assert.Less(t, structLine, utilLine, "Structure should appear above Utilities")
+	assert.Less(t, utilLine, finLine, "Utilities should appear above Financial")
+}
+
+func TestHouseOverlayWideWidth(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	m.width = 120 // well above threshold
+	sendKey(m, keyTab)
+	view := m.buildView()
+
+	// All three section headers must appear.
+	require.Contains(t, view, "Structure")
+	require.Contains(t, view, "Utilities")
+	require.Contains(t, view, "Financial")
+
+	// Wide layout places sections side-by-side: all headers on same row.
+	structLine, utilLine, finLine := -1, -1, -1
+	for i, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "Structure") {
+			structLine = i
+		}
+		if strings.Contains(line, "Utilities") {
+			utilLine = i
+		}
+		if strings.Contains(line, "Financial") {
+			finLine = i
+		}
+	}
+	assert.Equal(
+		t,
+		structLine,
+		utilLine,
+		"Structure and Utilities should be on same line (side-by-side)",
+	)
+	assert.Equal(
+		t,
+		utilLine,
+		finLine,
+		"Utilities and Financial should be on same line (side-by-side)",
+	)
+}
+
+func TestHouseOverlayClickSelectsField(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	_ = m.buildView()
+
+	// Click a field in utilities section.
+	z := requireZone(t, m, zoneHouseField+"heating_type")
+	sendClick(m, z.StartX+1, z.StartY)
+
+	// Cursor should have moved to utilities section.
+	assert.Equal(t, int(houseSectionUtilities), m.houseOverlay.section, "should be in utilities")
+	assert.Equal(t, 0, m.houseOverlay.row, "should be first row in utilities")
+
+	// Click a non-first field in structure column.
+	z2 := requireZone(t, m, zoneHouseField+"bedrooms")
+	sendClick(m, z2.StartX+1, z2.StartY)
+	assert.Equal(t, int(houseSectionStructure), m.houseOverlay.section, "should be in structure")
+	assert.Equal(t, 3, m.houseOverlay.row, "bedrooms is 4th structure field (index 3)")
+}
+
+func TestHouseOverlayFocusedFieldHasCursor(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+	require.NotNil(t, m.houseOverlay)
+
+	view := m.buildHouseOverlay()
+	// Focused field (structure row 0) should have cursor prefix.
+	assert.Contains(t, view, symTriRightSm, "focused row should have cursor prefix")
+
+	// Move cursor down -- previous row loses prefix, new row gains it.
+	sendKey(m, keyDown)
+	view = m.buildHouseOverlay()
+	lines := strings.Split(view, "\n")
+	cursorCount := 0
+	for _, line := range lines {
+		if strings.Contains(line, symTriRightSm) {
+			cursorCount++
+		}
+	}
+	assert.Equal(t, 1, cursorCount, "exactly one row should have cursor prefix")
+}
+
+func TestHouseOverlayIdentityEdit(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+	require.NotNil(t, m.houseOverlay)
+
+	// Navigate to identity section (nickname = row 0).
+	m.houseOverlay.section = int(houseSectionIdentity)
+	m.houseOverlay.row = 0
+
+	sendKey(m, keyEnter) // start edit
+	assert.True(t, m.houseOverlay.editing, "identity editing should work")
+
+	// Type a new nickname.
+	sendKey(m, "ctrl+e")
+	sendKey(m, "ctrl+u")
+	for _, r := range "Beach House" {
+		sendKey(m, string(r))
+	}
+	sendKey(m, keyEnter) // submit
+	assert.False(t, m.houseOverlay.editing)
+	assert.Equal(t, "Beach House", m.house.Nickname)
+}
+
+func TestHouseOverlayScrollBlockedBehindOverlay(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	// Record table cursor before overlay.
+	tab := m.effectiveTab()
+	require.NotNil(t, tab)
+	cursorBefore := tab.Table.Cursor()
+
+	sendKey(m, keyTab) // open overlay
+	require.NotNil(t, m.houseOverlay)
+
+	// Scroll should be absorbed.
+	sendMouseWheel(m, tea.MouseWheelDown)
+	tab = m.effectiveTab()
+	assert.Equal(
+		t,
+		cursorBefore,
+		tab.Table.Cursor(),
+		"scroll behind overlay should not move table cursor",
+	)
+}
+
+func TestHouseOverlayNarrowEditFits(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		width   int
+		section int
+		row     int
+	}{
+		{"near threshold / Year", houseOverlayNarrowThreshold + 8, int(houseSectionStructure), 0},
+		{"at threshold / Ins carrier", houseOverlayNarrowThreshold, int(houseSectionFinancial), 0},
+		{"below threshold / Heat", houseOverlayNarrowThreshold - 1, int(houseSectionUtilities), 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := newTestModelWithDemoData(t, 42)
+			m.width = tt.width
+			m.height = 40
+			m.resizeTables()
+
+			sendKey(m, keyTab) // open overlay
+			require.NotNil(t, m.houseOverlay)
+
+			m.houseOverlay.section = tt.section
+			m.houseOverlay.row = tt.row
+			sendKey(m, keyEnter)
+			require.True(t, m.houseOverlay.editing)
+
+			view := m.buildHouseOverlay()
+			// buildHouseOverlay renders the full OverlayBox at
+			// houseOverlayWidth(), so rendered lines include borders.
+			maxW := m.houseOverlayWidth()
+
+			for line := range strings.SplitSeq(view, "\n") {
+				w := lipgloss.Width(line)
+				assert.LessOrEqual(t, w, maxW,
+					"line exceeds overlay width (%d > %d): %q", w, maxW, line)
+			}
+		})
+	}
+}

@@ -197,88 +197,36 @@ func (m *Model) startHouseForm() {
 		values = m.houseFormValues(m.house)
 	}
 
-	postalCodeInput := huh.NewInput().Title("Postal code").Value(&values.PostalCode)
-	cityInput := huh.NewInput().Title("City").Value(&values.City)
-	stateInput := huh.NewInput().Title("State").Value(&values.State)
+	defs := houseFieldDefs()
 
-	basicsGroup := huh.NewGroup(
-		huh.NewInput().
-			Title(requiredTitle("Nickname")).
-			Description("Ex: Primary Residence").
-			Value(&values.Nickname).
-			Validate(requiredText("nickname")),
-		postalCodeInput,
-		huh.NewInput().Title("Address line 1").Value(&values.AddressLine1),
-		huh.NewInput().Title("Address line 2").Value(&values.AddressLine2),
-		cityInput,
-		stateInput,
-	).Title("Basics")
-	if !m.hasHouse {
-		basicsGroup.Description(
-			"Only nickname is required -- edit the rest anytime with p (edit mode)")
+	// Build fields grouped by section, capturing autofill references.
+	sectionFields := make(map[houseSection][]huh.Field)
+	var postalCodeInput, cityInput, stateInput *huh.Input
+	for _, d := range defs {
+		field := d.build(m, d.ptr(values))
+		sectionFields[d.section] = append(sectionFields[d.section], field)
+		switch d.key {
+		case "postal_code":
+			postalCodeInput, _ = field.(*huh.Input)
+		case "city":
+			cityInput, _ = field.(*huh.Input)
+		case "state":
+			stateInput, _ = field.(*huh.Input)
+		}
 	}
 
-	form := huh.NewForm(
-		basicsGroup,
-		huh.NewGroup(
-			huh.NewInput().
-				Title("Year built").
-				Placeholder("1998").
-				Value(&values.YearBuilt).
-				Validate(optionalInt("year built")),
-			huh.NewInput().
-				Title(data.AreaFormTitle(m.unitSystem)).
-				Placeholder(data.AreaPlaceholder(m.unitSystem)).
-				Value(&values.SquareFeet).
-				Validate(optionalInt(data.AreaFormTitle(m.unitSystem))),
-			huh.NewInput().
-				Title(data.LotAreaFormTitle(m.unitSystem)).
-				Placeholder(data.LotAreaPlaceholder(m.unitSystem)).
-				Value(&values.LotSquareFeet).
-				Validate(optionalInt(data.LotAreaFormTitle(m.unitSystem))),
-			huh.NewInput().
-				Title("Bedrooms").
-				Placeholder("3").
-				Value(&values.Bedrooms).
-				Validate(optionalInt("bedrooms")),
-			huh.NewInput().
-				Title("Bathrooms").
-				Placeholder("2.5").
-				Value(&values.Bathrooms).
-				Validate(optionalFloat("bathrooms")),
-			huh.NewInput().Title("Foundation type").Value(&values.FoundationType),
-			huh.NewInput().Title("Wiring type").Value(&values.WiringType),
-			huh.NewInput().Title("Roof type").Value(&values.RoofType),
-			huh.NewInput().Title("Exterior type").Value(&values.ExteriorType),
-			huh.NewInput().Title("Basement type").Value(&values.BasementType),
-		).Title("Structure"),
-		huh.NewGroup(
-			huh.NewInput().Title("Heating type").Value(&values.HeatingType),
-			huh.NewInput().Title("Cooling type").Value(&values.CoolingType),
-			huh.NewInput().Title("Water source").Value(&values.WaterSource),
-			huh.NewInput().Title("Sewer type").Value(&values.SewerType),
-			huh.NewInput().Title("Parking type").Value(&values.ParkingType),
-		).Title("Utilities"),
-		huh.NewGroup(
-			huh.NewInput().Title("Insurance carrier").Value(&values.InsuranceCarrier),
-			huh.NewInput().Title("Insurance policy").Value(&values.InsurancePolicy),
-			huh.NewInput().
-				Title("Insurance renewal (YYYY-MM-DD)").
-				Value(&values.InsuranceRenewal).
-				Validate(optionalDate("insurance renewal")),
-			huh.NewInput().
-				Title("Property tax (annual)").
-				Placeholder("4200.00").
-				Value(&values.PropertyTax).
-				Validate(optionalMoney("property tax", m.cur)),
-			huh.NewInput().Title("HOA name").Value(&values.HOAName),
-			huh.NewInput().
-				Title("HOA fee (monthly)").
-				Placeholder("250.00").
-				Value(&values.HOAFee).
-				Validate(optionalMoney("HOA fee", m.cur)),
-		).Title("Financial"),
-	)
+	// Assemble groups in section order.
+	groups := make([]*huh.Group, 0, len(houseSectionOrder))
+	for _, sec := range houseSectionOrder {
+		g := huh.NewGroup(sectionFields[sec]...).Title(sec.title())
+		if sec == houseSectionIdentity && !m.hasHouse {
+			g.Description(
+				"Only nickname is required -- edit the rest anytime with p (edit mode)")
+		}
+		groups = append(groups, g)
+	}
+
+	form := huh.NewForm(groups...)
 	form.WithWidth(m.houseFormWidth())
 	m.activateForm(form, values)
 	m.fs.postalCodeField = postalCodeInput
@@ -1877,6 +1825,12 @@ func (m *Model) submitHouseForm() error {
 	if err != nil {
 		return err
 	}
+	return m.saveHouseFormData(values)
+}
+
+// saveHouseFormData parses houseFormData fields into a HouseProfile and
+// persists it. Used by both the full form submit and overlay inline edit.
+func (m *Model) saveHouseFormData(values *houseFormData) error {
 	yearBuilt, err := data.ParseOptionalInt(values.YearBuilt)
 	if err != nil {
 		return data.FieldError("Year Built", err)
@@ -2196,7 +2150,9 @@ func optionalInterval() func(string) error {
 	return validateWith("interval", data.ParseIntervalMonths)
 }
 
-func optionalFloat(label string) func(string) error {
+func optionalFloat(
+	label string, //nolint:unparam // signature matches optionalInt for consistency
+) func(string) error {
 	return validateWith(label, data.ParseOptionalFloat)
 }
 

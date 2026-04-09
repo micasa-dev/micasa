@@ -54,14 +54,9 @@ func TestInlineInputAbsorbsKeys(t *testing.T) {
 	m.openInlineInput("01JTEST00000000000000001", "Name", "", &field, nil, &vendorFormData{})
 
 	// Keys that would normally toggle house profile or switch tabs should be absorbed.
-	showHouseBefore := m.showHouse
-	viewBefore := m.buildView()
+	overlayBefore := m.houseOverlay
 	sendKey(m, "tab")
-	assert.Equal(t, showHouseBefore, m.showHouse, "tab should be absorbed by inline input")
-	viewAfter := m.buildView()
-	// The house toggle indicator should not change.
-	assert.Equal(t, strings.Contains(viewBefore, "▾"), strings.Contains(viewAfter, "▾"),
-		"tab should be absorbed by inline input")
+	assert.Equal(t, overlayBefore, m.houseOverlay, "tab should be absorbed by inline input")
 }
 
 func TestInlineInputTypingUpdatesValue(t *testing.T) {
