@@ -36,6 +36,7 @@ func TestHouseFieldDefsComplete(t *testing.T) {
 		keys[d.key] = true
 	}
 	// Derive expected keys from houseFormData struct fields.
+	expected := make(map[string]bool)
 	rt := reflect.TypeOf(houseFormData{})
 	for i := range rt.NumField() {
 		f := rt.Field(i)
@@ -43,7 +44,12 @@ func TestHouseFieldDefsComplete(t *testing.T) {
 			continue
 		}
 		key := toSnakeCase(f.Name) // e.g. YearBuilt → year_built
+		expected[key] = true
 		assert.True(t, keys[key], "houseFormData.%s (key %q) has no field def", f.Name, key)
+	}
+	// Check no stale/extra defs exist without a matching form field.
+	for _, d := range defs {
+		assert.True(t, expected[d.key], "field def %q has no matching houseFormData field", d.key)
 	}
 }
 

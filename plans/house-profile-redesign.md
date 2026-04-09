@@ -124,7 +124,8 @@ full-screen form and the overlay's inline editor. Each entry captures
 the field's key, display label, section assignment, how to build a
 `huh.Field` for it, and how to read/write the value on `HouseProfile`.
 Sections are Identity, Structure, Utilities, and Financial. Identity
-fields (nickname, address, city, state, postal code) use the same
+fields (nickname, address line 1, address line 2, city, state, postal
+code) use the same
 metadata list but render in the identity row above the grid rather than
 inside a grid column.
 
