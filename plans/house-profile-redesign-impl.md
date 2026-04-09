@@ -684,7 +684,7 @@ In `mouse.go`, add handling for `zoneHouseField` clicks inside the house overlay
 2. Find the field's section and row index in `houseFieldDefs()`.
 3. Set `m.houseOverlay.section` and `m.houseOverlay.row`.
 
-On double-click, also trigger `houseOverlayStartEdit()`.
+Task 7 adds double-click-to-edit wiring here (calls `houseOverlayStartEdit()`).
 
 - [ ] **Step 7: Run tests, verify pass**
 
