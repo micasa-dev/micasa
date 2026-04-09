@@ -46,7 +46,7 @@ with dimmed background, matching the dashboard/chat/help pattern.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [The Craftsman] ▾  742 Oak Ave, Portland OR 97201 🔗        18/22   │
+│ [The Craftsman] ▾  742 Oak Ave, Portland OR 97201 🔗         N/M    │
 │                                                                     │
 │ Structure              Utilities              Financial             │
 │ ──────────────────── ──────────────────── ────────────────────      │
@@ -65,18 +65,22 @@ with dimmed background, matching the dashboard/chat/help pattern.
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Identity line**: nickname pill (with ▾ indicator) + full address as
-  OSC8 Google Maps link + completion fraction (`N/M`) right-aligned.
+- **Identity section**: nickname pill (with ▾ indicator) + full address
+  as OSC8 Google Maps link + completion fraction right-aligned. Sits
+  above the grid as its own navigable section — ↑ from first Structure
+  field enters identity, ←→ cycles identity fields (nickname, address
+  line 1, address line 2, city, state, postal code). Enter opens inline
+  edit on the focused identity field.
 - **Three-column grid**: Structure, Utilities, Financial. Each column
   has a section header in accent color with a horizontal rule below.
 - **Field rendering**: dim label left-aligned, bright value
   right-aligned within label/value pair. Empty fields show `○ —` or
   `○ not set` in warning color.
-- **Overlay sizing**: width fits content up to a max (e.g. 80 cols
-  inner). Height fits content. Centered via `compositeOverlay` +
-  `dimBackground` pattern.
+- **Overlay sizing**: width fits content up to a reasonable max. Height
+  fits content. Centered with dimmed background matching existing
+  overlay pattern.
 - **Narrow width (< 80 cols)**: columns collapse to single-column
-  stacked sections (Structure, then Utilities, then Financial).
+  stacked sections.
 - **Close**: `Esc` or `Tab` toggle. Click outside overlay zone also
   closes.
 
@@ -117,25 +121,16 @@ widget.
 
 ### Shared Field Definitions
 
-A `houseFieldDef` slice is the single source of truth for field
-metadata:
-
-```go
-type houseFieldDef struct {
-    key       string          // e.g. "year_built"
-    label     string          // e.g. "Year Built"
-    section   houseSection    // structure, utilities, financial
-    buildField func(value string) huh.Field
-    get       func(HouseProfile) string
-    set       func(*HouseProfile, string) error
-}
-```
+A single ordered list of field metadata drives both the initial
+full-screen form and the overlay's inline editor. Each entry captures
+the field's key, display label, section assignment, how to build a
+`huh.Field` for it, and how to read/write the value on `HouseProfile`.
 
 - **Initial full form** (no house exists): iterates all defs, groups by
   section, builds full `huh.Form`.
-- **Inline edit** (overlay): builds single-field `huh.Form` from
+- **Inline edit** (overlay): builds single-field `huh.Form` from the
   focused field's def.
-- Validators, options, and data mapping are defined once in the def.
+- Validators, options, and data mapping are defined once per field.
 
 ### Pixel Art
 
@@ -147,22 +142,9 @@ startup screen.
 
 ### Overlay Priority
 
-The house profile overlay slots into the overlay stack in `buildView`.
-It should render below dashboard (dashboard takes priority if both are
-open) but above other overlays. Suggested position:
-
-```go
-overlays := []struct{ active bool; render func() string }{
-    {m.dashboardVisible(), m.buildDashboardOverlay},
-    {m.houseOverlayVisible(), m.buildHouseOverlay},      // new
-    {m.calendar != nil, m.buildCalendarOverlay},
-    // ... rest unchanged
-}
-```
-
-Opening the house overlay while dashboard is visible should close the
-dashboard first (or be blocked — match existing mutual-exclusion
-behavior).
+The house profile overlay slots into the existing overlay stack below
+the dashboard (which takes priority) but above other overlays. Follow
+existing mutual-exclusion behavior for conflicting overlays.
 
 ## Acceptance Criteria
 
