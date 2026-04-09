@@ -10,13 +10,17 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 )
 
 // houseOverlayState holds cursor and edit state for the house profile overlay.
 type houseOverlayState struct {
-	section int // 0=identity, 1=structure, 2=utilities, 3=financial
-	row     int // cursor row within current section
+	section  int // 0=identity, 1=structure, 2=utilities, 3=financial
+	row      int // cursor row within current section
+	editing  bool
+	form     *huh.Form
+	formData *houseFormData
 }
 
 // houseProfileOverlay adapts houseOverlayState to the overlay interface.
@@ -27,6 +31,9 @@ func (o houseProfileOverlay) isVisible() bool { return o.m.houseOverlay != nil }
 func (o houseProfileOverlay) hidesMainKeys() bool { return true }
 
 func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
+	if o.m.houseOverlay.editing {
+		return o.m.handleHouseEditKey(msg)
+	}
 	switch {
 	case key.Matches(msg, o.m.keys.HouseDown):
 		o.m.houseOverlayDown()
@@ -41,6 +48,27 @@ func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, o.m.keys.HouseToggle):
 		o.m.houseOverlay = nil
 		o.m.resizeTables()
+	case msg.String() == keyEnter:
+		o.m.houseOverlayStartEdit()
+	}
+	return nil
+}
+
+// handleHouseEditKey processes keys while an inline edit form is active.
+func (m *Model) handleHouseEditKey(msg tea.KeyPressMsg) tea.Cmd {
+	s := m.houseOverlay
+	switch msg.String() {
+	case keyEsc:
+		m.houseOverlayCancelEdit()
+		return nil
+	case keyEnter:
+		m.houseOverlaySubmitEdit()
+		return nil
+	}
+	// Forward to huh form for text input handling.
+	if s.form != nil {
+		_, cmd := s.form.Update(msg)
+		return cmd
 	}
 	return nil
 }
@@ -135,6 +163,83 @@ func (m *Model) houseOverlayLeft() {
 	}
 }
 
+// houseOverlayCurrentDef returns the field definition at the current cursor
+// position, or nil if no field matches.
+func (m *Model) houseOverlayCurrentDef() *houseFieldDef {
+	s := m.houseOverlay
+	sec := houseSection(s.section)
+	defs := houseFieldDefs()
+	row := 0
+	for i := range defs {
+		if defs[i].section != sec {
+			continue
+		}
+		if row == s.row {
+			return &defs[i]
+		}
+		row++
+	}
+	return nil
+}
+
+// houseOverlayStartEdit opens a single-field huh form for the focused field.
+func (m *Model) houseOverlayStartEdit() {
+	s := m.houseOverlay
+	def := m.houseOverlayCurrentDef()
+	if def == nil {
+		return
+	}
+	fd := m.houseFormValues(m.house)
+	field := def.build(m, def.ptr(fd))
+	form := huh.NewForm(huh.NewGroup(field))
+	form.WithWidth(m.houseOverlayFieldWidth())
+	form.Init()
+	s.form = form
+	s.formData = fd
+	s.editing = true
+}
+
+// houseOverlayCancelEdit discards the edit and returns to browse mode.
+func (m *Model) houseOverlayCancelEdit() {
+	s := m.houseOverlay
+	s.editing = false
+	s.form = nil
+	s.formData = nil
+}
+
+// houseOverlaySubmitEdit validates, parses, and saves the edited field value.
+func (m *Model) houseOverlaySubmitEdit() {
+	s := m.houseOverlay
+	if s.form == nil || s.formData == nil {
+		return
+	}
+	// Run field validation before saving.
+	def := m.houseOverlayCurrentDef()
+	if def == nil {
+		m.houseOverlayCancelEdit()
+		return
+	}
+	val := strings.TrimSpace(*def.ptr(s.formData))
+	*def.ptr(s.formData) = val
+
+	if err := m.saveHouseFormData(s.formData); err != nil {
+		m.setStatusError(err.Error())
+		return
+	}
+	s.editing = false
+	s.form = nil
+	s.formData = nil
+}
+
+// houseOverlayFieldWidth returns the column width for inline edit fields.
+func (m *Model) houseOverlayFieldWidth() int {
+	contentW := m.houseOverlayWidth()
+	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
+	colGap := 3
+	colW := (innerW - colGap*2) / 3
+	return max(colW, 12)
+}
+
 // buildHouseOverlay renders the three-column house profile overlay.
 func (m *Model) buildHouseOverlay() string {
 	contentW := m.houseOverlayWidth()
@@ -147,10 +252,20 @@ func (m *Model) buildHouseOverlay() string {
 	columns := m.houseOverlayColumns(innerW)
 
 	// Hint bar.
-	hints := joinWithSeparator(m.helpSeparator(),
-		m.helpItem(keyTab, "close"),
-		m.helpItem(keyEsc, "close"),
-	)
+	var hints string
+	if m.houseOverlay.editing {
+		hints = joinWithSeparator(m.helpSeparator(),
+			m.helpItem(symReturn, "confirm"),
+			m.helpItem(keyEsc, "cancel"),
+		)
+	} else {
+		hints = joinWithSeparator(m.helpSeparator(),
+			m.helpItem(symUp+symDown, "navigate"),
+			m.helpItem(symLeft+symRight, "section"),
+			m.helpItem(symReturn, "edit"),
+			m.helpItem(keyEsc, "close"),
+		)
+	}
 
 	rule := m.styles.DashRule().Render(strings.Repeat("─", innerW))
 	boxContent := lipgloss.JoinVertical(lipgloss.Left,
@@ -244,6 +359,12 @@ func (m *Model) houseOverlayColumns(innerW int) string {
 	colW := (innerW - colGap*(len(sections)-1)) / len(sections)
 	colW = max(colW, 12)
 
+	// Map section index to the houseSection enum for grid columns.
+	gridSections := []houseSection{
+		houseSectionStructure, houseSectionUtilities, houseSectionFinancial,
+	}
+	s := m.houseOverlay
+
 	rendered := make([]string, len(sections))
 	maxLines := 0
 	for i, sec := range sections {
@@ -252,16 +373,21 @@ func (m *Model) houseOverlayColumns(innerW int) string {
 			hint.Render(strings.Repeat("─", colW)),
 		}
 
-		for _, f := range sec.fields {
-			v := strings.TrimSpace(f.get(m.house, m.cur, m.unitSystem))
-			label := hint.Render(f.label)
-			var line string
-			if v == "" {
-				line = label + "  " + warn.Render("—")
+		for rowIdx, f := range sec.fields {
+			isFocused := s.section == int(gridSections[i]) && s.row == rowIdx
+			if isFocused && s.editing && s.form != nil {
+				lines = append(lines, s.form.View())
 			} else {
-				line = label + "  " + val.Render(v)
+				v := strings.TrimSpace(f.get(m.house, m.cur, m.unitSystem))
+				label := hint.Render(f.label)
+				var line string
+				if v == "" {
+					line = label + "  " + warn.Render("—")
+				} else {
+					line = label + "  " + val.Render(v)
+				}
+				lines = append(lines, m.zones.Mark(zoneHouseField+f.key, line))
 			}
-			lines = append(lines, m.zones.Mark(zoneHouseField+f.key, line))
 		}
 		if len(lines) > maxLines {
 			maxLines = len(lines)

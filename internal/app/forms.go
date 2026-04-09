@@ -1825,6 +1825,12 @@ func (m *Model) submitHouseForm() error {
 	if err != nil {
 		return err
 	}
+	return m.saveHouseFormData(values)
+}
+
+// saveHouseFormData parses houseFormData fields into a HouseProfile and
+// persists it. Used by both the full form submit and overlay inline edit.
+func (m *Model) saveHouseFormData(values *houseFormData) error {
 	yearBuilt, err := data.ParseOptionalInt(values.YearBuilt)
 	if err != nil {
 		return data.FieldError("Year Built", err)

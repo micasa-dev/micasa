@@ -259,6 +259,99 @@ func TestHouseOverlayFieldZones(t *testing.T) {
 	requireZone(t, m, zoneHouseField+"insurance_carrier")
 }
 
+func TestHouseOverlayInlineEdit(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+
+	// Starts at structure section row 0 (year_built).
+	require.NotNil(t, m.houseOverlay)
+	assert.False(t, m.houseOverlay.editing)
+
+	// Enter to start editing.
+	sendKey(m, keyEnter)
+	assert.True(t, m.houseOverlay.editing)
+	assert.NotNil(t, m.houseOverlay.form)
+
+	// Esc to cancel edit (not close overlay).
+	sendKey(m, keyEsc)
+	assert.False(t, m.houseOverlay.editing)
+	assert.Nil(t, m.houseOverlay.form)
+	assert.NotNil(t, m.houseOverlay, "overlay should still be open after edit cancel")
+}
+
+func TestHouseOverlayEditPersists(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+
+	// Navigate to identity section (nickname).
+	m.houseOverlay.section = int(houseSectionIdentity)
+	m.houseOverlay.row = 0
+	sendKey(m, keyEnter) // start edit
+
+	require.True(t, m.houseOverlay.editing)
+	require.NotNil(t, m.houseOverlay.form)
+
+	// Clear existing value and type new one.
+	sendKey(m, "ctrl+e") // move to end
+	sendKey(m, "ctrl+u") // kill line
+	for _, r := range "Bungalow" {
+		sendKey(m, string(r))
+	}
+	sendKey(m, keyEnter) // submit
+
+	assert.False(t, m.houseOverlay.editing, "should exit edit mode")
+	assert.Equal(t, "Bungalow", m.house.Nickname, "nickname should persist")
+}
+
+func TestHouseOverlayEditHintBar(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	require.NotNil(t, m.houseOverlay)
+
+	// Not editing: hints should include "edit".
+	view := m.buildHouseOverlay()
+	assert.Contains(t, view, "edit")
+	assert.Contains(t, view, "navigate")
+
+	// Start editing.
+	sendKey(m, keyEnter)
+	require.True(t, m.houseOverlay.editing)
+
+	view = m.buildHouseOverlay()
+	assert.Contains(t, view, "confirm")
+	assert.Contains(t, view, "cancel")
+}
+
+func TestHouseOverlayEditInvalidValue(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	require.NotNil(t, m.houseOverlay)
+
+	// Cursor starts on year_built (structure row 0).
+	assert.Equal(t, int(houseSectionStructure), m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	original := m.house.YearBuilt
+	sendKey(m, keyEnter) // start edit
+	require.True(t, m.houseOverlay.editing)
+
+	// Type invalid value.
+	sendKey(m, "ctrl+e")
+	sendKey(m, "ctrl+u")
+	for _, r := range "notanumber" {
+		sendKey(m, string(r))
+	}
+	sendKey(m, keyEnter) // attempt submit
+
+	// Should still be editing (validation error shown in status).
+	assert.True(t, m.houseOverlay.editing, "should remain in edit mode on validation error")
+	assert.Equal(t, original, m.house.YearBuilt, "value should not change on error")
+}
+
 func TestHouseOverlayClickSelectsField(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithDemoData(t, 42)
