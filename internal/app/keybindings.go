@@ -169,6 +169,13 @@ type AppKeyMap struct {
 	ExtModelCancel    key.Binding
 	ExtModelBackspace key.Binding
 
+	// --- House overlay (houseProfileOverlay.handleKey) ---
+	HouseUp    key.Binding
+	HouseDown  key.Binding
+	HouseLeft  key.Binding
+	HouseRight key.Binding
+	HouseClose key.Binding
+
 	// --- Help overlay (helpOverlayKey) ---
 	HelpGotoTop    key.Binding
 	HelpGotoBottom key.Binding
@@ -410,6 +417,13 @@ func newAppKeyMap() AppKeyMap {
 		ExtModelConfirm:   key.NewBinding(key.WithKeys(keyEnter)),
 		ExtModelCancel:    key.NewBinding(key.WithKeys(keyEsc)),
 		ExtModelBackspace: key.NewBinding(key.WithKeys(keyBackspace)),
+
+		// House overlay
+		HouseUp:    key.NewBinding(key.WithKeys(keyK, keyUp)),
+		HouseDown:  key.NewBinding(key.WithKeys(keyJ, keyDown)),
+		HouseLeft:  key.NewBinding(key.WithKeys(keyH, keyLeft)),
+		HouseRight: key.NewBinding(key.WithKeys(keyL, keyRight)),
+		HouseClose: key.NewBinding(key.WithKeys(keyEsc)),
 
 		// Help overlay
 		HelpGotoTop:    key.NewBinding(key.WithKeys(keyG)),

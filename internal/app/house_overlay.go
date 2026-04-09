@@ -28,13 +28,111 @@ func (o houseProfileOverlay) hidesMainKeys() bool { return true }
 
 func (o houseProfileOverlay) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
+	case key.Matches(msg, o.m.keys.HouseDown):
+		o.m.houseOverlayDown()
+	case key.Matches(msg, o.m.keys.HouseUp):
+		o.m.houseOverlayUp()
+	case key.Matches(msg, o.m.keys.HouseRight):
+		o.m.houseOverlayRight()
+	case key.Matches(msg, o.m.keys.HouseLeft):
+		o.m.houseOverlayLeft()
+	case key.Matches(msg, o.m.keys.HouseClose):
+		o.m.houseOverlay = nil
 	case key.Matches(msg, o.m.keys.HouseToggle):
 		o.m.houseOverlay = nil
 		o.m.resizeTables()
-	case key.Matches(msg, o.m.keys.Escape):
-		o.m.houseOverlay = nil
 	}
 	return nil
+}
+
+// houseSectionLen returns the number of fields in the given section.
+func houseSectionLen(sec houseSection) int {
+	n := 0
+	for _, d := range houseFieldDefs() {
+		if d.section == sec {
+			n++
+		}
+	}
+	return n
+}
+
+// houseOverlayDown moves the cursor down within the current section.
+// From identity, moves to the first structure field.
+func (m *Model) houseOverlayDown() {
+	s := m.houseOverlay
+	if s.section == int(houseSectionIdentity) {
+		s.section = int(houseSectionStructure)
+		s.row = 0
+		return
+	}
+	sec := houseSection(s.section)
+	maxRow := houseSectionLen(sec) - 1
+	if s.row < maxRow {
+		s.row++
+	}
+}
+
+// houseOverlayUp moves the cursor up within the current section.
+// From row 0 in a grid section, moves to identity.
+func (m *Model) houseOverlayUp() {
+	s := m.houseOverlay
+	if s.section == int(houseSectionIdentity) {
+		// Already at top; clamp.
+		return
+	}
+	if s.row > 0 {
+		s.row--
+		return
+	}
+	// Row 0 in grid section -> identity.
+	s.section = int(houseSectionIdentity)
+	s.row = 0
+}
+
+// houseOverlayRight moves the cursor right.
+// In identity: cycles through identity fields.
+// In grid: moves to next section, clamping row to target length.
+func (m *Model) houseOverlayRight() {
+	s := m.houseOverlay
+	if s.section == int(houseSectionIdentity) {
+		maxRow := houseSectionLen(houseSectionIdentity) - 1
+		if s.row < maxRow {
+			s.row++
+		}
+		return
+	}
+	if s.section >= int(houseSectionFinancial) {
+		return // rightmost grid column
+	}
+	s.section++
+	maxRow := houseSectionLen(houseSection(s.section)) - 1
+	if s.row > maxRow {
+		s.row = maxRow
+	}
+}
+
+// houseOverlayLeft moves the cursor left.
+// In identity: cycles backward through identity fields.
+// In grid: moves to previous section (or identity from structure).
+func (m *Model) houseOverlayLeft() {
+	s := m.houseOverlay
+	if s.section == int(houseSectionIdentity) {
+		if s.row > 0 {
+			s.row--
+		}
+		return
+	}
+	if s.section <= int(houseSectionStructure) {
+		// Structure -> identity.
+		s.section = int(houseSectionIdentity)
+		s.row = 0
+		return
+	}
+	s.section--
+	maxRow := houseSectionLen(houseSection(s.section)) - 1
+	if s.row > maxRow {
+		s.row = maxRow
+	}
 }
 
 // buildHouseOverlay renders the three-column house profile overlay.

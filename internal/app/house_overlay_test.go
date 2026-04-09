@@ -73,3 +73,176 @@ func TestHouseOverlayNoHouseNoOpen(t *testing.T) {
 	sendKey(m, keyTab)
 	assert.Nil(t, m.houseOverlay, "tab should not open overlay without house")
 }
+
+func TestHouseOverlayNavigation(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab) // open overlay
+
+	// Starts at first structure field (section=1, row=0).
+	require.NotNil(t, m.houseOverlay)
+	assert.Equal(t, 1, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// Down moves within column.
+	sendKey(m, keyDown)
+	assert.Equal(t, 1, m.houseOverlay.section)
+	assert.Equal(t, 1, m.houseOverlay.row)
+
+	// Right jumps to utilities column.
+	sendKey(m, keyRight)
+	assert.Equal(t, 2, m.houseOverlay.section)
+
+	// Right again to financial.
+	sendKey(m, keyRight)
+	assert.Equal(t, 3, m.houseOverlay.section)
+
+	// Right at rightmost column clamps.
+	sendKey(m, keyRight)
+	assert.Equal(t, 3, m.houseOverlay.section)
+
+	// Up from row 0 in grid moves to identity section.
+	m.houseOverlay.section = 1
+	m.houseOverlay.row = 0
+	sendKey(m, keyUp)
+	assert.Equal(t, 0, m.houseOverlay.section, "should enter identity section")
+}
+
+func TestHouseOverlayRowClamping(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Move deep into structure column (longest).
+	defs := houseFieldDefs()
+	structLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionStructure {
+			structLen++
+		}
+	}
+	for range structLen - 1 {
+		sendKey(m, keyDown)
+	}
+	assert.Equal(t, structLen-1, m.houseOverlay.row)
+
+	// Jump to utilities (shorter) -- row should clamp.
+	sendKey(m, keyRight)
+	utilLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionUtilities {
+			utilLen++
+		}
+	}
+	assert.LessOrEqual(t, m.houseOverlay.row, utilLen-1)
+}
+
+func TestHouseOverlayIdentityNavigation(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Move to identity section.
+	m.houseOverlay.section = 0
+	m.houseOverlay.row = 0
+
+	// Count identity fields.
+	defs := houseFieldDefs()
+	identLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionIdentity {
+			identLen++
+		}
+	}
+
+	// Right in identity cycles through identity fields.
+	sendKey(m, keyRight)
+	assert.Equal(t, 0, m.houseOverlay.section, "should stay in identity")
+	assert.Equal(t, 1, m.houseOverlay.row)
+
+	// Right at last identity field clamps.
+	m.houseOverlay.row = identLen - 1
+	sendKey(m, keyRight)
+	assert.Equal(t, 0, m.houseOverlay.section)
+	assert.Equal(t, identLen-1, m.houseOverlay.row)
+
+	// Left in identity cycles backward.
+	m.houseOverlay.row = 1
+	sendKey(m, keyLeft)
+	assert.Equal(t, 0, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// Left at row 0 in identity clamps.
+	sendKey(m, keyLeft)
+	assert.Equal(t, 0, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// Down from identity moves to structure section.
+	sendKey(m, keyDown)
+	assert.Equal(t, 1, m.houseOverlay.section)
+	assert.Equal(t, 0, m.houseOverlay.row)
+}
+
+func TestHouseOverlayLeftFromGrid(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Start at utilities.
+	m.houseOverlay.section = 2
+	m.houseOverlay.row = 0
+
+	// Left goes to structure.
+	sendKey(m, keyLeft)
+	assert.Equal(t, 1, m.houseOverlay.section)
+
+	// Left from structure goes to identity.
+	sendKey(m, keyLeft)
+	assert.Equal(t, 0, m.houseOverlay.section)
+}
+
+func TestHouseOverlayDownClamps(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+
+	// Count structure fields.
+	defs := houseFieldDefs()
+	structLen := 0
+	for _, d := range defs {
+		if d.section == houseSectionStructure {
+			structLen++
+		}
+	}
+
+	// Move to last row in structure.
+	m.houseOverlay.section = 1
+	m.houseOverlay.row = structLen - 1
+
+	// Down at bottom clamps.
+	sendKey(m, keyDown)
+	assert.Equal(t, structLen-1, m.houseOverlay.row)
+}
+
+func TestHouseOverlayVimKeys(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	sendKey(m, keyTab)
+	require.NotNil(t, m.houseOverlay)
+
+	// j moves down.
+	sendKey(m, keyJ)
+	assert.Equal(t, 1, m.houseOverlay.row)
+
+	// k moves up.
+	sendKey(m, keyK)
+	assert.Equal(t, 0, m.houseOverlay.row)
+
+	// l moves right to utilities.
+	sendKey(m, keyL)
+	assert.Equal(t, 2, m.houseOverlay.section)
+
+	// h moves left to structure.
+	sendKey(m, keyH)
+	assert.Equal(t, 1, m.houseOverlay.section)
+}
