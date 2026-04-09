@@ -46,6 +46,7 @@ func (s houseSection) title() string {
 type houseFieldDef struct {
 	key     string
 	label   string
+	labelFn func(us data.UnitSystem) string // unit-aware label override
 	section houseSection
 	// build creates a huh.Field bound to the given *string value.
 	build func(m *Model, value *string) huh.Field
@@ -58,6 +59,15 @@ type houseFieldDef struct {
 	// toggle, if non-nil, means Enter toggles the value instead of opening
 	// a textinput. The function flips the value and returns the new string.
 	toggle func(current string) string
+}
+
+// displayLabel returns the label for the given unit system, using labelFn
+// when available and falling back to the static label.
+func (d houseFieldDef) displayLabel(us data.UnitSystem) string {
+	if d.labelFn != nil {
+		return d.labelFn(us)
+	}
+	return d.label
 }
 
 func houseFieldDefs() []houseFieldDef {
@@ -152,6 +162,12 @@ func houseFieldDefs() []houseFieldDef {
 		},
 		{
 			key: "square_feet", label: "Ft\u00B2", section: houseSectionStructure,
+			labelFn: func(us data.UnitSystem) string {
+				if us == data.UnitsMetric {
+					return "m\u00B2"
+				}
+				return "Ft\u00B2"
+			},
 			build: func(m *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title(data.AreaFormTitle(m.unitSystem)).

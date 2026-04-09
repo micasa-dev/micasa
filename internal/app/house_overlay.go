@@ -250,16 +250,30 @@ func (m *Model) houseOverlaySubmitEdit() {
 	s.formData = nil
 }
 
-// houseOverlayFieldWidth returns the column width for inline edit fields.
+// houseOverlayFieldWidth returns the available value width for the inline
+// textinput, accounting for cursor prefix, padded label, and gap.
 func (m *Model) houseOverlayFieldWidth() int {
 	contentW := m.houseOverlayWidth()
 	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
-	if m.houseOverlayIsNarrow() {
-		return max(innerW, 12)
+	colW := innerW
+	if !m.houseOverlayIsNarrow() {
+		colGap := 3
+		colW = (innerW - colGap*2) / 3
+		colW = max(colW, 12)
 	}
-	colGap := 3
-	colW := (innerW - colGap*2) / 3
-	return max(colW, 12)
+	// Subtract cursor prefix, max label width for the section, and gap.
+	sec := houseSection(m.houseOverlay.section)
+	maxLabelW := 0
+	for _, d := range houseFieldDefs() {
+		if d.section == sec {
+			if w := lipgloss.Width(d.displayLabel(m.unitSystem)); w > maxLabelW {
+				maxLabelW = w
+			}
+		}
+	}
+	const prefixW = 2 // "▸ " or "  "
+	const gapW = 2
+	return max(colW-prefixW-maxLabelW-gapW, 12)
 }
 
 // buildHouseOverlay renders the three-column house profile overlay.
@@ -448,7 +462,7 @@ func (m *Model) houseOverlayRenderSections(
 		// Compute max label width for aligned columns.
 		maxLabelW := 0
 		for _, f := range sec.fields {
-			if w := lipgloss.Width(f.label); w > maxLabelW {
+			if w := lipgloss.Width(f.displayLabel(m.unitSystem)); w > maxLabelW {
 				maxLabelW = w
 			}
 		}
@@ -463,17 +477,18 @@ func (m *Model) houseOverlayRenderSections(
 		}
 
 		for rowIdx, f := range sec.fields {
+			fl := f.displayLabel(m.unitSystem)
 			isFocused := s.section == int(gridSections[i]) && s.row == rowIdx
 			if isFocused && s.editing {
 				// Render label + textinput inline.
-				pad := strings.Repeat(" ", maxLabelW-lipgloss.Width(f.label))
-				label := hint.Render(f.label+pad) + "  "
+				pad := strings.Repeat(" ", maxLabelW-lipgloss.Width(fl))
+				label := hint.Render(fl+pad) + "  "
 				line := cursorPrefix + hl.Render(label) + s.input.View()
 				lines = append(lines, m.zones.Mark(zoneHouseField+f.key, line))
 			} else {
 				v := strings.TrimSpace(f.get(m.house, m.cur, m.unitSystem))
-				pad := strings.Repeat(" ", maxLabelW-lipgloss.Width(f.label))
-				label := hint.Render(f.label + pad)
+				pad := strings.Repeat(" ", maxLabelW-lipgloss.Width(fl))
+				label := hint.Render(fl + pad)
 				var line string
 				if v == "" {
 					line = label + "  " + danger.Render(symEmptySet)

@@ -67,9 +67,9 @@ func TestHouseDisplayUsesMetricUnits(t *testing.T) {
 
 	m.houseOverlay = &houseOverlayState{section: 1}
 	view = m.buildHouseOverlay()
-	// In metric mode, label stays "Ft²" but get() converts via
-	// SqFtToDisplayInt, yielding the metric value.
-	assert.Contains(t, view, "Ft\u00B2")
+	// In metric mode, label switches to m² and value is converted.
+	assert.Contains(t, view, "m\u00B2")
+	assert.NotContains(t, view, "Ft\u00B2")
 }
 
 func TestHouseFormMetricSavesAsSqFt(t *testing.T) {
