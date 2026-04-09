@@ -235,6 +235,9 @@ func (m *Model) houseOverlaySubmitEdit() {
 func (m *Model) houseOverlayFieldWidth() int {
 	contentW := m.houseOverlayWidth()
 	innerW := contentW - m.styles.OverlayBox().GetHorizontalFrameSize()
+	if m.houseOverlayIsNarrow() {
+		return max(innerW, 12)
+	}
 	colGap := 3
 	colW := (innerW - colGap*2) / 3
 	return max(colW, 12)
@@ -322,21 +325,61 @@ func (m *Model) houseOverlayIdentity(innerW int) string {
 	return left + strings.Repeat(" ", gap) + frac
 }
 
-// houseOverlayColumns renders the three-column grid (Structure, Utilities,
-// Financial) with label/value rows.
-func (m *Model) houseOverlayColumns(innerW int) string {
-	defs := houseFieldDefs()
-	hint := m.styles.HeaderHint()
-	val := m.styles.HeaderValue()
-	warn := m.styles.Warning()
-	section := m.styles.HeaderSection()
+// houseOverlayNarrowThreshold is the overlay content width below which
+// sections stack vertically instead of rendering side-by-side.
+const houseOverlayNarrowThreshold = 80
 
-	// Group fields by section, skip identity (shown in header line).
-	type sectionData struct {
-		title  string
-		fields []houseFieldDef
+// houseOverlayIsNarrow returns true when the overlay should use stacked layout.
+func (m *Model) houseOverlayIsNarrow() bool {
+	return m.houseOverlayWidth() < houseOverlayNarrowThreshold
+}
+
+// houseOverlayColumns renders the three-column grid (Structure, Utilities,
+// Financial) with label/value rows. When the overlay is narrow, sections
+// stack vertically instead of side-by-side.
+func (m *Model) houseOverlayColumns(innerW int) string {
+	sections, gridSections := m.houseOverlaySectionData()
+
+	narrow := m.houseOverlayIsNarrow()
+	colW := innerW
+	if !narrow {
+		colGap := 3
+		colW = (innerW - colGap*(len(sections)-1)) / len(sections)
+		colW = max(colW, 12)
 	}
-	sections := []sectionData{
+
+	rendered := m.houseOverlayRenderSections(sections, gridSections, colW)
+
+	if narrow {
+		return strings.Join(rendered, "\n")
+	}
+
+	// Side-by-side: pad shorter columns to align heights.
+	maxLines := 0
+	for _, r := range rendered {
+		h := strings.Count(r, "\n") + 1
+		if h > maxLines {
+			maxLines = h
+		}
+	}
+	for i := range rendered {
+		h := strings.Count(rendered[i], "\n") + 1
+		if h < maxLines {
+			rendered[i] += strings.Repeat("\n", maxLines-h)
+		}
+	}
+
+	gap := strings.Repeat(" ", 3)
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		rendered[0], gap, rendered[1], gap, rendered[2],
+	)
+}
+
+// houseOverlaySectionData groups field definitions by section, returning
+// display data and the corresponding houseSection enum values.
+func (m *Model) houseOverlaySectionData() ([]houseOverlaySec, []houseSection) {
+	defs := houseFieldDefs()
+	sections := []houseOverlaySec{
 		{houseSectionStructure.title(), nil},
 		{houseSectionUtilities.title(), nil},
 		{houseSectionFinancial.title(), nil},
@@ -353,20 +396,31 @@ func (m *Model) houseOverlayColumns(innerW int) string {
 			sections[2].fields = append(sections[2].fields, d)
 		}
 	}
-
-	// Render each section as a column.
-	colGap := 3
-	colW := (innerW - colGap*(len(sections)-1)) / len(sections)
-	colW = max(colW, 12)
-
-	// Map section index to the houseSection enum for grid columns.
 	gridSections := []houseSection{
 		houseSectionStructure, houseSectionUtilities, houseSectionFinancial,
 	}
+	return sections, gridSections
+}
+
+// houseOverlaySec holds a section title and its field definitions.
+type houseOverlaySec struct {
+	title  string
+	fields []houseFieldDef
+}
+
+// houseOverlayRenderSections renders each section as a block of lines.
+func (m *Model) houseOverlayRenderSections(
+	sections []houseOverlaySec,
+	gridSections []houseSection,
+	colW int,
+) []string {
+	hint := m.styles.HeaderHint()
+	val := m.styles.HeaderValue()
+	warn := m.styles.Warning()
+	section := m.styles.HeaderSection()
 	s := m.houseOverlay
 
 	rendered := make([]string, len(sections))
-	maxLines := 0
 	for i, sec := range sections {
 		lines := []string{
 			section.Render(sec.title),
@@ -389,22 +443,7 @@ func (m *Model) houseOverlayColumns(innerW int) string {
 				lines = append(lines, m.zones.Mark(zoneHouseField+f.key, line))
 			}
 		}
-		if len(lines) > maxLines {
-			maxLines = len(lines)
-		}
 		rendered[i] = strings.Join(lines, "\n")
 	}
-
-	// Pad shorter columns to align heights.
-	for i := range rendered {
-		h := strings.Count(rendered[i], "\n") + 1
-		if h < maxLines {
-			rendered[i] += strings.Repeat("\n", maxLines-h)
-		}
-	}
-
-	gap := strings.Repeat(" ", colGap)
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		rendered[0], gap, rendered[1], gap, rendered[2],
-	)
+	return rendered
 }

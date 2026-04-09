@@ -4,6 +4,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -350,6 +351,87 @@ func TestHouseOverlayEditInvalidValue(t *testing.T) {
 	// Should still be editing (validation error shown in status).
 	assert.True(t, m.houseOverlay.editing, "should remain in edit mode on validation error")
 	assert.Equal(t, original, m.house.YearBuilt, "value should not change on error")
+}
+
+func TestHouseOverlayNarrowWidth(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	m.width = 80 // at minimum usable width — triggers narrow stacking
+	sendKey(m, keyTab)
+	view := m.buildView()
+
+	// All three section headers must appear.
+	require.Contains(t, view, "Structure", "Structure header missing")
+	require.Contains(t, view, "Utilities", "Utilities header missing")
+	require.Contains(t, view, "Financial", "Financial header missing")
+
+	// Narrow layout stacks sections vertically: "Structure" and "Utilities"
+	// must appear on different lines (not side-by-side on same row).
+	structLine, utilLine, finLine := -1, -1, -1
+	for i, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "Structure") {
+			structLine = i
+		}
+		if strings.Contains(line, "Utilities") {
+			utilLine = i
+		}
+		if strings.Contains(line, "Financial") {
+			finLine = i
+		}
+	}
+	assert.NotEqual(
+		t,
+		structLine,
+		utilLine,
+		"Structure and Utilities should be on different lines (stacked)",
+	)
+	assert.NotEqual(
+		t,
+		utilLine,
+		finLine,
+		"Utilities and Financial should be on different lines (stacked)",
+	)
+	assert.Less(t, structLine, utilLine, "Structure should appear above Utilities")
+	assert.Less(t, utilLine, finLine, "Utilities should appear above Financial")
+}
+
+func TestHouseOverlayWideWidth(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+	m.width = 120 // well above threshold
+	sendKey(m, keyTab)
+	view := m.buildView()
+
+	// All three section headers must appear.
+	require.Contains(t, view, "Structure")
+	require.Contains(t, view, "Utilities")
+	require.Contains(t, view, "Financial")
+
+	// Wide layout places sections side-by-side: all headers on same row.
+	structLine, utilLine, finLine := -1, -1, -1
+	for i, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "Structure") {
+			structLine = i
+		}
+		if strings.Contains(line, "Utilities") {
+			utilLine = i
+		}
+		if strings.Contains(line, "Financial") {
+			finLine = i
+		}
+	}
+	assert.Equal(
+		t,
+		structLine,
+		utilLine,
+		"Structure and Utilities should be on same line (side-by-side)",
+	)
+	assert.Equal(
+		t,
+		utilLine,
+		finLine,
+		"Utilities and Financial should be on same line (side-by-side)",
+	)
 }
 
 func TestHouseOverlayClickSelectsField(t *testing.T) {
