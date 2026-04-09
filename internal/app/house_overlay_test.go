@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -521,4 +522,32 @@ func TestHouseOverlayScrollBlockedBehindOverlay(t *testing.T) {
 		tab.Table.Cursor(),
 		"scroll behind overlay should not move table cursor",
 	)
+}
+
+func TestHouseOverlayNarrowEditFits(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithDemoData(t, 42)
+
+	// Shrink width to just above narrow threshold so columns still render
+	// side-by-side but space is tight.
+	m.width = houseOverlayNarrowThreshold + 8
+	m.height = 40
+	m.resizeTables()
+
+	sendKey(m, keyTab) // open overlay
+	require.NotNil(t, m.houseOverlay)
+
+	// Enter edit on the first structure field (Year).
+	sendKey(m, keyEnter)
+	require.True(t, m.houseOverlay.editing)
+
+	view := m.buildHouseOverlay()
+	overlayW := m.houseOverlayWidth()
+
+	// Every line of the overlay must fit within the overlay content width.
+	for _, line := range strings.Split(view, "\n") {
+		w := lipgloss.Width(line)
+		assert.LessOrEqual(t, w, overlayW,
+			"line exceeds overlay width (%d > %d): %q", w, overlayW, line)
+	}
 }
