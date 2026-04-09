@@ -559,7 +559,7 @@ func TestHouseOverlayNarrowEditFits(t *testing.T) {
 			// houseOverlayWidth(), so rendered lines include borders.
 			maxW := m.houseOverlayWidth()
 
-			for _, line := range strings.Split(view, "\n") {
+			for line := range strings.SplitSeq(view, "\n") {
 				w := lipgloss.Width(line)
 				assert.LessOrEqual(t, w, maxW,
 					"line exceeds overlay width (%d > %d): %q", w, maxW, line)

@@ -2151,8 +2151,8 @@ func optionalInterval() func(string) error {
 }
 
 func optionalFloat(
-	label string,
-) func(string) error { //nolint:unparam // signature matches optionalInt for consistency
+	label string, //nolint:unparam // signature matches optionalInt for consistency
+) func(string) error {
 	return validateWith(label, data.ParseOptionalFloat)
 }
 
