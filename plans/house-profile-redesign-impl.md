@@ -364,6 +364,7 @@ func TestHouseOverlayMouseToggle(t *testing.T) {
 	assert.NotNil(t, m.houseOverlay, "click should open overlay")
 
 	_ = m.buildView()
+	zone = m.zones.Get("house-header") // re-fetch — layout may have shifted
 	sendClick(m, zone.X()+1, zone.Y())
 	assert.Nil(t, m.houseOverlay, "click should close overlay")
 }
