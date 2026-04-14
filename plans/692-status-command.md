@@ -32,32 +32,42 @@ micasa status [--json] [--days N] [database-path]
 | Flag       | Default | Description                                       |
 |------------|---------|---------------------------------------------------|
 | `--json`   | false   | Output JSON instead of human-readable text         |
-| `--days N` | 30      | Look-ahead window for upcoming items (calendar days)|
+| `--days N` | 30      | Look-ahead window for upcoming items (1-365 days)   |
 
 Database path is a positional argument, consistent with `micasa show`,
 `micasa backup`, and `micasa pro status`. Defaults to platform default,
 honors `MICASA_DB_PATH`.
+
+### Flag validation
+
+`--days` must be in range 1-365. Values outside this range return an
+error with exit code 1. Zero is rejected because a zero-day window
+produces no upcoming items, which is confusing. Values above 365 are
+rejected to keep output meaningful.
 
 ## Exit codes
 
 | Code | Meaning                                         |
 |------|--------------------------------------------------|
 | 0    | No attention needed                              |
-| 1    | Items need attention, or an error occurred        |
+| 1    | Error (DB not found, query failure, invalid args) |
+| 2    | Items need attention                             |
 
-Exit code 1 (attention needed) fires when any of these are true:
+Exit code 2 (attention needed) fires when any of these are true:
 - At least one maintenance item is overdue (next due date < today)
 - At least one incident is open or in-progress
 - At least one project has status "delayed"
 
-Errors (DB not found, query failure) also exit 1, consistent with
-how every other `micasa` subcommand behaves -- `main()` calls
-`os.Exit(1)` on any error. Callers that need to distinguish
-attention-needed from error should use `--json` and check the
-`needs_attention` field.
+Exit code 1 covers operational errors: missing DB, query failures,
+invalid flags. This is consistent with how `main()` already calls
+`os.Exit(1)` on any error from cobra.
+
+Separating attention (2) from error (1) lets shell callers
+distinguish "house needs work" from "command broke" without parsing
+output.
 
 "Upcoming" items (due within `--days` window but not yet overdue) are
-informational and do NOT trigger exit code 1 by themselves.
+informational and do NOT trigger exit code 2 by themselves.
 
 ## Data sources
 
@@ -151,7 +161,7 @@ which will be moved to `internal/data/` alongside `dateDiffDays`.
 ```
 
 The top-level `needs_attention` boolean mirrors exit code semantics:
-true when exit code would be 1. Empty arrays are included (not omitted)
+true when exit code would be 2. Empty arrays are included (not omitted)
 for predictable `jq` usage.
 
 ## Implementation plan
@@ -172,11 +182,14 @@ Update `internal/app/` call sites to use the moved versions.
 ### Exit code plumbing
 
 `runStatus` returns a typed `exitError{code int}` when items need
-attention. `fang.Execute` would normally print this via its error
-handler (which calls `err.Error()` on stderr). To suppress output
-for the sentinel, register `fang.WithErrorHandler` in `main()` that
-skips printing when the error is an `exitError`. `main()` then
+attention (code 2). `fang.Execute` would normally print this via its
+error handler (which calls `err.Error()` on stderr). To suppress
+output for the sentinel, register `fang.WithErrorHandler` in `main()`
+that skips printing when the error is an `exitError`. `main()` then
 extracts the exit code from the error and calls `os.Exit` with it.
+
+Real errors (invalid flags, DB failures) return a normal error, which
+`main()` handles via `os.Exit(1)` as usual.
 
 For JSON mode, `needs_attention` is embedded in the output so
 callers can programmatically distinguish attention-needed from
@@ -188,8 +201,11 @@ errors without relying on exit codes.
 - Verify text output format (sections present/absent)
 - Verify JSON output structure (roundtrip via `json.Unmarshal`)
 - Verify exit code 0 when nothing overdue
-- Verify exit code 1 when items are overdue
+- Verify exit code 2 when items are overdue
 - Verify `--days` flag controls upcoming window
+- Verify `--days 0` and `--days -1` rejected with error
+- Verify missing/invalid DB path returns error (exit code 1)
+- Verify JSON mode includes `needs_attention: false` on error-free empty DB
 
 ## Relationship to other work
 
