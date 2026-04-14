@@ -55,6 +55,25 @@ func previewNaturalWidth(groups []previewTableGroup, sepW int, currencySymbol st
 	return maxW
 }
 
+// stablePreviewLines returns a stable line reservation for the preview
+// section based on the tallest tab's row count. This prevents the overlay
+// height from changing when switching between tabs with different row counts.
+func stablePreviewLines(groups []previewTableGroup) int {
+	if len(groups) == 0 {
+		return 0
+	}
+	maxRows := 0
+	for _, g := range groups {
+		if len(g.cells) > maxRows {
+			maxRows = len(g.cells)
+		}
+	}
+	// Preview section structure: tabBar + underline + header + divider + rows.
+	// That's maxRows+3 newlines within the section itself, plus 2 for the
+	// separator rule and blank line above the section.
+	return maxRows + 3 + 2
+}
+
 // buildExtractionPipelineOverlay renders the pipeline step view with an
 // optional operation preview section below. The preview is dimmed when
 // not in explore mode and fully interactive when exploring.
@@ -133,7 +152,17 @@ func (m *Model) buildExtractionPipelineOverlay(
 	previewLines := 0
 	if hasOps {
 		previewSection = m.renderOperationPreviewSection(innerW, ex.exploring)
-		previewLines = strings.Count(previewSection, "\n") + 2 // +2 for separator + blank
+		// Reserve height for the tallest preview tab so the overlay
+		// doesn't jump when switching tabs in explore mode.
+		previewLines = stablePreviewLines(ex.previewGroups)
+		// Pad rendered section to stable height so the overlay
+		// doesn't shrink when a shorter tab is displayed.
+		actualLines := strings.Count(previewSection, "\n")
+		targetLines := previewLines - 2 // -2: sep+blank added as separate parts
+		for actualLines < targetLines {
+			previewSection += "\n"
+			actualLines++
+		}
 	}
 
 	maxH := max(m.effectiveHeight()*2/3-6-previewLines, 4)
@@ -209,9 +238,6 @@ func (m *Model) buildExtractionPipelineOverlay(
 		if cursorStatus != stepPending {
 			hints = append(hints, m.helpItem(symReturn, "expand"))
 		}
-		if hasOps {
-			hints = append(hints, m.helpItem(keyX, "explore"))
-		}
 		if ex.Done {
 			if ex.hasLLM {
 				label := "layout on"
@@ -220,7 +246,11 @@ func (m *Model) buildExtractionPipelineOverlay(
 				}
 				hints = append(hints, m.helpItem(keyT, label))
 			}
-			hints = append(hints, m.helpItem(keyA, "accept"), m.helpItem(keyEsc, "discard"))
+			if hasOps {
+				hints = append(hints, m.helpItem(keyA, "accept"), m.helpItem(keyX, "explore"), m.helpItem(keyEsc, "discard"))
+			} else {
+				hints = append(hints, m.helpItem(keyA, "accept"), m.helpItem(keyEsc, "discard"))
+			}
 		} else {
 			hints = append(hints,
 				m.helpItem(symCtrlC, "int"),
@@ -279,12 +309,10 @@ func (m *Model) renderOperationPreviewSection(innerW int, interactive bool) stri
 	tabBar := lipgloss.JoinHorizontal(lipgloss.Left, tabParts...)
 	underline := m.styles.TabUnderline().Render(strings.Repeat(symHLineHeavy, innerW))
 
-	// Always render a single tab: the active one in explore mode,
-	// the first one in pipeline mode.
-	tabIdx := 0
-	if interactive {
-		tabIdx = ex.previewTab
-	}
+	// Always render the active preview tab. In explore mode it follows
+	// user navigation; in pipeline mode it preserves the last-explored
+	// tab so the view doesn't reset on toggle.
+	tabIdx := ex.previewTab
 	if tabIdx >= len(groups) {
 		tabIdx = 0
 	}

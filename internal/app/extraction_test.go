@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,6 +51,13 @@ func newExtractionModel(t *testing.T, steps map[extractionStep]stepStatus) *Mode
 	}
 	m.ex.extraction = ex
 	return m
+}
+
+// hintIndex returns the byte index of a hint label in ANSI-stripped overlay
+// output. Keycap rendering inserts variable padding between key and label,
+// so this searches by label word alone.
+func hintIndex(stripped, label string) int {
+	return strings.Index(stripped, label)
 }
 
 func sendExtractionKey(m *Model, key string) {
@@ -3643,4 +3651,143 @@ func TestExtractionClient_RetryClearsErrorOnSuccess(t *testing.T) {
 	require.NotNil(t, client)
 	require.NoError(t, m.ex.extractionClientErr)
 	require.Equal(t, "some-model", client.Model())
+}
+
+func TestExploreMode_HintBarTrailingOrder(t *testing.T) {
+	t.Parallel()
+	m := newPreviewModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
+	})
+	ex := m.ex.extraction
+
+	// Pipeline mode: x should come after a and before esc.
+	pipelineOut := m.buildExtractionPipelineOverlay(100, 90, "test")
+	pipelinePlain := ansi.Strip(pipelineOut)
+
+	pipelineAcceptIdx := hintIndex(pipelinePlain, "accept")
+	pipelineExploreIdx := hintIndex(pipelinePlain, "explore")
+	pipelineEscIdx := hintIndex(pipelinePlain, "discard")
+	require.Greater(t, pipelineAcceptIdx, 0, "accept hint should appear")
+	require.Greater(t, pipelineExploreIdx, 0, "explore hint should appear")
+	require.Greater(t, pipelineEscIdx, 0, "discard hint should appear")
+	assert.Less(t, pipelineAcceptIdx, pipelineExploreIdx,
+		"accept should come before explore")
+	assert.Less(t, pipelineExploreIdx, pipelineEscIdx,
+		"explore should come before discard")
+
+	// Enter explore mode: x should still come after a and before esc.
+	sendExtractionKey(m, "x")
+	require.True(t, ex.exploring)
+
+	exploreOut := m.buildExtractionPipelineOverlay(100, 90, "test")
+	explorePlain := ansi.Strip(exploreOut)
+
+	exploreAcceptIdx := hintIndex(explorePlain, "accept")
+	exploreBackIdx := hintIndex(explorePlain, "back")
+	exploreEscIdx := hintIndex(explorePlain, "discard")
+	require.Greater(t, exploreAcceptIdx, 0, "accept hint should appear")
+	require.Greater(t, exploreBackIdx, 0, "back hint should appear")
+	require.Greater(t, exploreEscIdx, 0, "discard hint should appear")
+	assert.Less(t, exploreAcceptIdx, exploreBackIdx,
+		"accept should come before back")
+	assert.Less(t, exploreBackIdx, exploreEscIdx,
+		"back should come before discard")
+}
+
+func TestExploreMode_HintBarTrailingOrderMultiTab(t *testing.T) {
+	t.Parallel()
+	m := newPreviewModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
+		{
+			Action: "create",
+			Table:  data.TableQuotes,
+			Data:   map[string]any{"total_cents": float64(100)},
+		},
+	})
+	ex := m.ex.extraction
+
+	// Explore mode with multiple tabs: b/f tabs hint appears but
+	// a/x/esc must still be trailing three.
+	sendExtractionKey(m, "x")
+	require.True(t, ex.exploring)
+	require.Greater(t, len(ex.previewGroups), 1, "need multiple tabs")
+
+	out := m.buildExtractionPipelineOverlay(100, 90, "test")
+	plain := ansi.Strip(out)
+
+	tabsIdx := hintIndex(plain, "tabs")
+	acceptIdx := hintIndex(plain, "accept")
+	backIdx := hintIndex(plain, "back")
+	escIdx := hintIndex(plain, "discard")
+	require.Greater(t, tabsIdx, 0, "tabs hint should appear")
+	require.Greater(t, acceptIdx, 0)
+	require.Greater(t, backIdx, 0)
+	require.Greater(t, escIdx, 0)
+
+	assert.Less(t, tabsIdx, acceptIdx,
+		"tabs should come before stable trailing group")
+	assert.Less(t, acceptIdx, backIdx,
+		"accept should come before back")
+	assert.Less(t, backIdx, escIdx,
+		"back should come before discard")
+}
+
+func TestExploreMode_OverlayHeightStableAcrossToggle(t *testing.T) {
+	t.Parallel()
+	// Two tables with different row counts to trigger height change.
+	m := newPreviewModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "B"}},
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "C"}},
+		{
+			Action: "create",
+			Table:  data.TableQuotes,
+			Data:   map[string]any{"total_cents": float64(100)},
+		},
+	})
+	ex := m.ex.extraction
+
+	// Pipeline mode overlay.
+	pipelineOut := m.buildExtractionPipelineOverlay(100, 90, "test")
+	pipelineLines := strings.Count(pipelineOut, "\n")
+
+	// Enter explore mode and switch to tab with fewer rows.
+	sendExtractionKey(m, "x")
+	require.True(t, ex.exploring)
+	sendExtractionKey(m, "f") // switch to quotes tab (1 row vs 3)
+	require.Equal(t, 1, ex.previewTab)
+
+	exploreOut := m.buildExtractionPipelineOverlay(100, 90, "test")
+	exploreLines := strings.Count(exploreOut, "\n")
+
+	assert.Equal(t, pipelineLines, exploreLines,
+		"overlay height should be identical regardless of active tab row count")
+}
+
+func TestExploreMode_TabPersistsOnExit(t *testing.T) {
+	t.Parallel()
+	m := newPreviewModel(t, []extract.Operation{
+		{Action: "create", Table: data.TableVendors, Data: map[string]any{"name": "A"}},
+		{
+			Action: "create",
+			Table:  data.TableQuotes,
+			Data:   map[string]any{"total_cents": float64(100)},
+		},
+	})
+	ex := m.ex.extraction
+
+	// Enter explore, switch to tab 1, exit.
+	sendExtractionKey(m, "x")
+	require.True(t, ex.exploring)
+	sendExtractionKey(m, "f")
+	require.Equal(t, 1, ex.previewTab)
+	sendExtractionKey(m, "x") // exit explore
+	require.False(t, ex.exploring)
+
+	// Pipeline mode should now show tab 1 (dimmed), not reset to 0.
+	out := m.renderOperationPreviewSection(80, false)
+	plain := ansi.Strip(out)
+	// Tab 1 is Quotes -- its data should appear in rendered table.
+	assert.Contains(t, plain, "Total",
+		"pipeline mode should show last-explored tab content")
 }
