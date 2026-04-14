@@ -872,16 +872,13 @@ func (m *Model) formatPullProgress(msg pullProgressMsg) string {
 }
 
 // extractionLLMClient returns the LLM client configured for extraction,
-// or nil if extraction is not available. The client is created once and
-// cached. Each pipeline is fully independent -- no fallback to chat config.
+// or nil if extraction is not available. A successful client is cached;
+// failures are retried on each call (the last error is stored in
+// extractionClientErr for status bar surfacing by callers).
+// Each pipeline is fully independent -- no fallback to chat config.
 func (m *Model) extractionLLMClient() llm.ExtractionProvider {
 	if m.ex.extractionClient != nil {
 		return m.ex.extractionClient
-	}
-
-	// Return early if we already tried and failed.
-	if m.ex.extractionClientErr != nil {
-		return nil
 	}
 
 	provider := m.ex.extractionProvider
