@@ -93,10 +93,56 @@ func newHouseAddCmd() *cobra.Command {
 }
 
 func houseCreate(store *data.Store, raw json.RawMessage) (data.HouseProfile, error) {
-	var h data.HouseProfile
-	if err := json.Unmarshal(raw, &h); err != nil {
-		return data.HouseProfile{}, fmt.Errorf("invalid JSON: %w", err)
+	fields, err := parseFields(raw)
+	if err != nil {
+		return data.HouseProfile{}, err
 	}
+
+	var h data.HouseProfile
+	for _, pair := range []struct {
+		key string
+		dst any
+	}{
+		{"nickname", &h.Nickname},
+		{"address_line1", &h.AddressLine1},
+		{"address_line2", &h.AddressLine2},
+		{"city", &h.City},
+		{"state", &h.State},
+		{"postal_code", &h.PostalCode},
+		{"year_built", &h.YearBuilt},
+		{"square_feet", &h.SquareFeet},
+		{"lot_square_feet", &h.LotSquareFeet},
+		{"bedrooms", &h.Bedrooms},
+		{"bathrooms", &h.Bathrooms},
+		{"foundation_type", &h.FoundationType},
+		{"wiring_type", &h.WiringType},
+		{"roof_type", &h.RoofType},
+		{"exterior_type", &h.ExteriorType},
+		{"heating_type", &h.HeatingType},
+		{"cooling_type", &h.CoolingType},
+		{"water_source", &h.WaterSource},
+		{"sewer_type", &h.SewerType},
+		{"parking_type", &h.ParkingType},
+		{"basement_type", &h.BasementType},
+		{"insurance_carrier", &h.InsuranceCarrier},
+		{"insurance_policy", &h.InsurancePolicy},
+		{"property_tax_cents", &h.PropertyTaxCents},
+		{"hoa_name", &h.HOAName},
+		{"hoa_fee_cents", &h.HOAFeeCents},
+	} {
+		if err := mergeField(fields, pair.key, pair.dst); err != nil {
+			return data.HouseProfile{}, err
+		}
+	}
+
+	if dateStr, ok := stringField(fields, "insurance_renewal"); ok {
+		parsed, dateErr := data.ParseOptionalDate(dateStr)
+		if dateErr != nil {
+			return data.HouseProfile{}, fmt.Errorf("insurance_renewal: %w", dateErr)
+		}
+		h.InsuranceRenewal = parsed
+	}
+
 	if err := store.CreateHouseProfile(h); err != nil {
 		return data.HouseProfile{}, err
 	}
@@ -173,7 +219,6 @@ func houseUpdate(store *data.Store, raw json.RawMessage) (data.HouseProfile, err
 		{"basement_type", &existing.BasementType},
 		{"insurance_carrier", &existing.InsuranceCarrier},
 		{"insurance_policy", &existing.InsurancePolicy},
-		{"insurance_renewal", &existing.InsuranceRenewal},
 		{"property_tax_cents", &existing.PropertyTaxCents},
 		{"hoa_name", &existing.HOAName},
 		{"hoa_fee_cents", &existing.HOAFeeCents},
@@ -181,6 +226,16 @@ func houseUpdate(store *data.Store, raw json.RawMessage) (data.HouseProfile, err
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.HouseProfile{}, err
 		}
+	}
+
+	if dateStr, ok := stringField(fields, "insurance_renewal"); ok {
+		parsed, dateErr := data.ParseOptionalDate(dateStr)
+		if dateErr != nil {
+			return data.HouseProfile{}, fmt.Errorf("insurance_renewal: %w", dateErr)
+		}
+		existing.InsuranceRenewal = parsed
+	} else if _, present := fields["insurance_renewal"]; present {
+		existing.InsuranceRenewal = nil
 	}
 
 	if err := store.UpdateHouseProfile(existing); err != nil {

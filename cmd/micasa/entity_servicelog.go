@@ -128,13 +128,9 @@ func serviceLogUpdate(
 	}
 
 	if !hasVendor {
-		// Preserve existing vendor.
-		if existing.VendorID != nil {
-			vendor, err = store.GetVendor(*existing.VendorID)
-			if err != nil {
-				return data.ServiceLogEntry{}, fmt.Errorf("get existing vendor: %w", err)
-			}
-		}
+		// Preserve existing vendor. Use preloaded vendor from GetServiceLog
+		// (works even if vendor is soft-deleted via unscopedPreload).
+		vendor = existing.Vendor
 	}
 
 	// Handle explicit null for vendor_id (clear vendor).

@@ -87,9 +87,30 @@ func quoteCreate(store *data.Store, raw json.RawMessage) (data.Quote, error) {
 	}
 
 	var q data.Quote
-	if err := json.Unmarshal(raw, &q); err != nil {
-		return data.Quote{}, fmt.Errorf("invalid JSON: %w", err)
+	for _, pair := range []struct {
+		key string
+		dst any
+	}{
+		{"project_id", &q.ProjectID},
+		{"total_cents", &q.TotalCents},
+		{"labor_cents", &q.LaborCents},
+		{"materials_cents", &q.MaterialsCents},
+		{"other_cents", &q.OtherCents},
+		{"notes", &q.Notes},
+	} {
+		if err := mergeField(fields, pair.key, pair.dst); err != nil {
+			return data.Quote{}, err
+		}
 	}
+
+	if dateStr, ok := stringField(fields, "received_date"); ok {
+		parsed, dateErr := data.ParseOptionalDate(dateStr)
+		if dateErr != nil {
+			return data.Quote{}, fmt.Errorf("received_date: %w", dateErr)
+		}
+		q.ReceivedDate = parsed
+	}
+
 	if q.ProjectID == "" {
 		return data.Quote{}, errors.New("project_id is required")
 	}
@@ -128,7 +149,6 @@ func quoteUpdate(store *data.Store, id string, raw json.RawMessage) (data.Quote,
 		{"labor_cents", &existing.LaborCents},
 		{"materials_cents", &existing.MaterialsCents},
 		{"other_cents", &existing.OtherCents},
-		{"received_date", &existing.ReceivedDate},
 		{"notes", &existing.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
@@ -136,15 +156,24 @@ func quoteUpdate(store *data.Store, id string, raw json.RawMessage) (data.Quote,
 		}
 	}
 
+	if dateStr, ok := stringField(fields, "received_date"); ok {
+		parsed, dateErr := data.ParseOptionalDate(dateStr)
+		if dateErr != nil {
+			return data.Quote{}, fmt.Errorf("received_date: %w", dateErr)
+		}
+		existing.ReceivedDate = parsed
+	} else if _, present := fields["received_date"]; present {
+		existing.ReceivedDate = nil
+	}
+
 	vendor, hasVendor, err := resolveVendorInput(store, fields)
 	if err != nil {
 		return data.Quote{}, err
 	}
 	if !hasVendor {
-		vendor, err = store.GetVendor(existing.VendorID)
-		if err != nil {
-			return data.Quote{}, fmt.Errorf("get existing vendor: %w", err)
-		}
+		// Use preloaded vendor from GetQuote (works even if vendor is
+		// soft-deleted, since GetQuote preloads with unscopedPreload).
+		vendor = existing.Vendor
 	}
 
 	if err := store.UpdateQuote(existing, vendor); err != nil {
