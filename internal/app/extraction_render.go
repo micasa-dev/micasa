@@ -155,13 +155,19 @@ func (m *Model) buildExtractionPipelineOverlay(
 		// Reserve height for the tallest preview tab so the overlay
 		// doesn't jump when switching tabs in explore mode.
 		previewLines = stablePreviewLines(ex.previewGroups)
-		// Pad rendered section to stable height so the overlay
-		// doesn't shrink when a shorter tab is displayed.
-		actualLines := strings.Count(previewSection, "\n")
-		targetLines := previewLines - 2 // -2: sep+blank added as separate parts
-		for actualLines < targetLines {
-			previewSection += "\n"
-			actualLines++
+		if previewLines == 0 {
+			// Fallback for unknown-table ops where no preview groups
+			// are generated: use rendered section's actual line count.
+			previewLines = strings.Count(previewSection, "\n") + 2
+		} else {
+			// Pad rendered section to stable height so the overlay
+			// doesn't shrink when a shorter tab is displayed.
+			actualLines := strings.Count(previewSection, "\n")
+			targetLines := previewLines - 2 // -2: sep+blank added as separate parts
+			for actualLines < targetLines {
+				previewSection += "\n"
+				actualLines++
+			}
 		}
 	}
 

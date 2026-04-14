@@ -3791,3 +3791,26 @@ func TestExploreMode_TabPersistsOnExit(t *testing.T) {
 	assert.Contains(t, plain, "Total",
 		"pipeline mode should show last-explored tab content")
 }
+
+func TestExploreMode_UnknownTableOverlayStable(t *testing.T) {
+	t.Parallel()
+	// Unknown tables produce no preview groups but hasOps is still true.
+	// Overlay should render without panicking and maintain stable height.
+	m := newPreviewModel(t, []extract.Operation{
+		{Action: "create", Table: "unknown_table", Data: map[string]any{"x": "y"}},
+	})
+
+	out := m.buildExtractionPipelineOverlay(100, 90, "test")
+	plain := ansi.Strip(out)
+	lines := strings.Count(out, "\n")
+
+	assert.Greater(t, lines, 0, "overlay should render with nonzero height")
+	assert.Contains(t, plain, "no operations",
+		"should show fallback text for unknown tables")
+
+	// Build again -- height should be identical (stable).
+	out2 := m.buildExtractionPipelineOverlay(100, 90, "test")
+	lines2 := strings.Count(out2, "\n")
+	assert.Equal(t, lines, lines2,
+		"overlay height should be stable across renders")
+}
