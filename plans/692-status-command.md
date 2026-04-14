@@ -191,9 +191,11 @@ extracts the exit code from the error and calls `os.Exit` with it.
 Real errors (invalid flags, DB failures) return a normal error, which
 `main()` handles via `os.Exit(1)` as usual.
 
-For JSON mode, `needs_attention` is embedded in the output so
-callers can programmatically distinguish attention-needed from
-errors without relying on exit codes.
+For JSON mode, successful runs always emit a complete JSON object
+with `needs_attention`. On error (exit code 1), no JSON is emitted
+-- the error goes to stderr like all other `micasa` subcommands.
+Callers should check exit code first: 0 or 2 means valid JSON on
+stdout; 1 means error on stderr.
 
 ### Tests
 
@@ -203,7 +205,7 @@ errors without relying on exit codes.
 - Verify exit code 0 when nothing overdue
 - Verify exit code 2 when items are overdue
 - Verify `--days` flag controls upcoming window
-- Verify `--days 0` and `--days -1` rejected with error
+- Verify `--days 0`, `--days -1`, and `--days 366` rejected with error
 - Verify missing/invalid DB path returns error (exit code 1)
 - Verify JSON mode includes `needs_attention: false` on error-free empty DB
 
