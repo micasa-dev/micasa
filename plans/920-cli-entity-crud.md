@@ -50,10 +50,15 @@ The existing `micasa show <entity>` already provides listing. Options:
 
 **Decision**: Option A -- deprecate `show` now. Add deprecation notice to
 `show --help` output. Plan removal in next major version. The new
-`<entity> list` commands subsume `show`'s functionality with JSON-default
-output and a `--table` flag for human-readable format. The `show` command
-continues to work but prints a deprecation warning to stderr on each
-invocation.
+`<entity> list` commands subsume `show`'s per-entity functionality with
+JSON-default output and a `--table` flag for human-readable format. The
+`show` command continues to work but prints a deprecation warning to
+stderr on each invocation.
+
+**Note**: The aggregate `micasa show all` command has no direct replacement
+in the new entity command structure. It is excluded from deprecation and
+will continue to work without a deprecation warning until a dedicated
+aggregate command is designed.
 
 ## Entity Inventory
 
@@ -127,16 +132,41 @@ provided for `add` and `edit` verbs.
 ### Partial updates for `edit`
 
 The `edit` command performs a **partial update**: only fields present in the
-JSON payload are modified. Missing fields retain their current values. To
-explicitly clear an optional field, set it to `null`.
+JSON payload are modified. Missing fields retain their current values.
+
+Field-clearing semantics depend on the field type:
+- **String fields**: Set to `""` (empty string) to clear.
+- **Nullable fields** (`*int64`, `*time.Time`, `*string`): Set to `null` in
+  JSON to clear (sets the pointer to nil).
+- **Omitted fields**: Always preserved -- the current value is kept.
 
 ```bash
-# Clear the phone number
+# Clear a string field (phone is a plain string)
 micasa vendor edit 01JQKX... --data '{"phone":""}'
 
-# Set only the status
+# Clear a nullable field (budget_cents is *int64)
+micasa project edit 01JQKX... --data '{"budget_cents":null}'
+
+# Set only the status (all other fields preserved)
 micasa project edit 01JQKX... --data '{"status":"completed"}'
 ```
+
+### Vendor handling in `edit` for quote and service-log
+
+Quote and service-log `edit` commands have special vendor semantics because
+their store methods (`UpdateQuote`, `UpdateServiceLog`) take a separate
+`Vendor` argument for find-or-create logic:
+
+- **Omit both `vendor_id` and `vendor_name`**: Preserve current vendor.
+  The CLI fetches the existing entity, reads its `vendor_id`, fetches that
+  vendor, and passes it through to the store method.
+- **Provide `vendor_id`**: Replace vendor. CLI fetches the vendor by ID and
+  passes it.
+- **Provide `vendor_name`**: Replace vendor via find-or-create. CLI passes
+  `Vendor{Name: vendorName}` to the store method.
+- For service-log only: setting `vendor_id` to `null` clears the vendor
+  (vendor is optional on service logs). Clearing vendor on quotes is not
+  supported since `vendor_id` is required.
 
 ### Money fields
 
@@ -250,23 +280,28 @@ The CLI CRUD commands are not intended to bootstrap a new database.
 
 ### Quote
 
+- `add`: Requires `project_id` and either `vendor_id` or `vendor_name`.
 - `add`/`edit`: Accept `vendor_name` as convenience field. When provided,
   pass a `Vendor{Name: vendorName}` to `CreateQuote`/`UpdateQuote`, which
   internally calls `findOrCreateVendor` (in `store_vendor.go`).
 - When `vendor_id` is provided instead, the CLI fetches the vendor by ID
-  first, then passes the fetched `Vendor` struct to `CreateQuote`/
-  `UpdateQuote`. This ensures `findOrCreateVendor` finds the existing
-  vendor by name rather than creating a duplicate.
-- `project_id` is required for `add`.
-- Either `vendor_id` or `vendor_name` is required for `add`.
+  first, then passes the fetched `Vendor` struct.
+- `edit` vendor handling: see "Vendor handling in `edit`" section above.
+  Omitting both vendor fields preserves the current vendor. `vendor_id`
+  is required on quotes so it cannot be cleared.
 
 ### Service Log
 
+- `add`: Requires `maintenance_item_id` and `serviced_at`.
 - `add`/`edit`: Accept `vendor_name` as convenience field. When provided,
   pass a `Vendor{Name: vendorName}` to `CreateServiceLog`/
   `UpdateServiceLog`, which internally calls `findOrCreateVendor`.
 - When `vendor_id` is provided, the CLI fetches the vendor by ID first,
   then passes the fetched `Vendor` struct (same pattern as Quote).
+- `edit` vendor handling: see "Vendor handling in `edit`" section above.
+  Omitting both vendor fields preserves the current vendor. Setting
+  `vendor_id` to `null` clears the vendor (vendor is optional on
+  service logs).
 - `maintenance_item_id` is required for `add`.
 - `serviced_at` is required for `add`.
 
@@ -292,13 +327,13 @@ new `micasa <entity> list --table` commands.
 
 ### Changes to `show`
 
-1. Add a deprecation notice to every `show` subcommand's `--help` output:
-   `Deprecated: use 'micasa <entity> list --table' instead.`
-2. On each invocation, print a one-line deprecation warning to stderr:
-   `Warning: 'show' is deprecated. Use 'micasa <entity> list --table' instead.`
-3. Mark each show subcommand as deprecated via cobra's `Deprecated` field
-   (which automatically hides the command from parent help and prints
-   the deprecation message).
+1. Mark each per-entity show subcommand as deprecated via cobra's
+   `Deprecated` field (which automatically hides the command from parent
+   help and prints a deprecation message on invocation).
+2. The `show all` subcommand is **not** deprecated -- it has no replacement
+   in the new entity command structure and continues to function normally.
+3. The `show` parent command itself is not deprecated -- it still hosts
+   `show all`.
 
 ### Removal timeline
 
@@ -386,9 +421,9 @@ human-friendly table-default output (until deprecated).
 
 ### Q2: `show` deprecation timeline
 
-**Decision**: Deprecate now. Add deprecation notice to `show --help`. Print
-stderr warning on each invocation. Plan removal in next major version. The
-new `<entity> list` commands subsume `show`'s functionality.
+**Decision**: Deprecate per-entity `show` subcommands now via cobra
+`Deprecated` field. Keep `show all` undeprecated (no replacement exists).
+Plan removal of per-entity subcommands in next major version.
 
 ### Q3: Singular vs plural entity names
 
