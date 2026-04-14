@@ -39,6 +39,7 @@ micasa [database-path] [flags]
 - [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
 - [`micasa query`](#micasa-query) -- Run a read-only SQL query
 - [`micasa show`](#micasa-show) -- Display data as text or JSON
+- [`micasa status`](#micasa-status) -- Show overdue items, open incidents, and active projects
 
 ## micasa backup
 
@@ -1960,4 +1961,28 @@ micasa show all [database-path] [flags]
 ### See also
 
 - [`micasa show`](#micasa-show) -- Display data as text or JSON
+
+## micasa status
+
+Print items that need attention and exit with code 2 if any
+are found. Exit 0 means everything is on track. Useful for cron jobs,
+shell prompts, and status bar widgets.
+
+### Usage
+
+```
+micasa status [database-path] [flags]
+```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--days` | `30` | Look-ahead window for upcoming items (1-365) |
+| `-h`, `--help` | - | help for status |
+| `--json` | - | Output JSON instead of human-readable text |
+
+### See also
+
+- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
 
