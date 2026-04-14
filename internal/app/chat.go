@@ -466,6 +466,7 @@ func (m *Model) handleModelsListMsg(msg modelsListMsg) {
 		} else {
 			// Server unreachable -- show well-known models only.
 			mc.All = mergeModelLists(nil)
+			m.setStatusError("list models: " + msg.Err.Error())
 		}
 		m.refilterCompleter()
 		return

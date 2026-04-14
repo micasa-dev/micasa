@@ -1168,6 +1168,9 @@ func TestHandleModelsListMsgCompleterError(t *testing.T) {
 	assert.False(t, m.chat.Completer.Loading)
 	// Should fall back to well-known models only.
 	require.NotEmpty(t, m.chat.Completer.All)
+	// Should surface error in status bar.
+	assert.Equal(t, statusError, m.status.Kind)
+	assert.Contains(t, m.status.Text, "oops")
 }
 
 // --- removeLastNotice ---

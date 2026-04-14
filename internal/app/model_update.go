@@ -96,6 +96,7 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ex.modelPicker.All = mergeModelLists(typed.Models)
 			} else {
 				ex.modelPicker.All = mergeModelLists(nil)
+				m.setStatusError("list models: " + typed.Err.Error())
 			}
 			refilterModelCompleter(ex.modelPicker, ex.modelFilter, m.extractionModelLabel())
 			return m, nil

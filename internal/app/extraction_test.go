@@ -3542,3 +3542,76 @@ func TestExtractionLLMCancelFn_SetSynchronouslyOnRerun(t *testing.T) {
 	// Clean up by cancelling the timeout context so the test doesn't leak.
 	ex.cancelLLMTimeout()
 }
+
+// TestExtractionClient_SurfacesCreationError verifies that when the
+// extraction provider is invalid, extractionLLMClient() caches the error
+// and the status bar shows an actionable message.
+func TestExtractionClient_SurfacesCreationError(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	m.ex.extraction.Done = true
+
+	m.ex.extractionProvider = "bogus-provider"
+	m.ex.extractionModel = "some-model"
+	m.ex.extractionTimeout = 5 * time.Second
+	m.ex.extractionEnabled = true
+
+	// Client creation should fail and cache the error.
+	assert.Nil(t, m.extractionLLMClient())
+	require.Error(t, m.ex.extractionClientErr)
+	assert.Contains(t, m.ex.extractionClientErr.Error(), "bogus-provider")
+}
+
+// TestExtractionClient_ClearsErrorOnModelSwitch verifies that switching
+// models clears the cached client creation error so retries work.
+func TestExtractionClient_ClearsErrorOnModelSwitch(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	m.ex.extraction.Done = true
+
+	// Force a cached error.
+	m.ex.extractionProvider = "bogus-provider"
+	m.ex.extractionModel = "some-model"
+	m.ex.extractionTimeout = 5 * time.Second
+	m.ex.extractionEnabled = true
+	m.extractionLLMClient()
+	require.Error(t, m.ex.extractionClientErr)
+
+	// Fix provider so re-creation succeeds after clearing.
+	m.ex.extractionProvider = "ollama"
+	m.ex.extractionBaseURL = "http://localhost:11434"
+
+	// Switching model should clear the error.
+	m.switchExtractionModel("new-model", true)
+	assert.NoError(t, m.ex.extractionClientErr)
+}
+
+// TestExtractionModelPicker_SurfacesListModelsError verifies that when
+// the extraction model picker receives a ListModels error, the status bar
+// shows an actionable error message.
+func TestExtractionModelPicker_SurfacesListModelsError(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	ex := m.ex.extraction
+	ex.Done = true
+
+	// Set up a model picker in loading state.
+	ex.modelPicker = &modelCompleter{Loading: true}
+
+	// Deliver a modelsListMsg with an error.
+	m.Update(modelsListMsg{Err: errors.New("connection refused")})
+
+	// Picker should be populated with well-known models.
+	assert.False(t, ex.modelPicker.Loading)
+	require.NotEmpty(t, ex.modelPicker.All)
+
+	// Status bar should show an error.
+	assert.Equal(t, statusError, m.status.Kind)
+	assert.Contains(t, m.status.Text, "connection refused")
+}

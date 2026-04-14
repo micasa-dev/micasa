@@ -94,18 +94,19 @@ func (fs *formState) formKind() FormKind {
 type extractState struct {
 	// Extraction-specific LLM connection settings. When extractionProvider
 	// differs from the chat provider, an independent client is created.
-	extractionProvider string
-	extractionBaseURL  string
-	extractionModel    string
-	extractionAPIKey   string
-	extractionTimeout  time.Duration // inference context deadline
-	extractionEffort   string
-	extractionEnabled  bool
-	ocrTSV             bool
-	ocrConfThreshold   int
-	extractionClient   llm.ExtractionProvider
-	extractors         []extract.Extractor
-	extractionReady    bool
+	extractionProvider  string
+	extractionBaseURL   string
+	extractionModel     string
+	extractionAPIKey    string
+	extractionTimeout   time.Duration // inference context deadline
+	extractionEffort    string
+	extractionEnabled   bool
+	ocrTSV              bool
+	ocrConfThreshold    int
+	extractionClient    llm.ExtractionProvider
+	extractionClientErr error // cached client creation error (finding 1)
+	extractors          []extract.Extractor
+	extractionReady     bool
 
 	pendingExtractionDocID *string
 	extraction             *extractionLogState

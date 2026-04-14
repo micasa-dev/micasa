@@ -879,6 +879,11 @@ func (m *Model) extractionLLMClient() llm.ExtractionProvider {
 		return m.ex.extractionClient
 	}
 
+	// Return early if we already tried and failed.
+	if m.ex.extractionClientErr != nil {
+		return nil
+	}
+
 	provider := m.ex.extractionProvider
 	baseURL := m.ex.extractionBaseURL
 	apiKey := m.ex.extractionAPIKey
@@ -893,12 +898,14 @@ func (m *Model) extractionLLMClient() llm.ExtractionProvider {
 	if provider == "claude-cli" {
 		cc, err := claudecli.NewClient(model, timeout)
 		if err != nil {
+			m.ex.extractionClientErr = err
 			return nil
 		}
 		client = cc
 	} else {
 		cc, err := llm.NewClient(provider, baseURL, model, apiKey, timeout)
 		if err != nil {
+			m.ex.extractionClientErr = err
 			return nil
 		}
 		client = cc
@@ -929,6 +936,9 @@ func (m *Model) afterDocumentSave() tea.Cmd {
 
 	// Check if LLM extraction is configured and ready.
 	llmReady := m.ex.extractionEnabled && m.extractionLLMClient() != nil && m.ex.extractionReady
+	if m.ex.extractionEnabled && m.ex.extractionClientErr != nil {
+		m.setStatusError("extraction LLM: " + m.ex.extractionClientErr.Error())
+	}
 
 	// Determine if async extraction is needed. Skip OCR when the
 	// document already has extracted text from a previous run.

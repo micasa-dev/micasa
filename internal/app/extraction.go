@@ -262,6 +262,9 @@ func (m *Model) startExtractionOverlay(
 ) tea.Cmd {
 	needsExtract := extract.NeedsOCR(m.ex.extractors, mime)
 	needsLLM := m.extractionLLMClient() != nil
+	if m.ex.extractionEnabled && m.ex.extractionClientErr != nil {
+		m.setStatusError("extraction LLM: " + m.ex.extractionClientErr.Error())
+	}
 
 	// Skip OCR when the document already has extracted text from a
 	// previous run -- feed existing text directly to the LLM.
@@ -1236,6 +1239,7 @@ func (m *Model) handleExtractionModelPickerKey(msg tea.KeyPressMsg) tea.Cmd {
 func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 	m.ex.extractionModel = name
 	m.ex.extractionClient = nil
+	m.ex.extractionClientErr = nil
 
 	if isLocal {
 		m.ex.extractionReady = true
