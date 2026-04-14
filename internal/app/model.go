@@ -911,6 +911,7 @@ func (m *Model) extractionLLMClient() llm.ExtractionProvider {
 		client.SetEffort(m.ex.extractionEffort)
 	}
 	m.ex.extractionClient = client
+	m.ex.extractionClientErr = nil
 	return client
 }
 

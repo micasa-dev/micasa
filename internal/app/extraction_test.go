@@ -3615,3 +3615,32 @@ func TestExtractionModelPicker_SurfacesListModelsError(t *testing.T) {
 	assert.Equal(t, statusError, m.status.Kind)
 	assert.Contains(t, m.status.Text, "connection refused")
 }
+
+// TestExtractionClient_RetryClearsErrorOnSuccess verifies that after a
+// failed client creation, fixing the provider config and retrying clears
+// the cached error without requiring a model switch.
+func TestExtractionClient_RetryClearsErrorOnSuccess(t *testing.T) {
+	t.Parallel()
+	m := newExtractionModel(t, map[extractionStep]stepStatus{
+		stepLLM: stepDone,
+	})
+	m.ex.extraction.Done = true
+
+	// First call fails with bogus provider.
+	m.ex.extractionProvider = "bogus-provider"
+	m.ex.extractionModel = "some-model"
+	m.ex.extractionTimeout = 5 * time.Second
+	m.ex.extractionEnabled = true
+	assert.Nil(t, m.extractionLLMClient())
+	require.Error(t, m.ex.extractionClientErr)
+
+	// Fix provider without switching model.
+	m.ex.extractionProvider = "ollama"
+	m.ex.extractionBaseURL = "http://localhost:11434"
+
+	// Second call should succeed and clear cached error.
+	client := m.extractionLLMClient()
+	require.NotNil(t, client)
+	assert.NoError(t, m.ex.extractionClientErr)
+	assert.Equal(t, "some-model", client.Model())
+}
