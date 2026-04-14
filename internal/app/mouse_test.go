@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// sendMouseMotion sends a mouse motion event to the model at the given position.
+func sendMouseMotion(m *Model, x, y int) {
+	m.Update(tea.MouseMotionMsg{X: x, Y: y})
+}
+
 // sendMouseClick sends a mouse click event to the model at the given position.
 func sendMouseClick(m *Model, x, y int, button tea.MouseButton) {
 	m.Update(tea.MouseClickMsg{X: x, Y: y, Button: button})

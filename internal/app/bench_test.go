@@ -4,6 +4,7 @@
 package app
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -233,6 +234,20 @@ func BenchmarkApplySorts(b *testing.B) {
 	b.ResetTimer()
 	for b.Loop() {
 		applySorts(tab)
+	}
+}
+
+func BenchmarkMouseMotion(b *testing.B) {
+	m := benchModel(b)
+	_ = m.View()
+	_ = m.View()
+	var buf bytes.Buffer
+	m.pointerWriter = &buf
+	msg := tea.MouseMotionMsg{X: 20, Y: 5}
+	b.ResetTimer()
+	for b.Loop() {
+		buf.Reset()
+		m.handleMouseMotion(msg)
 	}
 }
 

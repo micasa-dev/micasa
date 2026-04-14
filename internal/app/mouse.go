@@ -61,6 +61,17 @@ func (m *Model) handleMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleMouseMotion updates the mouse pointer shape based on whether the
+// cursor is over a clickable zone. This writes OSC 22 escape sequences
+// directly to pointerWriter (typically stdout) outside of the View cycle.
+func (m *Model) handleMouseMotion(msg tea.MouseMotionMsg) {
+	if m.isOverClickableZone(msg) {
+		m.lastPointerShape = setPointerShape(m.pointerWriter, pointerShapePointer, m.lastPointerShape)
+	} else {
+		m.lastPointerShape = setPointerShape(m.pointerWriter, pointerShapeDefault, m.lastPointerShape)
+	}
+}
+
 // handleLeftClick routes a left click to the appropriate zone handler.
 func (m *Model) handleLeftClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 	// Overlay dismiss: if an overlay is active and the click is outside it,

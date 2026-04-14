@@ -220,7 +220,9 @@ type Model struct {
 	hardDeleteID          string      // entity ID pending permanent deletion
 	lastRowClick          rowClickState
 	lastDashClick         rowClickState
-	isDark                bool // terminal background is dark
+	lastPointerShape      string    // "pointer" or "" (default); tracks OSC 22 state
+	pointerWriter         io.Writer // target for OSC 22 escape sequences (default os.Stdout)
+	isDark                bool      // terminal background is dark
 	keys                  AppKeyMap
 	cur                   locale.Currency
 	status                statusMsg
@@ -329,6 +331,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		mode:            modeNormal,
 		keys:            newAppKeyMap(),
 		cur:             store.Currency(),
+		pointerWriter:   os.Stdout,
 		syncCfg:         options.syncCfg,
 	}
 
@@ -395,7 +398,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) View() tea.View {
 	v := tea.NewView(m.zones.Scan(m.buildView()))
 	v.AltScreen = true
-	v.MouseMode = tea.MouseModeCellMotion
+	v.MouseMode = tea.MouseModeAllMotion
 	return v
 }
 

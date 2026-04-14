@@ -40,6 +40,7 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.syncCancel != nil {
 				m.syncCancel()
 			}
+			resetPointerShape(m.pointerWriter)
 			return m, tea.Quit
 		}
 		if key.Matches(typed, m.keys.Cancel) {
@@ -127,6 +128,9 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	case tea.MouseClickMsg:
 		return m.handleMouseClick(typed)
+	case tea.MouseMotionMsg:
+		m.handleMouseMotion(typed)
+		return m, nil
 	case tea.MouseWheelMsg:
 		return m.handleMouseWheel(typed)
 	case openFileResultMsg:
