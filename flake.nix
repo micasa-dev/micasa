@@ -36,6 +36,7 @@
           ];
         };
         micasa = pkgs.callPackage ./nix/package.nix {
+          buildGoModule = pkgs.micasaBuildGoModule;
           inherit (gitignore.lib) gitignoreSource;
         };
 
@@ -150,7 +151,7 @@
         goModTidyCheck = pkgs.writeShellApplication {
           name = "go-mod-tidy-check";
           runtimeInputs = [
-            pkgs.go
+            pkgs.micasaGo
             pkgs.git
           ];
           text = ''
@@ -165,7 +166,7 @@
         goGenerateCheck = pkgs.writeShellApplication {
           name = "go-generate-check";
           runtimeInputs = [
-            pkgs.go
+            pkgs.micasaGo
             pkgs.git
           ];
           runtimeEnv.CGO_ENABLED = "0";
@@ -243,7 +244,7 @@
             CGO_ENABLED = "0";
             GOFLAGS = "-trimpath";
             packages = [
-              pkgs.go
+              pkgs.micasaGo
               pkgs.osv-scanner
               pkgs.git
               pkgs.hugo
@@ -408,7 +409,7 @@
           coverage = pkgs.writeShellApplication {
             name = "coverage";
             runtimeInputs = [
-              pkgs.go
+              pkgs.micasaGo
               pkgs.sd
             ];
             runtimeEnv.CGO_ENABLED = "1";
@@ -422,7 +423,7 @@
           run-pre-commit = pkgs.writeShellApplication {
             name = "run-pre-commit";
             runtimeInputs = [
-              pkgs.go
+              pkgs.micasaGo
               pkgs.git
             ]
             ++ preCommit.enabledPackages;
