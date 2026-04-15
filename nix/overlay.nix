@@ -59,6 +59,32 @@ in
       text = builtins.readFile ./scripts/deadcode.bash;
     };
 
+  nilaway =
+    let
+      unwrapped = prev.buildGoModule {
+        pname = "nilaway";
+        version = "0.0.0-20260318203545-ad240b12fb4c";
+        src = prev.fetchFromGitHub {
+          owner = "uber-go";
+          repo = "nilaway";
+          rev = "ad240b12fb4c370017eb413f0388c71f3be8722c";
+          hash = "sha256-XCK3qpV73Rjib8FBM0GpNOGXpUjcscMMUuHU/IVAv7s=";
+        };
+        subPackages = [ "cmd/nilaway" ];
+        vendorHash = "sha256-BztW64NfWbgPk237F8fHDKaAuDkCgNB9QEIKDrwk50g=";
+        doCheck = false;
+      };
+    in
+    prev.writeShellApplication {
+      name = "nilaway";
+      runtimeInputs = [
+        unwrapped
+        patchedGo
+      ];
+      runtimeEnv.CGO_ENABLED = "0";
+      text = builtins.readFile ./scripts/nilaway.bash;
+    };
+
   golangci-lint = prev.writeShellApplication {
     name = "golangci-lint";
     runtimeInputs = [

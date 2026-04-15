@@ -164,10 +164,45 @@ jobs:
           BASE_REF: ${{ github.base_ref || 'main' }}
         run: nix run '.#pre-commit' -- --from-ref "origin/$BASE_REF" --to-ref HEAD
 
+  nilaway:
+    name: NilAway
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    concurrency:
+      group: lint-nilaway-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          disable-sudo-and-containers: true
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            proxy.golang.org:443
+            storage.googleapis.com:443
+            sum.golang.org:443
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26"
+
+      - name: Run nilaway
+        run: go run go.uber.org/nilaway/cmd/nilaway@v0.0.0-20260318203545-ad240b12fb4c -include-pkgs "github.com/micasa-dev/micasa" -exclude-test-files ./...
+
   result:
     name: Lint Result
     if: always()
-    needs: [changes, deadcode, golangci-lint, pre-commit]
+    needs: [changes, deadcode, golangci-lint, nilaway, pre-commit]
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner

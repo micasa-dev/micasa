@@ -456,8 +456,10 @@ func SpatialTextFromTSV(tsv []byte, confThreshold int) string {
 		conf := atoi(fields[10])
 
 		// Detect line/block/paragraph changes.
-		newLine := firstLine || lineNum != cur.lineNum ||
-			block != cur.block || par != cur.par
+		newLine := firstLine
+		if !newLine && cur != nil {
+			newLine = lineNum != cur.lineNum || block != cur.block || par != cur.par
+		}
 
 		// Detect page breaks in concatenated per-page TSV output.
 		// Each page is OCR'd independently so page_num is always 1;

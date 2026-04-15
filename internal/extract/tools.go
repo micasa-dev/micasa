@@ -61,17 +61,7 @@ func ResolveOCRTools() *OCRTools {
 // DefaultOCRTools returns the process-wide OCRTools instance, resolving
 // paths via ResolveOCRTools on first call. The result is cached for the
 // lifetime of the process so the LookPath cost is paid once.
-func DefaultOCRTools() *OCRTools {
-	defaultOCRToolsOnce.Do(func() {
-		defaultOCRTools = ResolveOCRTools()
-	})
-	return defaultOCRTools
-}
-
-var (
-	defaultOCRToolsOnce sync.Once
-	defaultOCRTools     *OCRTools
-)
+var DefaultOCRTools = sync.OnceValue(ResolveOCRTools)
 
 func lookPathOrEmpty(name string) string {
 	path, err := exec.LookPath(name)

@@ -272,7 +272,7 @@ func (s *ShadowDB) commitInner(store *data.Store, ops []Operation) error {
 
 // readShadowRow reads a single row from a shadow table by ID.
 func (s *ShadowDB) readShadowRow(table string, id string) (map[string]any, error) {
-	var result map[string]any
+	result := make(map[string]any)
 	if err := s.db.Table(table).Where("id = ?", id).Take(&result).Error; err != nil {
 		return nil, err
 	}

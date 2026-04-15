@@ -126,7 +126,7 @@ func (m *MemStore) Pull(
 		limit = 100
 	}
 
-	var result []sync.Envelope
+	result := make([]sync.Envelope, 0, limit+1)
 	for _, op := range m.ops {
 		if op.HouseholdID != householdID {
 			continue

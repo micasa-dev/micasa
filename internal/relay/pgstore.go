@@ -234,7 +234,7 @@ func (s *PgStore) Pull(
 		limit = 100
 	}
 
-	var rows []pgOp
+	rows := make([]pgOp, 0, limit+1)
 	err := s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		q := tx.Where("household_id = ? AND seq > ?", householdID, afterSeq)
 		if excludeDeviceID != "" {

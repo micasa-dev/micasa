@@ -81,11 +81,6 @@ func buildFKGraph(models []any, allowed map[string]AllowedOps) (fkGraph, error) 
 	// deps[A] = {B, C} means A depends on B and C (B, C must be committed first).
 	deps := make(map[string]map[string]bool, len(creatableSet))
 
-	for table := range creatableSet {
-		remaps[table] = nil
-		deps[table] = make(map[string]bool)
-	}
-
 	// Derive FK remaps from BelongsTo relationships between creatables.
 	for table := range creatableSet {
 		s, ok := allSchemas[table]
@@ -105,6 +100,9 @@ func buildFKGraph(models []any, allowed map[string]AllowedOps) (fkGraph, error) 
 					Column: ref.ForeignKey.DBName,
 					Table:  refTable,
 				})
+				if deps[table] == nil {
+					deps[table] = make(map[string]bool)
+				}
 				deps[table][refTable] = true
 			}
 		}
@@ -128,6 +126,9 @@ func buildFKGraph(models []any, allowed map[string]AllowedOps) (fkGraph, error) 
 				continue
 			}
 			ekToTable[rel.Polymorphic.Value] = table
+			if deps[data.TableDocuments] == nil {
+				deps[data.TableDocuments] = make(map[string]bool)
+			}
 			deps[data.TableDocuments][table] = true
 		}
 	}

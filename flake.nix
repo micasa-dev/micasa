@@ -260,6 +260,7 @@
               pkgs.gopls
               pkgs.goreleaser
               pkgs.govulncheck
+              pkgs.nilaway
               pkgs.deadcode
               pkgs.nodejs
               pkgs.jq
@@ -404,6 +405,7 @@
             deadcode
             golangci-lint
             govulncheck
+            nilaway
             osv-scanner
             ;
           coverage = pkgs.writeShellApplication {
@@ -473,6 +475,7 @@
             govulncheck = app p.govulncheck "Check for known Go vulnerabilities with call-graph analysis";
             osv-scanner = app p.osv-scanner "Scan for known vulnerabilities";
             golangci-lint = app p.golangci-lint "Run golangci-lint";
+            nilaway = app p.nilaway "Run nilaway nil-safety analysis";
             pre-commit = app p.run-pre-commit "Run all pre-commit hooks";
           };
 
