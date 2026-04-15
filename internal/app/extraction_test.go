@@ -3641,6 +3641,6 @@ func TestExtractionClient_RetryClearsErrorOnSuccess(t *testing.T) {
 	// Second call should succeed and clear cached error.
 	client := m.extractionLLMClient()
 	require.NotNil(t, client)
-	assert.NoError(t, m.ex.extractionClientErr)
-	assert.Equal(t, "some-model", client.Model())
+	require.NoError(t, m.ex.extractionClientErr)
+	require.Equal(t, "some-model", client.Model())
 }

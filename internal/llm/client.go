@@ -52,11 +52,12 @@ type StreamChunk struct {
 	Err     error
 }
 
-const providerOllama = "ollama"
+// ProviderOllama is the provider identifier for Ollama.
+const ProviderOllama = "ollama"
 
 // localProviders are providers that run on the user's machine.
 var localProviders = map[string]bool{
-	providerOllama: true,
+	ProviderOllama: true,
 	"llamacpp":     true,
 	"llamafile":    true,
 }
@@ -111,7 +112,7 @@ func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) 
 		err error
 	)
 	switch name {
-	case providerOllama:
+	case ProviderOllama:
 		p, err = ollama.New(opts...)
 	case "anthropic":
 		p, err = anthropic.New(opts...)
@@ -251,7 +252,7 @@ func (c *Client) Ping(ctx context.Context) error {
 			return nil
 		}
 	}
-	if c.providerName == providerOllama {
+	if c.providerName == ProviderOllama {
 		return fmt.Errorf(
 			"model %q not found -- pull it with `ollama pull %s`",
 			c.model, c.model,
@@ -400,7 +401,7 @@ func (c *Client) wrapError(err error) error {
 	var providerErr *anyllmerrors.ProviderError
 	if errors.As(err, &providerErr) {
 		if isNetworkError(err) {
-			if c.providerName == providerOllama {
+			if c.providerName == ProviderOllama {
 				return errors.New(
 					"cannot reach ollama -- start it with `ollama serve`",
 				)
@@ -421,7 +422,7 @@ func (c *Client) wrapError(err error) error {
 
 	var modelErr *anyllmerrors.ModelNotFoundError
 	if errors.As(err, &modelErr) {
-		if c.providerName == providerOllama {
+		if c.providerName == ProviderOllama {
 			return fmt.Errorf(
 				"model %q not found -- pull it with `ollama pull %s`",
 				c.model, c.model,
