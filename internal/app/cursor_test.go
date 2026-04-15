@@ -16,7 +16,7 @@ import (
 func TestSetPointerShape_SkipsRedundantWrite(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	result := setPointerShape(&buf, pointerShapePointer, pointerShapePointer)
+	result := setPointerShape(&buf, pointerShapePointer, pointerShapePointer, false)
 	assert.Equal(t, pointerShapePointer, result)
 	assert.Empty(t, buf.String(), "should not write when shape unchanged")
 }
@@ -24,16 +24,31 @@ func TestSetPointerShape_SkipsRedundantWrite(t *testing.T) {
 func TestSetPointerShape_WritesOnChange(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	result := setPointerShape(&buf, pointerShapePointer, pointerShapeDefault)
+	result := setPointerShape(&buf, pointerShapePointer, pointerShapeDefault, false)
 	assert.Equal(t, pointerShapePointer, result)
 	assert.Equal(t, "\x1b]22;pointer\x1b\\", buf.String())
+}
+
+func TestSetPointerShape_TmuxWrapping(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	result := setPointerShape(&buf, pointerShapePointer, pointerShapeDefault, true)
+	assert.Equal(t, pointerShapePointer, result)
+	assert.Equal(t, "\x1bPtmux;\x1b\x1b]22;pointer\x1b\x1b\\\x1b\\", buf.String())
 }
 
 func TestResetPointerShape(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	resetPointerShape(&buf)
+	resetPointerShape(&buf, false)
 	assert.Equal(t, "\x1b]22;\x1b\\", buf.String())
+}
+
+func TestResetPointerShape_Tmux(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	resetPointerShape(&buf, true)
+	assert.Equal(t, "\x1bPtmux;\x1b\x1b]22;\x1b\x1b\\\x1b\\", buf.String())
 }
 
 func TestHoverOverTab_SetsPointerShape(t *testing.T) {
@@ -54,6 +69,7 @@ func TestHoverOffZone_ResetsPointerShape(t *testing.T) {
 	m := newTestModelWithStore(t)
 	var buf bytes.Buffer
 	m.pointerWriter = &buf
+	m.inTmux = false
 
 	z := requireZone(t, m, zoneTab+"0")
 
@@ -140,6 +156,7 @@ func TestQuitResetsPointerShape(t *testing.T) {
 	m := newTestModelWithStore(t)
 	var buf bytes.Buffer
 	m.pointerWriter = &buf
+	m.inTmux = false
 
 	z := requireZone(t, m, zoneTab+"0")
 	sendMouseMotion(m, z.StartX, z.StartY)
@@ -157,6 +174,7 @@ func TestConfirmQuitResetsPointerShape(t *testing.T) {
 	m := newTestModelWithStore(t)
 	var buf bytes.Buffer
 	m.pointerWriter = &buf
+	m.inTmux = false
 
 	openAddForm(m)
 	require.Equal(t, modeForm, m.mode)

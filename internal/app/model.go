@@ -222,6 +222,7 @@ type Model struct {
 	lastDashClick         rowClickState
 	lastPointerShape      string    // "pointer" or "" (default); tracks OSC 22 state
 	pointerWriter         io.Writer // target for OSC 22 escape sequences (default os.Stdout)
+	inTmux                bool      // wrap OSC 22 in DCS passthrough for tmux
 	isDark                bool      // terminal background is dark
 	keys                  AppKeyMap
 	cur                   locale.Currency
@@ -332,6 +333,7 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 		keys:            newAppKeyMap(),
 		cur:             store.Currency(),
 		pointerWriter:   os.Stdout,
+		inTmux:          os.Getenv("TMUX") != "",
 		syncCfg:         options.syncCfg,
 	}
 

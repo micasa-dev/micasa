@@ -16,6 +16,8 @@ import (
 // Where ST (String Terminator) is ESC \.
 //
 // Terminals that do not support OSC 22 silently ignore these sequences.
+// When running inside tmux, sequences are wrapped in DCS passthrough
+// so they reach the outer terminal.
 // See plans/631-mouse-cursor-hints.md for compatibility matrix.
 const (
 	pointerShapeDefault = ""
@@ -25,12 +27,25 @@ const (
 	osc22Suffix = "\x1b\\"
 )
 
+// buildOSC22 builds an OSC 22 escape sequence for the given shape.
+// When tmux is true, the sequence is wrapped in DCS passthrough
+// (ESC P tmux; <escaped> ST) so tmux forwards it to the outer terminal.
+func buildOSC22(shape string, tmux bool) string {
+	if !tmux {
+		return osc22Prefix + shape + osc22Suffix
+	}
+	// DCS passthrough: double each ESC in the inner sequence.
+	// Inner: \x1b]22;<shape>\x1b\\
+	// Wrapped: \x1bPtmux; \x1b\x1b]22;<shape>\x1b\x1b\\ \x1b\\
+	return "\x1bPtmux;\x1b\x1b]22;" + shape + "\x1b\x1b\\\x1b\\"
+}
+
 // setPointerShape writes an OSC 22 escape sequence to change the mouse
 // pointer shape. It only writes when the shape differs from the last
 // written shape, avoiding redundant writes on every motion event.
 //
 // Returns the new shape value to store as lastPointerShape.
-func setPointerShape(w io.Writer, shape, last string) string {
+func setPointerShape(w io.Writer, shape, last string, tmux bool) string {
 	if shape == last {
 		return last
 	}
@@ -39,18 +54,18 @@ func setPointerShape(w io.Writer, shape, last string) string {
 	}
 	// Ignore write errors -- the terminal may not support OSC 22,
 	// and there is no recovery action. The sequence is purely cosmetic.
-	_, _ = io.WriteString(w, osc22Prefix+shape+osc22Suffix)
+	_, _ = io.WriteString(w, buildOSC22(shape, tmux))
 	return shape
 }
 
 // resetPointerShape unconditionally resets the pointer to the terminal
 // default. Used during shutdown where we always want to ensure cleanup
 // regardless of tracked state.
-func resetPointerShape(w io.Writer) {
+func resetPointerShape(w io.Writer, tmux bool) {
 	if w == nil {
 		return
 	}
-	_, _ = io.WriteString(w, osc22Prefix+pointerShapeDefault+osc22Suffix)
+	_, _ = io.WriteString(w, buildOSC22(pointerShapeDefault, tmux))
 }
 
 // isOverClickableZone returns true if the mouse position is within any

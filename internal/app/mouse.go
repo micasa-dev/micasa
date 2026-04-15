@@ -70,9 +70,10 @@ func (m *Model) handleMouseMotion(msg tea.MouseMotionMsg) {
 			m.pointerWriter,
 			pointerShapePointer,
 			m.lastPointerShape,
+			m.inTmux,
 		)
 	} else {
-		m.lastPointerShape = setPointerShape(m.pointerWriter, pointerShapeDefault, m.lastPointerShape)
+		m.lastPointerShape = setPointerShape(m.pointerWriter, pointerShapeDefault, m.lastPointerShape, m.inTmux)
 	}
 }
 

@@ -23,7 +23,7 @@ func (m *Model) handleConfirmDiscard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			}
 			m.cancelChatOperations()
 			m.cancelPull()
-			resetPointerShape(m.pointerWriter)
+			resetPointerShape(m.pointerWriter, m.inTmux)
 			return m, tea.Quit
 		}
 		m.confirm = confirmNone

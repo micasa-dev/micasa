@@ -40,7 +40,7 @@ func (m *Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.syncCancel != nil {
 				m.syncCancel()
 			}
-			resetPointerShape(m.pointerWriter)
+			resetPointerShape(m.pointerWriter, m.inTmux)
 			return m, tea.Quit
 		}
 		if key.Matches(typed, m.keys.Cancel) {
