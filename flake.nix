@@ -327,6 +327,21 @@
             text = builtins.readFile ./nix/scripts/capture-one.bash;
           };
 
+          # Captures an ad-hoc VHS tape as PNG screenshot or animated WebP video
+          capture-adhoc = pkgs.writeShellApplication {
+            name = "capture-adhoc";
+            runtimeInputs = [
+              micasa
+              pkgs.vhs
+              pkgs.nerd-fonts.hack
+              pkgs.ffmpeg-headless
+            ];
+            runtimeEnv = {
+              FONTCONFIG_FILE = "${vhsFontsConf}";
+            };
+            text = builtins.readFile ./nix/scripts/capture-adhoc.bash;
+          };
+
           # Captures VHS tapes in parallel: capture-screenshots [name ...]
           capture-screenshots = pkgs.writeShellApplication {
             name = "capture-screenshots";
@@ -460,6 +475,7 @@
             site = app p.site "Start local Hugo dev server";
             record-tape = app p.record-tape "Record a VHS tape to WebM";
             record-demo = app p.record-demo "Record the main demo tape";
+            capture-adhoc = app p.capture-adhoc "Capture an ad-hoc VHS tape screenshot or video";
             capture-one = app p.capture-one "Capture a VHS tape screenshot";
             capture-screenshots = app p.capture-screenshots "Capture all VHS screenshots in parallel";
             record-animated = app p.record-animated "Record all animated demo tapes";

@@ -169,6 +169,7 @@ details; do not duplicate that detail here.
 - `/fix-osv-finding` -- when osv-scanner reports findings (findings are blockers)
 - `/create-issue` -- immediately for every user request, including small asks
 - `/record-demo` -- after any UI/UX feature work; commit the GIF
+- `/capture-ui` -- after TUI feature/bugfix work; capture screenshot or video for PR review
 - `/deprecate-config` -- when renaming or removing a config key
 - `/new-fk-relationship` -- when adding FK links between soft-deletable entities
 - `/add-entity` -- when adding a new entity model (full wiring checklist)
