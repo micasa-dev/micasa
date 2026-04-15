@@ -66,7 +66,11 @@ func (m *Model) handleMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
 // directly to pointerWriter (typically stdout) outside of the View cycle.
 func (m *Model) handleMouseMotion(msg tea.MouseMotionMsg) {
 	if m.isOverClickableZone(msg) {
-		m.lastPointerShape = setPointerShape(m.pointerWriter, pointerShapePointer, m.lastPointerShape)
+		m.lastPointerShape = setPointerShape(
+			m.pointerWriter,
+			pointerShapePointer,
+			m.lastPointerShape,
+		)
 	} else {
 		m.lastPointerShape = setPointerShape(m.pointerWriter, pointerShapeDefault, m.lastPointerShape)
 	}
