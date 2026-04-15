@@ -3667,9 +3667,9 @@ func TestExploreMode_HintBarTrailingOrder(t *testing.T) {
 	pipelineAcceptIdx := hintIndex(pipelinePlain, "accept")
 	pipelineExploreIdx := hintIndex(pipelinePlain, "explore")
 	pipelineEscIdx := hintIndex(pipelinePlain, "discard")
-	require.Greater(t, pipelineAcceptIdx, 0, "accept hint should appear")
-	require.Greater(t, pipelineExploreIdx, 0, "explore hint should appear")
-	require.Greater(t, pipelineEscIdx, 0, "discard hint should appear")
+	require.Positive(t, pipelineAcceptIdx, "accept hint should appear")
+	require.Positive(t, pipelineExploreIdx, "explore hint should appear")
+	require.Positive(t, pipelineEscIdx, "discard hint should appear")
 	assert.Less(t, pipelineAcceptIdx, pipelineExploreIdx,
 		"accept should come before explore")
 	assert.Less(t, pipelineExploreIdx, pipelineEscIdx,
@@ -3804,7 +3804,7 @@ func TestExploreMode_UnknownTableOverlayStable(t *testing.T) {
 	plain := ansi.Strip(out)
 	lines := strings.Count(out, "\n")
 
-	assert.Greater(t, lines, 0, "overlay should render with nonzero height")
+	assert.Positive(t, lines, "overlay should render with nonzero height")
 	assert.Contains(t, plain, "no operations",
 		"should show fallback text for unknown tables")
 

@@ -164,9 +164,8 @@ func (m *Model) buildExtractionPipelineOverlay(
 			// doesn't shrink when a shorter tab is displayed.
 			actualLines := strings.Count(previewSection, "\n")
 			targetLines := previewLines - 2 // -2: sep+blank added as separate parts
-			for actualLines < targetLines {
-				previewSection += "\n"
-				actualLines++
+			if pad := targetLines - actualLines; pad > 0 {
+				previewSection += strings.Repeat("\n", pad)
 			}
 		}
 	}
