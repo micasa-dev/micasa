@@ -48,12 +48,13 @@ whether `MouseModeCellMotion` or `MouseModeAllMotion` is active.
 | Alacritty | opt-in | Disabled by default (`terminal.osc22 = true`) |
 | WezTerm   | partial| PR in progress |
 | iTerm2    | no     | No OSC 22 support |
-| tmux      | varies | May strip unrecognized OSC sequences |
+| tmux      | yes*   | Requires `allow-passthrough on`; app wraps OSC 22 in DCS passthrough when `$TMUX` is set. Nested tmux (tmux-inside-tmux) unsupported. |
 | Windows Terminal | no | No OSC 22 support |
 
 **Graceful degradation**: Terminals that don't support OSC 22 silently
 ignore the escape sequence. No visible artifacts, no errors. The feature
-is purely additive.
+is purely additive. Write errors from `io.WriteString` are intentionally
+ignored because cursor shape is cosmetic — failure has no functional impact.
 
 ## Design
 
@@ -100,6 +101,29 @@ emulators process escape sequences as they arrive, independent of
 Bubbletea's rendering cycle. This is safe because Update runs synchronously
 and the write is a single short sequence with no layout effect. The writer
 is injected via a field on Model for testability.
+
+#### tmux DCS passthrough
+
+When running inside tmux, raw OSC 22 sequences are intercepted and never
+reach the outer terminal. The app detects tmux at model creation via
+`os.Getenv("TMUX") != ""` and wraps sequences in DCS passthrough:
+
+```
+Raw:     \x1b]22;pointer\x1b\\
+Wrapped: \x1bPtmux;\x1b\x1b]22;pointer\x1b\x1b\\\x1b\\
+```
+
+tmux (with `allow-passthrough on`) strips the DCS wrapper, un-doubles the
+ESC bytes, and forwards the inner OSC 22 to the real terminal. The
+`buildOSC22(shape, tmux)` function handles this wrapping. The `inTmux`
+flag is set once at startup and threaded through `setPointerShape` and
+`resetPointerShape`.
+
+Detection is env-based (`$TMUX`), not pty-based. This is sufficient because:
+- `$TMUX` is set by tmux in every child process
+- Stale `$TMUX` (tmux exited but env inherited) causes harmless DCS wrapping
+  that non-tmux terminals ignore
+- No other multiplexer sets `$TMUX`
 
 ### Zone hover detection
 
@@ -202,8 +226,14 @@ since VHS doesn't render mouse pointer shapes.
   short-circuit comparison (`if x == lastX && y == lastY return`).
 - **Terminal compatibility**: Some terminals ignore OSC 22. The feature
   degrades silently. Alacritty requires opt-in config.
-- **tmux passthrough**: tmux may strip OSC 22 sequences. Users behind tmux
-  won't see cursor changes. No workaround; this is a tmux limitation.
+- **tmux passthrough**: tmux intercepts raw OSC 22 sequences. When `$TMUX`
+  is set, the app wraps sequences in DCS passthrough
+  (`ESC P tmux; <escaped> ST`) so tmux forwards them to the outer terminal.
+  This requires `allow-passthrough on` in the user's tmux config (tmux 3.3a+).
+  Without it, the feature silently degrades — no errors, no cursor changes.
+  Nested tmux (two or more layers) is explicitly unsupported because each
+  layer needs its own DCS wrapping; this is an uncommon setup.
+  Other multiplexers (GNU screen, Zellij) are unsupported and untested.
 - **Overlay compositing**: Zone bounds may shift during overlay transitions.
   The motion handler uses the same zone data as click handlers, so if zones
   are stale, the cursor shape may briefly be wrong. This is acceptable --
