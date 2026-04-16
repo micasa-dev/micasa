@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/spf13/cobra"
 )
@@ -215,21 +216,27 @@ func writeStatusText(
 }
 
 func writeOverdueText(w io.Writer, styles cliStyles, items []maintenanceStatus) error {
-	_ = styles
-	if _, err := fmt.Fprintln(w, "=== OVERDUE ==="); err != nil {
+	if _, err := fmt.Fprintln(w, styles.sectionHeader.Render("OVERDUE")); err != nil {
 		return fmt.Errorf("write overdue header: %w", err)
 	}
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(tw, "NAME\tOVERDUE"); err != nil {
-		return fmt.Errorf("write overdue columns: %w", err)
-	}
+	t := table.New().
+		Border(lipgloss.RoundedBorder()).
+		BorderStyle(styles.border).
+		Headers("NAME", "OVERDUE").
+		StyleFunc(func(row, col int) lipgloss.Style {
+			if row == table.HeaderRow {
+				return styles.tableHeader
+			}
+			if col == 1 {
+				return styles.danger
+			}
+			return lipgloss.NewStyle()
+		})
 	for _, m := range items {
-		if _, err := fmt.Fprintf(tw, "%s\t%s\n", m.Name, data.DaysText(m.Days)); err != nil {
-			return fmt.Errorf("write overdue row: %w", err)
-		}
+		t.Row(m.Name, data.DaysText(m.Days))
 	}
-	if err := tw.Flush(); err != nil {
-		return fmt.Errorf("flush overdue table: %w", err)
+	if _, err := fmt.Fprintln(w, t); err != nil {
+		return fmt.Errorf("write overdue table: %w", err)
 	}
 	return nil
 }

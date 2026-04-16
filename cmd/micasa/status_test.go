@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,8 +76,8 @@ func TestStatusTextOverdue(t *testing.T) {
 	require.ErrorAs(t, err, &ee)
 	assert.Equal(t, 2, ee.code)
 
-	out := buf.String()
-	assert.Contains(t, out, "=== OVERDUE ===")
+	out := ansi.Strip(buf.String())
+	assert.Contains(t, out, "OVERDUE")
 	assert.Contains(t, out, "Replace filter")
 	assert.Contains(t, out, "10d")
 }
@@ -247,7 +248,7 @@ func TestStatusOverdueSortOrder(t *testing.T) {
 	var ee exitError
 	require.ErrorAs(t, err, &ee)
 
-	out := buf.String()
+	out := ansi.Strip(buf.String())
 	majorIdx := strings.Index(out, "Major task")
 	minorIdx := strings.Index(out, "Minor task")
 	assert.Greater(t, minorIdx, majorIdx,
@@ -466,8 +467,8 @@ func TestStatusTextMultipleSections(t *testing.T) {
 	require.ErrorAs(t, err, &ee)
 	assert.Equal(t, 2, ee.code)
 
-	out := buf.String()
-	assert.Contains(t, out, "=== OVERDUE ===")
+	out := ansi.Strip(buf.String())
+	assert.Contains(t, out, "OVERDUE")
 	assert.Contains(t, out, "=== UPCOMING ===")
 	assert.Contains(t, out, "=== INCIDENTS ===")
 	assert.Contains(t, out, "=== ACTIVE PROJECTS ===")
