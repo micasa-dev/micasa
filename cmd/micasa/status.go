@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"text/tabwriter"
 	"time"
 
+	"charm.land/lipgloss/v2"
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/spf13/cobra"
 )
@@ -18,6 +20,7 @@ import (
 type statusOpts struct {
 	asJSON bool
 	days   int
+	isDark bool
 }
 
 const (
@@ -51,6 +54,7 @@ shell prompts, and status bar widgets.`,
 			if err := opts.validate(); err != nil {
 				return err
 			}
+			opts.isDark = lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
 			store, err := openExisting(dbPathFromEnvOrArg(args))
 			if err != nil {
 				return err
@@ -129,7 +133,7 @@ func runStatus(
 			return err
 		}
 	} else {
-		if err := writeStatusText(w, overdue, upcoming, incidents, projects, now); err != nil {
+		if err := writeStatusText(w, newCLIStyles(opts.isDark), overdue, upcoming, incidents, projects, now); err != nil {
 			return err
 		}
 	}
@@ -162,6 +166,7 @@ func hasDelayedProject(projects []data.Project) bool {
 
 func writeStatusText(
 	w io.Writer,
+	styles cliStyles,
 	overdue, upcoming []maintenanceStatus,
 	incidents []data.Incident,
 	projects []data.Project,
@@ -169,7 +174,7 @@ func writeStatusText(
 ) error {
 	wrote := false
 	if len(overdue) > 0 {
-		if err := writeOverdueText(w, overdue); err != nil {
+		if err := writeOverdueText(w, styles, overdue); err != nil {
 			return err
 		}
 		wrote = true
@@ -180,7 +185,7 @@ func writeStatusText(
 				return fmt.Errorf("write section separator: %w", err)
 			}
 		}
-		if err := writeUpcomingText(w, upcoming); err != nil {
+		if err := writeUpcomingText(w, styles, upcoming); err != nil {
 			return err
 		}
 		wrote = true
@@ -191,7 +196,7 @@ func writeStatusText(
 				return fmt.Errorf("write section separator: %w", err)
 			}
 		}
-		if err := writeIncidentsText(w, incidents, now); err != nil {
+		if err := writeIncidentsText(w, styles, incidents, now); err != nil {
 			return err
 		}
 		wrote = true
@@ -202,14 +207,15 @@ func writeStatusText(
 				return fmt.Errorf("write section separator: %w", err)
 			}
 		}
-		if err := writeProjectsText(w, projects, now); err != nil {
+		if err := writeProjectsText(w, styles, projects, now); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func writeOverdueText(w io.Writer, items []maintenanceStatus) error {
+func writeOverdueText(w io.Writer, styles cliStyles, items []maintenanceStatus) error {
+	_ = styles
 	if _, err := fmt.Fprintln(w, "=== OVERDUE ==="); err != nil {
 		return fmt.Errorf("write overdue header: %w", err)
 	}
@@ -228,7 +234,8 @@ func writeOverdueText(w io.Writer, items []maintenanceStatus) error {
 	return nil
 }
 
-func writeUpcomingText(w io.Writer, items []maintenanceStatus) error {
+func writeUpcomingText(w io.Writer, styles cliStyles, items []maintenanceStatus) error {
+	_ = styles
 	if _, err := fmt.Fprintln(w, "=== UPCOMING ==="); err != nil {
 		return fmt.Errorf("write upcoming header: %w", err)
 	}
@@ -247,7 +254,13 @@ func writeUpcomingText(w io.Writer, items []maintenanceStatus) error {
 	return nil
 }
 
-func writeIncidentsText(w io.Writer, incidents []data.Incident, now time.Time) error {
+func writeIncidentsText(
+	w io.Writer,
+	styles cliStyles,
+	incidents []data.Incident,
+	now time.Time,
+) error {
+	_ = styles
 	if _, err := fmt.Fprintln(w, "=== INCIDENTS ==="); err != nil {
 		return fmt.Errorf("write incidents header: %w", err)
 	}
@@ -270,7 +283,13 @@ func writeIncidentsText(w io.Writer, incidents []data.Incident, now time.Time) e
 	return nil
 }
 
-func writeProjectsText(w io.Writer, projects []data.Project, now time.Time) error {
+func writeProjectsText(
+	w io.Writer,
+	styles cliStyles,
+	projects []data.Project,
+	now time.Time,
+) error {
+	_ = styles
 	if _, err := fmt.Fprintln(w, "=== ACTIVE PROJECTS ==="); err != nil {
 		return fmt.Errorf("write projects header: %w", err)
 	}

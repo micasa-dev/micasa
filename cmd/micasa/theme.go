@@ -17,6 +17,37 @@ import (
 // Light/dark adaptive pairs: the first value is for light backgrounds, the
 // second for dark backgrounds.
 
+type cliStyles struct {
+	sectionHeader lipgloss.Style
+	tableHeader   lipgloss.Style
+	danger        lipgloss.Style
+	warning       lipgloss.Style
+	success       lipgloss.Style
+	muted         lipgloss.Style
+	border        lipgloss.Style
+}
+
+func newCLIStyles(isDark bool) cliStyles {
+	c := lipgloss.LightDark(isDark)
+	blue := c(lipgloss.Color("#0072B2"), lipgloss.Color("#56B4E9"))
+	orange := c(lipgloss.Color("#D55E00"), lipgloss.Color("#E69F00"))
+	green := c(lipgloss.Color("#007A5A"), lipgloss.Color("#009E73"))
+	vermillion := c(lipgloss.Color("#CC3311"), lipgloss.Color("#D55E00"))
+	rose := c(lipgloss.Color("#AA4499"), lipgloss.Color("#CC79A7"))
+	dim := c(lipgloss.Color("#4B5563"), lipgloss.Color("#6B7280"))
+	border := c(lipgloss.Color("#D1D5DB"), lipgloss.Color("#374151"))
+
+	return cliStyles{
+		sectionHeader: lipgloss.NewStyle().Bold(true).Foreground(blue),
+		tableHeader:   lipgloss.NewStyle().Bold(true).Foreground(dim),
+		danger:        lipgloss.NewStyle().Foreground(vermillion),
+		warning:       lipgloss.NewStyle().Foreground(orange),
+		success:       lipgloss.NewStyle().Foreground(green),
+		muted:         lipgloss.NewStyle().Foreground(rose),
+		border:        lipgloss.NewStyle().Foreground(border),
+	}
+}
+
 func wongColorScheme(c lipgloss.LightDarkFunc) fang.ColorScheme {
 	blue := c(lipgloss.Color("#0072B2"), lipgloss.Color("#56B4E9"))
 	orange := c(lipgloss.Color("#D55E00"), lipgloss.Color("#E69F00"))
