@@ -36,14 +36,18 @@ func testDSN(t *testing.T) string {
 	return fmt.Sprintf("file:%s_%d?mode=memory&cache=shared", t.Name(), testSeq.Add(1))
 }
 
-var registerCustomDriver sync.Once
+const customDriverName = "test_custom_driver"
+
+// registerCustomDriver registers a second modernc.org/sqlite driver under an
+// alternate name so TestDialector can verify the DriverName override path.
+// sync.OnceFunc guarantees sql.Register runs at most once across the test
+// binary (a second registration would panic).
+var registerCustomDriver = sync.OnceFunc(func() {
+	sql.Register(customDriverName, &modernsqlite.Driver{})
+})
 
 func TestDialector(t *testing.T) {
-	const customDriverName = "test_custom_driver"
-
-	registerCustomDriver.Do(func() {
-		sql.Register(customDriverName, &modernsqlite.Driver{})
-	})
+	registerCustomDriver()
 
 	dsn := testDSN(t)
 	tests := []struct {
