@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -25,8 +26,8 @@ import (
 
 func TestMain(m *testing.M) {
 	code := m.Run()
-	if testBin != "" {
-		_ = os.RemoveAll(filepath.Dir(testBin))
+	if bin := testBinPath.Load(); bin != nil {
+		_ = os.RemoveAll(filepath.Dir(*bin))
 	}
 	os.Exit(code)
 }
@@ -48,43 +49,43 @@ func executeCLI(args ...string) (string, error) {
 	return stdout.String(), err
 }
 
-// testBin is a lazily-built binary for the few tests that need subprocess
-// isolation (env vars, VCS info). Built once via sync.Once.
-var (
-	testBin     string
-	testBinOnce sync.Once
-	errTestBin  error
-)
+// buildTestBin lazily builds the micasa CLI binary for the few tests that
+// need subprocess isolation (env vars, VCS info). sync.OnceValues ensures
+// the `go build` runs at most once across the whole test binary; the
+// (path, error) pair is cached and returned to every caller.
+var buildTestBin = sync.OnceValues(func() (string, error) {
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	dir, err := os.MkdirTemp("", "micasa-test-*")
+	if err != nil {
+		return "", fmt.Errorf("create temp dir: %w", err)
+	}
+	bin := filepath.Join(dir, "micasa"+ext)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", bin, ".")
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		_ = os.RemoveAll(dir)
+		return "", fmt.Errorf("build: %w\n%s", err, out)
+	}
+	testBinPath.Store(&bin)
+	return bin, nil
+})
+
+// testBinPath records the built binary path so TestMain can remove the
+// enclosing temp dir without re-triggering the build. Nil until a test
+// successfully calls getTestBin.
+var testBinPath atomic.Pointer[string]
 
 func getTestBin(t *testing.T) string {
 	t.Helper()
-	testBinOnce.Do(func() {
-		ext := ""
-		if runtime.GOOS == "windows" {
-			ext = ".exe"
-		}
-		dir, err := os.MkdirTemp(
-			"",
-			"micasa-test-*",
-		)
-		if err != nil {
-			errTestBin = fmt.Errorf("create temp dir: %w", err)
-			return
-		}
-		bin := filepath.Join(dir, "micasa"+ext)
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		cmd := exec.CommandContext(ctx, "go", "build", "-o", bin, ".")
-		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			errTestBin = fmt.Errorf("build: %w\n%s", err, out)
-			return
-		}
-		testBin = bin
-	})
-	require.NoError(t, errTestBin, "building test binary")
-	return testBin
+	bin, err := buildTestBin()
+	require.NoError(t, err, "building test binary")
+	return bin
 }
 
 func TestResolveDBPath_ExplicitPath(t *testing.T) {
