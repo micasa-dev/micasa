@@ -18,7 +18,7 @@ import (
 func TestOCRAvailable(t *testing.T) {
 	t.Parallel()
 	// Smoke test: just verify the functions don't panic and return
-	// consistent results across calls (sync.Once caching).
+	// consistent results across calls (sync.OnceValue caching).
 	r1 := OCRAvailable()
 	r2 := OCRAvailable()
 	assert.Equal(t, r1, r2)
