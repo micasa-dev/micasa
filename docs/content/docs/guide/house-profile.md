@@ -15,41 +15,57 @@ On first launch (with no existing database), micasa presents the house profile
 form automatically. The `Nickname` field is required; everything else is
 optional. Fill in what you know now and come back later for the rest.
 
-## Viewing the profile
+## Header strip
 
-Press <kbd>tab</kbd> to toggle the house profile display above the table.
-The collapsed view shows a single line with key stats:
+A one-line collapsed summary is always pinned above the tab bar:
 
 ```
-Elm Street · Springfield, IL · 4bd / 2.5ba · 2,400 sqft · 1987
+Elm Street  Springfield, IL · 4 bd / 2.5 ba · 2.4k ft² · 1987 · ○ 3
 ```
 
-The expanded view shows three sections:
+The pill on the left is your house nickname. Vitals follow: city/state,
+bed/bath, square footage (k-abbreviated, `m²` when units are metric), and year
+built. The trailing `○ N` warning appears when `N` fields are still empty.
 
-- **Structure**: year built, square footage, bedrooms/bathrooms, foundation,
-  wiring, roof, exterior, basement
-- **Utilities**: heating, cooling, water, sewer, parking
-- **Financial**: insurance carrier/policy/renewal, property tax, HOA
+## Overlay
 
-## Editing the profile
+Press <kbd>tab</kbd> to open the house profile overlay. An identity header
+line shows the nickname, address (click to open Google Maps), and a
+filled/total completion fraction. Structure, Utilities, and Financial render
+side-by-side on wide terminals and stack vertically on narrow ones.
 
-Enter Edit mode (<kbd>i</kbd>), then press <kbd>p</kbd> to open the house profile form. The
-form is organized into the same sections (Basics, Structure, Utilities,
-Financial). Save with <kbd>ctrl+s</kbd>, cancel with <kbd>esc</kbd>.
+Navigation:
+
+- <kbd>↑</kbd>/<kbd>↓</kbd> move within a column
+- <kbd>←</kbd>/<kbd>→</kbd> jump to the previous/next column
+- <kbd>enter</kbd> on a field opens an inline editor; <kbd>enter</kbd> again saves, <kbd>esc</kbd> cancels
+- <kbd>enter</kbd> on a toggle field (e.g. `Bsmnt`) flips the value without opening the editor
+- <kbd>tab</kbd> or <kbd>esc</kbd> closes the overlay
+
+Empty values render as a red ∅ glyph so unfilled fields stand out.
+
+## Full form edit
+
+For a guided form-style pass through every field, enter Edit mode
+(<kbd>i</kbd>) and press <kbd>p</kbd>. Fields are grouped by section
+(Identity, Structure, Utilities, Financial). Save with <kbd>ctrl+s</kbd>,
+cancel with <kbd>esc</kbd>.
 
 ## Fields
 
-| Section | Field | Type | Notes |
+| Section | Label | Type | Notes |
 |--------:|-------|------|-------|
-| Basics | `Nickname` | text | Required. Display name for your house |
-| Basics | `Address` | text | Street, city, state, postal code |
-| Structure | `Year built` | number | Whole number |
-| Structure | `Square feet` / `Lot` | number | Interior and lot size |
-| Structure | `Bedrooms` / `Baths` | number | Baths can be decimal (e.g., 2.5) |
-| Structure | `Foundation`, `Wiring`, `Roof`, `Exterior`, `Basement` | text | Free text |
-| Utilities | `Heating`, `Cooling`, `Water`, `Sewer`, `Parking` | text | Free text |
-| Financial | `Insurance carrier` | text | Company name |
-| Financial | `Insurance policy` | text | Policy number |
-| Financial | `Insurance renewal` | date | Shows on dashboard when due |
-| Financial | `Property tax` | money | Annual amount (e.g., 4200.00). Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) |
-| Financial | `HOA name` / `fee` | text / money | Name and monthly fee. Formatted in your configured currency |
+| Identity | `Name` | text | Required. Display name for your house |
+| Identity | `Addr 1` / `Addr 2` | text | Street lines |
+| Identity | `City` / `State` / `ZIP` | text | Postal code autofills city/state when known |
+| Structure | `Year` | number | Year built |
+| Structure | `Ft²` / `Lot` | number | Interior and lot area (`m²` under metric units) |
+| Structure | `Bed` / `Bath` | number | Baths can be decimal (e.g. 2.5) |
+| Structure | `Fndtn`, `Wire`, `Roof`, `Ext` | text | Free text |
+| Structure | `Bsmnt` | toggle | Yes/No -- flips on <kbd>enter</kbd> |
+| Utilities | `Heat`, `Cool`, `Water`, `Sewer`, `Parking` | text | Free text |
+| Financial | `Ins carrier` | text | Company name |
+| Financial | `Ins policy` | text | Policy number |
+| Financial | `Ins renewal` | date | Shows on dashboard when due |
+| Financial | `Prop tax` | money | Annual amount. Formatted in your [configured currency]({{< ref "/docs/reference/configuration#locale-section" >}}) |
+| Financial | `HOA` / `HOA fee` | text / money | Name and monthly fee in your configured currency |

@@ -1,6 +1,6 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-<!-- verified: 2026-03-10 -->
+<!-- verified: 2026-04-16 -->
 
 # Code Patterns & Conventions
 
@@ -9,7 +9,8 @@
 ### Model-Update-View (Bubble Tea)
 - Model.Update(msg) dispatches by message type, then by mode
 - Model.View() -> buildView() -> baseView + overlay stack
-- Overlays: dashboard, calendar, chat, help, column finder, note preview, extraction log
+- Overlays (bottom-up; later renders on top): dashboard, house profile, calendar,
+  note preview, ops tree, column finder, doc search, extraction, chat, help
 - overlay.Composite() for centering with dimmed background
 
 ### TabHandler Polymorphism
@@ -20,10 +21,13 @@ No scattered FormKind/TabKind switches outside the handler.
 ### Rendering Pipeline
 ```
 View() -> buildView()
-  -> buildBaseView() [house + tab bar + table/form + status bar]
-  + overlays (priority order: dashboard > calendar > notes > colFinder > extraction > chat > help)
-    -> overlay.Composite()
+  -> buildBaseView() [collapsed house strip + tab bar + table/form + status bar]
+  + overlays in priority order (top of stack wins):
+      dashboard > house > calendar > notePreview > opsTree > colFinder
+        > docSearch > extraction > chat > help
+    -> overlay.Composite() with dimmed base
 ```
+Full-screen first-run house form short-circuits buildView before any overlay.
 
 ### Data Flow
 ```
