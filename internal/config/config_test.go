@@ -1064,11 +1064,24 @@ func TestResolvedFilePickerDir_ConfiguredDirMissing(t *testing.T) {
 	assert.NotEmpty(t, result)
 }
 
-func TestResolvedFilePickerDir_EmptyFallsBackToDownloadsOrCwd(t *testing.T) {
-	t.Parallel()
+func TestResolvedFilePickerDir_EmptyFallsBackToCwd(t *testing.T) {
+	// Not parallel: we mutate cwd.
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+
 	d := Documents{}
 	result := d.ResolvedFilePickerDir()
-	assert.NotEmpty(t, result)
+
+	// Resolve symlinks on both sides: macOS returns /private/var/... for
+	// temp dirs via Getwd while t.TempDir reports /var/...
+	wantResolved, err := filepath.EvalSymlinks(cwd)
+	require.NoError(t, err)
+	gotResolved, err := filepath.EvalSymlinks(result)
+	require.NoError(t, err)
+	assert.Equal(t, wantResolved, gotResolved,
+		"with no config, the picker should default to cwd — not the "+
+			"user's Downloads folder, which varies per machine and "+
+			"leaks into demo recordings")
 }
 
 func TestFilePickerDir_FromTOML(t *testing.T) {
