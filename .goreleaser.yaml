@@ -42,9 +42,14 @@ dockers_v2:
       - "ghcr.io/micasa-dev/micasa"
     tags:
       - "{{ .Version }}"
-      - "{{ .Major }}.{{ .Minor }}"
-      - "{{ .Major }}"
-      - latest
+      # Moving tags only advance when the workflow resolves MOVE_TAGS=true,
+      # which happens iff the ref being built is the repository's current
+      # latest release. For rebuilds of older tags MOVE_TAGS=false, each
+      # line below collapses to {{ .Version }}, and goreleaser dedupes it
+      # against the first tag.
+      - '{{ if eq .Env.MOVE_TAGS "true" }}{{ .Major }}.{{ .Minor }}{{ else }}{{ .Version }}{{ end }}'
+      - '{{ if eq .Env.MOVE_TAGS "true" }}{{ .Major }}{{ else }}{{ .Version }}{{ end }}'
+      - '{{ if eq .Env.MOVE_TAGS "true" }}latest{{ else }}{{ .Version }}{{ end }}'
     platforms:
       - linux/amd64
       - linux/arm64

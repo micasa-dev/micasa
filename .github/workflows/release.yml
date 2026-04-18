@@ -6,6 +6,12 @@ name: Release Artifacts
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to (re)build artifacts for (e.g. v2.6.0)"
+        required: true
+        type: string
 
 concurrency:
   group: release-artifacts
@@ -33,7 +39,7 @@ jobs:
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -53,12 +59,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Advance :latest / :<major> / :<major>.<minor> only when the ref we
+      # are building is the repository's current latest release. On a normal
+      # release:published run, the just-published tag is the latest by
+      # definition. On a workflow_dispatch backfill we ask GitHub which tag
+      # it considers "Latest" and compare -- this way a backfill of an older
+      # tag never drags the moving tags backward.
+      - name: Determine whether to advance moving Docker tags
+        id: move-tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_REF: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          latest=$(gh release view --repo "${{ github.repository }}" --json tagName --jq .tagName)
+          if [ "$BUILD_REF" = "$latest" ]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
         with:
           version: "v2.13.3"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MOVE_TAGS: ${{ steps.move-tags.outputs.value }}
 
       - name: Clean up untagged GHCR images
         env:
