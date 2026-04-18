@@ -344,6 +344,19 @@ details; do not duplicate that detail here.
   (e.g. `delete(m, "id"); delete(m, "ID")`) -- that papers over an
   inconsistency instead of fixing it. If you see ambiguity, fix the
   source struct's tags.
+- **No string matching to classify errors**: Never inspect `err.Error()`
+  substrings to decide whether an error is e.g. a network failure or a
+  syntax error. Substring checks break silently when an upstream wrapper
+  changes its message format. Use `errors.Is` against typed sentinels or
+  `errors.As` against typed error structs. **Windows socket gotcha**:
+  `syscall.ECONNREFUSED`/`ENETUNREACH`/`EHOSTUNREACH` are NOT portable.
+  On Windows they are `APPLICATION_ERROR | iota` invented constants that
+  never match the WSA error codes (10061/10051/10065) `net/http` actually
+  returns -- so `errors.Is(err, syscall.ECONNREFUSED)` always fails on
+  Windows. Define platform-specific sentinel lists in build-tagged files
+  using `golang.org/x/sys/windows.WSA*` (already typed as `syscall.Errno`)
+  for the Windows variant. See `internal/llm/network_errors_{windows,other}.go`
+  for the pattern.
 - **Deterministic ordering requires tiebreakers**: Every `ORDER BY` that
   could tie MUST include a tiebreaker (typically `id DESC`).
 - **Audit new deps before adding**: Review source for security issues
