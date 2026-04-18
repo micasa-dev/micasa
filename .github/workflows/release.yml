@@ -77,7 +77,6 @@ jobs:
           else
             echo "value=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "Building $BUILD_REF; current latest is $latest"
 
       - uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
         with:
