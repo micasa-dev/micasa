@@ -256,22 +256,17 @@ type Documents struct {
 	CacheTTL *Duration `toml:"cache_ttl,omitempty" deprecated:"cache_ttl_days" deprecated_transform:"days_to_duration" validate:"omitempty,nonneg_duration"`
 
 	// FilePickerDir is the starting directory for the document file picker.
-	// Default: the system Downloads folder (e.g. ~/Downloads).
+	// Default: the current working directory.
 	FilePickerDir string `toml:"file_picker_dir"`
 }
 
 // ResolvedFilePickerDir returns the starting directory for the file picker.
 // Uses the configured value if set and the directory exists, otherwise falls
-// back to the system Downloads folder, then the current working directory.
+// back to the current working directory.
 func (d Documents) ResolvedFilePickerDir() string {
 	if d.FilePickerDir != "" {
 		if info, err := os.Stat(d.FilePickerDir); err == nil && info.IsDir() {
 			return d.FilePickerDir
-		}
-	}
-	if dir := xdg.UserDirs.Download; dir != "" {
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			return dir
 		}
 	}
 	if dir, err := os.Getwd(); err == nil {
@@ -829,8 +824,8 @@ model = "` + DefaultModel + `"
 # cache_ttl = "30d"
 
 # Starting directory for the document file picker.
-# Default: system Downloads folder (~/Downloads on most systems).
-# file_picker_dir = "/home/user/Documents"
+# Default: the current working directory.
+# file_picker_dir = "/home/user/Downloads"
 
 [locale]
 # ISO 4217 currency code. Stored in the database on first run; after that the
