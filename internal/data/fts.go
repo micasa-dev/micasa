@@ -181,13 +181,18 @@ func prepareFTSQuery(query string) string {
 }
 
 // isFTSSyntaxError checks if a GORM error wraps an FTS5 syntax error.
+// SQLite's FTS5 surfaces malformed queries with several error-message
+// shapes across versions ("fts5: syntax error", "fts5: parse error",
+// "unterminated string" for stray quotes), all of which we treat as a
+// user-supplied bad query rather than a database fault.
 func isFTSSyntaxError(err error) bool {
 	if err == nil {
 		return false
 	}
 	msg := err.Error()
 	return strings.Contains(msg, "fts5: syntax error") ||
-		strings.Contains(msg, "fts5: parse error")
+		strings.Contains(msg, "fts5: parse error") ||
+		strings.Contains(msg, "unterminated string")
 }
 
 // RebuildFTSIndex forces a full rebuild of the FTS5 index. Useful after
