@@ -12,7 +12,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -495,6 +497,67 @@ func TestWrapErrorProviderError(t *testing.T) {
 			)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantMsg)
+		})
+	}
+}
+
+// TestIsNetworkErrorTyped verifies that wrapped syscall sentinels are
+// recognized via errors.Is, not just by string matching. Catches the
+// case where a stdlib error like syscall.EHOSTUNREACH formats as
+// "no route to host" -- which the old string-only check missed.
+func TestIsNetworkErrorTyped(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"bare ECONNREFUSED", syscall.ECONNREFUSED, true},
+		{"bare ENETUNREACH", syscall.ENETUNREACH, true},
+		{"bare EHOSTUNREACH", syscall.EHOSTUNREACH, true},
+		{
+			"net.OpError wrapping ECONNREFUSED",
+			&net.OpError{
+				Op: "dial", Net: "tcp",
+				Err: &os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED},
+			},
+			true,
+		},
+		{
+			"fmt.Errorf wrapping EHOSTUNREACH",
+			fmt.Errorf("dial tcp: %w", syscall.EHOSTUNREACH),
+			true,
+		},
+		{"unrelated error", errors.New("something else broke"), false},
+		{"context.Canceled", context.Canceled, false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, isNetworkError(tt.err))
+		})
+	}
+}
+
+// TestIsNetworkErrorString verifies the string-fallback path used for
+// Windows connectex wrappings that don't unwrap to syscall sentinels.
+func TestIsNetworkErrorString(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		msg  string
+		want bool
+	}{
+		{"dial tcp: connection refused", true},
+		{"connectex: actively refused", true},
+		{"host is unreachable", true},
+		{"network is unreachable", true},
+		{"no route to host", true},
+		{"some unrelated server error", false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.msg, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, isNetworkError(errors.New(tt.msg)))
 		})
 	}
 }
