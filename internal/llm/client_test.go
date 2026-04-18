@@ -14,7 +14,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
-	"syscall"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -417,7 +416,7 @@ func TestPingServerDownCloud(t *testing.T) {
 	// Use wrapError directly: a ECONNREFUSED wrapped in ProviderError
 	// from a cloud provider should say "cannot reach ... check your
 	// base_url" and NOT mention ollama.
-	inner := fmt.Errorf("dial tcp: %w", syscall.ECONNREFUSED)
+	inner := fmt.Errorf("dial tcp: %w", connectionErrnos[0])
 	c := &Client{providerName: "openai"}
 	err := c.wrapError(anyllmerrors.NewProviderError("openai", inner))
 	require.Error(t, err)
@@ -478,7 +477,7 @@ func TestCreateProviderAllSupported(t *testing.T) {
 // TestWrapErrorProviderError exercises the wrapError path for ProviderError.
 func TestWrapErrorProviderError(t *testing.T) {
 	t.Parallel()
-	connErr := fmt.Errorf("dial tcp: %w", syscall.ECONNREFUSED)
+	connErr := fmt.Errorf("dial tcp: %w", connectionErrnos[0])
 	tests := []struct {
 		provider string
 		wantMsg  string
@@ -501,29 +500,32 @@ func TestWrapErrorProviderError(t *testing.T) {
 	}
 }
 
-// TestIsNetworkError verifies that wrapped syscall sentinels are
-// recognized via errors.Is, regardless of how deeply they are wrapped.
+// TestIsNetworkError verifies that wrapped platform-correct syscall
+// sentinels are recognized via errors.Is, regardless of how deeply
+// they are wrapped. Uses connectionErrnos to stay correct across
+// Linux/macOS (POSIX errnos) and Windows (WSA errnos), since
+// syscall.ECONNREFUSED on Windows is an invented APPLICATION_ERROR
+// constant that doesn't match the WSA value.
 func TestIsNetworkError(t *testing.T) {
 	t.Parallel()
+	refused := connectionErrnos[0]
 	cases := []struct {
 		name string
 		err  error
 		want bool
 	}{
-		{"bare ECONNREFUSED", syscall.ECONNREFUSED, true},
-		{"bare ENETUNREACH", syscall.ENETUNREACH, true},
-		{"bare EHOSTUNREACH", syscall.EHOSTUNREACH, true},
+		{"bare connection-refused errno", refused, true},
 		{
-			"net.OpError wrapping ECONNREFUSED",
+			"net.OpError wrapping connection-refused errno",
 			&net.OpError{
 				Op: "dial", Net: "tcp",
-				Err: &os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED},
+				Err: &os.SyscallError{Syscall: "connect", Err: refused},
 			},
 			true,
 		},
 		{
-			"fmt.Errorf wrapping EHOSTUNREACH",
-			fmt.Errorf("dial tcp: %w", syscall.EHOSTUNREACH),
+			"fmt.Errorf wrapping connection-refused errno",
+			fmt.Errorf("dial tcp: %w", refused),
 			true,
 		},
 		{"unrelated error", errors.New("something else broke"), false},
