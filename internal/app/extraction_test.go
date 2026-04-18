@@ -3685,9 +3685,9 @@ func TestExploreMode_HintBarTrailingOrder(t *testing.T) {
 	exploreAcceptIdx := hintIndex(explorePlain, "accept")
 	exploreBackIdx := hintIndex(explorePlain, "back")
 	exploreEscIdx := hintIndex(explorePlain, "discard")
-	require.Greater(t, exploreAcceptIdx, 0, "accept hint should appear")
-	require.Greater(t, exploreBackIdx, 0, "back hint should appear")
-	require.Greater(t, exploreEscIdx, 0, "discard hint should appear")
+	require.Positive(t, exploreAcceptIdx, "accept hint should appear")
+	require.Positive(t, exploreBackIdx, "back hint should appear")
+	require.Positive(t, exploreEscIdx, "discard hint should appear")
 	assert.Less(t, exploreAcceptIdx, exploreBackIdx,
 		"accept should come before back")
 	assert.Less(t, exploreBackIdx, exploreEscIdx,
@@ -3719,10 +3719,10 @@ func TestExploreMode_HintBarTrailingOrderMultiTab(t *testing.T) {
 	acceptIdx := hintIndex(plain, "accept")
 	backIdx := hintIndex(plain, "back")
 	escIdx := hintIndex(plain, "discard")
-	require.Greater(t, tabsIdx, 0, "tabs hint should appear")
-	require.Greater(t, acceptIdx, 0)
-	require.Greater(t, backIdx, 0)
-	require.Greater(t, escIdx, 0)
+	require.Positive(t, tabsIdx, "tabs hint should appear")
+	require.Positive(t, acceptIdx)
+	require.Positive(t, backIdx)
+	require.Positive(t, escIdx)
 
 	assert.Less(t, tabsIdx, acceptIdx,
 		"tabs should come before stable trailing group")
