@@ -171,6 +171,32 @@ func TestSearchDocumentsUpdateReflected(t *testing.T) {
 	assert.Empty(t, results)
 }
 
+// TestSearchDocumentsMalformedTokenizes pins the design intent of the
+// phrase-wrap escape: when a user types something with stray delimiters
+// like "(kitchen" or "kitchen)", the FTS5 tokenizer extracts the inner
+// word and the prefix match still works. This is desirable for type-as-
+// you-go search where partial input should still surface relevant
+// results, not an accidental matching bug.
+func TestSearchDocumentsMalformedTokenizes(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateDocument(&Document{
+		Title:         "Kitchen Renovation",
+		FileName:      "k.pdf",
+		ExtractedText: "plumber notes",
+	}))
+
+	for _, q := range []string{`(kitchen`, `kitchen)`, `"kitchen`, `kitchen*`} {
+		t.Run(q, func(t *testing.T) {
+			results, err := store.SearchDocuments(q)
+			require.NoError(t, err)
+			require.Len(t, results, 1, "delimiters around %q should not block tokenization", q)
+			assert.Equal(t, "Kitchen Renovation", results[0].Title)
+		})
+	}
+}
+
 // TestSearchDocumentsBadSyntaxGraceful verifies that inputs which would
 // be malformed FTS5 expressions if passed verbatim do not error out and
 // also do not accidentally match real documents. A document is inserted
