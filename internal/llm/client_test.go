@@ -528,14 +528,22 @@ func TestIsNetworkError(t *testing.T) {
 		},
 		{"unrelated error", errors.New("something else broke"), false},
 		{"context.Canceled", context.Canceled, false},
-		// Pin the new contract: errors that contain "connection refused"
-		// in their message but do NOT wrap a syscall sentinel are not
-		// classified as network errors. The previous string-fallback
-		// implementation matched these by substring.
+		// Windows: net/http wraps connectex errors without preserving
+		// the syscall.Errno layer, so the string fallback is the only
+		// way to recognize them. Verbatim error captured from CI.
 		{
-			"bare string says connection refused",
+			"windows connectex actively refused",
+			errors.New(
+				"Get \"http://127.0.0.1:1/v1/models\": dial tcp 127.0.0.1:1: " +
+					"connectex: No connection could be made because the target " +
+					"machine actively refused it.",
+			),
+			true,
+		},
+		{
+			"plain connection refused string",
 			errors.New("dial tcp: connection refused"),
-			false,
+			true,
 		},
 	}
 	for _, tt := range cases {
