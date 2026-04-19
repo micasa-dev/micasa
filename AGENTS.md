@@ -317,6 +317,23 @@ details; do not duplicate that detail here.
   `iota` constants. The `exhaustive` linter catches missing cases.
 - **Use stdlib/codebase constants**: No magic numbers when `math.MaxInt64`
   or a codebase constant exists.
+- **Check the stdlib before writing a helper**: If you find yourself
+  defining a tiny utility (`boolStr`, `max`, `min`, `clamp`, "convert
+  this primitive to a string", "join these N things"), spend ten seconds
+  checking whether Go already has it. Go 1.21+ has builtin `min`/`max`;
+  `strconv.FormatBool` / `strconv.Itoa` / `strconv.FormatInt` cover
+  primitive-to-string; `slices.Contains` / `maps.Keys` cover the obvious
+  collection ops; `cmp.Or` gives you "first non-zero value". A helper
+  that reimplements stdlib adds a surface area to maintain, hides the
+  standard name from future readers, and tells reviewers "I didn't
+  bother looking." If you genuinely need a wrapper around stdlib (for
+  typing or consistency), say so in a comment.
+- **Check your nils**: Before calling a third-party function with a
+  conceptual zero value (`nil`, `""`, `0`), either read its godoc or
+  grep for other call sites in the repo. Functions that query the
+  terminal, open files, or dial the network commonly dereference their
+  arguments. `lipgloss.HasDarkBackground(os.Stdin, os.Stderr)` — not
+  `(nil, nil)`. Treat "I'll just pass nil and see" as a red flag.
 - **Safe integer narrowing**: Never cast `int64` to `int` directly. Use
   `safeconv.Int` (`internal/safeconv`) which returns an error on overflow.
   Callers decide how to handle it (return error, clamp, etc.).
