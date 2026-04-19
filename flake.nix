@@ -484,6 +484,13 @@
                 | column -t
             '';
           };
+          fts-eval = pkgs.writeShellApplication {
+            name = "fts-eval";
+            runtimeInputs = [ self.packages.micasa ];
+            text = ''
+              exec micasa eval fts "$@"
+            '';
+          };
           run-pre-commit = pkgs.writeShellApplication {
             name = "run-pre-commit";
             runtimeInputs = [

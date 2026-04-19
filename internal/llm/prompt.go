@@ -17,6 +17,61 @@ type TableInfo struct {
 	Columns []ColumnInfo
 }
 
+// BuildTableInfo queries the store's schema and returns TableInfo for every
+// table. Used to populate the DDL section of chat prompts. Returns nil on
+// any error so callers can treat schema context as best-effort enrichment.
+func BuildTableInfo(store *data.Store) []TableInfo {
+	if store == nil {
+		return nil
+	}
+	names, err := store.TableNames()
+	if err != nil {
+		return nil
+	}
+	var tables []TableInfo
+	for _, name := range names {
+		cols, err := store.TableColumns(name)
+		if err != nil {
+			continue
+		}
+		t := TableInfo{Name: name}
+		for _, c := range cols {
+			t.Columns = append(t.Columns, ColumnInfo{
+				Name:    c.Name,
+				Type:    c.Type,
+				NotNull: c.NotNull,
+				PK:      c.PK > 0,
+			})
+		}
+		tables = append(tables, t)
+	}
+	return tables
+}
+
+// BuildFTSContextFromStore runs an FTS entity search on the store, fetches a
+// one-line summary for each hit, and formats the results as a fenced context
+// block for LLM prompt injection. Returns empty string on any error or when
+// no matches surface. Safe for concurrent use (no shared state beyond the
+// store).
+func BuildFTSContextFromStore(store *data.Store, query string) string {
+	if store == nil {
+		return ""
+	}
+	results, err := store.SearchEntities(query)
+	if err != nil || len(results) == 0 {
+		return ""
+	}
+	var entries []string
+	for _, r := range results {
+		summary, found, err := store.EntitySummary(r.EntityType, r.EntityID)
+		if err != nil || !found {
+			continue
+		}
+		entries = append(entries, summary)
+	}
+	return BuildFTSContext(entries)
+}
+
 // ColumnInfo describes a single column in a table.
 type ColumnInfo struct {
 	Name    string

@@ -17,7 +17,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/micasa-dev/micasa/internal/config"
-	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/micasa-dev/micasa/internal/llm"
 	ollamaPull "github.com/micasa-dev/micasa/internal/ollama"
 )
@@ -353,7 +352,7 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 	return func() tea.Msg {
 		// Build schema info and column hints inside the goroutine to avoid
 		// blocking the UI thread with DB queries.
-		tables := buildTableInfoFrom(store)
+		tables := llm.BuildTableInfo(store)
 		columnHints := ""
 		if store != nil {
 			columnHints = store.ColumnHints()
@@ -362,7 +361,7 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 		// FTS entity search for context enrichment. Errors are non-fatal:
 		// the pipeline works without FTS context (identical to pre-FTS
 		// behavior), so enrichment failure degrades gracefully.
-		ftsContext := buildFTSContext(store, query)
+		ftsContext := llm.BuildFTSContextFromStore(store, query)
 
 		sqlPrompt := llm.BuildSQLPrompt(tables, time.Now(), columnHints, ftsContext, extraContext)
 
@@ -1100,7 +1099,7 @@ func (m *Model) handleChatChunk(msg chatChunkMsg) tea.Cmd {
 // buildFallbackMessages assembles the full message list for the single-stage
 // fallback: system prompt with schema + full data dump, conversation history, then the question.
 func (m *Model) buildFallbackMessages(question string) []llm.Message {
-	tables := m.buildTableInfo()
+	tables := llm.BuildTableInfo(m.store)
 	dataDump := ""
 	if m.store != nil {
 		dataDump = m.store.DataDump()
@@ -1157,64 +1156,6 @@ func (m *Model) buildConversationHistory() []llm.Message {
 	}
 
 	return history
-}
-
-// buildFTSContext performs FTS entity search and assembles context for LLM
-// prompts. Returns empty string on any error or when no matches are found.
-// Called from background goroutines; safe for concurrent use.
-func buildFTSContext(store *data.Store, query string) string {
-	if store == nil {
-		return ""
-	}
-	ftsResults, err := store.SearchEntities(query)
-	if err != nil || len(ftsResults) == 0 {
-		return ""
-	}
-	var entries []string
-	for _, r := range ftsResults {
-		summary, found, err := store.EntitySummary(r.EntityType, r.EntityID)
-		if err != nil || !found {
-			continue
-		}
-		entries = append(entries, summary)
-	}
-	return llm.BuildFTSContext(entries)
-}
-
-// buildTableInfo queries the database schema and returns it in the format
-// the prompt builder expects.
-func (m *Model) buildTableInfo() []llm.TableInfo {
-	return buildTableInfoFrom(m.store)
-}
-
-// buildTableInfoFrom queries schema metadata from the store. Extracted so it
-// can be called from background goroutines without holding a Model reference.
-func buildTableInfoFrom(store *data.Store) []llm.TableInfo {
-	if store == nil {
-		return nil
-	}
-	names, err := store.TableNames()
-	if err != nil {
-		return nil
-	}
-	var tables []llm.TableInfo
-	for _, name := range names {
-		cols, err := store.TableColumns(name)
-		if err != nil {
-			continue
-		}
-		t := llm.TableInfo{Name: name}
-		for _, c := range cols {
-			t.Columns = append(t.Columns, llm.ColumnInfo{
-				Name:    c.Name,
-				Type:    c.Type,
-				NotNull: c.NotNull,
-				PK:      c.PK > 0,
-			})
-		}
-		tables = append(tables, t)
-	}
-	return tables
 }
 
 // waitForChunk returns a Cmd that blocks until the next chunk arrives on the
