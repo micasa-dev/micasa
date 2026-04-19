@@ -16,6 +16,8 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // handleDashboardKeys intercepts keys that belong to the dashboard (j/k
@@ -539,7 +541,7 @@ func (m *Model) confirmCalendar() {
 	if m.calendar == nil {
 		return
 	}
-	dateStr := m.calendar.Cursor.Format("2006-01-02")
+	dateStr := m.calendar.Cursor.Format(data.DateLayout)
 	if m.calendar.FieldPtr != nil {
 		*m.calendar.FieldPtr = dateStr
 	}
@@ -555,7 +557,7 @@ func (m *Model) openCalendar(fieldPtr *string, onConfirm func()) {
 	var selected time.Time
 	hasValue := false
 	if fieldPtr != nil && *fieldPtr != "" {
-		if t, err := time.ParseInLocation("2006-01-02", *fieldPtr, time.Local); err == nil {
+		if t, err := time.ParseInLocation(data.DateLayout, *fieldPtr, time.Local); err == nil {
 			cursor = t
 			selected = t
 			hasValue = true

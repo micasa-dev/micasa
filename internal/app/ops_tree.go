@@ -632,10 +632,7 @@ func classifyValue(v any) (string, treeValueKind) {
 		}
 		return fmt.Sprintf("%g", val), tvNumber
 	case bool:
-		if val {
-			return "true", tvBool
-		}
-		return "false", tvBool
+		return strconv.FormatBool(val), tvBool
 	case nil:
 		return "null", tvNull
 	default:

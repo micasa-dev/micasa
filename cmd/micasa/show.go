@@ -24,7 +24,7 @@ func fmtMoney(cents *int64) string {
 	if cents == nil {
 		return "-"
 	}
-	return fmt.Sprintf("$%.2f", float64(*cents)/100)
+	return fmtMoneyVal(*cents)
 }
 
 func fmtDate(t *time.Time) string {
@@ -38,10 +38,6 @@ func fmtInt(n int) string {
 	if n == 0 {
 		return "-"
 	}
-	return strconv.Itoa(n)
-}
-
-func fmtIntAlways(n int) string {
 	return strconv.Itoa(n)
 }
 
@@ -130,7 +126,7 @@ func fmtDateVal(t time.Time) string {
 	if t.IsZero() {
 		return "-"
 	}
-	return t.Format("2006-01-02")
+	return t.Format(data.DateLayout)
 }
 
 // withDeletedCol appends a DELETED column and deleted_at JSON field when includeDeleted is true.
@@ -150,7 +146,7 @@ func withDeletedCol[T any](
 		value: func(item T) string {
 			da := deletedAt(item)
 			if da.Valid {
-				return da.Time.Format("2006-01-02")
+				return da.Time.Format(data.DateLayout)
 			}
 			return "-"
 		},
@@ -573,7 +569,7 @@ var maintenanceCols = []showCol[data.MaintenanceItem]{
 	{"APPLIANCE", func(m data.MaintenanceItem) string { return fmtStr(m.Appliance.Name) }},
 	{"SEASON", func(m data.MaintenanceItem) string { return fmtStr(m.Season) }},
 	{"LAST SERVICED", func(m data.MaintenanceItem) string { return fmtDate(m.LastServicedAt) }},
-	{"INTERVAL", func(m data.MaintenanceItem) string { return fmtIntAlways(m.IntervalMonths) }},
+	{"INTERVAL", func(m data.MaintenanceItem) string { return strconv.Itoa(m.IntervalMonths) }},
 	{"DUE", func(m data.MaintenanceItem) string { return fmtDate(m.DueDate) }},
 	{"COST", func(m data.MaintenanceItem) string { return fmtMoney(m.CostCents) }},
 }
@@ -640,16 +636,12 @@ func showServiceLog(w io.Writer, store *data.Store, asJSON, includeDeleted bool)
 
 // --- documents ---
 
-func fmtSize(n int64) string {
-	return strconv.FormatInt(n, 10)
-}
-
 var documentCols = []showCol[data.Document]{
 	{"TITLE", func(d data.Document) string { return fmtStr(d.Title) }},
 	{"FILE", func(d data.Document) string { return fmtStr(d.FileName) }},
 	{"ENTITY", func(d data.Document) string { return fmtStr(d.EntityKind) }},
 	{"MIME", func(d data.Document) string { return fmtStr(d.MIMEType) }},
-	{"SIZE", func(d data.Document) string { return fmtSize(d.SizeBytes) }},
+	{"SIZE", func(d data.Document) string { return strconv.FormatInt(d.SizeBytes, 10) }},
 	{"NOTES", func(d data.Document) string { return fmtStr(d.Notes) }},
 }
 

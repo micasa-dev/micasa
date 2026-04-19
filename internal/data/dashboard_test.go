@@ -17,10 +17,6 @@ func TestListMaintenanceWithSchedule(t *testing.T) {
 	cat := MaintenanceCategory{Name: "TestCat"}
 	require.NoError(t, store.db.Create(&cat).Error)
 
-	ptrTime := func(y, m, d int) *time.Time {
-		t := time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
-		return &t
-	}
 	// Item with interval > 0 should appear.
 	require.NoError(t, store.db.Create(&MaintenanceItem{
 		Name: "With Interval", CategoryID: cat.ID,
@@ -43,10 +39,6 @@ func TestListMaintenanceWithScheduleDueDate(t *testing.T) {
 	cat := MaintenanceCategory{Name: "DueDateCat"}
 	require.NoError(t, store.db.Create(&cat).Error)
 
-	ptrTime := func(y, m, d int) *time.Time {
-		t := time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
-		return &t
-	}
 	// Item with due date (no interval) should appear.
 	require.NoError(t, store.db.Create(&MaintenanceItem{
 		Name: "With DueDate", CategoryID: cat.ID,
@@ -204,10 +196,6 @@ func TestListExpiringWarranties(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 	now := time.Date(2026, 2, 8, 0, 0, 0, 0, time.UTC)
-	ptrTime := func(y, m, d int) *time.Time {
-		t := time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
-		return &t
-	}
 	// Expiring in 30 days -- should appear.
 	require.NoError(
 		t,
@@ -261,7 +249,6 @@ func TestListRecentServiceLogs(t *testing.T) {
 func TestYTDSpending(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
-	ptr := func(v int64) *int64 { return &v }
 
 	cat := MaintenanceCategory{Name: "SpendCat"}
 	require.NoError(t, store.db.Create(&cat).Error)
@@ -272,13 +259,13 @@ func TestYTDSpending(t *testing.T) {
 	require.NoError(t, store.db.Create(&ServiceLogEntry{
 		MaintenanceItemID: item.ID,
 		ServicedAt:        time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
-		CostCents:         ptr(5000),
+		CostCents:         new(int64(5000)),
 	}).Error)
 	// Last year -- should not count.
 	require.NoError(t, store.db.Create(&ServiceLogEntry{
 		MaintenanceItemID: item.ID,
 		ServicedAt:        time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC),
-		CostCents:         ptr(9999),
+		CostCents:         new(int64(9999)),
 	}).Error)
 
 	yearStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -292,16 +279,16 @@ func TestYTDSpending(t *testing.T) {
 	require.NoError(t, store.db.First(&pt).Error)
 	require.NoError(t, store.db.Create(&Project{
 		Title: "P1", ProjectTypeID: pt.ID, Status: ProjectStatusCompleted,
-		ActualCents: ptr(20000),
+		ActualCents: new(int64(20000)),
 	}).Error)
 	require.NoError(t, store.db.Create(&Project{
 		Title: "P2", ProjectTypeID: pt.ID, Status: ProjectStatusInProgress,
-		ActualCents: ptr(10000),
+		ActualCents: new(int64(10000)),
 	}).Error)
 	// Project updated last year — still included (no date filter).
 	oldProj := Project{
 		Title: "P3", ProjectTypeID: pt.ID, Status: ProjectStatusCompleted,
-		ActualCents: ptr(7777),
+		ActualCents: new(int64(7777)),
 	}
 	require.NoError(t, store.db.Create(&oldProj).Error)
 	require.NoError(t, store.db.Exec(
@@ -320,13 +307,12 @@ func TestTotalProjectSpendUnaffectedByEdits(t *testing.T) {
 	// not change the spending total. The old updated_at filter caused edits
 	// to inflate/deflate the YTD figure.
 	store := newTestStore(t)
-	ptr := func(v int64) *int64 { return &v }
 
 	var pt ProjectType
 	require.NoError(t, store.db.First(&pt).Error)
 	p := Project{
 		Title: "Kitchen Remodel", ProjectTypeID: pt.ID,
-		Status: ProjectStatusCompleted, ActualCents: ptr(50000),
+		Status: ProjectStatusCompleted, ActualCents: new(int64(50000)),
 	}
 	require.NoError(t, store.db.Create(&p).Error)
 

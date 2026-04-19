@@ -591,27 +591,27 @@ func TestApplianceAge(t *testing.T) {
 		{"nil purchase", nil, ""},
 		{
 			"less than a month",
-			ptr(time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)),
+			new(time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)),
 			"<1m",
 		},
 		{
 			"a few months",
-			ptr(time.Date(2025, 10, 5, 0, 0, 0, 0, time.UTC)),
+			new(time.Date(2025, 10, 5, 0, 0, 0, 0, time.UTC)),
 			"4m",
 		},
 		{
 			"one year exact",
-			ptr(time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)),
+			new(time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)),
 			"1y",
 		},
 		{
 			"years and months",
-			ptr(time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)),
+			new(time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)),
 			"2y 7m",
 		},
 		{
 			"future date",
-			ptr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+			new(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
 			"",
 		},
 	}
@@ -620,12 +620,6 @@ func TestApplianceAge(t *testing.T) {
 			assert.Equal(t, tt.want, applianceAge(tt.purchase, now))
 		})
 	}
-}
-
-func ptr[T any](
-	v T,
-) *T {
-	return &v
 }
 
 func TestNavBadgeLabel(t *testing.T) {

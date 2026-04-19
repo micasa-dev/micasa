@@ -240,7 +240,7 @@ func TestServiceLogCRUD(t *testing.T) {
 	require.NoError(t, store.CreateServiceLog(&ServiceLogEntry{
 		MaintenanceItemID: maintID,
 		ServicedAt:        time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
-		CostCents:         func() *int64 { v := int64(15000); return &v }(),
+		CostCents:         new(int64(15000)),
 		Notes:             "vendor did it",
 	}, Vendor{Name: "Test Plumber", Phone: "555-555-0001"}))
 
@@ -1805,6 +1805,10 @@ func newTestStoreWithDemoData(t *testing.T, seed uint64) *Store {
 	store := newTestStore(t)
 	require.NoError(t, store.SeedDemoDataFrom(fake.New(seed)))
 	return store
+}
+
+func ptrTime(y, m, d int) *time.Time {
+	return new(time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC))
 }
 
 func TestCountQuotesByProject(t *testing.T) {

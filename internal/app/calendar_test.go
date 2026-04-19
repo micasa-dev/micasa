@@ -12,6 +12,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 const testDate = "2026-02-15"
@@ -396,7 +398,7 @@ func TestCalendarTodayKeyNavigation(t *testing.T) {
 	sendKey(m, "enter")
 	assert.True(t, confirmed, "OnConfirm should have been called")
 	assert.Nil(t, m.calendar, "calendar should be dismissed")
-	assert.Equal(t, now.Format("2006-01-02"), dateVal,
+	assert.Equal(t, now.Format(data.DateLayout), dateVal,
 		"confirmed date should be today")
 }
 

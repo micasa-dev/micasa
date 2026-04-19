@@ -643,7 +643,7 @@ func TestIncidentHandlerLoadDeleteRestoreRoundTrip(t *testing.T) {
 		Title:       "Broken window",
 		Status:      data.IncidentStatusOpen,
 		Severity:    data.IncidentSeverityUrgent,
-		DateNoticed: time.Now().Format("2006-01-02"),
+		DateNoticed: time.Now().Format(data.DateLayout),
 	}
 	require.NoError(t, h.SubmitForm(m))
 
