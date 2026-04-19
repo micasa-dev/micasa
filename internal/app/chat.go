@@ -50,6 +50,7 @@ type chatState struct {
 	SQLStreamCh  <-chan llm.StreamChunk // for stage 1 (SQL generation)
 	CancelFn     context.CancelFunc
 	CurrentQuery string          // the user's current question being processed
+	ftsContext   string          // FTS-matched entity context for current query
 	Completer    *modelCompleter // non-nil when the model picker is showing
 	ShowSQL      bool            // when true, show generated SQL as a notice
 	History      []string        // past user inputs, newest last
@@ -123,11 +124,12 @@ type sqlChunkMsg struct {
 // sqlResultMsg delivers the result of stage 1 (NL → SQL) back to the
 // update loop so stage 2 (summary) can proceed.
 type sqlResultMsg struct {
-	Question string // original user question
-	SQL      string // generated SELECT statement
-	Columns  []string
-	Rows     [][]string
-	Err      error // set if SQL generation, validation, or execution failed
+	Question   string // original user question
+	SQL        string // generated SELECT statement
+	Columns    []string
+	Rows       [][]string
+	FTSContext string // FTS-matched entity context for stage 2 summary
+	Err        error  // set if SQL generation, validation, or execution failed
 }
 
 // modelsListMsg delivers the result of an async ListModels call.
@@ -356,7 +358,13 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 		if store != nil {
 			columnHints = store.ColumnHints()
 		}
-		sqlPrompt := llm.BuildSQLPrompt(tables, time.Now(), columnHints, extraContext)
+
+		// FTS entity search for context enrichment. Errors are non-fatal:
+		// the pipeline works without FTS context (identical to pre-FTS
+		// behavior), so enrichment failure degrades gracefully.
+		ftsContext := buildFTSContext(store, query)
+
+		sqlPrompt := llm.BuildSQLPrompt(tables, time.Now(), columnHints, ftsContext, extraContext)
 
 		// Build conversation history: system + all previous user/assistant exchanges + current query.
 		messages := []llm.Message{
@@ -372,26 +380,29 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 		streamCh, err := client.ChatStream(ctx, messages)
 		if err != nil {
 			return sqlStreamStartedMsg{
-				Question: query,
-				CancelFn: cancel,
-				Err:      fmt.Errorf("SQL generation failed: %w", err),
+				Question:   query,
+				CancelFn:   cancel,
+				FTSContext: ftsContext,
+				Err:        fmt.Errorf("SQL generation failed: %w", err),
 			}
 		}
 
 		return sqlStreamStartedMsg{
-			Question: query,
-			Channel:  streamCh,
-			CancelFn: cancel,
+			Question:   query,
+			Channel:    streamCh,
+			CancelFn:   cancel,
+			FTSContext: ftsContext,
 		}
 	}
 }
 
 // sqlStreamStartedMsg delivers the SQL stream channel back to the update loop.
 type sqlStreamStartedMsg struct {
-	Question string
-	Channel  <-chan llm.StreamChunk
-	CancelFn context.CancelFunc
-	Err      error
+	Question   string
+	Channel    <-chan llm.StreamChunk
+	CancelFn   context.CancelFunc
+	FTSContext string // FTS-matched entity context, flows through to summary
+	Err        error
 }
 
 // handleSlashCommand dispatches chat slash commands.
@@ -779,6 +790,7 @@ func (m *Model) handleSQLResult(msg sqlResultMsg) tea.Cmd {
 		msg.SQL,
 		resultsTable,
 		time.Now(),
+		msg.FTSContext,
 		m.chatCfg.ExtraContext,
 	)
 
@@ -943,10 +955,12 @@ func (m *Model) handleSQLStreamStarted(msg sqlStreamStartedMsg) tea.Cmd {
 		return nil
 	}
 
-	// Store the cancel function, channel, and question, then start reading chunks.
+	// Store the cancel function, channel, question, and FTS context,
+	// then start reading chunks.
 	m.chat.CancelFn = msg.CancelFn
 	m.chat.SQLStreamCh = msg.Channel
 	m.chat.CurrentQuery = msg.Question
+	m.chat.ftsContext = msg.FTSContext
 	return waitForSQLChunk(msg.Channel)
 }
 
@@ -1027,18 +1041,25 @@ func (m *Model) executeSQLQuery(sql string) tea.Cmd {
 	store := m.store
 	query := m.chat.CurrentQuery
 	appCtx := m.lifecycleCtx()
+	ftsCtx := m.chat.ftsContext
 
 	return func() tea.Msg {
 		cols, rows, err := store.ReadOnlyQuery(appCtx, sql)
 		if err != nil {
-			return sqlResultMsg{Question: query, SQL: sql, Err: fmt.Errorf("query error: %w", err)}
+			return sqlResultMsg{
+				Question:   query,
+				SQL:        sql,
+				FTSContext: ftsCtx,
+				Err:        fmt.Errorf("query error: %w", err),
+			}
 		}
 
 		return sqlResultMsg{
-			Question: query,
-			SQL:      sql,
-			Columns:  cols,
-			Rows:     rows,
+			Question:   query,
+			SQL:        sql,
+			Columns:    cols,
+			Rows:       rows,
+			FTSContext: ftsCtx,
 		}
 	}
 }
@@ -1084,10 +1105,15 @@ func (m *Model) buildFallbackMessages(question string) []llm.Message {
 	if m.store != nil {
 		dataDump = m.store.DataDump()
 	}
+	ftsContext := ""
+	if m.chat != nil {
+		ftsContext = m.chat.ftsContext
+	}
 	systemPrompt := llm.BuildSystemPrompt(
 		tables,
 		dataDump,
 		time.Now(),
+		ftsContext,
 		m.chatCfg.ExtraContext,
 	)
 
@@ -1131,6 +1157,28 @@ func (m *Model) buildConversationHistory() []llm.Message {
 	}
 
 	return history
+}
+
+// buildFTSContext performs FTS entity search and assembles context for LLM
+// prompts. Returns empty string on any error or when no matches are found.
+// Called from background goroutines; safe for concurrent use.
+func buildFTSContext(store *data.Store, query string) string {
+	if store == nil {
+		return ""
+	}
+	ftsResults, err := store.SearchEntities(query)
+	if err != nil || len(ftsResults) == 0 {
+		return ""
+	}
+	var entries []string
+	for _, r := range ftsResults {
+		summary, found, err := store.EntitySummary(r.EntityType, r.EntityID)
+		if err != nil || !found {
+			continue
+		}
+		entries = append(entries, summary)
+	}
+	return llm.BuildFTSContext(entries)
 }
 
 // buildTableInfo queries the database schema and returns it in the format

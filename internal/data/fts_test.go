@@ -4,6 +4,7 @@
 package data
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -339,4 +340,330 @@ func TestHasFTSTable(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 	assert.True(t, store.hasFTSTable())
+}
+
+// --- entities_fts tests ---
+
+func TestSetupEntitiesFTSCreatesTable(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	var count int64
+	store.db.Raw(
+		`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`,
+		"entities_fts",
+	).Scan(&count)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestSetupEntitiesFTSPopulatesProjects(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	require.NoError(t, store.CreateProject(&Project{
+		Title:         "Kitchen Remodel",
+		Description:   "Full kitchen renovation",
+		Status:        ProjectStatusInProgress,
+		ProjectTypeID: types[0].ID,
+	}))
+
+	require.NoError(t, store.setupEntitiesFTS())
+
+	var count int64
+	store.db.Raw(`SELECT COUNT(*) FROM entities_fts WHERE entity_type = 'project'`).Scan(&count)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestSetupEntitiesFTSPopulatesVendors(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "Test Plumber", ContactName: "John"}))
+	require.NoError(t, store.setupEntitiesFTS())
+
+	var count int64
+	store.db.Raw(`SELECT COUNT(*) FROM entities_fts WHERE entity_type = 'vendor'`).Scan(&count)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestSetupEntitiesFTSPopulatesAppliances(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateAppliance(&Appliance{Name: "HVAC Unit", Brand: "Carrier"}))
+	require.NoError(t, store.setupEntitiesFTS())
+
+	var count int64
+	store.db.Raw(`SELECT COUNT(*) FROM entities_fts WHERE entity_type = 'appliance'`).Scan(&count)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestSetupEntitiesFTSPopulatesIncidents(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title:    "Roof Leak",
+		Status:   IncidentStatusOpen,
+		Severity: IncidentSeverityUrgent,
+	}))
+	require.NoError(t, store.setupEntitiesFTS())
+
+	var count int64
+	store.db.Raw(`SELECT COUNT(*) FROM entities_fts WHERE entity_type = 'incident'`).Scan(&count)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestSetupEntitiesFTSExcludesSoftDeleted(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "Active Vendor"}))
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "Deleted Vendor"}))
+
+	vendors, _ := store.ListVendors(false)
+	require.Len(t, vendors, 2)
+	require.NoError(t, store.DeleteVendor(vendors[1].ID))
+
+	require.NoError(t, store.setupEntitiesFTS())
+
+	var count int64
+	store.db.Raw(`SELECT COUNT(*) FROM entities_fts WHERE entity_type = 'vendor'`).Scan(&count)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestSearchEntitiesBasic(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	require.NoError(t, store.CreateProject(&Project{
+		Title: "Kitchen Remodel", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned,
+	}))
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "ABC Plumbing"}))
+	require.NoError(t, store.setupEntitiesFTS())
+
+	results, err := store.SearchEntities("kitchen")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "project", results[0].EntityType)
+	assert.Equal(t, "Kitchen Remodel", results[0].EntityName)
+}
+
+func TestSearchEntitiesEmptyQuery(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	results, err := store.SearchEntities("")
+	require.NoError(t, err)
+	assert.Nil(t, results)
+
+	results, err = store.SearchEntities("   ")
+	require.NoError(t, err)
+	assert.Nil(t, results)
+}
+
+func TestSearchEntitiesBadSyntaxGraceful(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	results, err := store.SearchEntities(`"unclosed`)
+	require.NoError(t, err)
+	assert.Empty(t, results)
+}
+
+func TestSearchEntitiesCrossEntityMatches(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	require.NoError(t, store.CreateProject(&Project{
+		Title: "Plumbing Overhaul", ProjectTypeID: types[0].ID, Status: ProjectStatusPlanned,
+	}))
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "Pro Plumbing"}))
+	require.NoError(t, store.setupEntitiesFTS())
+
+	results, err := store.SearchEntities("plumbing")
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+}
+
+func TestSearchEntitiesNoFTSTableGraceful(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	require.NoError(t, store.db.Exec("DROP TABLE IF EXISTS entities_fts").Error)
+
+	results, err := store.SearchEntities("anything")
+	require.NoError(t, err)
+	assert.Empty(t, results)
+}
+
+func TestSearchEntitiesWrapsQueryError(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	// Replace the well-formed entities_fts with a virtual table that has a
+	// different column set, so hasEntitiesFTSTable still reports true but
+	// the SELECT against the expected columns errors at query time.
+	require.NoError(t, store.db.Exec("DROP TABLE IF EXISTS entities_fts").Error)
+	require.NoError(t, store.db.Exec(
+		"CREATE VIRTUAL TABLE entities_fts USING fts5(unrelated_column)",
+	).Error)
+
+	results, err := store.SearchEntities("anything")
+	require.Error(t, err)
+	assert.Nil(t, results)
+	assert.Contains(t, err.Error(), "search entities:")
+}
+
+func TestSearchEntitiesPorterStemming(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "Professional Painting Services"}))
+	require.NoError(t, store.setupEntitiesFTS())
+
+	// "painted" should match "painting" via porter stemmer (both stem to "paint").
+	results, err := store.SearchEntities("painted")
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+}
+
+func TestEntitySummaryProject(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	budget := int64(1500000)
+	require.NoError(t, store.CreateProject(&Project{
+		Title: "Kitchen Remodel", ProjectTypeID: types[0].ID,
+		Status: ProjectStatusInProgress, BudgetCents: &budget,
+	}))
+	projects, _ := store.ListProjects(false)
+	require.Len(t, projects, 1)
+
+	summary, found, err := store.EntitySummary("project", projects[0].ID)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Contains(t, summary, "Kitchen Remodel")
+	assert.Contains(t, summary, "underway")
+	assert.Contains(t, summary, "$15000.00")
+}
+
+func TestEntitySummaryVendor(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateVendor(&Vendor{
+		Name: "ABC Plumbing", ContactName: "John Smith", Phone: "555-0123",
+	}))
+	vendors, _ := store.ListVendors(false)
+
+	summary, found, err := store.EntitySummary("vendor", vendors[0].ID)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Contains(t, summary, "ABC Plumbing")
+	assert.Contains(t, summary, "contact=John Smith")
+	assert.Contains(t, summary, "phone=555-0123")
+}
+
+func TestEntitySummaryAppliance(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateAppliance(&Appliance{
+		Name: "Dishwasher", Brand: "LG", ModelNumber: "WM3900",
+	}))
+	appliances, _ := store.ListAppliances(false)
+
+	summary, found, err := store.EntitySummary("appliance", appliances[0].ID)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Contains(t, summary, "Dishwasher")
+	assert.Contains(t, summary, "brand=LG")
+	assert.Contains(t, summary, "model=WM3900")
+}
+
+func TestEntitySummaryDeletedEntity(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "Gone Vendor"}))
+	vendors, _ := store.ListVendors(false)
+	require.NoError(t, store.DeleteVendor(vendors[0].ID))
+
+	_, found, err := store.EntitySummary("vendor", vendors[0].ID)
+	require.NoError(t, err)
+	assert.False(t, found)
+}
+
+func TestEntitySummaryUnknownType(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	_, found, err := store.EntitySummary("nonexistent", "01JFAKE")
+	require.Error(t, err)
+	assert.False(t, found)
+}
+
+func TestEntitySummaryRevalidatesStaleIndex(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateVendor(&Vendor{Name: "Will Be Deleted"}))
+	require.NoError(t, store.setupEntitiesFTS())
+
+	results, err := store.SearchEntities("deleted")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
+	vendors, _ := store.ListVendors(false)
+	require.NoError(t, store.DeleteVendor(vendors[0].ID))
+
+	_, found, err := store.EntitySummary(results[0].EntityType, results[0].EntityID)
+	require.NoError(t, err)
+	assert.False(t, found, "deleted entity should not be found via EntitySummary")
+}
+
+func TestEntitySummaryIncident(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	require.NoError(t, store.CreateIncident(&Incident{
+		Title: "Roof Leak", Status: IncidentStatusOpen,
+		Severity: IncidentSeverityUrgent, Location: "attic",
+	}))
+	incidents, _ := store.ListIncidents(false)
+
+	summary, found, err := store.EntitySummary("incident", incidents[0].ID)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Contains(t, summary, "Roof Leak")
+	assert.Contains(t, summary, "status=open")
+	assert.Contains(t, summary, "severity=urgent")
+	assert.Contains(t, summary, "location=attic")
+}
+
+func TestTruncateField(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "short", truncateField("short"))
+	long := strings.Repeat("a", 300)
+	result := truncateField(long)
+	assert.Len(t, result, 203) // 200 + "..."
+	assert.True(t, strings.HasSuffix(result, "..."))
+}
+
+func TestTruncateFieldUnicode(t *testing.T) {
+	t.Parallel()
+	// 201 runes of multi-byte characters should truncate at rune boundary.
+	s := strings.Repeat("\u00e9", 201) // e-acute
+	result := truncateField(s)
+	runes := []rune(result)
+	// 200 runes + "..." = 203 runes
+	assert.Len(t, runes, 203)
+}
+
+func TestHasEntitiesFTSTable(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+	assert.True(t, store.hasEntitiesFTSTable())
 }
