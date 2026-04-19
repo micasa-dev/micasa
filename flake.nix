@@ -50,95 +50,142 @@
           text = builtins.readFile ./nix/scripts/license-check.bash;
         };
 
-        preCommit = git-hooks.lib.${system}.run {
-          src = ./.;
-          hooks = {
-            golines = {
-              enable = true;
-              settings.flags = "--base-formatter=${lib.getExe pkgs.gofumpt} " + "--max-len=100";
+        preCommit =
+          let
+            raw = git-hooks.lib.${system}.run {
+              src = ./.;
+              package = pkgs.prek;
+              hooks = {
+                golines = {
+                  enable = true;
+                  settings.flags = "--base-formatter=${lib.getExe pkgs.gofumpt} " + "--max-len=100";
+                };
+                nixfmt.enable = true;
+                golangci-lint = {
+                  enable = false; # CI-only job
+                  stages = [ "pre-push" ];
+                };
+                actionlint.enable = true;
+                statix.enable = true;
+                deadnix.enable = true;
+                biome = {
+                  enable = true;
+                  excludes = [ "\\.claude/settings\\.json" ];
+                };
+                taplo.enable = true;
+                license-header = {
+                  enable = true;
+                  name = "license-header";
+                  entry = "${lib.getExe licenseCheck}";
+                  files = "\\.(go|nix|ya?ml|sh|md|js)$|^\\.envrc$|\\.gitignore$|^go\\.mod$";
+                  excludes = [
+                    "LICENSE"
+                    "flake\\.lock"
+                    "go\\.sum"
+                    "\\.json$"
+                    "^docs/content/"
+                  ];
+                  language = "system";
+                  pass_filenames = true;
+                };
+                go-mod-tidy = {
+                  enable = true;
+                  name = "go-mod-tidy";
+                  entry = "${lib.getExe goModTidyCheck}";
+                  files = "\\.go$|^go\\.(mod|sum)$";
+                  language = "system";
+                  pass_filenames = false;
+                };
+                deadcode-check = {
+                  enable = false; # CI-only job
+                  name = "deadcode";
+                  entry = "${lib.getExe pkgs.deadcode}";
+                  files = "\\.go$";
+                  language = "system";
+                  pass_filenames = false;
+                  stages = [ "pre-push" ];
+                };
+                govulncheck = {
+                  enable = false; # CI-only job
+                  name = "govulncheck";
+                  entry = "${lib.getExe pkgs.govulncheck}";
+                  files = "^go\\.(mod|sum)$";
+                  language = "system";
+                  pass_filenames = false;
+                  stages = [ "pre-push" ];
+                };
+                osv-scanner = {
+                  enable = false; # CI-only job
+                  name = "osv-scanner";
+                  entry = "${lib.getExe pkgs.osv-scanner}";
+                  files = "^go\\.(mod|sum)$";
+                  language = "system";
+                  pass_filenames = false;
+                  stages = [ "pre-push" ];
+                };
+                go-generate-check = {
+                  enable = true;
+                  name = "go-generate-check";
+                  entry = "${lib.getExe goGenerateCheck}";
+                  files = "^(cmd/micasa/.*\\.go|internal/(data/(models|cmd/genmeta/main)|app/(coldefs|cmd/gencolumns/main)|config/.*)\\.go|docs/data/deprecations\\.json|docs/content/docs/reference/cli\\.md)$";
+                  language = "system";
+                  pass_filenames = false;
+                  stages = [ "pre-push" ];
+                };
+                vendor-hash-check = {
+                  enable = true;
+                  name = "vendor-hash-check";
+                  entry = "${lib.getExe vendorHashCheck}";
+                  files = "^go\\.(mod|sum)$";
+                  language = "system";
+                  pass_filenames = false;
+                };
+              };
             };
-            nixfmt.enable = true;
-            golangci-lint = {
-              enable = false; # CI-only job
-              stages = [ "pre-push" ];
-            };
-            actionlint.enable = true;
-            statix.enable = true;
-            deadnix.enable = true;
-            biome = {
-              enable = true;
-              excludes = [ "\\.claude/settings\\.json" ];
-            };
-            taplo.enable = true;
-            license-header = {
-              enable = true;
-              name = "license-header";
-              entry = "${lib.getExe licenseCheck}";
-              files = "\\.(go|nix|ya?ml|sh|md|js)$|^\\.envrc$|\\.gitignore$|^go\\.mod$";
-              excludes = [
-                "LICENSE"
-                "flake\\.lock"
-                "go\\.sum"
-                "\\.json$"
-                "^docs/content/"
-              ];
-              language = "system";
-              pass_filenames = true;
-            };
-            go-mod-tidy = {
-              enable = true;
-              name = "go-mod-tidy";
-              entry = "${lib.getExe goModTidyCheck}";
-              files = "\\.go$|^go\\.(mod|sum)$";
-              language = "system";
-              pass_filenames = false;
-            };
-            deadcode-check = {
-              enable = false; # CI-only job
-              name = "deadcode";
-              entry = "${lib.getExe pkgs.deadcode}";
-              files = "\\.go$";
-              language = "system";
-              pass_filenames = false;
-              stages = [ "pre-push" ];
-            };
-            govulncheck = {
-              enable = false; # CI-only job
-              name = "govulncheck";
-              entry = "${lib.getExe pkgs.govulncheck}";
-              files = "^go\\.(mod|sum)$";
-              language = "system";
-              pass_filenames = false;
-              stages = [ "pre-push" ];
-            };
-            osv-scanner = {
-              enable = false; # CI-only job
-              name = "osv-scanner";
-              entry = "${lib.getExe pkgs.osv-scanner}";
-              files = "^go\\.(mod|sum)$";
-              language = "system";
-              pass_filenames = false;
-              stages = [ "pre-push" ];
-            };
-            go-generate-check = {
-              enable = true;
-              name = "go-generate-check";
-              entry = "${lib.getExe goGenerateCheck}";
-              files = "^(cmd/micasa/.*\\.go|internal/(data/(models|cmd/genmeta/main)|app/(coldefs|cmd/gencolumns/main)|config/.*)\\.go|docs/data/deprecations\\.json|docs/content/docs/reference/cli\\.md)$";
-              language = "system";
-              pass_filenames = false;
-              stages = [ "pre-push" ];
-            };
-            vendor-hash-check = {
-              enable = true;
-              name = "vendor-hash-check";
-              entry = "${lib.getExe vendorHashCheck}";
-              files = "^go\\.(mod|sum)$";
-              language = "system";
-              pass_filenames = false;
-            };
+            # Upstream git-hooks.nix hardcodes `prek install` without --git-dir
+            # or --overwrite, which respectively breaks in git worktrees (.git is
+            # a file) and triggers "migration mode" warnings on every reinstall.
+            # Shim install calls to inject both. prek <= 0.3.8 rejects --git-dir
+            # on `uninstall`, so only install gets the flag; uninstall becomes a
+            # best-effort no-op and the subsequent install --overwrite supersedes
+            # any stale hook.
+            prekShim = ''
+              _prek_cmd() {
+                local subcmd=$1
+                shift
+                local _prek_gitdir
+                if [ "$subcmd" = install ] \
+                  && _prek_gitdir=$(${lib.getExe pkgs.gitMinimal} rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+                  ${lib.getExe pkgs.prek} "$subcmd" --overwrite --git-dir "$_prek_gitdir" "$@"
+                else
+                  ${lib.getExe pkgs.prek} "$subcmd" "$@" 2>/dev/null || true
+                fi
+              }
+            '';
+            # prek 0.3.9+ rejects empty core.hooksPath (git resolves "" to ".");
+            # upstream sets it to "" before reinstalling. Patch to --unset.
+            patchedShellHook =
+              builtins.replaceStrings
+                [
+                  ''core.hooksPath ""''
+                  (lib.getExe pkgs.prek)
+                ]
+                [
+                  "--unset core.hooksPath 2>/dev/null || true #"
+                  "_prek_cmd"
+                ]
+                raw.shellHook;
+            ensureInstall = ''
+              if ${lib.getExe pkgs.gitMinimal} rev-parse --git-dir >/dev/null 2>&1; then
+                _prek_cmd install -c .pre-commit-config.yaml -t pre-commit >/dev/null
+                _prek_cmd install -c .pre-commit-config.yaml -t pre-push >/dev/null
+              fi
+            '';
+          in
+          raw
+          // {
+            shellHook = prekShim + patchedShellHook + ensureInstall;
           };
-        };
 
         # Fontconfig for VHS recordings using Hack Nerd Font.
         # JetBrains Mono's variable font files cause xterm.js in Chromium to
@@ -443,8 +490,8 @@
               if [ $# -eq 0 ]; then
                 set -- --all-files
               fi
-              pre-commit run "$@"
-              pre-commit run "$@" --hook-stage pre-push
+              prek run "$@"
+              prek run "$@" --hook-stage pre-push
             '';
           };
 
