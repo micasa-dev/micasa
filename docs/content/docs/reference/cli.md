@@ -35,6 +35,7 @@ micasa [database-path] [flags]
 - [`micasa config`](#micasa-config) -- Manage application configuration
 - [`micasa db`](#micasa-db) -- Read and write entity data
 - [`micasa demo`](#micasa-demo) -- Launch with sample data in an in-memory database
+- [`micasa eval`](#micasa-eval) -- Run chat-quality benchmarks against a fixture or user DB
 - [`micasa mcp`](#micasa-mcp) -- Run MCP server for LLM client access
 - [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
 - [`micasa query`](#micasa-query) -- Run a read-only SQL query
@@ -1642,6 +1643,61 @@ micasa demo [database-path] [flags]
 ### See also
 
 - [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+
+## micasa eval
+
+Parent command for chat-quality evaluations. See subcommands.
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-h`, `--help` | - | help for eval |
+
+### Subcommands
+
+- [`micasa eval fts`](#micasa-eval-fts) -- Run the FTS context-enrichment chat benchmark
+
+### See also
+
+- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+
+## micasa eval fts
+
+Run the FTS chat benchmark against the default fixture DB or a
+user-supplied SQLite file. Each question runs twice (FTS on and FTS off) and
+is graded by a deterministic regex rubric, with an optional LLM judge pass.
+
+The eval uses the chat config from the user's config file; --provider and
+--model override specific fields. Pointing --db at a real micasa DB sends
+prompts derived from household data to the configured provider -- if that
+provider is a cloud service, the data leaves the machine.
+
+### Usage
+
+```
+micasa eval fts [flags]
+```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--db` | - | path to a micasa SQLite DB (default: fixture) |
+| `--format` | - | report format: table (default when TTY), markdown, or json |
+| `-h`, `--help` | - | help for fts |
+| `--judge-model` | - | model for the LLM judge (default: same as --model) |
+| `--model` | - | override chat model from config |
+| `--no-ab` | - | run each question once (FTS on) instead of twice |
+| `--output` | - | write report to this file instead of stdout |
+| `--provider` | - | override chat provider from config |
+| `--questions` | `[]` | comma-separated names of questions to run (default: all) |
+| `--skip-judge` | - | deterministic rubric only; skip the LLM judge |
+| `--strict` | - | exit non-zero on per-question rubric regression (completed on both arms) |
+
+### See also
+
+- [`micasa eval`](#micasa-eval) -- Run chat-quality benchmarks against a fixture or user DB
 
 ## micasa mcp
 

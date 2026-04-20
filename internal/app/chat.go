@@ -17,7 +17,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/micasa-dev/micasa/internal/config"
-	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/micasa-dev/micasa/internal/llm"
 	ollamaPull "github.com/micasa-dev/micasa/internal/ollama"
 )
@@ -351,12 +350,12 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 	return func() tea.Msg {
 		// Build schema info and column hints inside the goroutine to avoid
 		// blocking the UI thread with DB queries.
-		tables := buildTableInfoFrom(store)
+		tables := llm.BuildTableInfo(store)
 		columnHints := ""
 		if store != nil {
 			columnHints = store.ColumnHints()
 		}
-		sqlPrompt := llm.BuildSQLPrompt(tables, time.Now(), columnHints, extraContext)
+		sqlPrompt := llm.BuildSQLPrompt(tables, time.Now(), columnHints, "", extraContext)
 
 		// Build conversation history: system + all previous user/assistant exchanges + current query.
 		messages := []llm.Message{
@@ -779,6 +778,7 @@ func (m *Model) handleSQLResult(msg sqlResultMsg) tea.Cmd {
 		msg.SQL,
 		resultsTable,
 		time.Now(),
+		"",
 		m.chatCfg.ExtraContext,
 	)
 
@@ -1088,6 +1088,7 @@ func (m *Model) buildFallbackMessages(question string) []llm.Message {
 		tables,
 		dataDump,
 		time.Now(),
+		"",
 		m.chatCfg.ExtraContext,
 	)
 
@@ -1136,37 +1137,7 @@ func (m *Model) buildConversationHistory() []llm.Message {
 // buildTableInfo queries the database schema and returns it in the format
 // the prompt builder expects.
 func (m *Model) buildTableInfo() []llm.TableInfo {
-	return buildTableInfoFrom(m.store)
-}
-
-// buildTableInfoFrom queries schema metadata from the store. Extracted so it
-// can be called from background goroutines without holding a Model reference.
-func buildTableInfoFrom(store *data.Store) []llm.TableInfo {
-	if store == nil {
-		return nil
-	}
-	names, err := store.TableNames()
-	if err != nil {
-		return nil
-	}
-	var tables []llm.TableInfo
-	for _, name := range names {
-		cols, err := store.TableColumns(name)
-		if err != nil {
-			continue
-		}
-		t := llm.TableInfo{Name: name}
-		for _, c := range cols {
-			t.Columns = append(t.Columns, llm.ColumnInfo{
-				Name:    c.Name,
-				Type:    c.Type,
-				NotNull: c.NotNull,
-				PK:      c.PK > 0,
-			})
-		}
-		tables = append(tables, t)
-	}
-	return tables
+	return llm.BuildTableInfo(m.store)
 }
 
 // waitForChunk returns a Cmd that blocks until the next chunk arrives on the

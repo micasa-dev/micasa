@@ -7,8 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -44,24 +42,6 @@ func TestExtractExitCodeExitError(t *testing.T) {
 func TestExtractExitCodeRegularError(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, 1, extractExitCode(errors.New("boom")))
-}
-
-// --- writerIsTerminal ---
-
-func TestWriterIsTerminal(t *testing.T) {
-	t.Parallel()
-	// bytes.Buffer is not a file
-	var buf bytes.Buffer
-	assert.False(t, writerIsTerminal(&buf))
-
-	// io.Discard is not a file
-	assert.False(t, writerIsTerminal(io.Discard))
-
-	// Temp file is an *os.File but not a terminal
-	f, err := os.CreateTemp(t.TempDir(), "tty-test")
-	require.NoError(t, err)
-	defer func() { _ = f.Close() }()
-	assert.False(t, writerIsTerminal(f))
 }
 
 // --- text output ---

@@ -14,18 +14,10 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
-	"github.com/charmbracelet/x/term"
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/termio"
 	"github.com/spf13/cobra"
 )
-
-// writerIsTerminal reports whether w is an *os.File backed by a terminal.
-// Any non-file writer (bytes.Buffer, io.Pipe, custom writers) is treated
-// as non-terminal so styled output never leaks to non-TTY destinations.
-func writerIsTerminal(w io.Writer) bool {
-	f, ok := w.(*os.File)
-	return ok && term.IsTerminal(f.Fd())
-}
 
 type statusOpts struct {
 	asJSON  bool
@@ -67,7 +59,7 @@ shell prompts, and status bar widgets.`,
 			}
 			opts.isDark = lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
 			out := cmd.OutOrStdout()
-			opts.noStyle = !writerIsTerminal(out)
+			opts.noStyle = !termio.IsTerminal(out)
 			store, err := openExisting(dbPathFromEnvOrArg(args))
 			if err != nil {
 				return err

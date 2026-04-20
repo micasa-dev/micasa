@@ -580,12 +580,12 @@ func TestBuildFallbackMessagesNoHistory(t *testing.T) {
 	assert.Equal(t, "question", msgs[1].Content)
 }
 
-// --- buildTableInfo / buildTableInfoFrom ---
+// --- buildTableInfo / llm.BuildTableInfo ---
 
 func TestBuildTableInfoFromRealStore(t *testing.T) {
 	t.Parallel()
 	m := newTestModelWithStore(t)
-	tables := buildTableInfoFrom(m.store)
+	tables := llm.BuildTableInfo(m.store)
 	require.NotEmpty(t, tables, "should return at least one table from seeded store")
 
 	var hasProjects bool
