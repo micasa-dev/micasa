@@ -208,7 +208,247 @@ func (s *Store) setupEntitiesFTS() error {
 		return fmt.Errorf("create entities FTS table: %w", err)
 	}
 
-	return s.populateEntitiesFTS()
+	if err := s.populateEntitiesFTS(); err != nil {
+		return err
+	}
+	return s.installEntitiesFTSTriggers()
+}
+
+// installEntitiesFTSTriggers installs the AFTER INSERT/UPDATE/DELETE triggers
+// that keep entities_fts in sync with source-table writes. Parent-table _au
+// triggers get companion cascade triggers that refresh child FTS rows whose
+// entity_name embeds parent fields (project/vendor title → quote.entity_name,
+// maintenance item name → service_log.entity_name).
+//
+// Triggers are DROPped then CREATEd, so upgrades and schema drift self-heal
+// on every app open. Soft-deleted parents are filtered out of cascade JOINs
+// so the child's entity_name degrades when the parent becomes invisible.
+func (s *Store) installEntitiesFTSTriggers() error {
+	stmts := collectEntitiesFTSTriggerSQL()
+	for _, stmt := range stmts {
+		if err := s.db.Exec(stmt).Error; err != nil {
+			return fmt.Errorf("install entities FTS trigger: %w\nSQL: %s", err, stmt)
+		}
+	}
+	return nil
+}
+
+// collectEntitiesFTSTriggerSQL returns all DROP + CREATE statements needed to
+// install the entities_fts triggers. Order: drop every known trigger first
+// (so re-installation is idempotent), then create.
+func collectEntitiesFTSTriggerSQL() []string {
+	var stmts []string
+
+	// Own-row triggers for every source table.
+	for _, spec := range ownRowSpecs() {
+		stmts = append(stmts, ownRowTriggerSQL(spec)...)
+	}
+
+	// Parent → child cascade triggers.
+	stmts = append(stmts, parentCascadeQuoteSQL(TableProjects, ColProjectID)...)
+	stmts = append(stmts, parentCascadeQuoteSQL(TableVendors, ColVendorID)...)
+	stmts = append(stmts, maintenanceCascadeServiceLogSQL()...)
+
+	return stmts
+}
+
+// ownRowSpec describes one source table's own-row trigger config.
+type ownRowSpec struct {
+	table      string
+	entityType string
+	nameExpr   string // SQL expression for entity_name; uses NEW.<col>
+	textExpr   string // SQL expression for entity_text
+}
+
+func ownRowSpecs() []ownRowSpec {
+	col := func(c string) string { return "NEW." + c }
+	coalesceNew := func(c string) string { return "COALESCE(NEW." + c + ", '')" }
+
+	return []ownRowSpec{
+		{
+			table:      TableProjects,
+			entityType: DeletionEntityProject,
+			nameExpr:   col(ColTitle),
+			textExpr: col(ColTitle) + " || ' ' || " + coalesceNew(ColDescription) +
+				" || ' ' || " + coalesceNew(ColStatus),
+		},
+		{
+			table:      TableVendors,
+			entityType: DeletionEntityVendor,
+			nameExpr:   col(ColName),
+			textExpr: col(ColName) + " || ' ' || " + coalesceNew(ColContactName) +
+				" || ' ' || " + coalesceNew(ColNotes),
+		},
+		{
+			table:      TableAppliances,
+			entityType: DeletionEntityAppliance,
+			nameExpr:   col(ColName),
+			textExpr: col(ColName) + " || ' ' || " + coalesceNew(ColBrand) +
+				" || ' ' || " + coalesceNew(ColModelNumber) +
+				" || ' ' || " + coalesceNew(ColLocation) +
+				" || ' ' || " + coalesceNew(ColNotes),
+		},
+		{
+			table:      TableMaintenanceItems,
+			entityType: DeletionEntityMaintenance,
+			nameExpr:   col(ColName),
+			textExpr: col(ColName) + " || ' ' || " + coalesceNew(ColNotes) +
+				" || ' ' || " + coalesceNew(ColSeason),
+		},
+		{
+			table:      TableIncidents,
+			entityType: DeletionEntityIncident,
+			nameExpr:   col(ColTitle),
+			textExpr: col(ColTitle) + " || ' ' || " + coalesceNew(ColDescription) +
+				" || ' ' || " + coalesceNew(ColLocation) +
+				" || ' ' || " + coalesceNew(ColNotes) +
+				" || ' ' || " + coalesceNew(ColSeverity),
+		},
+		{
+			// Service log entries: name comes from the joined maintenance_item.
+			// Soft-deleted maintenance items are filtered out so the SLE's
+			// entity_name blanks instead of carrying stale text.
+			table:      TableServiceLogEntries,
+			entityType: DeletionEntityServiceLog,
+			nameExpr: "COALESCE((SELECT " + ColName +
+				" FROM " + TableMaintenanceItems +
+				" WHERE " + ColID + " = NEW." + ColMaintenanceItemID +
+				" AND " + ColDeletedAt + " IS NULL), '')",
+			textExpr: coalesceNew(ColNotes),
+		},
+		{
+			// Quotes: entity_name is "<project_title> - <vendor_name>".
+			// Both parents filtered for soft-delete.
+			table:      TableQuotes,
+			entityType: DeletionEntityQuote,
+			nameExpr: "COALESCE((SELECT " + ColTitle +
+				" FROM " + TableProjects +
+				" WHERE " + ColID + " = NEW." + ColProjectID +
+				" AND " + ColDeletedAt + " IS NULL), '')" +
+				" || ' - ' || " +
+				"COALESCE((SELECT " + ColName +
+				" FROM " + TableVendors +
+				" WHERE " + ColID + " = NEW." + ColVendorID +
+				" AND " + ColDeletedAt + " IS NULL), '')",
+			textExpr: coalesceNew(ColNotes),
+		},
+	}
+}
+
+// ownRowTriggerSQL returns DROP + CREATE statements for one source table's
+// AI / AU / AD triggers. The AU trigger deletes the old FTS row and
+// re-inserts it only when the row is still visible (not soft-deleted).
+func ownRowTriggerSQL(spec ownRowSpec) []string {
+	r := strings.NewReplacer(
+		"{TABLE}", spec.table,
+		"{FTS}", tableEntitiesFTS,
+		"{ENTITY}", spec.entityType,
+		"{ID}", ColID,
+		"{DEL}", ColDeletedAt,
+		"{NAME_EXPR}", spec.nameExpr,
+		"{TEXT_EXPR}", spec.textExpr,
+	)
+	return []string{
+		r.Replace(`DROP TRIGGER IF EXISTS {TABLE}_fts_ai`),
+		r.Replace(`DROP TRIGGER IF EXISTS {TABLE}_fts_au`),
+		r.Replace(`DROP TRIGGER IF EXISTS {TABLE}_fts_ad`),
+		r.Replace(`CREATE TRIGGER {TABLE}_fts_ai AFTER INSERT ON {TABLE}
+			WHEN NEW.{DEL} IS NULL
+			BEGIN
+				INSERT INTO {FTS} (entity_type, entity_id, entity_name, entity_text)
+				VALUES ('{ENTITY}', NEW.{ID}, {NAME_EXPR}, {TEXT_EXPR});
+			END`),
+		r.Replace(`CREATE TRIGGER {TABLE}_fts_au AFTER UPDATE ON {TABLE}
+			BEGIN
+				DELETE FROM {FTS} WHERE entity_type = '{ENTITY}' AND entity_id = OLD.{ID};
+				INSERT INTO {FTS} (entity_type, entity_id, entity_name, entity_text)
+				SELECT '{ENTITY}', NEW.{ID}, {NAME_EXPR}, {TEXT_EXPR}
+				WHERE NEW.{DEL} IS NULL;
+			END`),
+		r.Replace(`CREATE TRIGGER {TABLE}_fts_ad AFTER DELETE ON {TABLE}
+			BEGIN
+				DELETE FROM {FTS} WHERE entity_type = '{ENTITY}' AND entity_id = OLD.{ID};
+			END`),
+	}
+}
+
+// parentCascadeQuoteSQL returns DROP + CREATE statements for a cascade
+// trigger that refreshes quote FTS rows when their parent (project or
+// vendor) is updated. parentTable is projects or vendors; parentFK is the
+// FK column on quotes pointing to that parent.
+func parentCascadeQuoteSQL(parentTable, parentFK string) []string {
+	triggerName := parentTable + "_fts_au_cascade_quotes"
+	r := strings.NewReplacer(
+		"{TRIGGER}", triggerName,
+		"{PARENT_TABLE}", parentTable,
+		"{PARENT_ID}", ColID,
+		"{FTS}", tableEntitiesFTS,
+		"{QUOTE}", DeletionEntityQuote,
+		"{PARENT_FK}", parentFK,
+		"{Q_TABLE}", TableQuotes,
+		"{Q_ID}", ColID,
+		"{P_TABLE}", TableProjects,
+		"{P_FK}", ColProjectID,
+		"{V_TABLE}", TableVendors,
+		"{V_FK}", ColVendorID,
+		"{P_NAME}", ColTitle,
+		"{V_NAME}", ColName,
+		"{Q_NOTES}", ColNotes,
+		"{DEL}", ColDeletedAt,
+	)
+	return []string{
+		r.Replace(`DROP TRIGGER IF EXISTS {TRIGGER}`),
+		r.Replace(`CREATE TRIGGER {TRIGGER} AFTER UPDATE ON {PARENT_TABLE}
+			BEGIN
+				DELETE FROM {FTS}
+				WHERE entity_type = '{QUOTE}'
+				  AND entity_id IN (SELECT {Q_ID} FROM {Q_TABLE} WHERE {PARENT_FK} = OLD.{PARENT_ID});
+				INSERT INTO {FTS} (entity_type, entity_id, entity_name, entity_text)
+				SELECT '{QUOTE}', q.{Q_ID},
+				       COALESCE(p.{P_NAME}, '') || ' - ' || COALESCE(v.{V_NAME}, ''),
+				       COALESCE(q.{Q_NOTES}, '')
+				FROM {Q_TABLE} q
+				LEFT JOIN {P_TABLE} p ON q.{P_FK} = p.{PARENT_ID} AND p.{DEL} IS NULL
+				LEFT JOIN {V_TABLE} v ON q.{V_FK} = v.{PARENT_ID} AND v.{DEL} IS NULL
+				WHERE q.{PARENT_FK} = NEW.{PARENT_ID} AND q.{DEL} IS NULL;
+			END`),
+	}
+}
+
+// maintenanceCascadeServiceLogSQL installs the maintenance_items → SLE
+// cascade trigger. When a maintenance item is updated (including soft-delete
+// via deleted_at), every SLE referencing it has its FTS row rebuilt.
+func maintenanceCascadeServiceLogSQL() []string {
+	triggerName := TableMaintenanceItems + "_fts_au_cascade_service_log"
+	r := strings.NewReplacer(
+		"{TRIGGER}", triggerName,
+		"{M_TABLE}", TableMaintenanceItems,
+		"{M_ID}", ColID,
+		"{M_NAME}", ColName,
+		"{FTS}", tableEntitiesFTS,
+		"{SLE}", DeletionEntityServiceLog,
+		"{S_TABLE}", TableServiceLogEntries,
+		"{S_ID}", ColID,
+		"{S_FK}", ColMaintenanceItemID,
+		"{S_NOTES}", ColNotes,
+		"{DEL}", ColDeletedAt,
+	)
+	return []string{
+		r.Replace(`DROP TRIGGER IF EXISTS {TRIGGER}`),
+		r.Replace(`CREATE TRIGGER {TRIGGER} AFTER UPDATE ON {M_TABLE}
+			BEGIN
+				DELETE FROM {FTS}
+				WHERE entity_type = '{SLE}'
+				  AND entity_id IN (SELECT {S_ID} FROM {S_TABLE} WHERE {S_FK} = OLD.{M_ID});
+				INSERT INTO {FTS} (entity_type, entity_id, entity_name, entity_text)
+				SELECT '{SLE}', s.{S_ID},
+				       COALESCE(m.{M_NAME}, ''),
+				       COALESCE(s.{S_NOTES}, '')
+				FROM {S_TABLE} s
+				LEFT JOIN {M_TABLE} m ON s.{S_FK} = m.{M_ID} AND m.{DEL} IS NULL
+				WHERE s.{S_FK} = NEW.{M_ID} AND s.{DEL} IS NULL;
+			END`),
+	}
 }
 
 // populateEntitiesFTS inserts rows from each entity source table into the
@@ -274,6 +514,9 @@ func (s *Store) populateEntitiesFTS() error {
 				TableIncidents, ColDeletedAt),
 		},
 		{
+			// Soft-deleted maintenance_items are filtered from the JOIN so
+			// the SLE's entity_name blanks out, matching the cascade
+			// trigger's behavior when a parent becomes invisible.
 			"service_log_entries",
 			fmt.Sprintf(`INSERT INTO %s (entity_type, entity_id, entity_name, entity_text)
 				SELECT '%s', s.%s, COALESCE(m.%s, ''), COALESCE(s.%s, '')
@@ -287,6 +530,9 @@ func (s *Store) populateEntitiesFTS() error {
 				ColDeletedAt),
 		},
 		{
+			// Soft-deleted parents are filtered from the JOINs so the
+			// quote's entity_name degrades instead of carrying stale
+			// parent names -- same invariant the cascade triggers enforce.
 			"quotes",
 			fmt.Sprintf(`INSERT INTO %s (entity_type, entity_id, entity_name, entity_text)
 				SELECT '%s', q.%s,

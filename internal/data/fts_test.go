@@ -794,3 +794,374 @@ func TestRebuildFTSIndexRefreshesEntities(t *testing.T) {
 	require.Len(t, results, 1)
 	assert.Equal(t, "Later Project", results[0].EntityName)
 }
+
+// ---------------------------------------------------------------------------
+// Trigger tests: verify that AI / AU / AD triggers keep entities_fts in sync
+// with source-table writes without a manual setupEntitiesFTS rebuild.
+// ---------------------------------------------------------------------------
+
+func TestFTSTriggerInsertSurfacesProject(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	require.NoError(t, store.CreateProject(&Project{
+		Title:         "Greenhouse Build",
+		ProjectTypeID: types[0].ID,
+		Status:        ProjectStatusPlanned,
+	}))
+
+	results, err := store.SearchEntities("greenhouse")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, DeletionEntityProject, results[0].EntityType)
+	assert.Equal(t, "Greenhouse Build", results[0].EntityName)
+}
+
+func TestFTSTriggerUpdateSurfacesNewTitle(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	p := &Project{
+		Title:         "Old Title",
+		ProjectTypeID: types[0].ID,
+		Status:        ProjectStatusPlanned,
+	}
+	require.NoError(t, store.CreateProject(p))
+
+	p.Title = "Fresh Greenhouse"
+	require.NoError(t, store.UpdateProject(*p))
+
+	// Old token no longer surfaces.
+	oldResults, err := store.SearchEntities("old")
+	require.NoError(t, err)
+	assert.Empty(t, oldResults, "old title should be gone from FTS")
+
+	// New token surfaces.
+	newResults, err := store.SearchEntities("greenhouse")
+	require.NoError(t, err)
+	require.Len(t, newResults, 1)
+	assert.Equal(t, "Fresh Greenhouse", newResults[0].EntityName)
+}
+
+func TestFTSTriggerSoftDeleteRemovesRow(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	p := &Project{
+		Title:         "Transient Project",
+		ProjectTypeID: types[0].ID,
+		Status:        ProjectStatusPlanned,
+	}
+	require.NoError(t, store.CreateProject(p))
+
+	// Sanity: it's indexed.
+	before, err := store.SearchEntities("transient")
+	require.NoError(t, err)
+	require.Len(t, before, 1)
+
+	require.NoError(t, store.DeleteProject(p.ID))
+
+	after, err := store.SearchEntities("transient")
+	require.NoError(t, err)
+	assert.Empty(t, after, "soft-deleted project must not surface")
+}
+
+func TestFTSTriggerCascadeOnProjectRename(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	p := &Project{
+		Title:         "Kitchen Remodel",
+		ProjectTypeID: types[0].ID,
+		Status:        ProjectStatusPlanned,
+	}
+	require.NoError(t, store.CreateProject(p))
+
+	v := &Vendor{Name: "Pacific Plumbing"}
+	require.NoError(t, store.CreateVendor(v))
+
+	require.NoError(t, store.CreateQuote(&Quote{
+		ProjectID:  p.ID,
+		VendorID:   v.ID,
+		TotalCents: 1000,
+	}, *v))
+
+	// Rename the project.
+	p.Title = "Greenhouse Build"
+	require.NoError(t, store.UpdateProject(*p))
+
+	// The quote should now be findable by the new project name.
+	results, err := store.SearchEntities("greenhouse")
+	require.NoError(t, err)
+
+	var quoteFound bool
+	for _, r := range results {
+		if r.EntityType == DeletionEntityQuote {
+			quoteFound = true
+			break
+		}
+	}
+	assert.True(
+		t,
+		quoteFound,
+		"cascade should rebuild quote FTS with new project title; got %+v",
+		results,
+	)
+}
+
+func TestFTSTriggerCascadeOnVendorRename(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	p := &Project{
+		Title:         "Basement Refinish",
+		ProjectTypeID: types[0].ID,
+		Status:        ProjectStatusPlanned,
+	}
+	require.NoError(t, store.CreateProject(p))
+
+	v := &Vendor{Name: "Old Vendor Name"}
+	require.NoError(t, store.CreateVendor(v))
+
+	require.NoError(t, store.CreateQuote(&Quote{
+		ProjectID:  p.ID,
+		VendorID:   v.ID,
+		TotalCents: 2000,
+	}, *v))
+
+	v.Name = "Aurora Plumbing"
+	require.NoError(t, store.UpdateVendor(*v))
+
+	results, err := store.SearchEntities("aurora")
+	require.NoError(t, err)
+
+	var quoteFound bool
+	for _, r := range results {
+		if r.EntityType == DeletionEntityQuote {
+			quoteFound = true
+			break
+		}
+	}
+	assert.True(
+		t,
+		quoteFound,
+		"cascade should rebuild quote FTS with new vendor name; got %+v",
+		results,
+	)
+}
+
+func TestFTSTriggerCascadeOnMaintenanceRename(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	m := &MaintenanceItem{
+		Name:           "Old Name",
+		CategoryID:     cats[0].ID,
+		IntervalMonths: 6,
+	}
+	require.NoError(t, store.CreateMaintenance(m))
+
+	sle := &ServiceLogEntry{
+		MaintenanceItemID: m.ID,
+		ServicedAt:        time.Now(),
+	}
+	require.NoError(t, store.CreateServiceLog(sle, Vendor{}))
+
+	m.Name = "Quarterly Furnace Check"
+	require.NoError(t, store.UpdateMaintenance(*m))
+
+	results, err := store.SearchEntities("furnace")
+	require.NoError(t, err)
+
+	var sleFound bool
+	for _, r := range results {
+		if r.EntityType == DeletionEntityServiceLog {
+			sleFound = true
+			break
+		}
+	}
+	assert.True(
+		t,
+		sleFound,
+		"cascade should rebuild SLE FTS with new maintenance item name; got %+v",
+		results,
+	)
+}
+
+func TestFTSTriggerCascadeOnProjectSoftDelete(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	types, _ := store.ProjectTypes()
+	p := &Project{
+		Title:         "Attic Insulation",
+		ProjectTypeID: types[0].ID,
+		Status:        ProjectStatusPlanned,
+	}
+	require.NoError(t, store.CreateProject(p))
+
+	v := &Vendor{Name: "Summit Insulators"}
+	require.NoError(t, store.CreateVendor(v))
+
+	require.NoError(t, store.CreateQuote(&Quote{
+		ProjectID:  p.ID,
+		VendorID:   v.ID,
+		TotalCents: 3000,
+	}, *v))
+
+	// App-level DeleteProject refuses soft-delete when a project has live
+	// quotes. The trigger's cascade path is still reachable via sync and
+	// future app changes, so exercise it via raw DML that bypasses the
+	// validation — the goal is to prove the DB trigger behaves correctly
+	// when the scenario arises, not to test DeleteProject's gating.
+	require.NoError(t, store.db.Exec(
+		"UPDATE "+TableProjects+" SET "+ColDeletedAt+" = ? WHERE "+ColID+" = ?",
+		time.Now(), p.ID,
+	).Error)
+
+	// Searching by vendor name should still surface the quote (with a
+	// degraded entity_name now that the project title is gone).
+	results, err := store.SearchEntities("summit")
+	require.NoError(t, err)
+
+	var quoteFound bool
+	for _, r := range results {
+		if r.EntityType == DeletionEntityQuote {
+			quoteFound = true
+			assert.NotContains(t, r.EntityName, "Attic Insulation",
+				"soft-deleted project title must not be in child entity_name")
+		}
+	}
+	assert.True(t, quoteFound, "quote should still surface via vendor name; got %+v", results)
+
+	// And searching by the now-gone project title should NOT find the quote.
+	attic, err := store.SearchEntities("attic")
+	require.NoError(t, err)
+	assert.Empty(t, attic, "soft-deleted project title should not surface via any entity")
+}
+
+func TestFTSTriggerHardDeleteMaintenanceCascadesSLE(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	m := &MaintenanceItem{
+		Name:           "Gutter Cleaning",
+		CategoryID:     cats[0].ID,
+		IntervalMonths: 12,
+	}
+	require.NoError(t, store.CreateMaintenance(m))
+
+	sle := &ServiceLogEntry{
+		MaintenanceItemID: m.ID,
+		ServicedAt:        time.Now(),
+		Notes:             "fall cleanup",
+	}
+	require.NoError(t, store.CreateServiceLog(sle, Vendor{}))
+
+	require.NoError(t, store.HardDeleteMaintenance(m.ID))
+
+	gutterResults, err := store.SearchEntities("gutter")
+	require.NoError(t, err)
+	assert.Empty(t, gutterResults, "maintenance item FTS row should be gone after hard delete")
+
+	fallResults, err := store.SearchEntities("fall")
+	require.NoError(t, err)
+	assert.Empty(t, fallResults, "child SLE FTS row should be gone via FK cascade + _ad trigger")
+}
+
+func TestFTSPopulateFiltersSoftDeletedMaintenanceInSLEJoin(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	cats, err := store.MaintenanceCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, cats)
+
+	m := &MaintenanceItem{
+		Name:           "Rebuild Maintenance Name",
+		CategoryID:     cats[0].ID,
+		IntervalMonths: 12,
+	}
+	require.NoError(t, store.CreateMaintenance(m))
+
+	sle := &ServiceLogEntry{
+		MaintenanceItemID: m.ID,
+		ServicedAt:        time.Now(),
+		Notes:             "still-alive notes",
+	}
+	require.NoError(t, store.CreateServiceLog(sle, Vendor{}))
+
+	// App-level DeleteMaintenance validation would reject this with a
+	// live SLE, so bypass via raw SQL to simulate the sync / future
+	// scenario where the parent arrives soft-deleted.
+	require.NoError(t, store.db.Exec(
+		"UPDATE "+TableMaintenanceItems+" SET "+ColDeletedAt+" = ? WHERE "+ColID+" = ?",
+		time.Now(), m.ID,
+	).Error)
+
+	// Force the initial-rebuild path.
+	require.NoError(t, store.setupEntitiesFTS())
+
+	results, err := store.SearchEntities("rebuild")
+	require.NoError(t, err)
+	for _, r := range results {
+		if r.EntityType == DeletionEntityServiceLog {
+			assert.NotContains(t, r.EntityName, "Rebuild Maintenance Name",
+				"initial rebuild must not carry soft-deleted maintenance name into SLE FTS")
+		}
+	}
+}
+
+func TestFTSPopulateFiltersSoftDeletedParentsInQuoteJoin(t *testing.T) {
+	t.Parallel()
+	store := newTestStore(t)
+
+	// Create project + vendor + quote, soft-delete the project via raw
+	// SQL (the app-level DeleteProject rejects parents with live quotes),
+	// then run the initial rebuild path. The quote's FTS row must not
+	// carry the deleted project's title.
+	types, _ := store.ProjectTypes()
+	p := &Project{
+		Title:         "Rebuild Project Title",
+		ProjectTypeID: types[0].ID,
+		Status:        ProjectStatusPlanned,
+	}
+	require.NoError(t, store.CreateProject(p))
+	v := &Vendor{Name: "Rebuild Vendor Name"}
+	require.NoError(t, store.CreateVendor(v))
+	require.NoError(t, store.CreateQuote(&Quote{
+		ProjectID:  p.ID,
+		VendorID:   v.ID,
+		TotalCents: 1000,
+	}, *v))
+
+	require.NoError(t, store.db.Exec(
+		"UPDATE "+TableProjects+" SET "+ColDeletedAt+" = ? WHERE "+ColID+" = ?",
+		time.Now(), p.ID,
+	).Error)
+
+	// Force the initial-rebuild path (mirrors what happens on app open).
+	require.NoError(t, store.setupEntitiesFTS())
+
+	rebuild, err := store.SearchEntities("rebuild")
+	require.NoError(t, err)
+	for _, r := range rebuild {
+		if r.EntityType == DeletionEntityQuote {
+			assert.NotContains(t, r.EntityName, "Rebuild Project Title",
+				"initial rebuild must not carry soft-deleted project title into quote FTS")
+		}
+	}
+}
