@@ -396,10 +396,8 @@ jobs:
           egress-policy: block
           disable-telemetry: true
           allowed-endpoints: >
-            1ede90a8395416f286ba9f692dc6bacf.r2.cloudflarestorage.com:443
             api.github.com:443
             auth.docker.io:443
-            docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com:443
             github.com:443
             gcr.io:443
             production.cloudflare.docker.com:443
@@ -407,6 +405,7 @@ jobs:
             registry-1.docker.io:443
             storage.googleapis.com:443
             sum.golang.org:443
+            *.r2.cloudflarestorage.com:443
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
