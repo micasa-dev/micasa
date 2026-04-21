@@ -353,6 +353,12 @@ type scopedHandler struct {
 	inlineEditFn func(*Model, string, int) error // nil = TabHandler.InlineEdit
 	startAddFn   func(*Model) error              // nil = TabHandler.StartAddForm
 	submitFn     func(*Model) error              // nil = TabHandler.SubmitForm
+
+	// Document scope (set only by newEntityDocumentHandler). Exposed so
+	// flows like magic-add can pre-populate the entity on a quick form
+	// when the active handler represents a scoped document view.
+	entityKind string
+	entityID   string
 }
 
 func (s scopedHandler) Load(
@@ -633,5 +639,7 @@ func newEntityDocumentHandler(entityKind string, entityID string) scopedHandler 
 		submitFn: func(m *Model) error {
 			return m.submitScopedDocumentForm(entityKind, entityID)
 		},
+		entityKind: entityKind,
+		entityID:   entityID,
 	}
 }

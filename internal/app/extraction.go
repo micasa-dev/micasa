@@ -874,14 +874,20 @@ func (m *Model) acceptDeferredExtraction() error {
 	doc := ex.pendingDoc
 
 	// Apply fields from "create documents" operations to the pending doc.
+	// When the pending doc already has an entity scope (set by magic-add
+	// in an entity drill-down), preserve it: the user's explicit scope
+	// wins over any LLM guess.
+	preScoped := doc.EntityKind != ""
 	for _, op := range ex.operations {
 		if op.Table == tableDocuments {
 			applyStringField(op.Data, "title", &doc.Title)
 			applyStringField(op.Data, "notes", &doc.Notes)
-			applyStringField(op.Data, "entity_kind", &doc.EntityKind)
-			if v, ok := op.Data["entity_id"]; ok {
-				if n := extract.ParseStringID(v); n != "" {
-					doc.EntityID = n
+			if !preScoped {
+				applyStringField(op.Data, "entity_kind", &doc.EntityKind)
+				if v, ok := op.Data["entity_id"]; ok {
+					if n := extract.ParseStringID(v); n != "" {
+						doc.EntityID = n
+					}
 				}
 			}
 		}

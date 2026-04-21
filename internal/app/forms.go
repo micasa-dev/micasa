@@ -2395,8 +2395,17 @@ func (m *Model) startDocumentForm(entityKind string) error {
 // startQuickDocumentForm opens a minimal document form that only asks for a
 // file path. Title and notes are auto-filled by the extraction pipeline on
 // submit, making this the fast path for ingesting files.
+//
+// When invoked from an entity-scoped document drill-down, the parent
+// entity is pre-populated so the created document is attached to that
+// entity rather than left unscoped.
 func (m *Model) startQuickDocumentForm() {
 	values := &documentFormData{DeferCreate: true}
+	if tab := m.effectiveTab(); tab != nil {
+		if sh, ok := tab.Handler.(scopedHandler); ok && sh.entityKind != "" {
+			values.EntityRef = entityRef{Kind: sh.entityKind, ID: sh.entityID}
+		}
+	}
 	form := huh.NewForm(
 		huh.NewGroup(
 			m.newDocumentFilePicker("File to attach").
