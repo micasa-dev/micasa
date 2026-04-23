@@ -28,6 +28,13 @@
       "separateMinorPatch": false
     },
     {
+      "description": "Never bump indirect Go deps across majors. A new major is a different module path; nothing in this repo imports it, so go mod tidy just strips the new lines again.",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
       "description": "Group GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions"
