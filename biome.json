@@ -5,8 +5,7 @@
       "docs/static/js/*.js",
       "docs/data/*.json",
       "*.js",
-      "*.json",
-      ".github/winget-settings.json"
+      "*.json"
     ]
   },
   "formatter": {
