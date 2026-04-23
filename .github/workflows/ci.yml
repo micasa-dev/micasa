@@ -115,37 +115,66 @@ jobs:
         if: runner.os == 'macOS'
         run: echo "$(brew --prefix imagemagick-full)/bin" >> "$GITHUB_PATH"
 
-      # Microsoft.DesktopAppInstaller_8wekyb3d8bbwe is the package family
-      # name for winget in the Windows Store.
-      - name: Configure winget (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $settingsDir = "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState"
-          New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
-          Copy-Item .github\winget-settings.json "$settingsDir\settings.json"
-
+      # winget is not installed on the windows-11-arm runner image
+      # (https://github.com/actions/partner-runner-images/issues/95), so use
+      # direct downloads from the upstream release assets on both Windows
+      # architectures. The installers and the Poppler zip match what winget
+      # was resolving to previously.
       - name: Install extraction tools (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $flags = @('--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--silent', '--force')
-          winget install --id oschwartz10612.Poppler @flags
-          winget install --id tesseract-ocr.tesseract @flags
-          winget install --id ImageMagick.ImageMagick @flags
+          $ErrorActionPreference = 'Stop'
+          $arch = if ($env:RUNNER_ARCH -eq 'ARM64') { 'arm64' } else { 'x64' }
+          $downloadDir = Join-Path $env:RUNNER_TEMP 'extract-tools'
+          New-Item -ItemType Directory -Path $downloadDir -Force | Out-Null
+
+          function Invoke-SilentInstaller {
+            param([string]$Name, [string]$Url, [string[]]$Arguments)
+            $outFile = Join-Path $downloadDir (Split-Path $Url -Leaf)
+            Write-Host "Downloading $Name from $Url"
+            Invoke-WebRequest -Uri $Url -OutFile $outFile
+            Write-Host "Running: $outFile $($Arguments -join ' ')"
+            $proc = Start-Process -FilePath $outFile -ArgumentList $Arguments -Wait -PassThru
+            if ($proc.ExitCode -ne 0) {
+              throw "$Name installer exited with code $($proc.ExitCode)"
+            }
+          }
+
+          # Poppler: portable zip (arch-neutral; x64 binaries run under emulation on ARM64)
+          $popplerZip = Join-Path $downloadDir 'poppler.zip'
+          Write-Host "Downloading Poppler"
+          Invoke-WebRequest -Uri 'https://github.com/oschwartz10612/poppler-windows/releases/download/v25.07.0-0/Release-25.07.0-0.zip' -OutFile $popplerZip
+          Expand-Archive -Path $popplerZip -DestinationPath $downloadDir -Force
+
+          # Tesseract: NSIS installer (x64 only; runs under emulation on ARM64)
+          Invoke-SilentInstaller 'Tesseract' `
+            'https://github.com/tesseract-ocr/tesseract/releases/download/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe' `
+            @('/S')
+
+          # ImageMagick: Inno Setup installer (arch-specific native build)
+          Invoke-SilentInstaller 'ImageMagick' `
+            "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-19/ImageMagick-7.1.2-19-Q16-HDRI-${arch}-dll.exe" `
+            @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-')
 
       - name: Add extraction tools to PATH (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-          Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\oschwartz10612.Poppler_*\poppler-*\Library\bin" |
-            Select-Object -First 1 -ExpandProperty FullName |
-            Add-Content $env:GITHUB_PATH
+          $ErrorActionPreference = 'Stop'
+          $downloadDir = Join-Path $env:RUNNER_TEMP 'extract-tools'
+          $popplerBin = Get-ChildItem "$downloadDir\poppler-*\Library\bin" -Directory |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $popplerBin) { throw "Poppler bin directory not found under $downloadDir" }
+          Add-Content $env:GITHUB_PATH $popplerBin
           Add-Content $env:GITHUB_PATH "$env:ProgramFiles\Tesseract-OCR"
-          Get-ChildItem "$env:ProgramFiles\ImageMagick-*" -Directory |
-            Select-Object -First 1 -ExpandProperty FullName |
-            Add-Content $env:GITHUB_PATH
+          # Prefer the most recently modified ImageMagick dir in case the runner
+          # image ships one preinstalled (e.g. windows-11-arm).
+          $imageMagickDir = Get-ChildItem "$env:ProgramFiles\ImageMagick-*" -Directory |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $imageMagickDir) { throw "ImageMagick directory not found under $env:ProgramFiles" }
+          Add-Content $env:GITHUB_PATH $imageMagickDir
 
       - name: Generate sample PDF fixture
         shell: bash
