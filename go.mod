@@ -49,6 +49,7 @@ require (
 	github.com/muesli/roff v0.1.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/api v0.276.0 // indirect
 )
 
