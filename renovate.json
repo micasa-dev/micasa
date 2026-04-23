@@ -18,11 +18,14 @@
       "pinDigests": true
     },
     {
-      "description": "Group all indirect Go dependencies",
+      "description": "Group all indirect Go dependencies (major, minor, patch in one PR)",
       "matchManagers": ["gomod"],
       "matchDepTypes": ["indirect"],
       "groupName": "go-indirect",
-      "enabled": true
+      "enabled": true,
+      "separateMajorMinor": false,
+      "separateMultipleMajor": false,
+      "separateMinorPatch": false
     },
     {
       "description": "Group GitHub Actions updates",

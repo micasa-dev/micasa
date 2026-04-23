@@ -102,7 +102,7 @@ jobs:
           sed -i "s|vendorHash = \"sha256-[^\"]*\";|vendorHash = \"$fake_hash\";|" nix/package.nix
 
           output=$(nix build '.#micasa' 2>&1 || true)
-          new_hash=$(echo "$output" | grep -oP 'got:\s+\Ksha256-[A-Za-z0-9+/=]+' || true)
+          new_hash=$(echo "$output" | grep -oP 'got:\s+\Ksha256-[A-Za-z0-9+/=]+' | head -n1 || true)
 
           if [ -z "$new_hash" ]; then
             echo "::error::Failed to extract vendorHash from nix build output"
@@ -110,13 +110,17 @@ jobs:
             exit 1
           fi
 
+          # Restore a real hash before any early-return so the fake hash can
+          # never reach a commit. If old_hash == new_hash this substitutes the
+          # original value back in place of the fake.
+          sed -i "s|vendorHash = \"$fake_hash\";|vendorHash = \"$new_hash\";|" nix/package.nix
+
           if [ "$old_hash" = "$new_hash" ]; then
             echo "vendorHash unchanged ($old_hash), nothing to do"
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          sed -i "s|vendorHash = \"$fake_hash\";|vendorHash = \"$new_hash\";|" nix/package.nix
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify build
