@@ -21,7 +21,8 @@
       "description": "Group all indirect Go dependencies",
       "matchManagers": ["gomod"],
       "matchDepTypes": ["indirect"],
-      "groupName": "go-indirect"
+      "groupName": "go-indirect",
+      "enabled": true
     },
     {
       "description": "Group GitHub Actions updates",
