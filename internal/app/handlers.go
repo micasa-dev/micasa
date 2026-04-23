@@ -5,6 +5,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -421,6 +422,9 @@ func newApplianceMaintenanceHandler(applianceID string) scopedHandler {
 			return rows, meta, cellRows, nil
 		},
 		inlineEditFn: skipColEdit(parent, int(maintenanceColAppliance)), // skip Appliance column
+		startAddFn: func(m *Model) error {
+			return m.startMaintenanceFormScoped(applianceID)
+		},
 	}
 }
 
@@ -526,6 +530,13 @@ func newVendorQuoteHandler(vendorID string) scopedHandler {
 			return rows, meta, cellRows, nil
 		},
 		inlineEditFn: skipColEdit(parent, 2), // skip Vendor column
+		startAddFn: func(m *Model) error {
+			v, err := m.store.GetVendor(vendorID)
+			if err != nil {
+				return fmt.Errorf("load vendor: %w", err)
+			}
+			return m.startQuoteFormScoped("", v.Name)
+		},
 	}
 }
 
@@ -578,6 +589,9 @@ func newProjectQuoteHandler(projectID string) scopedHandler {
 			return rows, meta, cellRows, nil
 		},
 		inlineEditFn: skipColEdit(parent, 1), // skip Project column
+		startAddFn: func(m *Model) error {
+			return m.startQuoteFormScoped(projectID, "")
+		},
 	}
 }
 

@@ -102,3 +102,106 @@ func TestToggleSettledFilterIdentifiesProjectTabByFormKind(t *testing.T) {
 	assert.False(t, m.toggleSettledFilter(),
 		"settled filter must not fire in a non-project drill-down")
 }
+
+// TestApplianceMaintenanceDrilldownAddPrescopesAppliance ensures that
+// pressing "a" in an Appliance > Maintenance drill-down pre-populates
+// the parent appliance instead of defaulting to the first appliance in
+// the store. Without the fix, the drill-down context is lost as soon
+// as the add form opens.
+func TestApplianceMaintenanceDrilldownAddPrescopesAppliance(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	require.NoError(t, m.store.CreateAppliance(&data.Appliance{Name: "Decoy First"}))
+	require.NoError(t, m.store.CreateAppliance(&data.Appliance{Name: "Parent Appliance"}))
+	require.NoError(t, m.loadLookups())
+
+	appls, err := m.store.ListAppliances(false)
+	require.NoError(t, err)
+	require.Len(t, appls, 2)
+	var parentID string
+	for _, a := range appls {
+		if a.Name == "Parent Appliance" {
+			parentID = a.ID
+			break
+		}
+	}
+	require.NotEmpty(t, parentID)
+
+	require.NoError(t, m.openApplianceMaintenanceDetail(parentID, "Parent Appliance"))
+	m.enterEditMode()
+	sendKey(m, "a")
+	require.Equal(t, modeForm, m.mode)
+
+	fd, ok := m.fs.formData.(*maintenanceFormData)
+	require.True(t, ok, "expected maintenance form data")
+	assert.Equal(t, parentID, fd.ApplianceID,
+		"add form in Appliance > Maintenance must pre-scope to the drilled-into appliance")
+}
+
+// TestProjectQuoteDrilldownAddPrescopesProject ensures Project > Quotes
+// drill-down pre-selects the parent project on the quote add form.
+// Two projects are created so the parent is NOT the default (most
+// recently updated) project returned by ListProjects.
+func TestProjectQuoteDrilldownAddPrescopesProject(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	types, err := m.store.ProjectTypes()
+	require.NoError(t, err)
+	require.NoError(t, m.store.CreateProject(&data.Project{
+		Title: "Parent Project", ProjectTypeID: types[0].ID, Status: data.ProjectStatusPlanned,
+	}))
+	// Create the decoy AFTER the parent so it sorts ahead in
+	// ListProjects (order: updated_at desc), ensuring the default
+	// options[0] is the decoy and the test must rely on pre-scoping.
+	require.NoError(t, m.store.CreateProject(&data.Project{
+		Title: "Decoy Project", ProjectTypeID: types[0].ID, Status: data.ProjectStatusPlanned,
+	}))
+	projects, err := m.store.ListProjects(false)
+	require.NoError(t, err)
+	require.Len(t, projects, 2)
+	var parentID string
+	for _, p := range projects {
+		if p.Title == "Parent Project" {
+			parentID = p.ID
+			break
+		}
+	}
+	require.NotEmpty(t, parentID)
+
+	require.NoError(t, m.openProjectQuoteDetail(parentID, "Parent Project"))
+	m.enterEditMode()
+	sendKey(m, "a")
+	require.Equal(t, modeForm, m.mode)
+
+	fd, ok := m.fs.formData.(*quoteFormData)
+	require.True(t, ok, "expected quote form data")
+	assert.Equal(t, parentID, fd.ProjectID,
+		"add form in Project > Quotes must pre-scope to the drilled-into project")
+}
+
+// TestVendorQuoteDrilldownAddPrescopesVendor ensures Vendor > Quotes
+// drill-down pre-fills the vendor name on the quote add form.
+func TestVendorQuoteDrilldownAddPrescopesVendor(t *testing.T) {
+	t.Parallel()
+	m := newTestModelWithStore(t)
+	types, err := m.store.ProjectTypes()
+	require.NoError(t, err)
+	require.NoError(t, m.store.CreateProject(&data.Project{
+		Title: "Any Project", ProjectTypeID: types[0].ID, Status: data.ProjectStatusPlanned,
+	}))
+	require.NoError(t, m.store.CreateVendor(&data.Vendor{Name: "Parent Vendor"}))
+	vendors, err := m.store.ListVendors(false)
+	require.NoError(t, err)
+	require.NotEmpty(t, vendors)
+	parentID := vendors[0].ID
+
+	require.NoError(t, m.openVendorQuoteDetail(parentID, "Parent Vendor"))
+	m.enterEditMode()
+	sendKey(m, "a")
+	require.Equal(t, modeForm, m.mode)
+
+	fd, ok := m.fs.formData.(*quoteFormData)
+	require.True(t, ok, "expected quote form data")
+	assert.Equal(t, "Parent Vendor", fd.VendorName,
+		"add form in Vendor > Quotes must pre-fill the drilled-into vendor name")
+}
