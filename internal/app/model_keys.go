@@ -447,8 +447,10 @@ func (m *Model) handleNormalEnter() error {
 		return nil
 	}
 
-	// On the Documents tab, hint at the open-file shortcut.
-	if tab.Kind == tabDocuments {
+	// On any document tab (top-level or drill-down), hint at the open-file
+	// shortcut. Drill-down tabs inherit the parent's Kind, so rely on the
+	// semantic helper rather than a literal Kind comparison.
+	if tab.isDocumentTab() {
 		m.setStatusInfo("Press o to open.")
 		return nil
 	}
@@ -464,7 +466,10 @@ func (m *Model) handleEditKeys(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		m.startAddForm()
 		return m.formInitCmd(), true
 	case key.Matches(msg, m.keys.QuickAdd):
-		if tab := m.effectiveTab(); tab != nil && tab.Kind == tabDocuments {
+		// Magic-add works on any document tab, including entity-scoped
+		// drill-downs (Appliances > Docs, Projects > Docs, etc.), which
+		// inherit the parent tab's Kind.
+		if tab := m.effectiveTab(); tab != nil && tab.isDocumentTab() {
 			m.startQuickDocumentForm()
 			return m.formInitCmd(), true
 		}

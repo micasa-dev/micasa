@@ -5,6 +5,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -353,6 +354,12 @@ type scopedHandler struct {
 	inlineEditFn func(*Model, string, int) error // nil = TabHandler.InlineEdit
 	startAddFn   func(*Model) error              // nil = TabHandler.StartAddForm
 	submitFn     func(*Model) error              // nil = TabHandler.SubmitForm
+
+	// Document scope (set only by newEntityDocumentHandler). Exposed so
+	// flows like magic-add can pre-populate the entity on a quick form
+	// when the active handler represents a scoped document view.
+	entityKind string
+	entityID   string
 }
 
 func (s scopedHandler) Load(
@@ -415,6 +422,9 @@ func newApplianceMaintenanceHandler(applianceID string) scopedHandler {
 			return rows, meta, cellRows, nil
 		},
 		inlineEditFn: skipColEdit(parent, int(maintenanceColAppliance)), // skip Appliance column
+		startAddFn: func(m *Model) error {
+			return m.startMaintenanceFormScoped(applianceID)
+		},
 	}
 }
 
@@ -520,6 +530,13 @@ func newVendorQuoteHandler(vendorID string) scopedHandler {
 			return rows, meta, cellRows, nil
 		},
 		inlineEditFn: skipColEdit(parent, 2), // skip Vendor column
+		startAddFn: func(m *Model) error {
+			v, err := m.store.GetVendor(vendorID)
+			if err != nil {
+				return fmt.Errorf("load vendor: %w", err)
+			}
+			return m.startQuoteFormScoped("", v.Name)
+		},
 	}
 }
 
@@ -572,6 +589,9 @@ func newProjectQuoteHandler(projectID string) scopedHandler {
 			return rows, meta, cellRows, nil
 		},
 		inlineEditFn: skipColEdit(parent, 1), // skip Project column
+		startAddFn: func(m *Model) error {
+			return m.startQuoteFormScoped(projectID, "")
+		},
 	}
 }
 
@@ -633,5 +653,7 @@ func newEntityDocumentHandler(entityKind string, entityID string) scopedHandler 
 		submitFn: func(m *Model) error {
 			return m.submitScopedDocumentForm(entityKind, entityID)
 		},
+		entityKind: entityKind,
+		entityID:   entityID,
 	}
 }

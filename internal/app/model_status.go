@@ -108,7 +108,7 @@ func (m *Model) toggleDeleteSelected() {
 		if tab.LastDeleted != nil && *tab.LastDeleted == meta.ID {
 			tab.LastDeleted = nil
 		}
-		if tab.Kind == tabIncidents {
+		if handlerFormKind(tab) == formIncident {
 			m.setStatusInfo("Reopened.")
 		} else {
 			m.setStatusInfo("Restored.")
@@ -124,7 +124,7 @@ func (m *Model) toggleDeleteSelected() {
 	if !tab.showDeletedExplicit {
 		tab.ShowDeleted = true
 	}
-	if tab.Kind == tabIncidents {
+	if handlerFormKind(tab) == formIncident {
 		m.setStatusInfo("Resolved. Press d to reopen.")
 	} else {
 		m.setStatusInfo("Deleted. Press d to restore.")
@@ -132,17 +132,31 @@ func (m *Model) toggleDeleteSelected() {
 	m.surfaceError(m.reloadEffectiveTab())
 }
 
+// handlerFormKind returns the FormKind of a tab's handler, or formNone
+// when the tab or its handler is nil. Prefer this over tab.Kind when
+// identifying entity semantics, because drill-down tabs inherit the
+// parent tab's Kind rather than the entity's kind.
+func handlerFormKind(tab *Tab) FormKind {
+	if tab == nil || tab.Handler == nil {
+		return formNone
+	}
+	return tab.Handler.FormKind()
+}
+
 func (m *Model) promptHardDelete() {
 	tab := m.effectiveTab()
 	if tab == nil {
 		return
 	}
-	switch tab.Kind {
-	case tabIncidents, tabMaintenance:
-	case tabProjects, tabQuotes, tabAppliances, tabVendors, tabDocuments:
+	kind := handlerFormKind(tab)
+	switch kind {
+	case formIncident, formMaintenance:
+		// hard-deletable: continue
+	case formNone, formHouse, formProject, formQuote, formAppliance,
+		formServiceLog, formVendor, formDocument:
 		return
 	default:
-		panic(fmt.Sprintf("unhandled TabKind: %d", tab.Kind))
+		panic(fmt.Sprintf("unhandled FormKind: %d", kind))
 	}
 	meta, ok := m.selectedRowMeta()
 	if !ok {
@@ -150,7 +164,7 @@ func (m *Model) promptHardDelete() {
 		return
 	}
 	if !meta.Deleted {
-		if tab.Kind == tabIncidents {
+		if kind == formIncident {
 			m.setStatusError("Resolve the incident first (d), then permanently delete (D).")
 		} else {
 			m.setStatusError("Delete the item first (d), then permanently delete (D).")
@@ -167,7 +181,7 @@ func (m *Model) handleConfirmHardDelete(msg tea.KeyPressMsg) {
 		m.confirm = confirmNone
 		tab := m.effectiveTab()
 		var err error
-		if tab != nil && tab.Kind == tabMaintenance {
+		if handlerFormKind(tab) == formMaintenance {
 			err = m.store.HardDeleteMaintenance(m.hardDeleteID)
 		} else {
 			err = m.store.HardDeleteIncident(m.hardDeleteID)

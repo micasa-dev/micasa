@@ -283,7 +283,7 @@ func (m *Model) statusView() string {
 	}
 	if m.confirm == confirmHardDelete {
 		entity := "incident"
-		if tab := m.effectiveTab(); tab != nil && tab.Kind == tabMaintenance {
+		if handlerFormKind(m.effectiveTab()) == formMaintenance {
 			entity = "item"
 		}
 		prompt := m.styles.FormDirty().Render("Permanently delete this " + entity + "?")
