@@ -17,7 +17,7 @@ require (
 	github.com/itchyny/gojq v0.12.19
 	github.com/mark3labs/mcp-go v0.49.0
 	github.com/mozilla-ai/any-llm-go v0.9.0
-	github.com/nyaruka/phonenumbers v1.7.1
+	github.com/nyaruka/phonenumbers v1.7.2
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
