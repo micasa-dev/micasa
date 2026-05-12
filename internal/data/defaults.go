@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+// Special `default` struct-tag values: defaultTagNow resolves to time.Now()
+// for time.Time fields; defaultTagToday resolves to today's date (DateLayout)
+// for string fields.
+const (
+	defaultTagNow   = "now"
+	defaultTagToday = "today"
+)
+
 // ApplyDefaults sets zero-valued fields on the struct pointed to by v
 // to the values specified in their `default` struct tags. Fields that
 // are already non-zero are left untouched. Nested structs without a
@@ -22,7 +30,7 @@ import (
 //   - Nested structs: recursed into (no tag needed on the struct field itself)
 func ApplyDefaults(v any) {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
+	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
 		return
 	}
 
@@ -70,7 +78,7 @@ func StructDefault[T any](fieldName string) string {
 	if rt == nil {
 		return ""
 	}
-	if rt.Kind() == reflect.Ptr {
+	if rt.Kind() == reflect.Pointer {
 		rt = rt.Elem()
 	}
 	if rt.Kind() != reflect.Struct {
@@ -89,7 +97,7 @@ func setFieldDefault(field reflect.Value, tag string) {
 	//exhaustive:ignore // only handle types used in model/config defaults
 	switch field.Kind() {
 	case reflect.String:
-		if tag == "today" {
+		if tag == defaultTagToday {
 			field.SetString(time.Now().Format(DateLayout))
 		} else {
 			field.SetString(tag)
@@ -111,7 +119,7 @@ func setFieldDefault(field reflect.Value, tag string) {
 		}
 
 	case reflect.Struct:
-		if field.Type() == reflect.TypeFor[time.Time]() && tag == "now" {
+		if field.Type() == reflect.TypeFor[time.Time]() && tag == defaultTagNow {
 			field.Set(reflect.ValueOf(time.Now()))
 		}
 	}

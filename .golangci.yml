@@ -95,9 +95,11 @@ linters:
         path: _test\.go
         text: "G204|G704"
 
-      # goconst: repeated test fixture strings
+      # goconst: test-fixture strings (entity/document/category names, MIME
+      # types, SQLite type names, column-name map keys, ULIDs, dates)
+      # legitimately repeat across test cases
       - linters: [goconst]
-        path: internal/relay/(handler_suite|pgstore|stripe)_test\.go
+        path: _test\.go
 
       # unqueryvet: SELECT * in test SQL fixtures is intentional
       - linters: [unqueryvet]

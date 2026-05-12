@@ -34,6 +34,10 @@ type Currency struct {
 
 const nbsp = "\u00a0" // non-breaking space between number and suffix symbol
 
+// defaultCurrencyCode is the ISO 4217 fallback when no code is configured
+// or detectable.
+const defaultCurrencyCode = "USD"
+
 var (
 	ErrInvalidMoney  = errors.New("invalid money value")
 	ErrNegativeMoney = errors.New("negative money value")
@@ -44,7 +48,7 @@ var (
 // number grouping, decimal separator, and symbol placement.
 func Resolve(code string, tag language.Tag) (Currency, error) {
 	if code == "" {
-		code = "USD"
+		code = defaultCurrencyCode
 	}
 	code = strings.ToUpper(strings.TrimSpace(code))
 	unit, err := currency.ParseISO(code)
@@ -75,7 +79,7 @@ func MustResolve(code string, tag language.Tag) Currency {
 
 // DefaultCurrency returns USD with standard US English formatting.
 func DefaultCurrency() Currency {
-	return MustResolve("USD", language.AmericanEnglish)
+	return MustResolve(defaultCurrencyCode, language.AmericanEnglish)
 }
 
 // ResolveDefault resolves the currency code using the config layering:
@@ -90,7 +94,7 @@ func ResolveDefault(configured string) (Currency, error) {
 		code = detectCurrencyFromLocale()
 	}
 	if code == "" {
-		code = "USD"
+		code = defaultCurrencyCode
 	}
 	return Resolve(code, DetectLocale())
 }

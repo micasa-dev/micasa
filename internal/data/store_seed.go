@@ -181,7 +181,7 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 				CostCents:      fm.CostCents,
 			}
 			// Link appliance-related items to a random appliance.
-			if catName == "Appliance" || catName == "HVAC" {
+			if catName == catAppliance || catName == catHVAC {
 				ai := h.IntN(len(appliances))
 				item.ApplianceID = &appliances[ai].ID
 			}
@@ -249,19 +249,19 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 	}
 	docSeeds := []docSeed{
 		{
-			"Invoice", "invoice.pdf", "application/pdf",
+			docTypeInvoice, sampleInvoicePDF, mimePDF,
 			DocumentEntityProject, projects[0].ID,
 			demoExtractionOps("invoice"),
 		},
 		{
-			"Contract", "contract.pdf", "application/pdf",
+			docTypeContract, "contract.pdf", mimePDF,
 			DocumentEntityProject, projects[1].ID,
 			demoExtractionOps("contract"),
 		},
 		{
 			"Warranty Card",
 			"warranty-card.jpg",
-			"image/jpeg",
+			mimeJPEG,
 			DocumentEntityAppliance,
 			appliances[0].ID,
 			nil,
@@ -269,7 +269,7 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 		{
 			"User Manual",
 			"user-manual.pdf",
-			"application/pdf",
+			mimePDF,
 			DocumentEntityAppliance,
 			appliances[1].ID,
 			nil,
@@ -277,7 +277,7 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 		{
 			"Incident Photo",
 			"incident-photo.jpg",
-			"image/jpeg",
+			mimeJPEG,
 			DocumentEntityIncident,
 			incidents[0].ID,
 			nil,
@@ -307,11 +307,11 @@ func (s *Store) SeedDemoDataFrom(h *fake.HomeFaker) error {
 
 func (s *Store) seedProjectTypes() error {
 	types := []ProjectType{
-		{Name: "Appliance"},
+		{Name: catAppliance},
 		{Name: "Electrical"},
 		{Name: "Exterior"},
 		{Name: "Flooring"},
-		{Name: "HVAC"},
+		{Name: catHVAC},
 		{Name: "Landscaping"},
 		{Name: "Painting"},
 		{Name: "Plumbing"},
@@ -331,10 +331,10 @@ func (s *Store) seedProjectTypes() error {
 
 func (s *Store) seedMaintenanceCategories() error {
 	categories := []MaintenanceCategory{
-		{Name: "Appliance"},
+		{Name: catAppliance},
 		{Name: "Electrical"},
 		{Name: "Exterior"},
-		{Name: "HVAC"},
+		{Name: catHVAC},
 		{Name: "Interior"},
 		{Name: "Landscaping"},
 		{Name: "Plumbing"},

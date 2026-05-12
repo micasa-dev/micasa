@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+// Compressed-duration labels: durationNow for sub-minute spans, durationToday
+// for a zero-day span.
+const (
+	durationNow   = "now"
+	durationToday = "today"
+)
+
 // DateDiffDays returns the number of calendar days from now to target,
 // using each time's local Y/M/D. Positive means target is in the future.
 func DateDiffDays(now, target time.Time) int {
@@ -30,7 +37,7 @@ func ShortDur(d time.Duration) string {
 	}
 	switch {
 	case d < time.Minute:
-		return "now"
+		return durationNow
 	case d < time.Hour:
 		return fmt.Sprintf("%dm", int(d.Minutes()))
 	case d < 24*time.Hour:
@@ -47,7 +54,7 @@ func ShortDur(d time.Duration) string {
 // DaysText returns a bare compressed duration like "5d" or "today".
 func DaysText(days int) string {
 	if days == 0 {
-		return "today"
+		return durationToday
 	}
 	abs := days
 	if abs < 0 {
@@ -59,7 +66,7 @@ func DaysText(days int) string {
 // PastDur returns a compressed past-duration string. Sub-minute is "<1m".
 func PastDur(d time.Duration) string {
 	s := ShortDur(d)
-	if s == "now" {
+	if s == durationNow {
 		return "<1m"
 	}
 	return s

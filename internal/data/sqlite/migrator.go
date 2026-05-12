@@ -12,6 +12,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"gorm.io/gorm"
@@ -53,8 +54,8 @@ func (m Migrator) DropTable(values ...any) error {
 		values = m.ReorderModels(values, false)
 		tx := m.DB.Session(&gorm.Session{})
 
-		for i := len(values) - 1; i >= 0; i-- {
-			if err := m.RunWithValue(values[i], func(stmt *gorm.Statement) error {
+		for _, v := range slices.Backward(values) {
+			if err := m.RunWithValue(v, func(stmt *gorm.Statement) error {
 				return tx.Exec(
 					"DROP TABLE IF EXISTS ?",
 					clause.Table{Name: stmt.Table},

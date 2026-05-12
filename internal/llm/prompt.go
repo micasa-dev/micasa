@@ -5,6 +5,7 @@ package llm
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -250,7 +251,7 @@ func ExtractSQL(raw string) string {
 			lines = lines[1:]
 		}
 		// Remove closing fence
-		for i := len(lines) - 1; i >= 0; i-- {
+		for i := range slices.Backward(lines) {
 			if strings.TrimSpace(lines[i]) == "```" {
 				lines = lines[:i]
 				break

@@ -32,6 +32,12 @@ import (
 // DriverName is the default driver name for SQLite.
 const DriverName = "sqlite"
 
+// SQLite column affinities used by DataTypeOf.
+const (
+	colTypeInteger = "integer"
+	colTypeText    = "text"
+)
+
 type Dialector struct {
 	DriverName string
 	DSN        string
@@ -287,13 +293,13 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		return "numeric"
 	case schema.Int, schema.Uint:
 		if field.AutoIncrement {
-			return "integer PRIMARY KEY AUTOINCREMENT"
+			return colTypeInteger + " PRIMARY KEY AUTOINCREMENT"
 		}
-		return "integer"
+		return colTypeInteger
 	case schema.Float:
 		return "real"
 	case schema.String:
-		return "text"
+		return colTypeText
 	case schema.Time:
 		if val, ok := field.TagSettings["TYPE"]; ok {
 			return val

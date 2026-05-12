@@ -29,7 +29,7 @@ func filePickerDesc(showHidden bool) string {
 // via reflection. Returns false if the field is not a FilePicker.
 func filePickerShowHidden(field huh.Field) bool {
 	v := reflect.ValueOf(field)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	picker := v.FieldByName("picker")
@@ -63,7 +63,7 @@ func syncFilePickerDescription(form *huh.Form) {
 // Returns "" if the field is not a FilePicker.
 func filePickerCurrentDir(field huh.Field) string {
 	v := reflect.ValueOf(field)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	picker := v.FieldByName("picker")
@@ -81,7 +81,7 @@ func filePickerCurrentDir(field huh.Field) string {
 // reflection. Returns "" if the field is not a FilePicker.
 func filePickerDescription(field huh.Field) string {
 	v := reflect.ValueOf(field)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	d := v.FieldByName("description")
@@ -95,7 +95,7 @@ func filePickerDescription(field huh.Field) string {
 // Returns "" if the field is not a FilePicker.
 func filePickerTitle(field huh.Field) string {
 	v := reflect.ValueOf(field)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	t := v.FieldByName("title")

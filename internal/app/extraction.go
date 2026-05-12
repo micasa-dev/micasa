@@ -280,7 +280,6 @@ func (m *Model) startExtractionOverlay(
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
 	sp.Style = appStyles.AccentText()
 
-	//nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
 	ctx, cancel := context.WithCancel(
 		m.lifecycleCtx(),
 	)
@@ -998,7 +997,7 @@ func (m *Model) rerunLLMExtraction() tea.Cmd {
 
 	// Replace a cancelled context so the rerun has a live one.
 	if ex.ctx.Err() != nil {
-		ctx, cancel := context.WithCancel( //nolint:gosec // cancel stored in ex.CancelFn, called on extraction close
+		ctx, cancel := context.WithCancel(
 			m.lifecycleCtx(),
 		)
 		ex.ctx = ctx

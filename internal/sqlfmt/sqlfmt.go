@@ -180,7 +180,7 @@ func tokenizeSQL(s string) []sqlToken {
 // -1 = not a clause keyword.
 func clauseLevel(kw string) int {
 	switch kw {
-	case "SELECT", "FROM", "WHERE",
+	case kwSelect, "FROM", "WHERE",
 		"ORDER BY", "GROUP BY", "HAVING",
 		"LIMIT", "OFFSET",
 		"UNION", "UNION ALL", "INTERSECT", "EXCEPT",
@@ -207,9 +207,12 @@ var multiWordClauses = []string{
 	"FULL JOIN",
 }
 
+// kwSelect is the SELECT keyword; referenced often enough to warrant a name.
+const kwSelect = "SELECT"
+
 // sqlKeywords is the set of SQL reserved words that get uppercased.
 var sqlKeywords = map[string]bool{
-	"SELECT": true, "DISTINCT": true, "FROM": true, "WHERE": true,
+	kwSelect: true, "DISTINCT": true, "FROM": true, "WHERE": true,
 	"AND": true, "OR": true, "NOT": true, "IN": true, "EXISTS": true,
 	"BETWEEN": true, "LIKE": true, "IS": true, "NULL": true,
 	"AS": true, "ON": true, "JOIN": true,
@@ -374,7 +377,7 @@ func layoutClauses(rawTokens []sqlToken) string {
 			for nextIdx < len(tokens) && tokens[nextIdx].Kind == tokSpace {
 				nextIdx++
 			}
-			if nextIdx < len(tokens) && tokens[nextIdx].Keyword == "SELECT" {
+			if nextIdx < len(tokens) && tokens[nextIdx].Keyword == kwSelect {
 				baseIndent++
 			}
 			atLineStart = false
@@ -400,7 +403,7 @@ func layoutClauses(rawTokens []sqlToken) string {
 			kw := ct.Keyword
 
 			// SELECT: new line with proper indentation
-			if kw == "SELECT" {
+			if kw == kwSelect {
 				if b.Len() > 0 {
 					trimTrailingSpace(&b)
 					b.WriteString("\n")

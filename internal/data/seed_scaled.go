@@ -12,6 +12,23 @@ import (
 	"github.com/micasa-dev/micasa/internal/fake"
 )
 
+// Sample data values shared by the simple and scaled seed generators.
+const (
+	mimePDF  = "application/pdf"
+	mimeJPEG = "image/jpeg"
+
+	docTypeInvoice  = "Invoice"
+	docTypeReceipt  = "Receipt"
+	docTypeContract = "Contract"
+
+	catAppliance = "Appliance"
+	catHVAC      = "HVAC"
+
+	demoOpCreate     = "create"
+	sampleInvoicePDF = "invoice.pdf"
+	sampleReceiptPDF = "receipt.pdf"
+)
+
 // SeedSummary holds counts of generated entities for display after seeding.
 type SeedSummary struct {
 	Vendors     int
@@ -198,7 +215,7 @@ func (s *Store) SeedScaledDataFrom(h *fake.HomeFaker, years int) (SeedSummary, e
 				LastServicedAt: fm.LastServicedAt,
 				CostCents:      fm.CostCents,
 			}
-			if catName == "Appliance" || catName == "HVAC" {
+			if catName == catAppliance || catName == catHVAC {
 				ai := h.IntN(len(appliances))
 				item.ApplianceID = &appliances[ai].ID
 			}
@@ -357,7 +374,7 @@ func (s *Store) SeedScaledDataFrom(h *fake.HomeFaker, years int) (SeedSummary, e
 					LastServicedAt: fm.LastServicedAt,
 					CostCents:      fm.CostCents,
 				}
-				if (catName == "Appliance" || catName == "HVAC") && len(appliances) > 0 {
+				if (catName == catAppliance || catName == catHVAC) && len(appliances) > 0 {
 					ai := h.IntN(len(appliances))
 					item.ApplianceID = &appliances[ai].ID
 				}
@@ -544,16 +561,16 @@ func seedBaseDocuments(
 		seeds = append(
 			seeds,
 			docSeed{
-				"Invoice",
-				"invoice.pdf",
-				"application/pdf",
+				docTypeInvoice,
+				sampleInvoicePDF,
+				mimePDF,
 				DocumentEntityProject,
 				projects[0].ID,
 			},
 			docSeed{
-				"Contract",
+				docTypeContract,
 				"contract.pdf",
-				"application/pdf",
+				mimePDF,
 				DocumentEntityProject,
 				projects[1].ID,
 			},
@@ -565,14 +582,14 @@ func seedBaseDocuments(
 			docSeed{
 				"Warranty Card",
 				"warranty-card.jpg",
-				"image/jpeg",
+				mimeJPEG,
 				DocumentEntityAppliance,
 				appliances[0].ID,
 			},
 			docSeed{
 				"User Manual",
 				"user-manual.pdf",
-				"application/pdf",
+				mimePDF,
 				DocumentEntityAppliance,
 				appliances[1].ID,
 			},
@@ -584,7 +601,7 @@ func seedBaseDocuments(
 			docSeed{
 				"Incident Photo",
 				"incident-photo.jpg",
-				"image/jpeg",
+				mimeJPEG,
 				DocumentEntityIncident,
 				incidents[0].ID,
 			},
@@ -614,16 +631,16 @@ var documentTemplates = []struct {
 	fileName string
 	mime     string
 }{
-	{"Invoice", "invoice.pdf", "application/pdf"},
-	{"Receipt", "receipt.pdf", "application/pdf"},
-	{"Contract", "contract.pdf", "application/pdf"},
-	{"Warranty Card", "warranty-card.pdf", "application/pdf"},
-	{"User Manual", "manual.pdf", "application/pdf"},
-	{"Inspection Report", "inspection.pdf", "application/pdf"},
-	{"Photo", "photo.jpg", "image/jpeg"},
-	{"Estimate", "estimate.pdf", "application/pdf"},
-	{"Permit", "permit.pdf", "application/pdf"},
-	{"Insurance Claim", "claim.pdf", "application/pdf"},
+	{docTypeInvoice, sampleInvoicePDF, mimePDF},
+	{docTypeReceipt, sampleReceiptPDF, mimePDF},
+	{docTypeContract, "contract.pdf", mimePDF},
+	{"Warranty Card", "warranty-card.pdf", mimePDF},
+	{"User Manual", "manual.pdf", mimePDF},
+	{"Inspection Report", "inspection.pdf", mimePDF},
+	{"Photo", "photo.jpg", mimeJPEG},
+	{"Estimate", "estimate.pdf", mimePDF},
+	{"Permit", "permit.pdf", mimePDF},
+	{"Insurance Claim", "claim.pdf", mimePDF},
 }
 
 // randomDocument creates a document linked to a random entity.
@@ -695,53 +712,53 @@ func demoExtractionOps(docType string) []byte {
 	switch docType {
 	case "invoice":
 		ops = []demoOp{
-			{Action: "create", Table: TableVendors, Data: map[string]any{
-				"name": "Garcia Plumbing", "email": "info@garcia.com", "phone": "555-0142",
+			{Action: demoOpCreate, Table: TableVendors, Data: map[string]any{
+				ColName: "Garcia Plumbing", "email": "info@garcia.com", "phone": "555-0142",
 			}},
-			{Action: "create", Table: TableQuotes, Data: map[string]any{
-				"total_cents": 28500, "notes": "Kitchen faucet replacement",
+			{Action: demoOpCreate, Table: TableQuotes, Data: map[string]any{
+				"total_cents": 28500, ColNotes: "Kitchen faucet replacement",
 			}},
 			{Action: "update", Table: TableDocuments, Data: map[string]any{
-				"title": "Invoice #1047",
+				ColTitle: "Invoice #1047",
 			}},
 		}
 	case "contract":
 		ops = []demoOp{
-			{Action: "create", Table: TableVendors, Data: map[string]any{
-				"name": "Summit Roofing Co", "email": "bids@summitroofing.com",
+			{Action: demoOpCreate, Table: TableVendors, Data: map[string]any{
+				ColName: "Summit Roofing Co", "email": "bids@summitroofing.com",
 			}},
-			{Action: "create", Table: TableQuotes, Data: map[string]any{
+			{Action: demoOpCreate, Table: TableQuotes, Data: map[string]any{
 				"total_cents": 875000, "labor_cents": 450000, "materials_cents": 425000,
 			}},
 			{Action: "update", Table: TableDocuments, Data: map[string]any{
-				"title": "Roofing Contract 2026",
+				ColTitle: "Roofing Contract 2026",
 			}},
 		}
 	case "estimate":
 		ops = []demoOp{
-			{Action: "create", Table: TableVendors, Data: map[string]any{
-				"name": "Bright Electric", "phone": "555-0198",
+			{Action: demoOpCreate, Table: TableVendors, Data: map[string]any{
+				ColName: "Bright Electric", "phone": "555-0198",
 			}},
-			{Action: "create", Table: TableQuotes, Data: map[string]any{
-				"total_cents": 165000, "notes": "Panel upgrade to 200A",
+			{Action: demoOpCreate, Table: TableQuotes, Data: map[string]any{
+				"total_cents": 165000, ColNotes: "Panel upgrade to 200A",
 			}},
 		}
 	case "receipt":
 		ops = []demoOp{
-			{Action: "create", Table: TableVendors, Data: map[string]any{
-				"name": "Home Depot", "phone": "555-0100",
+			{Action: demoOpCreate, Table: TableVendors, Data: map[string]any{
+				ColName: "Home Depot", "phone": "555-0100",
 			}},
 			{Action: "update", Table: TableDocuments, Data: map[string]any{
-				"title": "Receipt - Lumber & Hardware",
+				ColTitle: "Receipt - Lumber & Hardware",
 			}},
 		}
 	case "inspection":
 		ops = []demoOp{
-			{Action: "create", Table: TableMaintenanceItems, Data: map[string]any{
-				"name": "HVAC inspection", "notes": "Annual inspection passed",
+			{Action: demoOpCreate, Table: TableMaintenanceItems, Data: map[string]any{
+				ColName: "HVAC inspection", ColNotes: "Annual inspection passed",
 			}},
 			{Action: "update", Table: TableDocuments, Data: map[string]any{
-				"title": "HVAC Inspection Report",
+				ColTitle: "HVAC Inspection Report",
 			}},
 		}
 	default:
@@ -758,11 +775,11 @@ func demoExtractionOps(docType string) []byte {
 // or nil if the document type doesn't typically produce extraction results.
 func demoOpsForTemplate(title string) []byte {
 	switch title {
-	case "Invoice":
+	case docTypeInvoice:
 		return demoExtractionOps("invoice")
-	case "Receipt":
+	case docTypeReceipt:
 		return demoExtractionOps("receipt")
-	case "Contract":
+	case docTypeContract:
 		return demoExtractionOps("contract")
 	case "Estimate":
 		return demoExtractionOps("estimate")

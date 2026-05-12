@@ -364,7 +364,6 @@ func (m *Model) startSQLStream(query string) tea.Cmd {
 		messages = append(messages, history...)
 		messages = append(messages, llm.Message{Role: roleUser, Content: query})
 
-		//nolint:gosec // cancel stored in CancelFn, called on ctrl+c
 		ctx, cancel := context.WithTimeout(
 			appCtx, chatTimeout,
 		)

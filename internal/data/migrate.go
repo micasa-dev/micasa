@@ -5,6 +5,7 @@ package data
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -100,8 +101,7 @@ func migrateIntToStringIDs(db *gorm.DB) (retErr error) {
 	// Phase 5: Drop old tables.
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		order := migrationOrder()
-		for i := len(order) - 1; i >= 0; i-- {
-			m := order[i]
+		for _, m := range slices.Backward(order) {
 			if _, ok := idMaps[m.table]; !ok {
 				continue
 			}
