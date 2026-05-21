@@ -13,6 +13,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+// OS file-opener command names.
+const (
+	cmdOpenDarwin = "open"     // macOS `open`
+	cmdXdgOpen    = "xdg-open" // Linux/BSD `xdg-open` (xdg-utils)
+)
+
 // openFileResultMsg carries the outcome of an OS-viewer launch back to the
 // Bubble Tea event loop so the status bar can surface errors.
 type openFileResultMsg struct{ Err error }
@@ -87,9 +93,9 @@ func openFileCmd(path string) tea.Cmd {
 		var openerName string
 		switch runtime.GOOS {
 		case "darwin":
-			openerName = "open"
+			openerName = cmdOpenDarwin
 			cmd = exec.Command( //nolint:gosec,noctx // trusted cache path; no context in tea.Cmd
-				"open",
+				cmdOpenDarwin,
 				path,
 			)
 		case "windows":
@@ -102,9 +108,9 @@ func openFileCmd(path string) tea.Cmd {
 				path,
 			)
 		default:
-			openerName = "xdg-open"
+			openerName = cmdXdgOpen
 			cmd = exec.Command( //nolint:gosec,noctx // trusted cache path; no context in tea.Cmd
-				"xdg-open",
+				cmdXdgOpen,
 				path,
 			)
 		}
@@ -121,12 +127,12 @@ func openFileCmd(path string) tea.Cmd {
 func wrapOpenerError(err error, openerName string) error {
 	if errors.Is(err, exec.ErrNotFound) {
 		switch openerName {
-		case "xdg-open":
+		case cmdXdgOpen:
 			return fmt.Errorf(
 				"%s not found -- install xdg-utils (e.g. apt install xdg-utils)",
 				openerName,
 			)
-		case "open":
+		case cmdOpenDarwin:
 			return fmt.Errorf(
 				"%s not found -- expected on macOS; is this a headless environment?",
 				openerName,
@@ -141,7 +147,7 @@ func wrapOpenerError(err error, openerName string) error {
 	// Detect it and surface an actionable message.
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		if openerName == "xdg-open" && !hasDisplay() {
+		if openerName == cmdXdgOpen && !hasDisplay() {
 			return fmt.Errorf(
 				"%s failed -- no display server (DISPLAY/WAYLAND_DISPLAY not set); "+
 					"running on a remote or headless machine?",

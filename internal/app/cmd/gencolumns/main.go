@@ -28,7 +28,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	defs := collectColumnDefs(f)
+	consts := collectStringConsts(f)
+
+	defs := collectColumnDefs(f, consts)
 	if len(defs) == 0 {
 		fmt.Fprintf(os.Stderr, "no xxxColumnDefs vars found in coldefs.go\n")
 		os.Exit(1)
@@ -77,9 +79,39 @@ type columnDefSet struct {
 	names  []string // e.g. ["ID", "Type", "Title", ...]
 }
 
+// collectStringConsts returns a map of package-level string constant names to
+// their (unquoted) values. Used to resolve identifier-valued name fields in
+// columnDef literals so coldefs.go can share header-label constants between the
+// iota suffix and the columnSpec Title.
+func collectStringConsts(f *ast.File) map[string]string {
+	consts := make(map[string]string)
+
+	for _, decl := range f.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok || len(vs.Names) != len(vs.Values) {
+				continue
+			}
+			for i, val := range vs.Values {
+				bl, ok := val.(*ast.BasicLit)
+				if !ok || bl.Kind != token.STRING {
+					continue
+				}
+				consts[vs.Names[i].Name] = bl.Value[1 : len(bl.Value)-1]
+			}
+		}
+	}
+
+	return consts
+}
+
 // collectColumnDefs walks the AST and extracts all var xxxColumnDefs
 // declarations, returning them in source order.
-func collectColumnDefs(f *ast.File) []columnDefSet {
+func collectColumnDefs(f *ast.File, consts map[string]string) []columnDefSet {
 	var result []columnDefSet
 
 	for _, decl := range f.Decls {
@@ -115,7 +147,7 @@ func collectColumnDefs(f *ast.File) []columnDefSet {
 				os.Exit(1)
 			}
 
-			names := extractDefNames(varName, lit)
+			names := extractDefNames(varName, lit, consts)
 			result = append(result, columnDefSet{prefix: prefix, names: names})
 		}
 	}
@@ -124,8 +156,9 @@ func collectColumnDefs(f *ast.File) []columnDefSet {
 }
 
 // extractDefNames extracts the name (first field) from each element in a
-// []columnDef composite literal.
-func extractDefNames(varName string, lit *ast.CompositeLit) []string {
+// []columnDef composite literal. The first field is either a string literal or
+// an identifier referring to a package-level string constant in coldefs.go.
+func extractDefNames(varName string, lit *ast.CompositeLit, consts map[string]string) []string {
 	names := make([]string, 0, len(lit.Elts))
 
 	for i, elt := range lit.Elts {
@@ -140,14 +173,26 @@ func extractDefNames(varName string, lit *ast.CompositeLit) []string {
 			os.Exit(1)
 		}
 
-		bl, ok := cl.Elts[0].(*ast.BasicLit)
-		if !ok || bl.Kind != token.STRING {
-			fmt.Fprintf(os.Stderr, "%s[%d]: first field is not a string literal\n", varName, i)
+		var name string
+		switch first := cl.Elts[0].(type) {
+		case *ast.BasicLit:
+			if first.Kind != token.STRING {
+				fmt.Fprintf(os.Stderr, "%s[%d]: first field is not a string literal\n", varName, i)
+				os.Exit(1)
+			}
+			name = first.Value[1 : len(first.Value)-1]
+		case *ast.Ident:
+			v, ok := consts[first.Name]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "%s[%d]: first field %q is not a string constant in coldefs.go\n", varName, i, first.Name)
+				os.Exit(1)
+			}
+			name = v
+		default:
+			fmt.Fprintf(os.Stderr, "%s[%d]: first field must be a string literal or constant identifier\n", varName, i)
 			os.Exit(1)
 		}
 
-		// Strip quotes from the string literal.
-		name := bl.Value[1 : len(bl.Value)-1]
 		if name == "" {
 			fmt.Fprintf(os.Stderr, "%s[%d]: empty name\n", varName, i)
 			os.Exit(1)

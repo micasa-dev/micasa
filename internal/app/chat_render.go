@@ -73,7 +73,7 @@ func (m *Model) renderChatMessages() string {
 				// Stage 1: generating SQL query
 				rendered = label + "  " + m.chat.Spinner.View() + " " + m.styles.HeaderHint().
 					Render(
-						"generating query",
+						noticeGeneratingQuery,
 					)
 			} else if isLastMessage && text == "" && m.chat.Streaming && !m.chat.StreamingSQL {
 				// Stage 2: thinking about response (may have SQL already)
@@ -99,10 +99,10 @@ func (m *Model) renderChatMessages() string {
 			rendered = m.styles.Error().Render("error: " + wordWrap(msg.Content, innerW-9))
 		case roleNotice:
 			// Skip "generating query" notice - status is shown inline with model label.
-			if msg.Content == "generating query" {
+			if msg.Content == noticeGeneratingQuery {
 				continue
 			}
-			if msg.Content == "Interrupted" || msg.Content == "Pull cancelled" {
+			if msg.Content == noticeInterrupted || msg.Content == "Pull cancelled" {
 				rendered = m.styles.ChatInterrupted().Render(msg.Content)
 			} else {
 				rendered = m.styles.ChatNotice().Render(msg.Content)

@@ -15,8 +15,8 @@ import (
 
 func vendorEntityDef() entityDef[data.Vendor] {
 	return entityDef[data.Vendor]{
-		name:        "vendor",
-		singular:    "vendor",
+		name:        entityVendor,
+		singular:    entityVendor,
 		tableHeader: "VENDORS",
 		cols:        vendorCols,
 		toMap:       vendorToMap,
@@ -74,12 +74,12 @@ func vendorUpdate(store *data.Store, id string, raw json.RawMessage) (data.Vendo
 		key string
 		dst any
 	}{
-		{"name", &existing.Name},
-		{"contact_name", &existing.ContactName},
-		{"email", &existing.Email},
-		{"phone", &existing.Phone},
-		{"website", &existing.Website},
-		{"notes", &existing.Notes},
+		{data.ColName, &existing.Name},
+		{data.ColContactName, &existing.ContactName},
+		{data.ColEmail, &existing.Email},
+		{data.ColPhone, &existing.Phone},
+		{data.ColWebsite, &existing.Website},
+		{data.ColNotes, &existing.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Vendor{}, err

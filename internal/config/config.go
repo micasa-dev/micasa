@@ -294,6 +294,10 @@ const (
 	configRelPath     = "micasa/config.toml"
 )
 
+// providerOpenAI is the provider identifier for OpenAI and the URL-detection
+// keyword that maps OpenAI-compatible endpoints to it.
+const providerOpenAI = "openai"
+
 // Path returns the expected config file path (XDG_CONFIG_HOME/micasa/config.toml).
 func Path() string {
 	return filepath.Join(xdg.ConfigHome, configRelPath)
@@ -691,7 +695,7 @@ func checkFilePermissions(cfg *Config, path string) {
 var providers = []string{
 	"ollama",
 	"anthropic",
-	"openai",
+	providerOpenAI,
 	"openrouter",
 	"deepseek",
 	"gemini",
@@ -725,11 +729,11 @@ func detectProvider(baseURL, apiKey string) string {
 			return "groq"
 		case strings.Contains(lower, "mistral"):
 			return "mistral"
-		case strings.Contains(lower, "openai"):
-			return "openai"
+		case strings.Contains(lower, providerOpenAI):
+			return providerOpenAI
 		default:
 			// API key but unrecognized URL -- assume OpenAI-compatible.
-			return "openai"
+			return providerOpenAI
 		}
 	}
 	return DefaultProvider

@@ -191,35 +191,40 @@ appliances, incidents, documents, all.`,
 		deprecated string // empty = not deprecated
 	}
 	entityDefs := []showDef{
-		{"projects", "Show projects", showProjects, "use 'micasa project list --table' instead"},
-		{"vendors", "Show vendors", showVendors, "use 'micasa vendor list --table' instead"},
 		{
-			"appliances",
+			entityProjects,
+			"Show projects",
+			showProjects,
+			"use 'micasa project list --table' instead",
+		},
+		{entityVendors, "Show vendors", showVendors, "use 'micasa vendor list --table' instead"},
+		{
+			entityAppliances,
 			"Show appliances",
 			showAppliances,
 			"use 'micasa appliance list --table' instead",
 		},
 		{
-			"incidents",
+			entityIncidents,
 			"Show incidents",
 			showIncidents,
 			"use 'micasa incident list --table' instead",
 		},
-		{"quotes", "Show quotes", showQuotes, "use 'micasa quote list --table' instead"},
+		{entityQuotes, "Show quotes", showQuotes, "use 'micasa quote list --table' instead"},
 		{
-			"maintenance",
+			entityMaintenance,
 			"Show maintenance items",
 			showMaintenance,
 			"use 'micasa maintenance list --table' instead",
 		},
 		{
-			"service-log",
+			entityServiceLog,
 			"Show service log entries",
 			showServiceLog,
 			"use 'micasa service-log list --table' instead",
 		},
 		{
-			"documents",
+			entityDocuments,
 			"Show documents",
 			showDocuments,
 			"use 'micasa document list --table' instead",
@@ -407,16 +412,16 @@ var projectCols = []showCol[data.Project]{
 
 func projectToMap(p data.Project) map[string]any {
 	return map[string]any{
-		"id":              p.ID,
-		"title":           p.Title,
-		"project_type_id": p.ProjectTypeID,
-		"project_type":    p.ProjectType.Name,
-		"status":          p.Status,
-		"start_date":      p.StartDate,
-		"end_date":        p.EndDate,
-		"budget_cents":    p.BudgetCents,
-		"actual_cents":    p.ActualCents,
-		"description":     p.Description,
+		data.ColID:            p.ID,
+		data.ColTitle:         p.Title,
+		data.ColProjectTypeID: p.ProjectTypeID,
+		"project_type":        p.ProjectType.Name,
+		data.ColStatus:        p.Status,
+		data.ColStartDate:     p.StartDate,
+		data.ColEndDate:       p.EndDate,
+		data.ColBudgetCents:   p.BudgetCents,
+		data.ColActualCents:   p.ActualCents,
+		data.ColDescription:   p.Description,
 	}
 }
 
@@ -433,7 +438,7 @@ func showProjects(w io.Writer, store *data.Store, asJSON, includeDeleted bool) e
 // --- vendors ---
 
 var vendorCols = []showCol[data.Vendor]{
-	{"NAME", func(v data.Vendor) string { return fmtStr(v.Name) }},
+	{colHdrName, func(v data.Vendor) string { return fmtStr(v.Name) }},
 	{"CONTACT", func(v data.Vendor) string { return fmtStr(v.ContactName) }},
 	{"EMAIL", func(v data.Vendor) string { return fmtStr(v.Email) }},
 	{"PHONE", func(v data.Vendor) string {
@@ -448,13 +453,13 @@ var vendorCols = []showCol[data.Vendor]{
 
 func vendorToMap(v data.Vendor) map[string]any {
 	return map[string]any{
-		"id":           v.ID,
-		"name":         v.Name,
-		"contact_name": v.ContactName,
-		"email":        v.Email,
-		"phone":        v.Phone,
-		"website":      v.Website,
-		"notes":        v.Notes,
+		data.ColID:          v.ID,
+		data.ColName:        v.Name,
+		data.ColContactName: v.ContactName,
+		data.ColEmail:       v.Email,
+		data.ColPhone:       v.Phone,
+		data.ColWebsite:     v.Website,
+		data.ColNotes:       v.Notes,
 	}
 }
 
@@ -471,7 +476,7 @@ func showVendors(w io.Writer, store *data.Store, asJSON, includeDeleted bool) er
 // --- appliances ---
 
 var applianceCols = []showCol[data.Appliance]{
-	{"NAME", func(a data.Appliance) string { return fmtStr(a.Name) }},
+	{colHdrName, func(a data.Appliance) string { return fmtStr(a.Name) }},
 	{"BRAND", func(a data.Appliance) string { return fmtStr(a.Brand) }},
 	{"MODEL", func(a data.Appliance) string { return fmtStr(a.ModelNumber) }},
 	{"SERIAL", func(a data.Appliance) string { return fmtStr(a.SerialNumber) }},
@@ -483,16 +488,16 @@ var applianceCols = []showCol[data.Appliance]{
 
 func applianceToMap(a data.Appliance) map[string]any {
 	return map[string]any{
-		"id":              a.ID,
-		"name":            a.Name,
-		"brand":           a.Brand,
-		"model_number":    a.ModelNumber,
-		"serial_number":   a.SerialNumber,
-		"location":        a.Location,
-		"purchase_date":   a.PurchaseDate,
-		"warranty_expiry": a.WarrantyExpiry,
-		"cost_cents":      a.CostCents,
-		"notes":           a.Notes,
+		data.ColID:             a.ID,
+		data.ColName:           a.Name,
+		data.ColBrand:          a.Brand,
+		data.ColModelNumber:    a.ModelNumber,
+		data.ColSerialNumber:   a.SerialNumber,
+		data.ColLocation:       a.Location,
+		data.ColPurchaseDate:   a.PurchaseDate,
+		data.ColWarrantyExpiry: a.WarrantyExpiry,
+		data.ColCostCents:      a.CostCents,
+		data.ColNotes:          a.Notes,
 	}
 }
 
@@ -522,20 +527,20 @@ var incidentCols = []showCol[data.Incident]{
 
 func incidentToMap(i data.Incident) map[string]any {
 	return map[string]any{
-		"id":            i.ID,
-		"title":         i.Title,
-		"status":        i.Status,
-		"severity":      i.Severity,
-		"date_noticed":  i.DateNoticed,
-		"date_resolved": i.DateResolved,
-		"location":      i.Location,
-		"cost_cents":    i.CostCents,
-		"appliance_id":  i.ApplianceID,
-		"appliance":     i.Appliance.Name,
-		"vendor_id":     i.VendorID,
-		"vendor":        i.Vendor.Name,
-		"description":   i.Description,
-		"notes":         i.Notes,
+		data.ColID:           i.ID,
+		data.ColTitle:        i.Title,
+		data.ColStatus:       i.Status,
+		data.ColSeverity:     i.Severity,
+		data.ColDateNoticed:  i.DateNoticed,
+		data.ColDateResolved: i.DateResolved,
+		data.ColLocation:     i.Location,
+		data.ColCostCents:    i.CostCents,
+		data.ColApplianceID:  i.ApplianceID,
+		entityAppliance:      i.Appliance.Name,
+		data.ColVendorID:     i.VendorID,
+		entityVendor:         i.Vendor.Name,
+		data.ColDescription:  i.Description,
+		data.ColNotes:        i.Notes,
 	}
 }
 
@@ -567,16 +572,16 @@ var quoteCols = []showCol[data.Quote]{
 
 func quoteToMap(q data.Quote) map[string]any {
 	return map[string]any{
-		"id":              q.ID,
-		"project_id":      q.ProjectID,
-		"project":         q.Project.Title,
-		"vendor_id":       q.VendorID,
-		"vendor":          q.Vendor.Name,
-		"total_cents":     q.TotalCents,
-		"labor_cents":     q.LaborCents,
-		"materials_cents": q.MaterialsCents,
-		"received_date":   q.ReceivedDate,
-		"notes":           q.Notes,
+		data.ColID:             q.ID,
+		data.ColProjectID:      q.ProjectID,
+		"project":              q.Project.Title,
+		data.ColVendorID:       q.VendorID,
+		entityVendor:           q.Vendor.Name,
+		data.ColTotalCents:     q.TotalCents,
+		data.ColLaborCents:     q.LaborCents,
+		data.ColMaterialsCents: q.MaterialsCents,
+		data.ColReceivedDate:   q.ReceivedDate,
+		data.ColNotes:          q.Notes,
 	}
 }
 
@@ -593,7 +598,7 @@ func showQuotes(w io.Writer, store *data.Store, asJSON, includeDeleted bool) err
 // --- maintenance ---
 
 var maintenanceCols = []showCol[data.MaintenanceItem]{
-	{"NAME", func(m data.MaintenanceItem) string { return fmtStr(m.Name) }},
+	{colHdrName, func(m data.MaintenanceItem) string { return fmtStr(m.Name) }},
 	{"CATEGORY", func(m data.MaintenanceItem) string { return fmtStr(m.Category.Name) }},
 	{"APPLIANCE", func(m data.MaintenanceItem) string { return fmtStr(m.Appliance.Name) }},
 	{"SEASON", func(m data.MaintenanceItem) string { return fmtStr(m.Season) }},
@@ -605,18 +610,18 @@ var maintenanceCols = []showCol[data.MaintenanceItem]{
 
 func maintenanceToMap(m data.MaintenanceItem) map[string]any {
 	return map[string]any{
-		"id":               m.ID,
-		"name":             m.Name,
-		"category_id":      m.CategoryID,
-		"category":         m.Category.Name,
-		"appliance_id":     m.ApplianceID,
-		"appliance":        m.Appliance.Name,
-		"season":           m.Season,
-		"last_serviced_at": m.LastServicedAt,
-		"interval_months":  m.IntervalMonths,
-		"due_date":         m.DueDate,
-		"cost_cents":       m.CostCents,
-		"notes":            m.Notes,
+		data.ColID:             m.ID,
+		data.ColName:           m.Name,
+		data.ColCategoryID:     m.CategoryID,
+		"category":             m.Category.Name,
+		data.ColApplianceID:    m.ApplianceID,
+		entityAppliance:        m.Appliance.Name,
+		data.ColSeason:         m.Season,
+		data.ColLastServicedAt: m.LastServicedAt,
+		data.ColIntervalMonths: m.IntervalMonths,
+		data.ColDueDate:        m.DueDate,
+		data.ColCostCents:      m.CostCents,
+		data.ColNotes:          m.Notes,
 	}
 }
 
@@ -642,14 +647,14 @@ var serviceLogCols = []showCol[data.ServiceLogEntry]{
 
 func serviceLogToMap(e data.ServiceLogEntry) map[string]any {
 	return map[string]any{
-		"id":                  e.ID,
-		"maintenance_item_id": e.MaintenanceItemID,
-		"maintenance_item":    e.MaintenanceItem.Name,
-		"vendor_id":           e.VendorID,
-		"vendor":              e.Vendor.Name,
-		"serviced_at":         e.ServicedAt,
-		"cost_cents":          e.CostCents,
-		"notes":               e.Notes,
+		data.ColID:                e.ID,
+		data.ColMaintenanceItemID: e.MaintenanceItemID,
+		"maintenance_item":        e.MaintenanceItem.Name,
+		data.ColVendorID:          e.VendorID,
+		entityVendor:              e.Vendor.Name,
+		data.ColServicedAt:        e.ServicedAt,
+		data.ColCostCents:         e.CostCents,
+		data.ColNotes:             e.Notes,
 	}
 }
 
@@ -676,15 +681,15 @@ var documentCols = []showCol[data.Document]{
 
 func documentToMap(d data.Document) map[string]any {
 	return map[string]any{
-		"id":          d.ID,
-		"title":       d.Title,
-		"file_name":   d.FileName,
-		"entity_kind": d.EntityKind,
-		"entity_id":   d.EntityID,
-		"mime_type":   d.MIMEType,
-		"size_bytes":  d.SizeBytes,
-		"sha256":      d.ChecksumSHA256,
-		"notes":       d.Notes,
+		data.ColID:         d.ID,
+		data.ColTitle:      d.Title,
+		data.ColFileName:   d.FileName,
+		data.ColEntityKind: d.EntityKind,
+		data.ColEntityID:   d.EntityID,
+		data.ColMIMEType:   d.MIMEType,
+		data.ColSizeBytes:  d.SizeBytes,
+		"sha256":           d.ChecksumSHA256,
+		data.ColNotes:      d.Notes,
 	}
 }
 
@@ -701,13 +706,13 @@ func showDocuments(w io.Writer, store *data.Store, asJSON, includeDeleted bool) 
 // --- project-types ---
 
 var projectTypeCols = []showCol[data.ProjectType]{
-	{"NAME", func(pt data.ProjectType) string { return fmtStr(pt.Name) }},
+	{colHdrName, func(pt data.ProjectType) string { return fmtStr(pt.Name) }},
 }
 
 func projectTypeToMap(pt data.ProjectType) map[string]any {
 	return map[string]any{
-		"id":   pt.ID,
-		"name": pt.Name,
+		data.ColID:   pt.ID,
+		data.ColName: pt.Name,
 	}
 }
 
@@ -722,13 +727,13 @@ func showProjectTypes(w io.Writer, store *data.Store, asJSON, _ bool) error {
 // --- maintenance-categories ---
 
 var maintenanceCategoryCols = []showCol[data.MaintenanceCategory]{
-	{"NAME", func(mc data.MaintenanceCategory) string { return fmtStr(mc.Name) }},
+	{colHdrName, func(mc data.MaintenanceCategory) string { return fmtStr(mc.Name) }},
 }
 
 func maintenanceCategoryToMap(mc data.MaintenanceCategory) map[string]any {
 	return map[string]any{
-		"id":   mc.ID,
-		"name": mc.Name,
+		data.ColID:   mc.ID,
+		data.ColName: mc.Name,
 	}
 }
 
@@ -798,7 +803,7 @@ func showAllJSON(w io.Writer, store *data.Store, includeDeleted bool) error {
 	}
 	_, projToMap := withDeletedCol(projectCols, projectToMap, includeDeleted,
 		func(p data.Project) gorm.DeletedAt { return p.DeletedAt })
-	result["projects"] = mapSlice(projects, projToMap)
+	result[entityProjects] = mapSlice(projects, projToMap)
 
 	ptypes, err := store.ProjectTypes()
 	if err != nil {
@@ -812,7 +817,7 @@ func showAllJSON(w io.Writer, store *data.Store, includeDeleted bool) error {
 	}
 	_, vendToMap := withDeletedCol(vendorCols, vendorToMap, includeDeleted,
 		func(v data.Vendor) gorm.DeletedAt { return v.DeletedAt })
-	result["vendors"] = mapSlice(vendors, vendToMap)
+	result[entityVendors] = mapSlice(vendors, vendToMap)
 
 	quotes, err := store.ListQuotes(includeDeleted)
 	if err != nil {
@@ -820,7 +825,7 @@ func showAllJSON(w io.Writer, store *data.Store, includeDeleted bool) error {
 	}
 	_, quoteMap := withDeletedCol(quoteCols, quoteToMap, includeDeleted,
 		func(q data.Quote) gorm.DeletedAt { return q.DeletedAt })
-	result["quotes"] = mapSlice(quotes, quoteMap)
+	result[entityQuotes] = mapSlice(quotes, quoteMap)
 
 	maintenance, err := store.ListMaintenance(includeDeleted)
 	if err != nil {
@@ -828,7 +833,7 @@ func showAllJSON(w io.Writer, store *data.Store, includeDeleted bool) error {
 	}
 	_, maintMap := withDeletedCol(maintenanceCols, maintenanceToMap, includeDeleted,
 		func(m data.MaintenanceItem) gorm.DeletedAt { return m.DeletedAt })
-	result["maintenance"] = mapSlice(maintenance, maintMap)
+	result[entityMaintenance] = mapSlice(maintenance, maintMap)
 
 	mcats, err := store.MaintenanceCategories()
 	if err != nil {
@@ -850,7 +855,7 @@ func showAllJSON(w io.Writer, store *data.Store, includeDeleted bool) error {
 	}
 	_, appMap := withDeletedCol(applianceCols, applianceToMap, includeDeleted,
 		func(a data.Appliance) gorm.DeletedAt { return a.DeletedAt })
-	result["appliances"] = mapSlice(appliances, appMap)
+	result[entityAppliances] = mapSlice(appliances, appMap)
 
 	incidents, err := store.ListIncidents(includeDeleted)
 	if err != nil {
@@ -858,7 +863,7 @@ func showAllJSON(w io.Writer, store *data.Store, includeDeleted bool) error {
 	}
 	_, incMap := withDeletedCol(incidentCols, incidentToMap, includeDeleted,
 		func(i data.Incident) gorm.DeletedAt { return i.DeletedAt })
-	result["incidents"] = mapSlice(incidents, incMap)
+	result[entityIncidents] = mapSlice(incidents, incMap)
 
 	documents, err := store.ListDocuments(includeDeleted)
 	if err != nil {
@@ -866,7 +871,7 @@ func showAllJSON(w io.Writer, store *data.Store, includeDeleted bool) error {
 	}
 	_, docMap := withDeletedCol(documentCols, documentToMap, includeDeleted,
 		func(d data.Document) gorm.DeletedAt { return d.DeletedAt })
-	result["documents"] = mapSlice(documents, docMap)
+	result[entityDocuments] = mapSlice(documents, docMap)
 
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

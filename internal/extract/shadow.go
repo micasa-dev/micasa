@@ -182,7 +182,7 @@ func buildInsert(
 	table string,
 	opData map[string]any,
 ) (cols []string, vals []any, placeholders []string, err error) {
-	skip := map[string]bool{data.ColID: true, "vendor_name": true}
+	skip := map[string]bool{data.ColID: true, colVendorName: true}
 
 	for _, k := range sortedKeys(opData) {
 		if skip[k] {
@@ -442,7 +442,7 @@ func commitQuote(store *data.Store, row map[string]any, opData map[string]any) (
 	// Fall back to vendor_name from original operation data (synthetic field
 	// not stored in the shadow table).
 	if vendor.ID == "" {
-		stringField(opData, "vendor_name", &vendor.Name)
+		stringField(opData, colVendorName, &vendor.Name)
 	}
 
 	if err := store.CreateQuote(&q, vendor); err != nil {
@@ -495,7 +495,7 @@ func commitIncident(store *data.Store, row map[string]any, opData map[string]any
 	}
 	if inc.VendorID == nil {
 		var vendorName string
-		stringField(opData, "vendor_name", &vendorName)
+		stringField(opData, colVendorName, &vendorName)
 		if strings.TrimSpace(vendorName) != "" {
 			v := data.Vendor{Name: vendorName}
 			found, err := store.FindOrCreateVendor(v)
@@ -543,7 +543,7 @@ func commitServiceLog(
 		}
 	}
 	if vendor.ID == "" {
-		stringField(opData, "vendor_name", &vendor.Name)
+		stringField(opData, colVendorName, &vendor.Name)
 	}
 
 	if err := store.CreateServiceLog(&entry, vendor); err != nil {
@@ -717,7 +717,7 @@ func commitUpdateQuote(store *data.Store, op Operation) error {
 		}
 	}
 	if vendor.ID == "" {
-		stringField(op.Data, "vendor_name", &vendor.Name)
+		stringField(op.Data, colVendorName, &vendor.Name)
 	}
 	if vendor.ID == "" && vendor.Name == "" {
 		vendor = q.Vendor

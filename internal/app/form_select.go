@@ -37,7 +37,7 @@ func isSelectField(form *huh.Form) bool {
 // huh.Select field, or -1 if the field is not a Select.
 func selectOptionCount(field huh.Field) int {
 	v := reflect.ValueOf(field)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	fo := v.FieldByName("filteredOptions")

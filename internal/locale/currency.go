@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -293,7 +294,7 @@ func deriveSeparators(tag language.Tag) (group, decimal string) {
 	formatted := p.Sprintf("%.1f", 1234.5)
 	runes := []rune(formatted)
 	lastNonDigit := -1
-	for i := len(runes) - 1; i >= 0; i-- {
+	for i := range slices.Backward(runes) {
 		if runes[i] < '0' || runes[i] > '9' {
 			lastNonDigit = i
 			break

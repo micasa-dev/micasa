@@ -165,8 +165,8 @@ func documentUpdate(
 		key string
 		dst any
 	}{
-		{"title", &existing.Title},
-		{"notes", &existing.Notes},
+		{data.ColTitle, &existing.Title},
+		{data.ColNotes, &existing.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Document{}, err

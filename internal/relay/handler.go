@@ -19,6 +19,10 @@ const (
 	maxRequestBody   = 1 << 20 // 1 MB
 	maxDeviceNameLen = 255
 	publicKeySize    = 32 // Curve25519
+
+	// respKeyStatus is the JSON field name for the operation-status string in
+	// simple acknowledgement responses.
+	respKeyStatus = "status"
 )
 
 // Handler serves the relay HTTP API.
@@ -122,7 +126,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{respKeyStatus: "ok"})
 }
 
 func (h *Handler) handleCreateHousehold(w http.ResponseWriter, r *http.Request) {
@@ -362,7 +366,7 @@ func (h *Handler) handleCompleteKeyExchange(
 		writeError(w, http.StatusBadRequest, "key exchange failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{respKeyStatus: "ok"})
 }
 
 func (h *Handler) handleGetKeyExchangeResult(w http.ResponseWriter, r *http.Request) {
@@ -423,7 +427,7 @@ func (h *Handler) handleRevokeDevice(
 		writeError(w, http.StatusBadRequest, "device revocation failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{respKeyStatus: "ok"})
 }
 
 // handlePutBlob stores an encrypted blob keyed by its plaintext SHA-256 hash.
@@ -463,7 +467,7 @@ func (h *Handler) handlePutBlob(
 	if err := h.store.PutBlob(r.Context(), hhID, hash, data, h.blobQuota); err != nil {
 		switch {
 		case errors.Is(err, errBlobExists):
-			writeJSON(w, http.StatusConflict, map[string]string{"status": "exists"})
+			writeJSON(w, http.StatusConflict, map[string]string{respKeyStatus: "exists"})
 		case errors.Is(err, errQuotaExceeded):
 			usage, usageErr := h.store.BlobUsage(r.Context(), hhID)
 			if usageErr != nil {
@@ -480,7 +484,7 @@ func (h *Handler) handlePutBlob(
 		}
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusCreated, map[string]string{respKeyStatus: "ok"})
 }
 
 func (h *Handler) handleGetBlob(
@@ -618,14 +622,14 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	var event StripeEvent
 	if err := json.Unmarshal(body, &event); err != nil {
 		h.log.Warn("webhook: unparseable event JSON", "error", err)
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
+		writeJSON(w, http.StatusOK, map[string]string{respKeyStatus: "ignored"})
 		return
 	}
 
 	subID, status, err := ParseSubscriptionEvent(event)
 	if err != nil {
 		h.log.Info("webhook: ignoring non-subscription event", "event_type", event.Type)
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
+		writeJSON(w, http.StatusOK, map[string]string{respKeyStatus: "ignored"})
 		return
 	}
 
@@ -633,7 +637,7 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.log.Warn("webhook: no household for subscription, ignoring",
 			"subscription_id", subID)
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
+		writeJSON(w, http.StatusOK, map[string]string{respKeyStatus: "ignored"})
 		return
 	}
 
@@ -646,9 +650,9 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("subscription updated",
 		"household_id", hh.ID,
 		"subscription_id", subID,
-		"status", status,
+		respKeyStatus, status,
 	)
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{respKeyStatus: "ok"})
 }
 
 func extractBearerToken(r *http.Request) string {

@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -89,6 +90,12 @@ const modelCommandPrefix = "/model "
 // overall overlay height stays constant.
 const completerMaxLines = 8
 
+// Model names referenced in more than one place (completer list plus tests).
+const (
+	modelLlama32 = "llama3.2"
+	modelQwen38B = "qwen3:8b"
+)
+
 // Popular models that appear in the completer even when the server doesn't
 // have them downloaded yet. Users can select one and it will be pulled.
 var wellKnownModels = []string{
@@ -96,11 +103,11 @@ var wellKnownModels = []string{
 	"gemma3:12b",
 	"gemma3:27b",
 	"llama3.1:70b",
-	"llama3.2",
+	modelLlama32,
 	"llama3.3",
 	"mistral-small:24b",
 	"phi-4:14b",
-	"qwen3:8b",
+	modelQwen38B,
 	"qwen3:32b",
 	"qwen3:72b",
 }
@@ -253,7 +260,7 @@ func (m *Model) cancelChatOperations() {
 				m.chat.Messages = msgs[:len(msgs)-1]
 			}
 			m.chat.Messages = append(m.chat.Messages, chatMessage{
-				Role: roleNotice, Content: "Interrupted",
+				Role: roleNotice, Content: noticeInterrupted,
 			})
 			m.refreshChatViewport()
 		}
@@ -307,7 +314,7 @@ func (m *Model) submitChat() tea.Cmd {
 	// Remove trailing "Interrupted" notice from a previous cancellation.
 	if n := len(m.chat.Messages); n > 0 &&
 		m.chat.Messages[n-1].Role == roleNotice &&
-		m.chat.Messages[n-1].Content == "Interrupted" {
+		m.chat.Messages[n-1].Content == noticeInterrupted {
 		m.chat.Messages = m.chat.Messages[:n-1]
 	}
 
@@ -317,7 +324,7 @@ func (m *Model) submitChat() tea.Cmd {
 	m.chat.Streaming = true
 	m.chat.StreamingSQL = true
 	m.chat.Messages = append(m.chat.Messages,
-		chatMessage{Role: roleNotice, Content: "generating query"},
+		chatMessage{Role: roleNotice, Content: noticeGeneratingQuery},
 		// Empty assistant message that we'll populate with SQL and later the answer.
 		chatMessage{Role: roleAssistant, Content: "", SQL: ""},
 	)
@@ -645,7 +652,7 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 		// Cloud providers without model listing: trust the name.
 		if !canList {
 			return pullProgressMsg{
-				Status: "Switched to " + name,
+				Status: statusSwitchedToPrefix + name,
 				Done:   true,
 				Model:  name,
 			}
@@ -657,7 +664,7 @@ func (m *Model) cmdSwitchModel(name string) tea.Cmd {
 		for _, model := range models {
 			if model == name || strings.HasPrefix(model, name+":") {
 				return pullProgressMsg{
-					Status: "Switched to " + model,
+					Status: statusSwitchedToPrefix + model,
 					Done:   true,
 					Model:  model,
 				}
@@ -909,7 +916,7 @@ func (m *Model) sqlHintItem() string {
 
 // removeLastNotice removes the most recent notice message from the chat.
 func (m *Model) removeLastNotice() {
-	for i := len(m.chat.Messages) - 1; i >= 0; i-- {
+	for i := range slices.Backward(m.chat.Messages) {
 		if m.chat.Messages[i].Role == roleNotice {
 			m.chat.Messages = append(m.chat.Messages[:i], m.chat.Messages[i+1:]...)
 			return

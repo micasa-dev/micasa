@@ -56,12 +56,12 @@ func projectCreate(store *data.Store, raw json.RawMessage) (data.Project, error)
 		key string
 		dst any
 	}{
-		{"title", &p.Title},
-		{"project_type_id", &p.ProjectTypeID},
-		{"status", &p.Status},
-		{"description", &p.Description},
-		{"budget_cents", &p.BudgetCents},
-		{"actual_cents", &p.ActualCents},
+		{data.ColTitle, &p.Title},
+		{data.ColProjectTypeID, &p.ProjectTypeID},
+		{data.ColStatus, &p.Status},
+		{data.ColDescription, &p.Description},
+		{data.ColBudgetCents, &p.BudgetCents},
+		{data.ColActualCents, &p.ActualCents},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Project{}, err
@@ -72,8 +72,8 @@ func projectCreate(store *data.Store, raw json.RawMessage) (data.Project, error)
 		key string
 		dst **time.Time
 	}{
-		{"start_date", &p.StartDate},
-		{"end_date", &p.EndDate},
+		{data.ColStartDate, &p.StartDate},
+		{data.ColEndDate, &p.EndDate},
 	} {
 		if dateStr, ok := stringField(fields, datePair.key); ok {
 			parsed, dateErr := data.ParseOptionalDate(dateStr)
@@ -114,12 +114,12 @@ func projectUpdate(store *data.Store, id string, raw json.RawMessage) (data.Proj
 		key string
 		dst any
 	}{
-		{"title", &existing.Title},
-		{"project_type_id", &existing.ProjectTypeID},
-		{"status", &existing.Status},
-		{"description", &existing.Description},
-		{"budget_cents", &existing.BudgetCents},
-		{"actual_cents", &existing.ActualCents},
+		{data.ColTitle, &existing.Title},
+		{data.ColProjectTypeID, &existing.ProjectTypeID},
+		{data.ColStatus, &existing.Status},
+		{data.ColDescription, &existing.Description},
+		{data.ColBudgetCents, &existing.BudgetCents},
+		{data.ColActualCents, &existing.ActualCents},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Project{}, err
@@ -130,8 +130,8 @@ func projectUpdate(store *data.Store, id string, raw json.RawMessage) (data.Proj
 		key string
 		dst **time.Time
 	}{
-		{"start_date", &existing.StartDate},
-		{"end_date", &existing.EndDate},
+		{data.ColStartDate, &existing.StartDate},
+		{data.ColEndDate, &existing.EndDate},
 	} {
 		if dateStr, ok := stringField(fields, datePair.key); ok {
 			parsed, dateErr := data.ParseOptionalDate(dateStr)

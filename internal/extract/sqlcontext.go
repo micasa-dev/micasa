@@ -44,6 +44,10 @@ const (
 	ColTypeInteger ColType = "integer"
 )
 
+// colVendorName is the synthetic column the extraction schema exposes so the
+// LLM can name a vendor by string; it is not a real database column.
+const colVendorName = "vendor_name"
+
 // ColumnDef describes a single column the LLM may write.
 type ColumnDef struct {
 	Name string
@@ -107,9 +111,9 @@ var ExtractionTableDefs = []TableDef{
 		Table:   data.TableVendors,
 		Columns: columnsFromMeta(data.TableVendors),
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"name"}},
-			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeString},
+			{Action: ActionCreate, Required: []string{data.ColName}},
+			{Action: ActionUpdate, Required: []string{data.ColID}, Extra: []ColumnDef{
+				{Name: data.ColID, Type: ColTypeString},
 			}},
 		},
 	},
@@ -117,9 +121,9 @@ var ExtractionTableDefs = []TableDef{
 		Table:   data.TableAppliances,
 		Columns: columnsFromMeta(data.TableAppliances),
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"name"}},
-			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeString},
+			{Action: ActionCreate, Required: []string{data.ColName}},
+			{Action: ActionUpdate, Required: []string{data.ColID}, Extra: []ColumnDef{
+				{Name: data.ColID, Type: ColTypeString},
 			}},
 		},
 	},
@@ -127,7 +131,7 @@ var ExtractionTableDefs = []TableDef{
 		Table: data.TableProjects,
 		Columns: withEnum(
 			columnsFromMeta(data.TableProjects),
-			"status", []any{
+			data.ColStatus, []any{
 				data.ProjectStatusIdeating,
 				data.ProjectStatusPlanned,
 				data.ProjectStatusQuoted,
@@ -138,19 +142,19 @@ var ExtractionTableDefs = []TableDef{
 			},
 		),
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"title"}},
+			{Action: ActionCreate, Required: []string{data.ColTitle}},
 		},
 	},
 	{
 		Table: data.TableQuotes,
 		Columns: append(
 			columnsFromMeta(data.TableQuotes),
-			ColumnDef{Name: "vendor_name", Type: ColTypeString},
+			ColumnDef{Name: colVendorName, Type: ColTypeString},
 		),
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"project_id", "total_cents"}},
-			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeString},
+			{Action: ActionCreate, Required: []string{data.ColProjectID, data.ColTotalCents}},
+			{Action: ActionUpdate, Required: []string{data.ColID}, Extra: []ColumnDef{
+				{Name: data.ColID, Type: ColTypeString},
 			}},
 		},
 	},
@@ -158,9 +162,9 @@ var ExtractionTableDefs = []TableDef{
 		Table:   data.TableMaintenanceItems,
 		Columns: columnsFromMeta(data.TableMaintenanceItems),
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"name"}},
-			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeString},
+			{Action: ActionCreate, Required: []string{data.ColName}},
+			{Action: ActionUpdate, Required: []string{data.ColID}, Extra: []ColumnDef{
+				{Name: data.ColID, Type: ColTypeString},
 			}},
 		},
 	},
@@ -170,39 +174,39 @@ var ExtractionTableDefs = []TableDef{
 			withEnum(
 				withEnum(
 					columnsFromMeta(data.TableIncidents),
-					"status", []any{
+					data.ColStatus, []any{
 						data.IncidentStatusOpen,
 						data.IncidentStatusInProgress,
 						data.IncidentStatusResolved,
 					},
 				),
-				"severity", []any{
+				data.ColSeverity, []any{
 					data.IncidentSeverityUrgent,
 					data.IncidentSeveritySoon,
 					data.IncidentSeverityWhenever,
 				},
 			),
-			ColumnDef{Name: "vendor_name", Type: ColTypeString},
+			ColumnDef{Name: colVendorName, Type: ColTypeString},
 		),
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"title"}},
+			{Action: ActionCreate, Required: []string{data.ColTitle}},
 		},
 	},
 	{
 		Table: data.TableServiceLogEntries,
 		Columns: append(
 			columnsFromMeta(data.TableServiceLogEntries),
-			ColumnDef{Name: "vendor_name", Type: ColTypeString},
+			ColumnDef{Name: colVendorName, Type: ColTypeString},
 		),
 		Actions: []ActionDef{
-			{Action: ActionCreate, Required: []string{"maintenance_item_id"}},
+			{Action: ActionCreate, Required: []string{data.ColMaintenanceItemID}},
 		},
 	},
 	{
 		Table: data.TableDocuments,
 		Columns: withEnum(
 			columnsFromMeta(data.TableDocuments),
-			"entity_kind", []any{
+			data.ColEntityKind, []any{
 				data.DocumentEntityProject,
 				data.DocumentEntityQuote,
 				data.DocumentEntityMaintenance,
@@ -214,9 +218,9 @@ var ExtractionTableDefs = []TableDef{
 		),
 		Actions: []ActionDef{
 			{Action: ActionCreate},
-			{Action: ActionUpdate, Required: []string{"id"}, Extra: []ColumnDef{
-				{Name: "id", Type: ColTypeString},
-			}, Omit: []string{"file_name"}},
+			{Action: ActionUpdate, Required: []string{data.ColID}, Extra: []ColumnDef{
+				{Name: data.ColID, Type: ColTypeString},
+			}, Omit: []string{data.ColFileName}},
 		},
 	},
 }

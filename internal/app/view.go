@@ -441,17 +441,17 @@ func hintZoneID(keys []string) string {
 		case keyQuestion:
 			return "help"
 		case keyI:
-			return "edit"
+			return hintEdit
 		case keyAt:
 			return "ask"
 		case keyEnter:
-			return "enter"
+			return keyEnter
 		case keyA:
 			return "add"
 		case keyD:
 			return "del"
 		case keyO:
-			return "open"
+			return hintOpen
 		case keyCtrlF:
 			return "search"
 		case keyEsc:
@@ -491,11 +491,11 @@ func (m *Model) withPullProgress(statusOutput string) string {
 func (m *Model) editHint() string {
 	tab := m.effectiveTab()
 	if tab == nil {
-		return "edit"
+		return hintEdit
 	}
 	col := tab.ColCursor
 	if col < 0 || col >= len(tab.Specs) {
-		return "edit"
+		return hintEdit
 	}
 	spec := tab.Specs[col]
 	// Show "follow link" hint when on a linked cell with a target.
@@ -505,7 +505,7 @@ func (m *Model) editHint() string {
 		}
 	}
 	if spec.Kind == cellReadonly {
-		return "edit"
+		return hintEdit
 	}
 	return "edit: " + spec.Title
 }
@@ -569,7 +569,7 @@ func (m *Model) buildNotePreviewOverlay() string {
 	var b strings.Builder
 	title := m.notePreview.title
 	if title == "" {
-		title = "Notes"
+		title = colHdrNotes
 	}
 	b.WriteString(m.styles.HeaderSection().Render(" " + title + " "))
 	b.WriteString("\n\n")

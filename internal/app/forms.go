@@ -244,15 +244,15 @@ func (m *Model) startProjectForm() {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Title")).
+				Title(requiredTitle(colHdrTitle)).
 				Value(&values.Title).
-				Validate(requiredText("title")),
+				Validate(requiredText(data.ColTitle)),
 			huh.NewSelect[string]().
 				Title("Project type").
 				Options(options...).
 				Value(&values.ProjectTypeID),
 			huh.NewSelect[string]().
-				Title("Status").
+				Title(colHdrStatus).
 				Options(statusOptions()...).
 				Value(&values.Status),
 		),
@@ -276,19 +276,19 @@ func (m *Model) openProjectForm(values *projectFormData, options []huh.Option[st
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Title")).
+				Title(requiredTitle(colHdrTitle)).
 				Value(&values.Title).
-				Validate(requiredText("title")),
+				Validate(requiredText(data.ColTitle)),
 			huh.NewSelect[string]().
 				Title("Project type").
 				Options(options...).
 				Value(&values.ProjectTypeID),
 			huh.NewSelect[string]().
-				Title("Status").
+				Title(colHdrStatus).
 				Options(statusOptions()...).
 				Value(&values.Status),
 			huh.NewInput().
-				Title("Budget").
+				Title(colHdrBudget).
 				Placeholder("1250.00").
 				Value(&values.Budget).
 				Validate(optionalMoney("budget", m.cur)),
@@ -329,7 +329,7 @@ func (m *Model) startQuoteForm() error {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("Project").
+				Title(colHdrProject).
 				Options(options...).
 				Value(&values.ProjectID),
 			huh.NewInput().
@@ -337,7 +337,7 @@ func (m *Model) startQuoteForm() error {
 				Value(&values.VendorName).
 				Validate(requiredText("vendor name")),
 			huh.NewInput().
-				Title(requiredTitle("Total")).
+				Title(requiredTitle(colHdrTotal)).
 				Placeholder("3250.00").
 				Value(&values.Total).
 				Validate(requiredMoney(m.cur)),
@@ -370,26 +370,26 @@ func (m *Model) openQuoteForm(values *quoteFormData, projectOpts []huh.Option[st
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("Project").
+				Title(colHdrProject).
 				Options(projectOpts...).
 				Value(&values.ProjectID),
 			huh.NewInput().
 				Title(requiredTitle("Vendor name")).
 				Value(&values.VendorName).
 				Validate(requiredText("vendor name")),
-			huh.NewInput().Title("Contact name").Value(&values.ContactName),
-			huh.NewInput().Title("Email").Value(&values.Email),
-			huh.NewInput().Title("Phone").Value(&values.Phone),
-			huh.NewInput().Title("Website").Value(&values.Website),
-		).Title("Vendor"),
+			huh.NewInput().Title(fieldContactName).Value(&values.ContactName),
+			huh.NewInput().Title(colHdrEmail).Value(&values.Email),
+			huh.NewInput().Title(colHdrPhone).Value(&values.Phone),
+			huh.NewInput().Title(colHdrWebsite).Value(&values.Website),
+		).Title(colHdrVendor),
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Total")).
+				Title(requiredTitle(colHdrTotal)).
 				Placeholder("3250.00").
 				Value(&values.Total).
 				Validate(requiredMoney(m.cur)),
 			huh.NewInput().
-				Title("Labor").
+				Title(colHdrLabor).
 				Placeholder("2000.00").
 				Value(&values.Labor).
 				Validate(optionalMoney("labor", m.cur)),
@@ -399,7 +399,7 @@ func (m *Model) openQuoteForm(values *quoteFormData, projectOpts []huh.Option[st
 				Value(&values.Materials).
 				Validate(optionalMoney("materials", m.cur)),
 			huh.NewInput().
-				Title("Other").
+				Title(colHdrOther).
 				Placeholder("250.00").
 				Value(&values.Other).
 				Validate(optionalMoney("other costs", m.cur)),
@@ -407,7 +407,7 @@ func (m *Model) openQuoteForm(values *quoteFormData, projectOpts []huh.Option[st
 				Title("Received date (YYYY-MM-DD)").
 				Value(&values.ReceivedDate).
 				Validate(optionalDate("received date")),
-			huh.NewText().Title("Notes").Value(&values.Notes),
+			huh.NewText().Title(colHdrNotes).Value(&values.Notes),
 		).Title("Quote"),
 	)
 	m.activateForm(form, values)
@@ -435,19 +435,19 @@ func (m *Model) startMaintenanceForm() error {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Item")).
+				Title(requiredTitle(colHdrItem)).
 				Value(&values.Name).
 				Validate(requiredText("item")),
 			huh.NewSelect[string]().
-				Title("Category").
+				Title(colHdrCategory).
 				Options(catOptions...).
 				Value(&values.CategoryID),
 			huh.NewSelect[string]().
-				Title("Season").
+				Title(colHdrSeason).
 				Options(seasonOptions()...).
 				Value(&values.Season),
 			huh.NewSelect[string]().
-				Title("Appliance").
+				Title(colHdrAppliance).
 				Options(appOpts...).
 				Value(&values.ApplianceID),
 			huh.NewSelect[scheduleType]().
@@ -457,7 +457,7 @@ func (m *Model) startMaintenanceForm() error {
 		),
 		huh.NewGroup(
 			huh.NewInput().
-				Title("Interval").
+				Title(colHdrInterval).
 				Placeholder("6m").
 				Value(&values.IntervalMonths).
 				Validate(optionalInterval()),
@@ -498,19 +498,19 @@ func (m *Model) openMaintenanceForm(
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Item")).
+				Title(requiredTitle(colHdrItem)).
 				Value(&values.Name).
 				Validate(requiredText("item")),
 			huh.NewSelect[string]().
-				Title("Category").
+				Title(colHdrCategory).
 				Options(catOptions...).
 				Value(&values.CategoryID),
 			huh.NewSelect[string]().
-				Title("Season").
+				Title(colHdrSeason).
 				Options(seasonOptions()...).
 				Value(&values.Season),
 			huh.NewSelect[string]().
-				Title("Appliance").
+				Title(colHdrAppliance).
 				Options(appOptions...).
 				Value(&values.ApplianceID),
 			huh.NewInput().
@@ -524,7 +524,7 @@ func (m *Model) openMaintenanceForm(
 		).Title("Schedule"),
 		huh.NewGroup(
 			huh.NewInput().
-				Title("Interval").
+				Title(colHdrInterval).
 				Placeholder("6m").
 				Value(&values.IntervalMonths).
 				Validate(optionalInterval()),
@@ -539,12 +539,12 @@ func (m *Model) openMaintenanceForm(
 			huh.NewInput().Title("Manual URL").Value(&values.ManualURL),
 			huh.NewText().Title("Manual notes").Value(&values.ManualText),
 			huh.NewInput().
-				Title("Cost").
+				Title(colHdrCost).
 				Placeholder("125.00").
 				Value(&values.Cost).
-				Validate(optionalMoney("cost", m.cur)),
-			huh.NewText().Title("Notes").Value(&values.Notes),
-		).Title("Details"),
+				Validate(optionalMoney(fieldCost, m.cur)),
+			huh.NewText().Title(colHdrNotes).Value(&values.Notes),
+		).Title(colHdrDetails),
 	)
 	m.activateForm(form, values)
 }
@@ -561,11 +561,11 @@ func (m *Model) startIncidentForm() error {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Title")).
+				Title(requiredTitle(colHdrTitle)).
 				Value(&values.Title).
-				Validate(requiredText("title")),
+				Validate(requiredText(data.ColTitle)),
 			huh.NewSelect[string]().
-				Title("Severity").
+				Title(colHdrSeverity).
 				Options(incidentSeverityOptions()...).
 				Value(&values.Severity),
 			huh.NewInput().
@@ -573,17 +573,17 @@ func (m *Model) startIncidentForm() error {
 				Value(&values.DateNoticed).
 				Validate(requiredDate("date noticed")),
 			huh.NewInput().
-				Title("Location").
-				Placeholder("Kitchen").
+				Title(colHdrLocation).
+				Placeholder(placeholderKitchen).
 				Value(&values.Location),
-		).Title("Details"),
+		).Title(colHdrDetails),
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("Appliance").
+				Title(colHdrAppliance).
 				Options(appOpts...).
 				Value(&values.ApplianceID),
 			huh.NewSelect[string]().
-				Title("Vendor").
+				Title(colHdrVendor).
 				Options(vendorOpts...).
 				Value(&values.VendorID),
 		).Title("Links"),
@@ -617,15 +617,15 @@ func (m *Model) openIncidentForm(
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Title")).
+				Title(requiredTitle(colHdrTitle)).
 				Value(&values.Title).
-				Validate(requiredText("title")),
+				Validate(requiredText(data.ColTitle)),
 			huh.NewSelect[string]().
-				Title("Status").
+				Title(colHdrStatus).
 				Options(incidentStatusOptions()...).
 				Value(&values.Status),
 			huh.NewSelect[string]().
-				Title("Severity").
+				Title(colHdrSeverity).
 				Options(incidentSeverityOptions()...).
 				Value(&values.Severity),
 			huh.NewInput().
@@ -637,26 +637,26 @@ func (m *Model) openIncidentForm(
 				Value(&values.DateResolved).
 				Validate(optionalDate("date resolved")),
 			huh.NewInput().
-				Title("Location").
-				Placeholder("Kitchen").
+				Title(colHdrLocation).
+				Placeholder(placeholderKitchen).
 				Value(&values.Location),
-		).Title("Details"),
+		).Title(colHdrDetails),
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("Appliance").
+				Title(colHdrAppliance).
 				Options(appOptions...).
 				Value(&values.ApplianceID),
 			huh.NewSelect[string]().
-				Title("Vendor").
+				Title(colHdrVendor).
 				Options(vendorOptions...).
 				Value(&values.VendorID),
 			huh.NewInput().
-				Title("Cost").
+				Title(colHdrCost).
 				Placeholder("250.00").
 				Value(&values.Cost).
-				Validate(optionalMoney("cost", m.cur)),
+				Validate(optionalMoney(fieldCost, m.cur)),
 			huh.NewText().Title("Description").Value(&values.Description),
-			huh.NewText().Title("Notes").Value(&values.Notes),
+			huh.NewText().Title(colHdrNotes).Value(&values.Notes),
 		).Title("Context"),
 	)
 	m.activateForm(form, values)
@@ -695,7 +695,7 @@ func (m *Model) parseIncidentFormData() (data.Incident, error) {
 	}
 	cost, err := m.cur.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.Incident{}, data.FieldError("Cost", err)
+		return data.Incident{}, data.FieldError(colHdrCost, err)
 	}
 	var appID *string
 	if values.ApplianceID != "" {
@@ -722,30 +722,30 @@ func (m *Model) parseIncidentFormData() (data.Incident, error) {
 
 var incidentInlineSpecs = map[int]inlineColSpec{
 	int(incidentColTitle): {
-		kind: ieText, title: "Title",
+		kind: ieText, title: colHdrTitle,
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Title },
-		validate: func(*Model) func(string) error { return requiredText("title") },
+		validate: func(*Model) func(string) error { return requiredText(data.ColTitle) },
 	},
 	int(incidentColStatus): {
-		kind: ieSelect, title: "Status",
+		kind: ieSelect, title: colHdrStatus,
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Status },
 		selectOptions: func(*Model) ([]huh.Option[string], error) {
 			return incidentStatusOptions(), nil
 		},
 	},
 	int(incidentColSeverity): {
-		kind: ieSelect, title: "Severity",
+		kind: ieSelect, title: colHdrSeverity,
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Severity },
 		selectOptions: func(*Model) ([]huh.Option[string], error) {
 			return incidentSeverityOptions(), nil
 		},
 	},
 	int(incidentColLocation): {
-		kind: ieText, title: "Location", placeholder: "Kitchen",
+		kind: ieText, title: colHdrLocation, placeholder: placeholderKitchen,
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Location },
 	},
 	int(incidentColAppliance): {
-		kind: ieSelect, title: "Appliance",
+		kind: ieSelect, title: colHdrAppliance,
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).ApplianceID },
 		selectOptions: func(m *Model) ([]huh.Option[string], error) {
 			appliances, err := m.store.ListAppliances(false)
@@ -756,7 +756,7 @@ var incidentInlineSpecs = map[int]inlineColSpec{
 		},
 	},
 	int(incidentColVendor): {
-		kind: ieSelect, title: "Vendor",
+		kind: ieSelect, title: colHdrVendor,
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).VendorID },
 		selectOptions: func(m *Model) ([]huh.Option[string], error) {
 			return vendorOpts("(none)", m.vendors), nil
@@ -771,9 +771,9 @@ var incidentInlineSpecs = map[int]inlineColSpec{
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).DateResolved },
 	},
 	int(incidentColCost): {
-		kind: ieMoney, title: "Cost", placeholder: "250.00",
+		kind: ieMoney, title: colHdrCost, placeholder: "250.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*incidentFormData](d).Cost },
-		validate: func(m *Model) func(string) error { return optionalMoney("cost", m.cur) },
+		validate: func(m *Model) func(string) error { return optionalMoney(fieldCost, m.cur) },
 	},
 }
 
@@ -892,10 +892,10 @@ func (m *Model) startApplianceForm() {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Name")).
+				Title(requiredTitle(colHdrName)).
 				Placeholder("Kitchen Refrigerator").
 				Value(&values.Name).
-				Validate(requiredText("name")),
+				Validate(requiredText(data.ColName)),
 		),
 	)
 	m.activateForm(form, values)
@@ -916,14 +916,17 @@ func (m *Model) openApplianceForm(values *applianceFormData) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Name")).
+				Title(requiredTitle(colHdrName)).
 				Placeholder("Kitchen Refrigerator").
 				Value(&values.Name).
-				Validate(requiredText("name")),
-			huh.NewInput().Title("Brand").Value(&values.Brand),
+				Validate(requiredText(data.ColName)),
+			huh.NewInput().Title(colHdrBrand).Value(&values.Brand),
 			huh.NewInput().Title("Model number").Value(&values.ModelNumber),
 			huh.NewInput().Title("Serial number").Value(&values.SerialNumber),
-			huh.NewInput().Title("Location").Placeholder("Kitchen").Value(&values.Location),
+			huh.NewInput().
+				Title(colHdrLocation).
+				Placeholder(placeholderKitchen).
+				Value(&values.Location),
 		).Title("Identity"),
 		huh.NewGroup(
 			huh.NewInput().
@@ -935,12 +938,12 @@ func (m *Model) openApplianceForm(values *applianceFormData) {
 				Value(&values.WarrantyExpiry).
 				Validate(optionalDate("warranty expiry")),
 			huh.NewInput().
-				Title("Cost").
+				Title(colHdrCost).
 				Placeholder("899.00").
 				Value(&values.Cost).
-				Validate(optionalMoney("cost", m.cur)),
-			huh.NewText().Title("Notes").Value(&values.Notes),
-		).Title("Details"),
+				Validate(optionalMoney(fieldCost, m.cur)),
+			huh.NewText().Title(colHdrNotes).Value(&values.Notes),
+		).Title(colHdrDetails),
 	)
 	m.activateForm(form, values)
 }
@@ -971,7 +974,7 @@ func (m *Model) parseApplianceFormData() (data.Appliance, error) {
 	}
 	cost, err := m.cur.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.Appliance{}, data.FieldError("Cost", err)
+		return data.Appliance{}, data.FieldError(colHdrCost, err)
 	}
 	return data.Appliance{
 		Name:           strings.TrimSpace(values.Name),
@@ -991,10 +994,10 @@ func (m *Model) startVendorForm() {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Name")).
+				Title(requiredTitle(colHdrName)).
 				Placeholder("Acme Plumbing").
 				Value(&values.Name).
-				Validate(requiredText("name")),
+				Validate(requiredText(data.ColName)),
 		),
 	)
 	m.activateForm(form, values)
@@ -1015,15 +1018,15 @@ func (m *Model) openVendorForm(values *vendorFormData) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title(requiredTitle("Name")).
+				Title(requiredTitle(colHdrName)).
 				Placeholder("Acme Plumbing").
 				Value(&values.Name).
-				Validate(requiredText("name")),
-			huh.NewInput().Title("Contact name").Value(&values.ContactName),
-			huh.NewInput().Title("Email").Value(&values.Email),
-			huh.NewInput().Title("Phone").Value(&values.Phone),
-			huh.NewInput().Title("Website").Value(&values.Website),
-			huh.NewText().Title("Notes").Value(&values.Notes),
+				Validate(requiredText(data.ColName)),
+			huh.NewInput().Title(fieldContactName).Value(&values.ContactName),
+			huh.NewInput().Title(colHdrEmail).Value(&values.Email),
+			huh.NewInput().Title(colHdrPhone).Value(&values.Phone),
+			huh.NewInput().Title(colHdrWebsite).Value(&values.Website),
+			huh.NewText().Title(colHdrNotes).Value(&values.Notes),
 		),
 	)
 	m.activateForm(form, values)
@@ -1058,24 +1061,24 @@ func (m *Model) parseVendorFormData() (data.Vendor, error) {
 
 var vendorInlineSpecs = map[int]inlineColSpec{
 	int(vendorColName): {
-		kind: ieText, title: "Name",
+		kind: ieText, title: colHdrName,
 		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Name },
-		validate: func(*Model) func(string) error { return requiredText("name") },
+		validate: func(*Model) func(string) error { return requiredText(data.ColName) },
 	},
 	int(vendorColContact): {
-		kind: ieText, title: "Contact name",
+		kind: ieText, title: fieldContactName,
 		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).ContactName },
 	},
 	int(vendorColEmail): {
-		kind: ieText, title: "Email",
+		kind: ieText, title: colHdrEmail,
 		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Email },
 	},
 	int(vendorColPhone): {
-		kind: ieText, title: "Phone",
+		kind: ieText, title: colHdrPhone,
 		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Phone },
 	},
 	int(vendorColWebsite): {
-		kind: ieText, title: "Website",
+		kind: ieText, title: colHdrWebsite,
 		fieldPtr: func(d formData) *string { return &mustAssert[*vendorFormData](d).Website },
 	},
 }
@@ -1117,19 +1120,19 @@ var projectInlineSpecs = map[int]inlineColSpec{
 		},
 	},
 	int(projectColTitle): {
-		kind: ieText, title: "Title",
+		kind: ieText, title: colHdrTitle,
 		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).Title },
-		validate: func(*Model) func(string) error { return requiredText("title") },
+		validate: func(*Model) func(string) error { return requiredText(data.ColTitle) },
 	},
 	int(projectColStatus): {
-		kind: ieSelect, title: "Status",
+		kind: ieSelect, title: colHdrStatus,
 		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).Status },
 		selectOptions: func(*Model) ([]huh.Option[string], error) {
 			return statusOptions(), nil
 		},
 	},
 	int(projectColBudget): {
-		kind: ieMoney, title: "Budget", placeholder: "1250.00",
+		kind: ieMoney, title: colHdrBudget, placeholder: "1250.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*projectFormData](d).Budget },
 		validate: func(m *Model) func(string) error { return optionalMoney("budget", m.cur) },
 	},
@@ -1166,7 +1169,7 @@ func (m *Model) inlineEditProject(id string, col projectCol) error {
 
 var quoteInlineSpecs = map[int]inlineColSpec{
 	int(quoteColProject): {
-		kind: ieSelect, title: "Project",
+		kind: ieSelect, title: colHdrProject,
 		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).ProjectID },
 		selectOptions: func(m *Model) ([]huh.Option[string], error) {
 			projects, err := m.store.ListProjects(false)
@@ -1182,12 +1185,12 @@ var quoteInlineSpecs = map[int]inlineColSpec{
 		validate: func(*Model) func(string) error { return requiredText("vendor name") },
 	},
 	int(quoteColTotal): {
-		kind: ieMoney, title: "Total", placeholder: "3250.00",
+		kind: ieMoney, title: colHdrTotal, placeholder: "3250.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Total },
 		validate: func(m *Model) func(string) error { return requiredMoney(m.cur) },
 	},
 	int(quoteColLabor): {
-		kind: ieMoney, title: "Labor", placeholder: "2000.00",
+		kind: ieMoney, title: colHdrLabor, placeholder: "2000.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Labor },
 		validate: func(m *Model) func(string) error { return optionalMoney("labor", m.cur) },
 	},
@@ -1197,7 +1200,7 @@ var quoteInlineSpecs = map[int]inlineColSpec{
 		validate: func(m *Model) func(string) error { return optionalMoney("materials", m.cur) },
 	},
 	int(quoteColOther): {
-		kind: ieMoney, title: "Other", placeholder: "250.00",
+		kind: ieMoney, title: colHdrOther, placeholder: "250.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*quoteFormData](d).Other },
 		validate: func(m *Model) func(string) error { return optionalMoney("other costs", m.cur) },
 	},
@@ -1225,26 +1228,26 @@ func (m *Model) inlineEditQuote(id string, col quoteCol) error {
 
 var maintenanceInlineSpecs = map[int]inlineColSpec{
 	int(maintenanceColItem): {
-		kind: ieText, title: "Item",
+		kind: ieText, title: colHdrItem,
 		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).Name },
 		validate: func(*Model) func(string) error { return requiredText("item") },
 	},
 	int(maintenanceColCategory): {
-		kind: ieSelect, title: "Category",
+		kind: ieSelect, title: colHdrCategory,
 		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).CategoryID },
 		selectOptions: func(m *Model) ([]huh.Option[string], error) {
 			return maintenanceOptions(m.maintenanceCategories), nil
 		},
 	},
 	int(maintenanceColSeason): {
-		kind: ieSelect, title: "Season",
+		kind: ieSelect, title: colHdrSeason,
 		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).Season },
 		selectOptions: func(*Model) ([]huh.Option[string], error) {
 			return seasonOptions(), nil
 		},
 	},
 	int(maintenanceColAppliance): {
-		kind: ieSelect, title: "Appliance",
+		kind: ieSelect, title: colHdrAppliance,
 		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).ApplianceID },
 		selectOptions: func(m *Model) ([]huh.Option[string], error) {
 			appliances, err := m.store.ListAppliances(false)
@@ -1259,7 +1262,7 @@ var maintenanceInlineSpecs = map[int]inlineColSpec{
 		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).LastServiced },
 	},
 	int(maintenanceColEvery): {
-		kind: ieText, title: "Interval", placeholder: "6m",
+		kind: ieText, title: colHdrInterval, placeholder: "6m",
 		fieldPtr: func(d formData) *string { return &mustAssert[*maintenanceFormData](d).IntervalMonths },
 		validate: func(*Model) func(string) error { return optionalInterval() },
 		beforeEdit: func(d formData) {
@@ -1297,12 +1300,12 @@ func (m *Model) inlineEditMaintenance(id string, col maintenanceCol) error {
 
 var applianceInlineSpecs = map[int]inlineColSpec{
 	int(applianceColName): {
-		kind: ieText, title: "Name",
+		kind: ieText, title: colHdrName,
 		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Name },
-		validate: func(*Model) func(string) error { return requiredText("name") },
+		validate: func(*Model) func(string) error { return requiredText(data.ColName) },
 	},
 	int(applianceColBrand): {
-		kind: ieText, title: "Brand",
+		kind: ieText, title: colHdrBrand,
 		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Brand },
 	},
 	int(applianceColModel): {
@@ -1314,7 +1317,7 @@ var applianceInlineSpecs = map[int]inlineColSpec{
 		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).SerialNumber },
 	},
 	int(applianceColLocation): {
-		kind: ieText, title: "Location", placeholder: "Kitchen",
+		kind: ieText, title: colHdrLocation, placeholder: placeholderKitchen,
 		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Location },
 	},
 	int(applianceColPurchased): {
@@ -1326,9 +1329,9 @@ var applianceInlineSpecs = map[int]inlineColSpec{
 		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).WarrantyExpiry },
 	},
 	int(applianceColCost): {
-		kind: ieMoney, title: "Cost", placeholder: "899.00",
+		kind: ieMoney, title: colHdrCost, placeholder: "899.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*applianceFormData](d).Cost },
-		validate: func(m *Model) func(string) error { return optionalMoney("cost", m.cur) },
+		validate: func(m *Model) func(string) error { return optionalMoney(fieldCost, m.cur) },
 	},
 }
 
@@ -1397,11 +1400,11 @@ func (m *Model) openServiceLogForm(
 				Options(vendorOpts...).
 				Value(&values.VendorID),
 			huh.NewInput().
-				Title("Cost").
+				Title(colHdrCost).
 				Placeholder("125.00").
 				Value(&values.Cost).
-				Validate(optionalMoney("cost", m.cur)),
-			huh.NewText().Title("Notes").Value(&values.Notes),
+				Validate(optionalMoney(fieldCost, m.cur)),
+			huh.NewText().Title(colHdrNotes).Value(&values.Notes),
 		),
 	)
 	m.activateForm(form, values)
@@ -1429,7 +1432,7 @@ func (m *Model) parseServiceLogFormData() (data.ServiceLogEntry, data.Vendor, er
 	}
 	cost, err := m.cur.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.ServiceLogEntry{}, data.Vendor{}, data.FieldError("Cost", err)
+		return data.ServiceLogEntry{}, data.Vendor{}, data.FieldError(colHdrCost, err)
 	}
 	entry := data.ServiceLogEntry{
 		MaintenanceItemID: values.MaintenanceItemID,
@@ -1463,9 +1466,9 @@ var serviceLogInlineSpecs = map[int]inlineColSpec{
 		},
 	},
 	int(serviceLogColCost): {
-		kind: ieMoney, title: "Cost", placeholder: "125.00",
+		kind: ieMoney, title: colHdrCost, placeholder: "125.00",
 		fieldPtr: func(d formData) *string { return &mustAssert[*serviceLogFormData](d).Cost },
-		validate: func(m *Model) func(string) error { return optionalMoney("cost", m.cur) },
+		validate: func(m *Model) func(string) error { return optionalMoney(fieldCost, m.cur) },
 	},
 	int(serviceLogColNotes): {
 		kind:     ieNotes,
@@ -1693,7 +1696,7 @@ func (m *Model) openNotesEdit(id string, fieldPtr *string, values formData) {
 // Separated from openNotesEdit so it can be reused when reopening after an
 // external editor session.
 func (m *Model) openNotesTextarea(fieldPtr *string, values formData) {
-	field := huh.NewText().Title("Notes").Value(fieldPtr)
+	field := huh.NewText().Title(colHdrNotes).Value(fieldPtr)
 	form := huh.NewForm(huh.NewGroup(field))
 	m.activateForm(form, values)
 	m.fs.formHasRequired = false
@@ -1926,7 +1929,7 @@ func (m *Model) parseProjectFormData() (data.Project, error) {
 	}
 	budget, err := m.cur.ParseOptionalCents(values.Budget)
 	if err != nil {
-		return data.Project{}, data.FieldError("Budget", err)
+		return data.Project{}, data.FieldError(colHdrBudget, err)
 	}
 	actual, err := m.cur.ParseOptionalCents(values.Actual)
 	if err != nil {
@@ -1970,11 +1973,11 @@ func (m *Model) parseQuoteFormData() (data.Quote, data.Vendor, error) {
 	}
 	total, err := m.cur.ParseRequiredCents(values.Total)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, data.FieldError("Total", err)
+		return data.Quote{}, data.Vendor{}, data.FieldError(colHdrTotal, err)
 	}
 	labor, err := m.cur.ParseOptionalCents(values.Labor)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, data.FieldError("Labor", err)
+		return data.Quote{}, data.Vendor{}, data.FieldError(colHdrLabor, err)
 	}
 	materials, err := m.cur.ParseOptionalCents(values.Materials)
 	if err != nil {
@@ -1982,7 +1985,7 @@ func (m *Model) parseQuoteFormData() (data.Quote, data.Vendor, error) {
 	}
 	other, err := m.cur.ParseOptionalCents(values.Other)
 	if err != nil {
-		return data.Quote{}, data.Vendor{}, data.FieldError("Other", err)
+		return data.Quote{}, data.Vendor{}, data.FieldError(colHdrOther, err)
 	}
 	received, err := data.ParseOptionalDate(values.ReceivedDate)
 	if err != nil {
@@ -2039,7 +2042,7 @@ func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
 	case schedInterval:
 		interval, err = data.ParseIntervalMonths(values.IntervalMonths)
 		if err != nil {
-			return data.MaintenanceItem{}, data.FieldError("Interval", err)
+			return data.MaintenanceItem{}, data.FieldError(colHdrInterval, err)
 		}
 	case schedDueDate:
 		dueDate, err = data.ParseOptionalDate(values.DueDate)
@@ -2050,7 +2053,7 @@ func (m *Model) parseMaintenanceFormData() (data.MaintenanceItem, error) {
 
 	cost, err := m.cur.ParseOptionalCents(values.Cost)
 	if err != nil {
-		return data.MaintenanceItem{}, data.FieldError("Cost", err)
+		return data.MaintenanceItem{}, data.FieldError(colHdrCost, err)
 	}
 	var appID *string
 	if values.ApplianceID != "" {
@@ -2362,9 +2365,9 @@ func (m *Model) startDocumentForm(entityKind string) error {
 
 	fields := []huh.Field{
 		huh.NewInput().
-			Title(requiredTitle("Title")).
+			Title(requiredTitle(colHdrTitle)).
 			Value(&values.Title).
-			Validate(requiredText("title")),
+			Validate(requiredText(data.ColTitle)),
 	}
 
 	if !scoped {
@@ -2374,7 +2377,7 @@ func (m *Model) startDocumentForm(entityKind string) error {
 		}
 		fields = append(fields,
 			huh.NewSelect[entityRef]().
-				Title("Entity").
+				Title(colHdrEntity).
 				Height(10).
 				Options(entityOpts...).
 				Value(&values.EntityRef),
@@ -2384,7 +2387,7 @@ func (m *Model) startDocumentForm(entityKind string) error {
 	fields = append(fields,
 		m.newDocumentFilePicker("File to attach").
 			Value(&values.FilePath),
-		huh.NewText().Title("Notes").Value(&values.Notes),
+		huh.NewText().Title(colHdrNotes).Value(&values.Notes),
 	)
 
 	form := huh.NewForm(huh.NewGroup(fields...))
@@ -2421,9 +2424,9 @@ func (m *Model) startEditDocumentForm(id string) error {
 func (m *Model) openEditDocumentForm(values *documentFormData, scoped bool) error {
 	fields := []huh.Field{
 		huh.NewInput().
-			Title(requiredTitle("Title")).
+			Title(requiredTitle(colHdrTitle)).
 			Value(&values.Title).
-			Validate(requiredText("title")),
+			Validate(requiredText(data.ColTitle)),
 	}
 
 	if !scoped {
@@ -2433,7 +2436,7 @@ func (m *Model) openEditDocumentForm(values *documentFormData, scoped bool) erro
 		}
 		fields = append(fields,
 			huh.NewSelect[entityRef]().
-				Title("Entity").
+				Title(colHdrEntity).
 				Height(10).
 				Options(entityOpts...).
 				Value(&values.EntityRef),
@@ -2443,7 +2446,7 @@ func (m *Model) openEditDocumentForm(values *documentFormData, scoped bool) erro
 	fields = append(fields,
 		m.newDocumentFilePicker("Replacement file").
 			Value(&values.FilePath),
-		huh.NewText().Title("Notes").Value(&values.Notes),
+		huh.NewText().Title(colHdrNotes).Value(&values.Notes),
 	)
 
 	form := huh.NewForm(huh.NewGroup(fields...))
@@ -2577,7 +2580,7 @@ func (m *Model) parseDocumentFormData() (documentParseResult, error) {
 
 		// Show one-time tesseract hint if extraction tools aren't available.
 		if extract.IsScanned(doc.ExtractedText) && !extract.OCRAvailable() {
-			if extract.IsImageMIME(doc.MIMEType) || doc.MIMEType == "application/pdf" {
+			if extract.IsImageMIME(doc.MIMEType) || doc.MIMEType == extract.MIMEApplicationPDF {
 				m.showTesseractHint()
 			}
 		}
@@ -2609,9 +2612,9 @@ func (m *Model) showTesseractHint() {
 
 var documentInlineSpecs = map[int]inlineColSpec{
 	int(documentColTitle): {
-		kind: ieText, title: "Title",
+		kind: ieText, title: colHdrTitle,
 		fieldPtr: func(d formData) *string { return &mustAssert[*documentFormData](d).Title },
-		validate: func(*Model) func(string) error { return requiredText("title") },
+		validate: func(*Model) func(string) error { return requiredText(data.ColTitle) },
 	},
 	int(documentColNotes): {
 		kind:     ieNotes,
@@ -2640,7 +2643,7 @@ func (m *Model) inlineEditDocument(id string, col documentCol) error {
 			return loadErr
 		}
 		field := huh.NewSelect[entityRef]().
-			Title("Entity").
+			Title(colHdrEntity).
 			Height(10).
 			Options(entityOpts...).
 			Value(&values.EntityRef)
@@ -2666,7 +2669,7 @@ func detectMIMEType(path string, fileData []byte) string {
 	if mime == "application/octet-stream" {
 		switch strings.ToLower(filepath.Ext(path)) {
 		case ".pdf":
-			return "application/pdf"
+			return extract.MIMEApplicationPDF
 		case ".txt":
 			return "text/plain"
 		case ".csv":

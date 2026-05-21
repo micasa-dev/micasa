@@ -56,15 +56,15 @@ func incidentCreate(store *data.Store, raw json.RawMessage) (data.Incident, erro
 		key string
 		dst any
 	}{
-		{"title", &i.Title},
-		{"description", &i.Description},
-		{"status", &i.Status},
-		{"severity", &i.Severity},
-		{"location", &i.Location},
-		{"cost_cents", &i.CostCents},
-		{"appliance_id", &i.ApplianceID},
-		{"vendor_id", &i.VendorID},
-		{"notes", &i.Notes},
+		{data.ColTitle, &i.Title},
+		{data.ColDescription, &i.Description},
+		{data.ColStatus, &i.Status},
+		{data.ColSeverity, &i.Severity},
+		{data.ColLocation, &i.Location},
+		{data.ColCostCents, &i.CostCents},
+		{data.ColApplianceID, &i.ApplianceID},
+		{data.ColVendorID, &i.VendorID},
+		{data.ColNotes, &i.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Incident{}, err
@@ -81,7 +81,7 @@ func incidentCreate(store *data.Store, raw json.RawMessage) (data.Incident, erro
 		i.Severity = data.IncidentSeveritySoon
 	}
 
-	if dateStr, ok := stringField(fields, "date_noticed"); ok {
+	if dateStr, ok := stringField(fields, data.ColDateNoticed); ok {
 		parsed, dateErr := data.ParseRequiredDate(dateStr)
 		if dateErr != nil {
 			return data.Incident{}, fmt.Errorf("date_noticed: %w", dateErr)
@@ -91,7 +91,7 @@ func incidentCreate(store *data.Store, raw json.RawMessage) (data.Incident, erro
 		i.DateNoticed = time.Now().Truncate(24 * time.Hour)
 	}
 
-	if dateStr, ok := stringField(fields, "date_resolved"); ok {
+	if dateStr, ok := stringField(fields, data.ColDateResolved); ok {
 		parsed, dateErr := data.ParseOptionalDate(dateStr)
 		if dateErr != nil {
 			return data.Incident{}, fmt.Errorf("date_resolved: %w", dateErr)
@@ -120,22 +120,22 @@ func incidentUpdate(store *data.Store, id string, raw json.RawMessage) (data.Inc
 		key string
 		dst any
 	}{
-		{"title", &existing.Title},
-		{"description", &existing.Description},
-		{"status", &existing.Status},
-		{"severity", &existing.Severity},
-		{"location", &existing.Location},
-		{"cost_cents", &existing.CostCents},
-		{"appliance_id", &existing.ApplianceID},
-		{"vendor_id", &existing.VendorID},
-		{"notes", &existing.Notes},
+		{data.ColTitle, &existing.Title},
+		{data.ColDescription, &existing.Description},
+		{data.ColStatus, &existing.Status},
+		{data.ColSeverity, &existing.Severity},
+		{data.ColLocation, &existing.Location},
+		{data.ColCostCents, &existing.CostCents},
+		{data.ColApplianceID, &existing.ApplianceID},
+		{data.ColVendorID, &existing.VendorID},
+		{data.ColNotes, &existing.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Incident{}, err
 		}
 	}
 
-	if dateStr, ok := stringField(fields, "date_noticed"); ok {
+	if dateStr, ok := stringField(fields, data.ColDateNoticed); ok {
 		parsed, dateErr := data.ParseRequiredDate(dateStr)
 		if dateErr != nil {
 			return data.Incident{}, fmt.Errorf("date_noticed: %w", dateErr)
@@ -143,13 +143,13 @@ func incidentUpdate(store *data.Store, id string, raw json.RawMessage) (data.Inc
 		existing.DateNoticed = parsed
 	}
 
-	if dateStr, ok := stringField(fields, "date_resolved"); ok && dateStr != "" {
+	if dateStr, ok := stringField(fields, data.ColDateResolved); ok && dateStr != "" {
 		parsed, dateErr := data.ParseOptionalDate(dateStr)
 		if dateErr != nil {
 			return data.Incident{}, fmt.Errorf("date_resolved: %w", dateErr)
 		}
 		existing.DateResolved = parsed
-	} else if _, ok := fields["date_resolved"]; ok {
+	} else if _, ok := fields[data.ColDateResolved]; ok {
 		existing.DateResolved = nil
 	}
 

@@ -210,7 +210,7 @@ func (ex *extractionLogState) advanceCursor() {
 		return
 	}
 	active := ex.activeSteps()
-	for i := len(active) - 1; i >= 0; i-- {
+	for i := range slices.Backward(active) {
 		s := ex.Steps[active[i]].Status
 		if s == stepDone || s == stepFailed || s == stepSkipped {
 			ex.cursor = i
@@ -295,13 +295,13 @@ func (m *Model) startExtractionOverlay(
 		var tool, desc string
 		switch {
 		case mime == extract.MIMEApplicationPDF:
-			tool = "pdftotext"
+			tool = extract.ToolPDFText
 			desc = "Digital text extracted directly from the PDF."
 		case strings.HasPrefix(mime, "text/"):
-			tool = "plaintext"
+			tool = extract.ToolPlainText
 			desc = "Plain text content."
 		case extract.IsImageMIME(mime):
-			tool = "tesseract"
+			tool = extract.ToolTesseract
 			desc = "Text from previous OCR extraction."
 		default:
 			tool = mime
@@ -340,7 +340,7 @@ func (m *Model) startExtractionOverlay(
 		case mime == extract.MIMEApplicationPDF:
 			textTool = "pdf"
 		case strings.HasPrefix(mime, "text/"):
-			textTool = "plaintext"
+			textTool = extract.ToolPlainText
 		case extract.IsImageMIME(mime):
 			textTool = "ocr"
 		default:
@@ -875,7 +875,7 @@ func (m *Model) acceptDeferredExtraction() error {
 	// Apply fields from "create documents" operations to the pending doc.
 	for _, op := range ex.operations {
 		if op.Table == tableDocuments {
-			applyStringField(op.Data, "title", &doc.Title)
+			applyStringField(op.Data, data.ColTitle, &doc.Title)
 			applyStringField(op.Data, "notes", &doc.Notes)
 			applyStringField(op.Data, "entity_kind", &doc.EntityKind)
 			if v, ok := op.Data["entity_id"]; ok {
@@ -1264,7 +1264,7 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 		// Cloud providers without model listing: trust the name.
 		if !canList {
 			return pullProgressMsg{
-				Status: "Switched to " + name,
+				Status: statusSwitchedToPrefix + name,
 				Done:   true,
 				Model:  name,
 			}
@@ -1275,7 +1275,7 @@ func (m *Model) switchExtractionModel(name string, isLocal bool) tea.Cmd {
 		for _, model := range models {
 			if model == name || strings.HasPrefix(model, name+":") {
 				return pullProgressMsg{
-					Status: "Switched to " + model,
+					Status: statusSwitchedToPrefix + model,
 					Done:   true,
 					Model:  model,
 				}

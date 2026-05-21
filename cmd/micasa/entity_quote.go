@@ -55,7 +55,7 @@ func resolveVendorInput(
 	var vendorID string
 	var vendorName string
 
-	if raw, ok := fields["vendor_id"]; ok {
+	if raw, ok := fields[data.ColVendorID]; ok {
 		if err := json.Unmarshal(raw, &vendorID); err != nil {
 			return data.Vendor{}, false, fmt.Errorf("field vendor_id: %w", err)
 		}
@@ -91,19 +91,19 @@ func quoteCreate(store *data.Store, raw json.RawMessage) (data.Quote, error) {
 		key string
 		dst any
 	}{
-		{"project_id", &q.ProjectID},
-		{"total_cents", &q.TotalCents},
-		{"labor_cents", &q.LaborCents},
-		{"materials_cents", &q.MaterialsCents},
-		{"other_cents", &q.OtherCents},
-		{"notes", &q.Notes},
+		{data.ColProjectID, &q.ProjectID},
+		{data.ColTotalCents, &q.TotalCents},
+		{data.ColLaborCents, &q.LaborCents},
+		{data.ColMaterialsCents, &q.MaterialsCents},
+		{data.ColOtherCents, &q.OtherCents},
+		{data.ColNotes, &q.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Quote{}, err
 		}
 	}
 
-	if dateStr, ok := stringField(fields, "received_date"); ok {
+	if dateStr, ok := stringField(fields, data.ColReceivedDate); ok {
 		parsed, dateErr := data.ParseOptionalDate(dateStr)
 		if dateErr != nil {
 			return data.Quote{}, fmt.Errorf("received_date: %w", dateErr)
@@ -144,25 +144,25 @@ func quoteUpdate(store *data.Store, id string, raw json.RawMessage) (data.Quote,
 		key string
 		dst any
 	}{
-		{"project_id", &existing.ProjectID},
-		{"total_cents", &existing.TotalCents},
-		{"labor_cents", &existing.LaborCents},
-		{"materials_cents", &existing.MaterialsCents},
-		{"other_cents", &existing.OtherCents},
-		{"notes", &existing.Notes},
+		{data.ColProjectID, &existing.ProjectID},
+		{data.ColTotalCents, &existing.TotalCents},
+		{data.ColLaborCents, &existing.LaborCents},
+		{data.ColMaterialsCents, &existing.MaterialsCents},
+		{data.ColOtherCents, &existing.OtherCents},
+		{data.ColNotes, &existing.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Quote{}, err
 		}
 	}
 
-	if dateStr, ok := stringField(fields, "received_date"); ok {
+	if dateStr, ok := stringField(fields, data.ColReceivedDate); ok {
 		parsed, dateErr := data.ParseOptionalDate(dateStr)
 		if dateErr != nil {
 			return data.Quote{}, fmt.Errorf("received_date: %w", dateErr)
 		}
 		existing.ReceivedDate = parsed
-	} else if _, present := fields["received_date"]; present {
+	} else if _, present := fields[data.ColReceivedDate]; present {
 		existing.ReceivedDate = nil
 	}
 

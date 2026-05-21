@@ -16,7 +16,7 @@ import (
 
 func maintenanceEntityDef() entityDef[data.MaintenanceItem] {
 	return entityDef[data.MaintenanceItem]{
-		name:        "maintenance",
+		name:        entityMaintenance,
 		singular:    "maintenance item",
 		tableHeader: "MAINTENANCE",
 		cols:        maintenanceCols,
@@ -81,13 +81,13 @@ func maintenanceUpdate(
 		key string
 		dst any
 	}{
-		{"name", &existing.Name},
-		{"category_id", &existing.CategoryID},
-		{"appliance_id", &existing.ApplianceID},
-		{"season", &existing.Season},
-		{"interval_months", &existing.IntervalMonths},
-		{"notes", &existing.Notes},
-		{"cost_cents", &existing.CostCents},
+		{data.ColName, &existing.Name},
+		{data.ColCategoryID, &existing.CategoryID},
+		{data.ColApplianceID, &existing.ApplianceID},
+		{data.ColSeason, &existing.Season},
+		{data.ColIntervalMonths, &existing.IntervalMonths},
+		{data.ColNotes, &existing.Notes},
+		{data.ColCostCents, &existing.CostCents},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.MaintenanceItem{}, err
@@ -98,8 +98,8 @@ func maintenanceUpdate(
 		key string
 		dst **time.Time
 	}{
-		{"last_serviced_at", &existing.LastServicedAt},
-		{"due_date", &existing.DueDate},
+		{data.ColLastServicedAt, &existing.LastServicedAt},
+		{data.ColDueDate, &existing.DueDate},
 	} {
 		if dateStr, ok := stringField(fields, datePair.key); ok {
 			parsed, dateErr := data.ParseOptionalDate(dateStr)

@@ -114,7 +114,7 @@ type PDFTextExtractor struct {
 	Timeout time.Duration
 }
 
-func (e *PDFTextExtractor) Tool() string             { return "pdftotext" }
+func (e *PDFTextExtractor) Tool() string             { return ToolPDFText }
 func (e *PDFTextExtractor) Matches(mime string) bool { return mime == MIMEApplicationPDF }
 func (e *PDFTextExtractor) Available() bool          { return e.tools().PDFToText != "" }
 
@@ -141,7 +141,7 @@ func (e *PDFTextExtractor) Extract(ctx context.Context, data []byte) (TextSource
 		return TextSource{}, err
 	}
 	return TextSource{
-		Tool: "pdftotext",
+		Tool: ToolPDFText,
 		Desc: "Digital text extracted directly from the PDF. Accurate for pages with selectable text.",
 		Text: text,
 	}, nil
@@ -150,7 +150,7 @@ func (e *PDFTextExtractor) Extract(ctx context.Context, data []byte) (TextSource
 // PlainTextExtractor normalizes whitespace from text/* content.
 type PlainTextExtractor struct{}
 
-func (e *PlainTextExtractor) Tool() string             { return "plaintext" }
+func (e *PlainTextExtractor) Tool() string             { return ToolPlainText }
 func (e *PlainTextExtractor) Matches(mime string) bool { return strings.HasPrefix(mime, "text/") }
 func (e *PlainTextExtractor) Available() bool          { return true }
 
@@ -159,7 +159,7 @@ func (e *PlainTextExtractor) Extract(_ context.Context, data []byte) (TextSource
 		return TextSource{}, nil
 	}
 	return TextSource{
-		Tool: "plaintext",
+		Tool: ToolPlainText,
 		Desc: "Plain text content with normalized whitespace.",
 		Text: normalizeWhitespace(string(data)),
 	}, nil
@@ -174,7 +174,7 @@ type PDFOCRExtractor struct {
 	MaxPages int
 }
 
-func (e *PDFOCRExtractor) Tool() string             { return "tesseract" }
+func (e *PDFOCRExtractor) Tool() string             { return ToolTesseract }
 func (e *PDFOCRExtractor) Matches(mime string) bool { return mime == MIMEApplicationPDF }
 func (e *PDFOCRExtractor) Available() bool          { return e.tools().PDFOCRAvailable() }
 
@@ -195,7 +195,7 @@ func (e *PDFOCRExtractor) Extract(ctx context.Context, data []byte) (TextSource,
 		return TextSource{}, err
 	}
 	return TextSource{
-		Tool: "tesseract",
+		Tool: ToolTesseract,
 		Desc: "Text recognized from rasterized page images. Covers scanned pages that pdftotext misses, but may contain OCR errors.",
 		Text: text,
 		Data: tsv,
@@ -210,7 +210,7 @@ type ImageOCRExtractor struct {
 	Tools *OCRTools
 }
 
-func (e *ImageOCRExtractor) Tool() string             { return "tesseract" }
+func (e *ImageOCRExtractor) Tool() string             { return ToolTesseract }
 func (e *ImageOCRExtractor) Matches(mime string) bool { return IsImageMIME(mime) }
 func (e *ImageOCRExtractor) Available() bool          { return e.tools().ImageOCRAvailable() }
 
@@ -231,7 +231,7 @@ func (e *ImageOCRExtractor) Extract(ctx context.Context, data []byte) (TextSourc
 		return TextSource{}, err
 	}
 	return TextSource{
-		Tool: "tesseract",
+		Tool: ToolTesseract,
 		Desc: "Text recognized from the image. May contain OCR errors.",
 		Text: text,
 		Data: tsv,

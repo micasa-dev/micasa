@@ -789,10 +789,10 @@ func previewColumns(tableName string, cur locale.Currency) []previewColDef {
 
 // previewTabName maps a DB table name to the display name used in the tab bar.
 var previewTabName = map[string]string{
-	tableDocuments:             "Docs",
+	tableDocuments:             colHdrDocs,
 	data.TableVendors:          "Vendors",
-	data.TableQuotes:           "Quotes",
-	data.TableMaintenanceItems: "Maintenance",
+	data.TableQuotes:           colHdrQuotes,
+	data.TableMaintenanceItems: colHdrMaintenance,
 	data.TableAppliances:       "Appliances",
 }
 

@@ -18,6 +18,10 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// lockStrengthUpdate is the GORM clause.Locking strength for SELECT ... FOR
+// UPDATE row locks.
+const lockStrengthUpdate = "UPDATE"
+
 // PgStore implements the relay Store interface backed by Postgres via GORM.
 type PgStore struct {
 	rls           *rlsdb.DB
@@ -394,7 +398,7 @@ func (s *PgStore) CreateInvite(
 	err = s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		// Lock household row as the serialization point.
 		if err := tx.Model(&pgHousehold{}).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Clauses(clause.Locking{Strength: lockStrengthUpdate}).
 			Where("id = ?", householdID).
 			First(&pgHousehold{}).Error; err != nil {
 			return fmt.Errorf("lock household: %w", err)
@@ -441,7 +445,7 @@ func (s *PgStore) StartJoin(
 	// must not be trusted for RLS scoping.
 	err := s.rls.WithoutHousehold(ctx, func(tx *gorm.DB) error {
 		var inv pgInvite
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(clause.Locking{Strength: lockStrengthUpdate}).
 			Where("code = ?", code).First(&inv).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.New("invite code not found")
@@ -539,7 +543,7 @@ func (s *PgStore) CompleteKeyExchange(
 ) error {
 	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		var ex pgKeyExchange
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(clause.Locking{Strength: lockStrengthUpdate}).
 			Where("id = ?", exchangeID).First(&ex).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("key exchange %s not found", exchangeID)
@@ -681,7 +685,7 @@ func (s *PgStore) ListDevices(
 func (s *PgStore) RevokeDevice(ctx context.Context, householdID, deviceID string) error {
 	return s.rls.Tx(ctx, householdID, func(tx *gorm.DB) error {
 		var dev pgDevice
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(clause.Locking{Strength: lockStrengthUpdate}).
 			Where("id = ?", deviceID).First(&dev).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("device %s not found", deviceID)
@@ -819,7 +823,7 @@ func (s *PgStore) PutBlob(
 		// Without this, READ COMMITTED allows two transactions to read
 		// the same usage sum and both insert, overshooting the quota.
 		if err := tx.Model(&pgHousehold{}).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Clauses(clause.Locking{Strength: lockStrengthUpdate}).
 			Where("id = ?", householdID).
 			First(&pgHousehold{}).Error; err != nil {
 			return fmt.Errorf("lock household for blob quota: %w", err)

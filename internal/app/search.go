@@ -206,7 +206,7 @@ func (m *Model) buildDocSearchOverlay() string {
 	b.WriteString("\n\n")
 	hints := joinWithSeparator(
 		m.helpSeparator(),
-		m.helpItem(symReturn, "open"),
+		m.helpItem(symReturn, hintOpen),
 		m.helpItem(symUp+"/"+symDown, "nav"),
 		m.helpItem(keyEsc, "close"),
 	)

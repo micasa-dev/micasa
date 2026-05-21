@@ -75,7 +75,7 @@ func houseFieldDefs() []houseFieldDef {
 		// Identity — ordered to match form tab order (postal code after nickname
 		// for autofill, then address lines, city, state).
 		{
-			key: "nickname", label: "Name", section: houseSectionIdentity,
+			key: "nickname", label: colHdrName, section: houseSectionIdentity,
 			build: func(_ *Model, v *string) huh.Field {
 				return huh.NewInput().
 					Title(requiredTitle("Nickname")).

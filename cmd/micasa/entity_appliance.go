@@ -16,8 +16,8 @@ import (
 
 func applianceEntityDef() entityDef[data.Appliance] {
 	return entityDef[data.Appliance]{
-		name:        "appliance",
-		singular:    "appliance",
+		name:        entityAppliance,
+		singular:    entityAppliance,
 		tableHeader: "APPLIANCES",
 		cols:        applianceCols,
 		toMap:       applianceToMap,
@@ -56,13 +56,13 @@ func applianceCreate(store *data.Store, raw json.RawMessage) (data.Appliance, er
 		key string
 		dst any
 	}{
-		{"name", &a.Name},
-		{"brand", &a.Brand},
-		{"model_number", &a.ModelNumber},
-		{"serial_number", &a.SerialNumber},
-		{"location", &a.Location},
-		{"cost_cents", &a.CostCents},
-		{"notes", &a.Notes},
+		{data.ColName, &a.Name},
+		{data.ColBrand, &a.Brand},
+		{data.ColModelNumber, &a.ModelNumber},
+		{data.ColSerialNumber, &a.SerialNumber},
+		{data.ColLocation, &a.Location},
+		{data.ColCostCents, &a.CostCents},
+		{data.ColNotes, &a.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Appliance{}, err
@@ -73,8 +73,8 @@ func applianceCreate(store *data.Store, raw json.RawMessage) (data.Appliance, er
 		key string
 		dst **time.Time
 	}{
-		{"purchase_date", &a.PurchaseDate},
-		{"warranty_expiry", &a.WarrantyExpiry},
+		{data.ColPurchaseDate, &a.PurchaseDate},
+		{data.ColWarrantyExpiry, &a.WarrantyExpiry},
 	} {
 		if dateStr, ok := stringField(fields, datePair.key); ok {
 			parsed, dateErr := data.ParseOptionalDate(dateStr)
@@ -109,13 +109,13 @@ func applianceUpdate(store *data.Store, id string, raw json.RawMessage) (data.Ap
 		key string
 		dst any
 	}{
-		{"name", &existing.Name},
-		{"brand", &existing.Brand},
-		{"model_number", &existing.ModelNumber},
-		{"serial_number", &existing.SerialNumber},
-		{"location", &existing.Location},
-		{"cost_cents", &existing.CostCents},
-		{"notes", &existing.Notes},
+		{data.ColName, &existing.Name},
+		{data.ColBrand, &existing.Brand},
+		{data.ColModelNumber, &existing.ModelNumber},
+		{data.ColSerialNumber, &existing.SerialNumber},
+		{data.ColLocation, &existing.Location},
+		{data.ColCostCents, &existing.CostCents},
+		{data.ColNotes, &existing.Notes},
 	} {
 		if err := mergeField(fields, pair.key, pair.dst); err != nil {
 			return data.Appliance{}, err
@@ -126,8 +126,8 @@ func applianceUpdate(store *data.Store, id string, raw json.RawMessage) (data.Ap
 		key string
 		dst **time.Time
 	}{
-		{"purchase_date", &existing.PurchaseDate},
-		{"warranty_expiry", &existing.WarrantyExpiry},
+		{data.ColPurchaseDate, &existing.PurchaseDate},
+		{data.ColWarrantyExpiry, &existing.WarrantyExpiry},
 	} {
 		if dateStr, ok := stringField(fields, datePair.key); ok {
 			parsed, dateErr := data.ParseOptionalDate(dateStr)

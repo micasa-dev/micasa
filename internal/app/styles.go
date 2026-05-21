@@ -7,6 +7,7 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
+	"github.com/micasa-dev/micasa/internal/data"
 )
 
 // adaptiveColor holds light and dark hex values, replacing the removed
@@ -408,27 +409,27 @@ func (s *Styles) BlinkCursor() lipgloss.Style      { return s.blinkCursor }
 
 func (s *Styles) StatusStyle(key string) (lipgloss.Style, bool) {
 	switch key {
-	case "ideating":
+	case data.ProjectStatusIdeating:
 		return s.fgMuted, true
-	case "planned", "open":
+	case data.ProjectStatusPlanned, data.IncidentStatusOpen:
 		return s.fgAccent, true
-	case "quoted":
+	case data.ProjectStatusQuoted:
 		return s.fgSecondary, true
-	case "underway", "in_progress":
+	case data.ProjectStatusInProgress, data.IncidentStatusInProgress:
 		return s.fgSuccess, true
-	case "delayed", "soon":
+	case data.ProjectStatusDelayed, data.IncidentSeveritySoon:
 		return s.fgWarning, true
-	case "completed", "resolved", "whenever":
+	case data.ProjectStatusCompleted, data.IncidentStatusResolved, data.IncidentSeverityWhenever:
 		return s.fgTextDim, true
-	case "abandoned", "urgent":
+	case data.ProjectStatusAbandoned, data.IncidentSeverityUrgent:
 		return s.fgDanger, true
-	case "spring":
+	case data.SeasonSpring:
 		return s.fgSuccess, true
-	case "summer":
+	case data.SeasonSummer:
 		return s.fgWarning, true
-	case "fall":
+	case data.SeasonFall:
 		return s.fgSecondary, true
-	case "winter":
+	case data.SeasonWinter:
 		return s.fgAccent, true
 	default:
 		return lipgloss.Style{}, false

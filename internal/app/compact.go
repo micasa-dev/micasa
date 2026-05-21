@@ -6,32 +6,37 @@ package app
 import (
 	"strings"
 
+	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/micasa-dev/micasa/internal/locale"
 )
+
+// statusLabelPlanned is the abbreviated display label for the "planned"
+// project status. It is also used as a filter-query token in tests.
+const statusLabelPlanned = "plan"
 
 // statusLabels maps full status names to short display labels.
 var statusLabels = map[string]string{
 	// Project statuses.
-	"ideating":  "idea",
-	"planned":   "plan",
-	"quoted":    "bid",
-	"underway":  "wip",
-	"delayed":   "hold",
-	"completed": "done",
-	"abandoned": "drop",
+	data.ProjectStatusIdeating:   "idea",
+	data.ProjectStatusPlanned:    statusLabelPlanned,
+	data.ProjectStatusQuoted:     "bid",
+	data.ProjectStatusInProgress: "wip",
+	data.ProjectStatusDelayed:    "hold",
+	data.ProjectStatusCompleted:  "done",
+	data.ProjectStatusAbandoned:  "drop",
 	// Incident statuses.
-	"open":        "open",
-	"in_progress": "act",
-	"resolved":    "res",
+	data.IncidentStatusOpen:       "open",
+	data.IncidentStatusInProgress: "act",
+	data.IncidentStatusResolved:   "res",
 	// Incident severities.
-	"urgent":   "urg",
-	"soon":     "soon",
-	"whenever": "low",
+	data.IncidentSeverityUrgent:   "urg",
+	data.IncidentSeveritySoon:     "soon",
+	data.IncidentSeverityWhenever: "low",
 	// Seasons.
-	"spring": "spr",
-	"summer": "sum",
-	"fall":   "fall",
-	"winter": "win",
+	data.SeasonSpring: "spr",
+	data.SeasonSummer: "sum",
+	data.SeasonFall:   "fall",
+	data.SeasonWinter: "win",
 }
 
 // statusLabel returns the short display label for a status value.

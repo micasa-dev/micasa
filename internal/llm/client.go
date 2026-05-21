@@ -52,14 +52,25 @@ type StreamChunk struct {
 	Err     error
 }
 
-// ProviderOllama is the provider identifier for Ollama.
-const ProviderOllama = "ollama"
+// Provider identifiers passed to NewClient and matched in createProvider.
+const (
+	ProviderOllama     = "ollama"
+	ProviderAnthropic  = "anthropic"
+	ProviderOpenAI     = "openai"
+	ProviderOpenRouter = "openrouter"
+	ProviderDeepSeek   = "deepseek"
+	ProviderGemini     = "gemini"
+	ProviderGroq       = "groq"
+	ProviderMistral    = "mistral"
+	ProviderLlamaCPP   = "llamacpp"
+	ProviderLlamafile  = "llamafile"
+)
 
 // localProviders are providers that run on the user's machine.
 var localProviders = map[string]bool{
-	ProviderOllama: true,
-	"llamacpp":     true,
-	"llamafile":    true,
+	ProviderOllama:    true,
+	ProviderLlamaCPP:  true,
+	ProviderLlamafile: true,
 }
 
 // NewClient creates an LLM client for the named provider. The timeout is the
@@ -114,21 +125,21 @@ func createProvider(name string, opts []anyllm.Option) (anyllm.Provider, error) 
 	switch name {
 	case ProviderOllama:
 		p, err = ollama.New(opts...)
-	case "anthropic":
+	case ProviderAnthropic:
 		p, err = anthropic.New(opts...)
-	case "openai", "openrouter":
+	case ProviderOpenAI, ProviderOpenRouter:
 		p, err = openai.New(opts...)
-	case "deepseek":
+	case ProviderDeepSeek:
 		p, err = deepseek.New(opts...)
-	case "gemini":
+	case ProviderGemini:
 		p, err = gemini.New(opts...)
-	case "groq":
+	case ProviderGroq:
 		p, err = groq.New(opts...)
-	case "mistral":
+	case ProviderMistral:
 		p, err = mistral.New(opts...)
-	case "llamacpp":
+	case ProviderLlamaCPP:
 		p, err = llamacpp.New(opts...)
-	case "llamafile":
+	case ProviderLlamafile:
 		p, err = llamafile.New(opts...)
 	default:
 		return nil, fmt.Errorf("unknown provider %q", name)

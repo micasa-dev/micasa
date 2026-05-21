@@ -15,7 +15,7 @@ import (
 
 func serviceLogEntityDef() entityDef[data.ServiceLogEntry] {
 	return entityDef[data.ServiceLogEntry]{
-		name:        "service-log",
+		name:        entityServiceLog,
 		singular:    "service log entry",
 		tableHeader: "SERVICE LOG",
 		cols:        serviceLogCols,
@@ -54,12 +54,12 @@ func serviceLogCreate(
 	}
 
 	var e data.ServiceLogEntry
-	e.MaintenanceItemID, _ = stringField(fields, "maintenance_item_id")
+	e.MaintenanceItemID, _ = stringField(fields, data.ColMaintenanceItemID)
 	if e.MaintenanceItemID == "" {
 		return data.ServiceLogEntry{}, errors.New("maintenance_item_id is required")
 	}
 
-	servicedAtStr, _ := stringField(fields, "serviced_at")
+	servicedAtStr, _ := stringField(fields, data.ColServicedAt)
 	if servicedAtStr == "" {
 		return data.ServiceLogEntry{}, errors.New("serviced_at is required")
 	}
@@ -69,10 +69,10 @@ func serviceLogCreate(
 	}
 	e.ServicedAt = servicedAt
 
-	if err := mergeField(fields, "cost_cents", &e.CostCents); err != nil {
+	if err := mergeField(fields, data.ColCostCents, &e.CostCents); err != nil {
 		return data.ServiceLogEntry{}, err
 	}
-	if err := mergeField(fields, "notes", &e.Notes); err != nil {
+	if err := mergeField(fields, data.ColNotes, &e.Notes); err != nil {
 		return data.ServiceLogEntry{}, err
 	}
 
@@ -102,11 +102,11 @@ func serviceLogUpdate(
 		return data.ServiceLogEntry{}, err
 	}
 
-	if err := mergeField(fields, "maintenance_item_id", &existing.MaintenanceItemID); err != nil {
+	if err := mergeField(fields, data.ColMaintenanceItemID, &existing.MaintenanceItemID); err != nil {
 		return data.ServiceLogEntry{}, err
 	}
 
-	if dateStr, ok := stringField(fields, "serviced_at"); ok {
+	if dateStr, ok := stringField(fields, data.ColServicedAt); ok {
 		parsed, dateErr := data.ParseRequiredDate(dateStr)
 		if dateErr != nil {
 			return data.ServiceLogEntry{}, fmt.Errorf("serviced_at: %w", dateErr)
@@ -114,10 +114,10 @@ func serviceLogUpdate(
 		existing.ServicedAt = parsed
 	}
 
-	if err := mergeField(fields, "cost_cents", &existing.CostCents); err != nil {
+	if err := mergeField(fields, data.ColCostCents, &existing.CostCents); err != nil {
 		return data.ServiceLogEntry{}, err
 	}
-	if err := mergeField(fields, "notes", &existing.Notes); err != nil {
+	if err := mergeField(fields, data.ColNotes, &existing.Notes); err != nil {
 		return data.ServiceLogEntry{}, err
 	}
 
@@ -134,7 +134,7 @@ func serviceLogUpdate(
 	}
 
 	// Handle explicit null for vendor_id (clear vendor).
-	if raw, ok := fields["vendor_id"]; ok {
+	if raw, ok := fields[data.ColVendorID]; ok {
 		if string(raw) == "null" {
 			vendor = data.Vendor{}
 		}

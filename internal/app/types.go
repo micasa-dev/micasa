@@ -128,19 +128,19 @@ const (
 func (k TabKind) String() string {
 	switch k {
 	case tabProjects:
-		return "Projects"
+		return lblProjects
 	case tabQuotes:
-		return "Quotes"
+		return colHdrQuotes
 	case tabMaintenance:
-		return "Maintenance"
+		return colHdrMaintenance
 	case tabIncidents:
-		return "Incidents"
+		return lblIncidents
 	case tabAppliances:
-		return "Appliances"
+		return lblAppliances
 	case tabVendors:
-		return "Vendors"
+		return lblVendors
 	case tabDocuments:
-		return "Docs"
+		return colHdrDocs
 	}
 	panic(fmt.Sprintf("unhandled TabKind: %d", k))
 }
@@ -158,7 +158,7 @@ func (k TabKind) singular() string {
 	case tabIncidents:
 		return "incident"
 	case tabAppliances:
-		return "appliance"
+		return tabSingularAppliance
 	case tabVendors:
 		return "vendor"
 	case tabDocuments:

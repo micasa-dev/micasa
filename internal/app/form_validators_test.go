@@ -405,7 +405,7 @@ func TestFormDataStructsHaveNoReferenceFields(t *testing.T) {
 			for f := range rt.Fields() {
 				//exhaustive:ignore // only reference kinds matter here
 				switch f.Type.Kind() {
-				case reflect.Ptr, reflect.Slice, reflect.Map,
+				case reflect.Pointer, reflect.Slice, reflect.Map,
 					reflect.Chan, reflect.Func, reflect.Interface:
 					t.Errorf(
 						"field %s.%s is %s -- cloneFormData requires value-only fields",

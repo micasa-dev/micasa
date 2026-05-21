@@ -22,6 +22,27 @@ const (
 	documentsTable = "documents"
 )
 
+// JSON Schema vocabulary keys used when building OperationsSchema.
+const (
+	schemaKeyType                 = "type"
+	schemaKeyProperties           = "properties"
+	schemaKeyRequired             = "required"
+	schemaKeyItems                = "items"
+	schemaKeyAnyOf                = "anyOf"
+	schemaKeyEnum                 = "enum"
+	schemaKeyAdditionalProperties = "additionalProperties"
+)
+
+// Property names in the extraction-output schema (mirrors Operation's JSON tags
+// and the top-level "operations"/"document" wrapper fields).
+const (
+	schemaKeyOperations = "operations"
+	schemaKeyDocument   = "document"
+	schemaKeyAction     = "action"
+	schemaKeyTable      = "table"
+	schemaKeyData       = "data"
+)
+
 // Operation is a single create/update action the LLM wants to perform.
 type Operation struct {
 	Action Action         `json:"action"`
@@ -72,20 +93,20 @@ func ParseOperations(raw string) ([]Operation, error) {
 // top-level "document" field (singular object) rather than the array.
 func OperationsSchema() map[string]any {
 	schema := map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"operations": map[string]any{
-				"type": "array",
-				"items": map[string]any{
-					"anyOf": operationVariants(),
+		schemaKeyType: "object",
+		schemaKeyProperties: map[string]any{
+			schemaKeyOperations: map[string]any{
+				schemaKeyType: "array",
+				schemaKeyItems: map[string]any{
+					schemaKeyAnyOf: operationVariants(),
 				},
 			},
-			"document": map[string]any{
-				"anyOf": documentVariants(),
+			schemaKeyDocument: map[string]any{
+				schemaKeyAnyOf: documentVariants(),
 			},
 		},
-		"required":             []any{"operations"},
-		"additionalProperties": false,
+		schemaKeyRequired:             []any{schemaKeyOperations},
+		schemaKeyAdditionalProperties: false,
 	}
 	return schema
 }
@@ -122,9 +143,9 @@ func buildDataSchema(op TableOp) map[string]any {
 	dataProps := make(map[string]any, len(op.Columns))
 	var required []any
 	for _, fc := range op.Columns {
-		prop := map[string]any{"type": string(fc.Type)}
+		prop := map[string]any{schemaKeyType: string(fc.Type)}
 		if len(fc.Enum) > 0 {
-			prop["enum"] = fc.Enum
+			prop[schemaKeyEnum] = fc.Enum
 		}
 		dataProps[fc.Name] = prop
 		if fc.Required {
@@ -133,12 +154,12 @@ func buildDataSchema(op TableOp) map[string]any {
 	}
 
 	dataSchema := map[string]any{
-		"type":                 "object",
-		"properties":           dataProps,
-		"additionalProperties": false,
+		schemaKeyType:                 "object",
+		schemaKeyProperties:           dataProps,
+		schemaKeyAdditionalProperties: false,
 	}
 	if len(required) > 0 {
-		dataSchema["required"] = required
+		dataSchema[schemaKeyRequired] = required
 	}
 	return dataSchema
 }
@@ -146,20 +167,20 @@ func buildDataSchema(op TableOp) map[string]any {
 // buildVariant constructs a single anyOf branch for an operation (non-document).
 func buildVariant(op TableOp) map[string]any {
 	return map[string]any{
-		"type":     "object",
-		"required": []any{"action", "table", "data"},
-		"properties": map[string]any{
-			"action": map[string]any{
-				"type": "string",
-				"enum": []any{op.Action},
+		schemaKeyType:     "object",
+		schemaKeyRequired: []any{schemaKeyAction, schemaKeyTable, schemaKeyData},
+		schemaKeyProperties: map[string]any{
+			schemaKeyAction: map[string]any{
+				schemaKeyType: "string",
+				schemaKeyEnum: []any{op.Action},
 			},
-			"table": map[string]any{
-				"type": "string",
-				"enum": []any{op.Table},
+			schemaKeyTable: map[string]any{
+				schemaKeyType: "string",
+				schemaKeyEnum: []any{op.Table},
 			},
-			"data": buildDataSchema(op),
+			schemaKeyData: buildDataSchema(op),
 		},
-		"additionalProperties": false,
+		schemaKeyAdditionalProperties: false,
 	}
 }
 
@@ -167,16 +188,16 @@ func buildVariant(op TableOp) map[string]any {
 // operation. Unlike buildVariant, it has no "table" property (implied).
 func buildDocumentVariant(op TableOp) map[string]any {
 	return map[string]any{
-		"type":     "object",
-		"required": []any{"action", "data"},
-		"properties": map[string]any{
-			"action": map[string]any{
-				"type": "string",
-				"enum": []any{op.Action},
+		schemaKeyType:     "object",
+		schemaKeyRequired: []any{schemaKeyAction, schemaKeyData},
+		schemaKeyProperties: map[string]any{
+			schemaKeyAction: map[string]any{
+				schemaKeyType: "string",
+				schemaKeyEnum: []any{op.Action},
 			},
-			"data": buildDataSchema(op),
+			schemaKeyData: buildDataSchema(op),
 		},
-		"additionalProperties": false,
+		schemaKeyAdditionalProperties: false,
 	}
 }
 

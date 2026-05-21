@@ -8,6 +8,17 @@ import (
 	"sync"
 )
 
+// External binary names the extract package shells out to. ToolPDFText and
+// ToolTesseract double as the TextSource.Tool / progress-event Tool labels;
+// ToolPlainText is a label only (no corresponding binary).
+const (
+	binPDFInfo    = "pdfinfo"
+	binPDFToCairo = "pdftocairo"
+	ToolPDFText   = "pdftotext"
+	ToolTesseract = "tesseract"
+	ToolPlainText = "plaintext"
+)
+
 // OCRTools holds resolved absolute filesystem paths for the external
 // binaries the extract package shells out to. An empty string for any
 // field means the binary was not found on PATH at resolution time.
@@ -51,10 +62,10 @@ func (t *OCRTools) ImageOCRAvailable() bool {
 // individual fields without separate error handling.
 func ResolveOCRTools() *OCRTools {
 	return &OCRTools{
-		PDFInfo:    lookPathOrEmpty("pdfinfo"),
-		PDFToCairo: lookPathOrEmpty("pdftocairo"),
-		PDFToText:  lookPathOrEmpty("pdftotext"),
-		Tesseract:  lookPathOrEmpty("tesseract"),
+		PDFInfo:    lookPathOrEmpty(binPDFInfo),
+		PDFToCairo: lookPathOrEmpty(binPDFToCairo),
+		PDFToText:  lookPathOrEmpty(ToolPDFText),
+		Tesseract:  lookPathOrEmpty(ToolTesseract),
 	}
 }
 

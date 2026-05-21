@@ -12,6 +12,9 @@ import (
 	"github.com/micasa-dev/micasa/internal/data"
 )
 
+// logKeyError is the slog attribute key for an error value.
+const logKeyError = "error"
+
 // Engine performs full pull+push sync cycles against the relay.
 // Sync is not safe for concurrent use; the caller must serialize
 // calls to prevent overlapping cycles.
@@ -196,18 +199,24 @@ func (e *Engine) uploadPendingBlobs(ctx context.Context, ops []OpPayload) (int, 
 		}
 		var payload map[string]any
 		if err := json.Unmarshal([]byte(op.Payload), &payload); err != nil {
-			slog.Warn("unmarshal payload for blob upload", "row_id", op.RowID, "error", err)
+			slog.Warn(
+				"unmarshal payload for blob upload",
+				data.ColRowID,
+				op.RowID,
+				logKeyError,
+				err,
+			)
 			errCount++
 			continue
 		}
-		blobRef, _ := payload["blob_ref"].(string)
+		blobRef, _ := payload[colBlobRef].(string)
 		if blobRef == "" {
 			continue
 		}
 
 		exists, err := e.client.HasBlob(ctx, e.householdID, blobRef)
 		if err != nil {
-			slog.Warn("check blob on relay", "blob_ref", blobRef, "error", err)
+			slog.Warn("check blob on relay", colBlobRef, blobRef, logKeyError, err)
 			errCount++
 			continue
 		}
@@ -217,7 +226,7 @@ func (e *Engine) uploadPendingBlobs(ctx context.Context, ops []OpPayload) (int, 
 
 		doc, err := e.store.GetDocument(op.RowID)
 		if err != nil {
-			slog.Warn("load document for blob upload", "row_id", op.RowID, "error", err)
+			slog.Warn("load document for blob upload", data.ColRowID, op.RowID, logKeyError, err)
 			errCount++
 			continue
 		}
@@ -226,7 +235,7 @@ func (e *Engine) uploadPendingBlobs(ctx context.Context, ops []OpPayload) (int, 
 		}
 
 		if err := e.client.UploadBlob(ctx, e.householdID, blobRef, doc.Data); err != nil {
-			slog.Warn("upload blob", "blob_ref", blobRef, "error", err)
+			slog.Warn("upload blob", colBlobRef, blobRef, logKeyError, err)
 			errCount++
 			continue
 		}
@@ -245,7 +254,7 @@ func (e *Engine) fetchPendingBlobs(ctx context.Context) (int, int) {
 
 	pending, err := e.store.PendingBlobDocuments()
 	if err != nil {
-		slog.Warn("query pending blobs", "error", err)
+		slog.Warn("query pending blobs", logKeyError, err)
 		return 0, 1
 	}
 
@@ -257,12 +266,12 @@ func (e *Engine) fetchPendingBlobs(ctx context.Context) (int, int) {
 
 		plaintext, err := e.client.DownloadBlob(ctx, e.householdID, doc.ChecksumSHA256)
 		if err != nil {
-			slog.Warn("download blob", "checksum", doc.ChecksumSHA256, "error", err)
+			slog.Warn("download blob", "checksum", doc.ChecksumSHA256, logKeyError, err)
 			errCount++
 			continue
 		}
 		if err := e.store.UpdateDocumentData(doc.ID, plaintext); err != nil {
-			slog.Warn("save blob", "doc_id", doc.ID, "error", err)
+			slog.Warn("save blob", "doc_id", doc.ID, logKeyError, err)
 			errCount++
 			continue
 		}

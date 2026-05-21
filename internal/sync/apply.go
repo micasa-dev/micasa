@@ -15,6 +15,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// sqlWhereID is the GORM Where clause matching a row by primary key.
+const sqlWhereID = "id = ?"
+
+// colBlobRef is the synthetic document-payload key carrying the blob checksum;
+// it is not a real database column.
+const colBlobRef = "blob_ref"
+
 // ApplyResult tracks the outcome of applying remote ops.
 type ApplyResult struct {
 	Applied   int
@@ -98,7 +105,7 @@ func applyOne(db *gorm.DB, dop DecryptedOp) error {
 			CreatedAt time.Time
 			DeviceID  string
 		}
-		err := tx.Table("sync_oplog_entries").
+		err := tx.Table(data.TableSyncOplogEntries).
 			Select("id, created_at, device_id").
 			Where("table_name = ? AND row_id = ? AND synced_at IS NULL", op.TableName, op.RowID).
 			Order("created_at DESC, id DESC").
@@ -118,9 +125,9 @@ func applyOne(db *gorm.DB, dop DecryptedOp) error {
 			// unsynced ops for this row, not just the latest. Multiple
 			// local ops can exist (e.g. insert then update) and all must
 			// be marked unapplied so the row state is consistent.
-			if err := tx.Table("sync_oplog_entries").
+			if err := tx.Table(data.TableSyncOplogEntries).
 				Where("table_name = ? AND row_id = ? AND synced_at IS NULL", op.TableName, op.RowID).
-				Update("applied_at", nil).Error; err != nil {
+				Update(data.ColAppliedAt, nil).Error; err != nil {
 				return fmt.Errorf("clear local applied_at: %w", err)
 			}
 		}
@@ -148,13 +155,13 @@ func lwwLocalWins(
 
 func applyOpToTable(tx *gorm.DB, op OpPayload) error {
 	switch op.OpType {
-	case "insert":
+	case data.OpInsert:
 		return applyInsert(tx, op)
-	case "update":
+	case data.OpUpdate:
 		return applyUpdate(tx, op)
-	case "delete":
+	case data.OpDelete:
 		return applyDelete(tx, op)
-	case "restore":
+	case data.OpRestore:
 		return applyRestore(tx, op)
 	default:
 		return fmt.Errorf("unknown op type: %s", op.OpType)
@@ -204,10 +211,10 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 	}
 	// All model structs use json:"snake_case" tags, so payload keys are
 	// always snake_case. Strip keys that must not be modified by remote ops.
-	delete(updates, "id")
-	delete(updates, "created_at")
+	delete(updates, data.ColID)
+	delete(updates, data.ColCreatedAt)
 	stripNonColumnKeys(op.TableName, updates)
-	result := tx.Table(op.TableName).Where("id = ?", op.RowID).Updates(updates)
+	result := tx.Table(op.TableName).Where(sqlWhereID, op.RowID).Updates(updates)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -226,9 +233,9 @@ func applyUpdate(tx *gorm.DB, op OpPayload) error {
 // maintain their original timestamps across devices.
 func stripNonColumnKeys(tableName string, row map[string]any) {
 	if tableName == data.TableDocuments {
-		delete(row, "blob_ref")
+		delete(row, colBlobRef)
 	}
-	delete(row, "deleted_at")
+	delete(row, data.ColDeletedAt)
 }
 
 // applyDelete soft-deletes a row. Uses op.CreatedAt rather than time.Now()
@@ -239,8 +246,8 @@ func stripNonColumnKeys(tableName string, row map[string]any) {
 // before calling applyOne, so the corresponding insert op will always have
 // been applied first.
 func applyDelete(tx *gorm.DB, op OpPayload) error {
-	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
-		Update("deleted_at", op.CreatedAt)
+	result := tx.Table(op.TableName).Where(sqlWhereID, op.RowID).
+		Update(data.ColDeletedAt, op.CreatedAt)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -253,8 +260,8 @@ func applyDelete(tx *gorm.DB, op OpPayload) error {
 // applyRestore clears a row's soft-delete. Returns an error if the row
 // doesn't exist (see applyDelete comment on causal ordering).
 func applyRestore(tx *gorm.DB, op OpPayload) error {
-	result := tx.Table(op.TableName).Where("id = ?", op.RowID).
-		Update("deleted_at", nil)
+	result := tx.Table(op.TableName).Where(sqlWhereID, op.RowID).
+		Update(data.ColDeletedAt, nil)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -266,31 +273,31 @@ func applyRestore(tx *gorm.DB, op OpPayload) error {
 
 func recordAppliedOp(tx *gorm.DB, op OpPayload) error {
 	now := time.Now()
-	return tx.Table("sync_oplog_entries").Create(map[string]any{
-		"id":         op.ID,
-		"table_name": op.TableName,
-		"row_id":     op.RowID,
-		"op_type":    op.OpType,
-		"payload":    op.Payload,
-		"device_id":  op.DeviceID,
-		"created_at": op.CreatedAt,
-		"applied_at": now,
-		"synced_at":  now,
+	return tx.Table(data.TableSyncOplogEntries).Create(map[string]any{
+		data.ColID:        op.ID,
+		data.ColTableName: op.TableName,
+		data.ColRowID:     op.RowID,
+		data.ColOpType:    op.OpType,
+		data.ColPayload:   op.Payload,
+		data.ColDeviceID:  op.DeviceID,
+		data.ColCreatedAt: op.CreatedAt,
+		data.ColAppliedAt: now,
+		data.ColSyncedAt:  now,
 	}).Error
 }
 
 func recordUnappliedOp(db *gorm.DB, op OpPayload) error {
 	now := time.Now()
-	err := db.Table("sync_oplog_entries").Create(map[string]any{
-		"id":         op.ID,
-		"table_name": op.TableName,
-		"row_id":     op.RowID,
-		"op_type":    op.OpType,
-		"payload":    op.Payload,
-		"device_id":  op.DeviceID,
-		"created_at": op.CreatedAt,
-		"applied_at": nil,
-		"synced_at":  now,
+	err := db.Table(data.TableSyncOplogEntries).Create(map[string]any{
+		data.ColID:        op.ID,
+		data.ColTableName: op.TableName,
+		data.ColRowID:     op.RowID,
+		data.ColOpType:    op.OpType,
+		data.ColPayload:   op.Payload,
+		data.ColDeviceID:  op.DeviceID,
+		data.ColCreatedAt: op.CreatedAt,
+		data.ColAppliedAt: nil,
+		data.ColSyncedAt:  now,
 	}).Error
 	if err != nil {
 		return err

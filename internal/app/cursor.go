@@ -135,7 +135,7 @@ func (m *Model) isOverBaseZone(msg tea.MouseMotionMsg) bool {
 	}
 
 	// Status bar hints.
-	hintIDs := []string{"edit", "help", "add", "exit", "enter", "del", "open", "search", "ask"}
+	hintIDs := []string{hintEdit, "help", "add", "exit", keyEnter, "del", hintOpen, "search", "ask"}
 	for _, id := range hintIDs {
 		if m.zones.Get(zoneHint + id).InBounds(msg) {
 			return true

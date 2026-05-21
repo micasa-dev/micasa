@@ -217,11 +217,11 @@ func translatePins(tab *Tab, nowMagMode bool, currencySymbol string) {
 	}
 }
 
-// statusColumnIndex returns the index of the "Status" column in the tab specs,
+// statusColumnIndex returns the index of the colHdrStatus column in the tab specs,
 // or -1 if not found.
 func statusColumnIndex(specs []columnSpec) int {
 	for i, s := range specs {
-		if s.Title == "Status" {
+		if s.Title == colHdrStatus {
 			return i
 		}
 	}

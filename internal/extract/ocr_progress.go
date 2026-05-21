@@ -138,7 +138,7 @@ func ocrImageWithProgress(
 	}
 
 	ch <- ExtractProgress{
-		Tool: "tesseract",
+		Tool: ToolTesseract,
 		Desc: "Text recognized from the image.",
 		Done: true,
 		Text: normalizeWhitespace(text),
@@ -198,8 +198,8 @@ func ocrPDFWithProgress(
 	}
 
 	// Send initial pipeline state: both stages running.
-	cairoState := &AcquireToolState{Tool: "pdftocairo", Running: true}
-	tessState := &AcquireToolState{Tool: "tesseract", Running: true}
+	cairoState := &AcquireToolState{Tool: binPDFToCairo, Running: true}
+	tessState := &AcquireToolState{Tool: ToolTesseract, Running: true}
 	snapshot := func() []AcquireToolState {
 		return []AcquireToolState{*cairoState, *tessState}
 	}
@@ -239,7 +239,7 @@ func ocrPDFWithProgress(
 
 	text, tsv := collectOCRResults(ocrResults)
 	ch <- ExtractProgress{
-		Tool:         "tesseract",
+		Tool:         ToolTesseract,
 		Desc:         "Text recognized from rasterized page images.",
 		Done:         true,
 		Total:        total,

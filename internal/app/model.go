@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -46,6 +47,11 @@ const (
 	// Action keys.
 	keyEsc   = "esc"
 	keyEnter = "enter"
+
+	// Status-bar hint zone IDs (also used as the default hint label text,
+	// since the label and the action share a name).
+	hintEdit = "edit"
+	hintOpen = "open"
 
 	// Modifier keys.
 	keyCtrlC = "ctrl+c"
@@ -1156,7 +1162,7 @@ func cloneFormData(d formData) formData {
 		return nil
 	}
 	v := reflect.ValueOf(d)
-	if v.Kind() == reflect.Ptr && !v.IsNil() {
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
 		cp := reflect.New(v.Elem().Type())
 		cp.Elem().Set(v.Elem())
 		cloned, ok := cp.Interface().(formData)
@@ -1548,7 +1554,7 @@ func firstVisibleCol(specs []columnSpec) int {
 
 // lastVisibleCol returns the index of the rightmost visible column.
 func lastVisibleCol(specs []columnSpec) int {
-	for i := len(specs) - 1; i >= 0; i-- {
+	for i := range slices.Backward(specs) {
 		if specs[i].HideOrder == 0 {
 			return i
 		}

@@ -17,6 +17,20 @@ import (
 	"github.com/micasa-dev/micasa/internal/llm"
 )
 
+// Stream event type names emitted by `claude --output-format stream-json`.
+const (
+	eventStreamEvent       = "stream_event"
+	eventContentBlockDelta = "content_block_delta"
+	eventInputJSONDelta    = "input_json_delta"
+	eventMessageStop       = "message_stop"
+)
+
+// Message role names accepted by validateSingleTurn.
+const (
+	roleSystem = "system"
+	roleUser   = "user"
+)
+
 // cmdFactory builds an exec.Cmd for a claude invocation.
 type cmdFactory func(ctx context.Context, args ...string) *exec.Cmd
 
@@ -175,7 +189,7 @@ func (c *Client) ExtractStream(
 				break
 			}
 
-			if ev.Type == "stream_event" {
+			if ev.Type == eventStreamEvent {
 				stop, err := c.handleStreamEvent(
 					ctx, &ev, out, &completionSeen,
 				)
@@ -257,20 +271,20 @@ func (c *Client) handleStreamEvent(
 	}
 
 	switch inner.Type {
-	case "content_block_delta":
+	case eventContentBlockDelta:
 		var delta contentDelta
 		if err := json.Unmarshal(inner.Delta, &delta); err != nil {
 			return false, fmt.Errorf("unmarshal delta: %w", err)
 		}
 		// Only forward input_json_delta (structured output).
 		// text_delta is the model's prose summary -- ignore it.
-		if delta.Type == "input_json_delta" && delta.PartialJSON != "" {
+		if delta.Type == eventInputJSONDelta && delta.PartialJSON != "" {
 			select {
 			case out <- llm.StreamChunk{Content: delta.PartialJSON}:
 			case <-ctx.Done():
 			}
 		}
-	case "message_stop":
+	case eventMessageStop:
 		*completionSeen = true
 		// The CLI runs a second turn to "process" the tool result.
 		// Stop reading -- the structured output from the first turn
@@ -289,7 +303,7 @@ func validateSingleTurn(
 	}
 
 	idx := 0
-	if messages[0].Role == "system" {
+	if messages[0].Role == roleSystem {
 		system = messages[0].Content
 		idx = 1
 	}
@@ -299,7 +313,7 @@ func validateSingleTurn(
 			"claude-cli: single-turn requires exactly one user message",
 		)
 	}
-	if messages[idx].Role != "user" {
+	if messages[idx].Role != roleUser {
 		return "", "", fmt.Errorf(
 			"claude-cli: single-turn expected user message, got %q",
 			messages[idx].Role,

@@ -205,7 +205,7 @@ func (m *Model) handleHintClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 		action func() (tea.Model, tea.Cmd)
 	}
 	actions := []hintAction{
-		{"edit", func() (tea.Model, tea.Cmd) {
+		{hintEdit, func() (tea.Model, tea.Cmd) {
 			if m.mode == modeNormal {
 				m.enterEditMode()
 			}
@@ -230,7 +230,7 @@ func (m *Model) handleHintClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}},
-		{"enter", func() (tea.Model, tea.Cmd) {
+		{keyEnter, func() (tea.Model, tea.Cmd) {
 			if m.mode == modeNormal {
 				if err := m.handleNormalEnter(); err != nil {
 					m.setStatusError(err.Error())
@@ -247,7 +247,7 @@ func (m *Model) handleHintClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}},
-		{"open", func() (tea.Model, tea.Cmd) {
+		{hintOpen, func() (tea.Model, tea.Cmd) {
 			if cmd := m.openSelectedDocument(); cmd != nil {
 				return m, nil
 			}

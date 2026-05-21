@@ -61,7 +61,7 @@ func NewTabs() []Tab {
 	return []Tab{
 		{
 			Kind:    tabProjects,
-			Name:    "Projects",
+			Name:    lblProjects,
 			Handler: newProjectHandler(),
 			Specs:   projectSpecs,
 			Table:   newTable(specsToColumns(projectSpecs)),
@@ -75,7 +75,7 @@ func NewTabs() []Tab {
 		},
 		{
 			Kind:    tabMaintenance,
-			Name:    "Maintenance",
+			Name:    colHdrMaintenance,
 			Handler: newMaintenanceHandler(),
 			Specs:   maintenanceSpecs,
 			Table:   newTable(specsToColumns(maintenanceSpecs)),
@@ -90,14 +90,14 @@ func NewTabs() []Tab {
 		},
 		{
 			Kind:    tabAppliances,
-			Name:    "Appliances",
+			Name:    lblAppliances,
 			Handler: newApplianceHandler(),
 			Specs:   applianceSpecs,
 			Table:   newTable(specsToColumns(applianceSpecs)),
 		},
 		{
 			Kind:    tabVendors,
-			Name:    "Vendors",
+			Name:    lblVendors,
 			Handler: newVendorHandler(),
 			Specs:   vendorSpecs,
 			Table:   newTable(specsToColumns(vendorSpecs)),
@@ -162,7 +162,7 @@ func withoutColumn(specs []columnSpec, title string) []columnSpec {
 }
 
 func applianceMaintenanceColumnSpecs() []columnSpec {
-	return withoutColumn(maintenanceColumnSpecs(), "Appliance")
+	return withoutColumn(maintenanceColumnSpecs(), colHdrAppliance)
 }
 
 func applianceMaintenanceRows(
@@ -197,7 +197,7 @@ func serviceLogRows(
 	cur locale.Currency,
 ) ([]table.Row, []rowMeta, [][]cell) {
 	return buildRows(entries, func(e data.ServiceLogEntry) rowSpec {
-		performedBy := "Self"
+		performedBy := valueSelf
 		var vendorLinkID string
 		if e.VendorID != nil && e.Vendor.Name != "" {
 			performedBy = e.Vendor.Name
@@ -549,7 +549,7 @@ func buildRows[T any](items []T, toRow func(T) rowSpec) ([]table.Row, []rowMeta,
 // vendorQuoteColumnSpecs defines the columns for quotes scoped to a vendor.
 // Omits the Vendor column since the parent context provides that.
 func vendorQuoteColumnSpecs() []columnSpec {
-	return withoutColumn(quoteColumnSpecs(), "Vendor")
+	return withoutColumn(quoteColumnSpecs(), colHdrVendor)
 }
 
 func vendorQuoteRows(
@@ -583,7 +583,7 @@ func vendorJobsRows(
 }
 
 func projectQuoteColumnSpecs() []columnSpec {
-	return withoutColumn(quoteColumnSpecs(), "Project")
+	return withoutColumn(quoteColumnSpecs(), colHdrProject)
 }
 
 func projectQuoteRows(
@@ -615,7 +615,7 @@ func dateCell(value *time.Time, kind cellKind) cell {
 }
 
 func entityDocumentColumnSpecs() []columnSpec {
-	return withoutColumn(documentColumnSpecs(), "Entity")
+	return withoutColumn(documentColumnSpecs(), colHdrEntity)
 }
 
 // entityNameMap maps (kind, id) pairs to display names for document entities.
