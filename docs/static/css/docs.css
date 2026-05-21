@@ -483,13 +483,6 @@ body {
 .toc li {
   margin: 0;
   padding: 0.2rem 0;
-  padding-left: 0.75rem;
-  border-left: 2px solid transparent;
-  transition: border-color 0.15s;
-}
-
-.toc li:has(> a.active) {
-  border-left-color: var(--terracotta);
 }
 
 .toc a {
@@ -504,6 +497,7 @@ body {
 
 .toc a.active {
   color: var(--terracotta-dark);
+  font-weight: 600;
 }
 
 .docs-main p {
@@ -588,12 +582,25 @@ pre {
 /* ── Blockquotes ───────────────────────────────────────────── */
 
 .docs-main blockquote {
-  border-left: 3px solid var(--terracotta);
+  position: relative;
   background: var(--linen);
-  border-radius: 0 6px 6px 0;
-  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  padding: 1rem 1.25rem 1rem 2.5rem;
   margin: 1.25rem 0;
   color: var(--charcoal-soft);
+  font-style: italic;
+}
+
+.docs-main blockquote::before {
+  content: "\201C";
+  position: absolute;
+  left: 0.6rem;
+  top: 0.2rem;
+  font-family: "DM Serif Display", "Georgia", serif;
+  font-style: normal;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--terracotta-dark);
 }
 
 .docs-main blockquote p {
@@ -901,16 +908,15 @@ h2:hover .badge-experimental .badge-label {
 
 .docs-pager__card {
   display: block;
-  padding: 0.2rem 0 0.2rem 0.9rem;
-  border-left: 2px solid transparent;
+  padding: 0.2rem 0;
   text-decoration: none;
   color: var(--charcoal-soft);
-  transition: border-color 0.15s, color 0.15s;
+  transition: color 0.15s, transform 0.15s ease-out;
 }
 
 .docs-pager__card:hover {
-  border-color: var(--terracotta-dark);
   color: var(--terracotta-dark);
+  transform: translateX(-4px);
 }
 
 .docs-pager__eyebrow {
@@ -931,9 +937,10 @@ h2:hover .badge-experimental .badge-label {
 
 .docs-pager__card--next {
   text-align: right;
-  padding: 0.2rem 0.9rem 0.2rem 0;
-  border-left: none;
-  border-right: 2px solid transparent;
+}
+
+.docs-pager__card--next:hover {
+  transform: translateX(4px);
 }
 
 .docs-pager__ghost {
@@ -1008,9 +1015,10 @@ h2:hover .badge-experimental .badge-label {
 
   .docs-pager__card--next {
     text-align: left;
-    padding: 0.2rem 0 0.2rem 0.9rem;
-    border-right: none;
-    border-left: 2px solid transparent;
+  }
+
+  .docs-pager__card--next:hover {
+    transform: translateX(-4px);
   }
 
   .docs-pager__ghost {
