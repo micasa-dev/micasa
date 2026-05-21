@@ -458,6 +458,10 @@ body {
   padding: 2.25rem 1rem 2rem 0;
 }
 
+.toc-rail:empty {
+  display: none;
+}
+
 .toc {
   position: sticky;
   top: 1.75rem;
