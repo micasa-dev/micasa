@@ -28,7 +28,7 @@ func TestBuildExtractionPrompt(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:     "42",
 		Filename:  "invoice.pdf",
-		MIME:      "application/pdf",
+		MIME:      MIMEApplicationPDF,
 		SizeBytes: 12345,
 		Schema:    schema,
 		Sources: []TextSource{
@@ -62,7 +62,7 @@ func TestBuildExtractionPrompt_DualSources(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    "1",
 		Filename: "mixed.pdf",
-		MIME:     "application/pdf",
+		MIME:     MIMEApplicationPDF,
 		Sources: []TextSource{
 			{Tool: "pdftotext", Desc: "Digital text.", Text: "Digital text from pages 1-2"},
 			{Tool: "tesseract", Desc: "OCR text.", Text: "OCR text from page 3"},
@@ -82,7 +82,7 @@ func TestBuildExtractionPrompt_OCROnly(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    "1",
 		Filename: "scan.pdf",
-		MIME:     "application/pdf",
+		MIME:     MIMEApplicationPDF,
 		Sources: []TextSource{
 			{Tool: "tesseract", Desc: "OCR text.", Text: "OCR text from all pages"},
 		},
@@ -113,7 +113,7 @@ func TestBuildExtractionPrompt_EmptyDocID(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    "",
 		Filename: "new.pdf",
-		MIME:     "application/pdf",
+		MIME:     MIMEApplicationPDF,
 		Sources: []TextSource{
 			{Tool: "pdftotext", Text: "Some text"},
 		},
@@ -129,7 +129,7 @@ func TestBuildExtractionPrompt_NonZeroDocID(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    "42",
 		Filename: "existing.pdf",
-		MIME:     "application/pdf",
+		MIME:     MIMEApplicationPDF,
 		Sources: []TextSource{
 			{Tool: "pdftotext", Text: "Some text"},
 		},
@@ -189,7 +189,7 @@ func TestBuildExtractionPrompt_ContainsDomainHints(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    "1",
 		Filename: "test.pdf",
-		MIME:     "application/pdf",
+		MIME:     MIMEApplicationPDF,
 		Schema: SchemaContext{
 			DDL: map[string]string{
 				data.TableVendors: "CREATE TABLE `vendors` (`id` integer)",
@@ -247,7 +247,7 @@ func TestBuildExtractionPrompt_OmitsSchemaRedundantSections(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    "1",
 		Filename: "test.pdf",
-		MIME:     "application/pdf",
+		MIME:     MIMEApplicationPDF,
 		Schema: SchemaContext{
 			DDL: map[string]string{
 				data.TableVendors: "CREATE TABLE `vendors` (`id` integer)",
@@ -276,7 +276,7 @@ func TestBuildExtractionPrompt_SpatialSentWhenEnabled(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "scan.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: DefaultOCRConfThreshold,
 		Sources: []TextSource{
@@ -300,7 +300,7 @@ func TestBuildExtractionPrompt_SpatialNotSentByDefault(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:    "1",
 		Filename: "scan.pdf",
-		MIME:     "application/pdf",
+		MIME:     MIMEApplicationPDF,
 		// SendTSV defaults to false.
 		Sources: []TextSource{
 			{Tool: "tesseract", Desc: "OCR text.", Text: "Invoice #1042", Data: []byte(sampleTSV)},
@@ -320,7 +320,7 @@ func TestBuildExtractionPrompt_SpatialMixedSources(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "mixed.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: DefaultOCRConfThreshold,
 		Sources: []TextSource{
@@ -345,7 +345,7 @@ func TestBuildExtractionPrompt_TSVColumnHintIncluded(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "scan.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: DefaultOCRConfThreshold,
 		Sources: []TextSource{
@@ -367,7 +367,7 @@ func TestBuildExtractionPrompt_TSVSourceWithoutData(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "scan.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: DefaultOCRConfThreshold,
 		Sources: []TextSource{
@@ -387,7 +387,7 @@ func TestBuildExtractionPrompt_SpatialFallbackOnEmptyTSV(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "scan.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: DefaultOCRConfThreshold,
 		Sources: []TextSource{
@@ -413,7 +413,7 @@ func TestBuildExtractionPrompt_TSVPreambleMentionsSpatial(t *testing.T) {
 	msgs := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "scan.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: DefaultOCRConfThreshold,
 		Sources: []TextSource{
@@ -434,7 +434,7 @@ func TestBuildExtractionPrompt_ConfThresholdThreaded(t *testing.T) {
 	msgsHigh := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "scan.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: 96,
 		Sources: []TextSource{
@@ -448,7 +448,7 @@ func TestBuildExtractionPrompt_ConfThresholdThreaded(t *testing.T) {
 	msgsLow := BuildExtractionPrompt(ExtractionPromptInput{
 		DocID:         "1",
 		Filename:      "scan.pdf",
-		MIME:          "application/pdf",
+		MIME:          MIMEApplicationPDF,
 		SendTSV:       true,
 		ConfThreshold: 70,
 		Sources: []TextSource{
