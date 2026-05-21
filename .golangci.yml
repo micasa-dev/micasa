@@ -42,6 +42,9 @@ linters:
     - containedctx     # flags context in structs; TUI models legitimately store context
     - wsl_v5           # whitespace style v5; too opinionated
 
+    # Deprecated linter names; the v2 replacement is enabled via default: all
+    - gomodguard       # superseded by gomodguard_v2 in golangci-lint v2.12.x
+
   settings:
     exhaustive:
       default-signifies-exhaustive: false
