@@ -316,6 +316,13 @@ func (m *Model) openProjectForm(values *projectFormData, options []huh.Option[st
 }
 
 func (m *Model) startQuoteForm() error {
+	return m.startQuoteFormScoped("", "")
+}
+
+// startQuoteFormScoped opens the add-quote form with optional pre-scope
+// for drill-down contexts. Empty strings mean "no pre-scope" and the
+// form defaults to the first option (project) / blank (vendor name).
+func (m *Model) startQuoteFormScoped(projectID, vendorName string) error {
 	projects, err := m.store.ListProjects(false)
 	if err != nil {
 		return err
@@ -323,9 +330,17 @@ func (m *Model) startQuoteForm() error {
 	if len(projects) == 0 {
 		return errors.New("add a project before adding quotes")
 	}
-	values := &quoteFormData{}
+	values := &quoteFormData{VendorName: vendorName}
 	options := projectOptions(projects)
 	values.ProjectID = options[0].Value
+	if projectID != "" {
+		for _, opt := range options {
+			if opt.Value == projectID {
+				values.ProjectID = projectID
+				break
+			}
+		}
+	}
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
@@ -422,6 +437,13 @@ func scheduleTypeOptions() []huh.Option[scheduleType] {
 }
 
 func (m *Model) startMaintenanceForm() error {
+	return m.startMaintenanceFormScoped("")
+}
+
+// startMaintenanceFormScoped opens the add-maintenance form with an
+// optional appliance pre-selected. An empty applianceID means "no
+// pre-scope" and the form defaults to no appliance.
+func (m *Model) startMaintenanceFormScoped(applianceID string) error {
 	values := &maintenanceFormData{ScheduleType: schedNone}
 	catOptions := maintenanceOptions(m.maintenanceCategories)
 	if len(catOptions) > 0 {
@@ -432,6 +454,14 @@ func (m *Model) startMaintenanceForm() error {
 		return fmt.Errorf("list appliances: %w", err)
 	}
 	appOpts := applianceOptions(appliances)
+	if applianceID != "" {
+		for _, opt := range appOpts {
+			if opt.Value == applianceID {
+				values.ApplianceID = applianceID
+				break
+			}
+		}
+	}
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -2395,8 +2425,17 @@ func (m *Model) startDocumentForm(entityKind string) error {
 // startQuickDocumentForm opens a minimal document form that only asks for a
 // file path. Title and notes are auto-filled by the extraction pipeline on
 // submit, making this the fast path for ingesting files.
+//
+// When invoked from an entity-scoped document drill-down, the parent
+// entity is pre-populated so the created document is attached to that
+// entity rather than left unscoped.
 func (m *Model) startQuickDocumentForm() {
 	values := &documentFormData{DeferCreate: true}
+	if tab := m.effectiveTab(); tab != nil {
+		if sh, ok := tab.Handler.(scopedHandler); ok && sh.entityKind != "" {
+			values.EntityRef = entityRef{Kind: sh.entityKind, ID: sh.entityID}
+		}
+	}
 	form := huh.NewForm(
 		huh.NewGroup(
 			m.newDocumentFilePicker("File to attach").

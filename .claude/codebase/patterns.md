@@ -1,6 +1,6 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-<!-- verified: 2026-04-16 -->
+<!-- verified: 2026-04-23 -->
 
 # Code Patterns & Conventions
 
@@ -17,6 +17,14 @@
 Each entity tab implements TabHandler interface. All entity-specific logic
 (Load, Delete, StartAddForm, SubmitForm, etc.) lives in the handler.
 No scattered FormKind/TabKind switches outside the handler.
+
+### Drill-down Tab Kind Inheritance
+Detail (drill-down) tabs inherit the parent tab's Kind, not the semantic
+entity Kind (see `openDetailFromDef` in `model_tabs.go`). E.g. an
+Appliance > Documents drill-down has `Tab.Kind = tabAppliances`, not
+`tabDocuments`. Always identify entity semantics via the Handler's
+`FormKind()` (or a helper like `Tab.isDocumentTab()`) -- never
+`tab.Kind == tabX`, which silently breaks drill-down parity.
 
 ### Rendering Pipeline
 ```

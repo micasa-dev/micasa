@@ -566,11 +566,11 @@ var activeProjectStatuses = []string{
 }
 
 func (m *Model) toggleSettledFilter() bool {
-	if m.inDetail() {
-		return false
-	}
-	tab := m.activeTab()
-	if tab == nil || tab.Kind != tabProjects {
+	// Identify project tabs by handler FormKind so any future
+	// project-scoped drill-down inherits the filter automatically and
+	// non-project drill-downs continue to no-op.
+	tab := m.effectiveTab()
+	if handlerFormKind(tab) != formProject {
 		return false
 	}
 	col := statusColumnIndex(tab.Specs)
