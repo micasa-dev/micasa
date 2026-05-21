@@ -61,7 +61,8 @@ body {
   color: var(--terracotta);
 }
 
-.blog-brand .dot {
+.blog-brand::after {
+  content: ".";
   color: var(--terracotta);
 }
 
