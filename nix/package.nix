@@ -14,7 +14,7 @@ buildGoModule {
   inherit pname version;
   src = gitignoreSource ../.;
   subPackages = [ "cmd/micasa" ];
-  vendorHash = "sha256-cumlB7xyJN8zMaT4kOTdZzsD1yLDHSzGMXhdOtTvXoU=";
+  vendorHash = "sha256-rPabJ/h826i0ulh71/TehcZV3ftmjmydZiYOTX32Cjs=";
   env.CGO_ENABLED = 0;
   preCheck = ''
     export HOME="$(mktemp -d)"
