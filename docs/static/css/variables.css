@@ -212,3 +212,9 @@
     padding: 10px;
   }
 }
+
+/* --- Markdown table alignment classes (used by render-table.html) --- */
+
+.ta-left { text-align: left; }
+.ta-center { text-align: center; }
+.ta-right { text-align: right; }

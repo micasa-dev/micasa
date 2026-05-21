@@ -6,7 +6,16 @@
   const house = document.getElementById('hero-house');
   const caption = document.getElementById('crumble-caption');
   if (!scene || !house) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // The crumble simulation is purely decorative. With reduced motion
+    // we skip it -- and we strip the interactive role so a keyboard user
+    // doesn't focus a button that does nothing.
+    scene.removeAttribute('role');
+    scene.removeAttribute('tabindex');
+    scene.removeAttribute('aria-label');
+    scene.style.cursor = 'default';
+    return;
+  }
 
   const GRAVITY       = 1400;
   const RESTITUTION   = 0.3;

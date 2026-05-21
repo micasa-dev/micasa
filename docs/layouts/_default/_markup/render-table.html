@@ -7,7 +7,7 @@
       {{- range .THead }}
       <tr>
         {{- range . }}
-        <th{{ with .Alignment }} style="text-align: {{ . }}"{{ end }}>{{ .Text }}</th>
+        <th{{ with .Alignment }} class="ta-{{ . }}"{{ end }}>{{ .Text }}</th>
         {{- end }}
       </tr>
       {{- end }}
@@ -16,7 +16,7 @@
       {{- range .TBody }}
       <tr>
         {{- range . }}
-        <td{{ with .Alignment }} style="text-align: {{ . }}"{{ end }}>{{ .Text }}</td>
+        <td{{ with .Alignment }} class="ta-{{ . }}"{{ end }}>{{ .Text }}</td>
         {{- end }}
       </tr>
       {{- end }}
