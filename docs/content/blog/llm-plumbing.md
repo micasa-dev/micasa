@@ -54,7 +54,7 @@ setup.
 ## Two pipelines, two models
 
 Extraction reads invoices and proposes database fields. Chat answers
-natural-language questions about your data. These want different things --
+natural-language questions about your data. These want different things:
 extraction wants a small model that's fast and precise with JSON, chat wants
 something that can actually reason about whether your roof maintenance is
 overdue.
@@ -99,7 +99,7 @@ look before it writes.
 
 ## Other things since last week
 
-- **[Locale-aware currency](/docs/reference/configuration/#locale-section)** --
+- **[Locale-aware currency](/docs/reference/configuration/#locale-section)**:
   EUR gets comma decimals and period grouping (`1.234,56`), GBP gets the pound
   sign, JPY drops decimal places. Auto-detected from your system locale or set
   via `MICASA_LOCALE_CURRENCY`.

@@ -25,7 +25,7 @@ picks a file and immediately runs the [extraction pipeline](#extraction-pipeline
 fastest way to import a document when you want OCR and LLM hints. The file
 picker hides dotfiles by default; press <kbd>H</kbd> to toggle their visibility.
 
-You can also add documents from within a project or appliance detail view --
+You can also add documents from within a project or appliance detail view:
 drill into the `Docs` column and press <kbd>a</kbd>. Documents added this way are
 automatically linked to that record.
 
@@ -147,7 +147,7 @@ best; complex multi-page documents or poor OCR output often produce incomplete
 or incorrect operations. Always review the proposed changes in the preview
 before accepting.
 
-The results appear as a **tabbed table preview** below the pipeline steps --
+The results appear as a **tabbed table preview** below the pipeline steps:
 one tab per affected table, using the same column layout as the main UI. The
 user reviews proposed changes and explicitly accepts before anything touches
 the database. The LLM never writes directly. Press <kbd>r</kbd> to rerun the LLM step

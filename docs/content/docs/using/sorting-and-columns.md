@@ -57,7 +57,7 @@ Jumping to a hidden column automatically unhides it.
 
 ## Column hiding
 
-You can hide columns you don't need to reduce noise. This is session-only --
+You can hide columns you don't need to reduce noise. This is session-only;
 hidden columns come back when you restart.
 
 ### Hiding
