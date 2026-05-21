@@ -49,6 +49,16 @@ linters:
     - gomodguard_v2    # explicit v2 opt-in (default: all enables the deprecated v1 alias)
 
   settings:
+    errorlint:
+      # Catch direct comparison of errors (require errors.Is).
+      comparison: true
+      # Catch type assertions on errors (require errors.As).
+      asserts: true
+      # Catch fmt.Errorf without %w when wrapping an error.
+      errorf: true
+      # Allow multiple %w verbs in a single fmt.Errorf (Go 1.20+).
+      errorf-multi: true
+
     exhaustive:
       default-signifies-exhaustive: false
 
