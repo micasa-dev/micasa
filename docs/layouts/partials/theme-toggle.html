@@ -1,7 +1,7 @@
 {{- /* Copyright 2026 Phillip Cloud */ -}}
 {{- /* Licensed under the Apache License, Version 2.0 */ -}}
 
-<button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+<button id="theme-toggle-btn" type="button" class="theme-toggle" aria-label="Toggle dark mode">
   <svg class="theme-house" viewBox="0 0 40 32" width="30" height="24" aria-hidden="true">
     <g class="sky-stars">
       <circle class="star star-1" cx="4" cy="4" r="0.6" fill="var(--charcoal)"/>
@@ -39,3 +39,4 @@
     </g>
   </svg>
 </button>
+<script src="{{ "js/theme-toggle.js" | relURL }}"></script>

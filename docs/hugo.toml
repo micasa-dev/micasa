@@ -4,6 +4,7 @@
 baseURL = "https://micasa.dev/"
 title = "micasa"
 languageCode = "en-us"
+enableRobotsTXT = true
 
 [markup.goldmark.renderer]
 unsafe = true
