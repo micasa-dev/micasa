@@ -10,6 +10,13 @@
 /micasa
 /relay
 
+# Stray builds of internal code-generators. They run via `go generate`,
+# which uses `go run` and leaves no artifact -- but `go build` of these
+# targets from the repo root drops a binary here.
+/gencolumns
+/gendeprecations
+/genmeta
+
 # Test binary, built with `go test -c`
 *.test
 
