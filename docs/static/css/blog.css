@@ -356,6 +356,40 @@ kbd {
   color: var(--cream);
 }
 
+/* -- Print --------------------------------------------------- */
+
+@media print {
+  .blog-header,
+  .blog-footer,
+  .blog-post-footer {
+    display: none !important;
+  }
+
+  .blog-main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .blog-post-body pre {
+    background: #f5f5f5;
+    color: #1a1a1a;
+    border: 1px solid #cccccc;
+    page-break-inside: avoid;
+  }
+
+  .blog-post-body h2,
+  .blog-post-body h3 {
+    page-break-after: avoid;
+  }
+
+  .blog-post-body img,
+  .blog-post-body video,
+  .blog-post-body blockquote,
+  .blog-post-body pre {
+    page-break-inside: avoid;
+  }
+}
+
 /* -- Responsive --------------------------------------------- */
 
 @media (max-width: 600px) {

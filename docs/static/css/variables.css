@@ -234,3 +234,43 @@
 .ta-left { text-align: left; }
 .ta-center { text-align: center; }
 .ta-right { text-align: right; }
+
+/* --- Print: hide interactive chrome shared across all pages --- */
+
+@media print {
+  .skip-link,
+  .theme-toggle {
+    display: none !important;
+  }
+
+  /* Force readable colors on paper regardless of theme. */
+  :root,
+  [data-theme="dark"] {
+    --cream: #ffffff;
+    --linen: #f5f5f5;
+    --charcoal: #1a1a1a;
+    --charcoal-soft: #333333;
+    --warm-gray: #555555;
+    --rule: #cccccc;
+    --terracotta: #8a4128;
+    --terracotta-dark: #6a3220;
+    --terracotta-darker: #4a2316;
+    --shadow-color: transparent;
+  }
+
+  /* Expand link URLs after the link text for paper readers. */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+    word-break: break-all;
+  }
+
+  /* But not for in-page anchors, footnotes, or links whose text already
+     reads as a URL (the link text is already the URL). */
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after,
+  a.heading-anchor::after {
+    content: "";
+  }
+}

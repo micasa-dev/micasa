@@ -980,6 +980,55 @@ h2:hover .badge-experimental .badge-label {
   color: var(--cream);
 }
 
+/* ── Print ─────────────────────────────────────────────────── */
+
+@media print {
+  .docs-topbar,
+  .docs-sidebar,
+  .toc-rail,
+  .search-hint,
+  .search-overlay,
+  .docs-pager,
+  .heading-anchor {
+    display: none !important;
+  }
+
+  .docs-layout {
+    display: block;
+  }
+
+  .docs-main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .docs-main pre {
+    /* The dark code-block treatment doesn't print well; switch to a
+       light background with a thin border. */
+    background: #f5f5f5;
+    color: #1a1a1a;
+    border: 1px solid #cccccc;
+    page-break-inside: avoid;
+  }
+
+  .docs-main pre code {
+    color: inherit;
+  }
+
+  .docs-main h2,
+  .docs-main h3,
+  .docs-main h4 {
+    page-break-after: avoid;
+  }
+
+  .docs-main img,
+  .docs-main video,
+  .docs-main blockquote,
+  .docs-main pre.mermaid {
+    page-break-inside: avoid;
+  }
+}
+
 /* ── Touch targets ────────────────────────────────────────── */
 
 @media (pointer: coarse), (hover: none) {
