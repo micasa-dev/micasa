@@ -9,7 +9,7 @@ require (
 	charm.land/fang/v2 v2.0.1
 	github.com/BurntSushi/toml v1.6.0
 	github.com/adrg/xdg v0.5.3
-	github.com/brianvoe/gofakeit/v7 v7.14.1
+	github.com/brianvoe/gofakeit/v7 v7.15.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
