@@ -1,6 +1,6 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-<!-- verified: 2026-04-02 -->
+<!-- verified: 2026-05-21 -->
 
 # Key Types & Interfaces
 
@@ -53,7 +53,7 @@ Central Bubbletea state. Key fields:
 - Snapshot(store, id) (undoEntry, error)
 - SyncFixedValues(store, specs)
 
-8 implementations (one per entity tab; formHouse is handled separately):
+8 implementations (one per entity tab; formHouse handled separately):
 projectHandler, quoteHandler, maintenanceHandler, incidentHandler,
 applianceHandler, serviceLogHandler, vendorHandler, documentHandler
 
@@ -79,8 +79,9 @@ Parent info (tab, entity, ID), Breadcrumb string, Tab (the detail sub-tab)
 ### Store (store.go)
 - db *gorm.DB, maxDocumentSize uint64, currency locale.Currency
 - Key methods: Open, Close, Transaction, AutoMigrate, Backup, IsMicasaDB
+- Per-entity CRUD is split across store_*.go files
 
-### Entity Models (models.go) - all have ID uint, CreatedAt, UpdatedAt
+### Entity Models (models.go) - all have ID + CreatedAt + UpdatedAt unless noted
 - HouseProfile - address, year built, property details, insurance, HOA
 - ProjectType - lookup table (not soft-deletable)
 - Project - title, ProjectTypeID, status, dates, budget/actual (cents)
@@ -95,6 +96,14 @@ Parent info (tab, entity, ID), Breadcrumb string, Tab (the detail sub-tab)
 - DeletionRecord - audit trail (Entity, TargetID, DeletedAt, RestoredAt)
 - Setting - key-value store
 - ChatInput - persistent chat history
+- SyncOplogEntry - ULID id, TableName, RowID, OpType, Payload (JSON),
+                   DeviceID, CreatedAt, AppliedAt?, SyncedAt?
+- SyncDevice - this device's identity (ID, Name, HouseholdID, RelayURL, LastSeq)
+
+### Sync Oplog Hooks (oplog.go)
+- syncApplyingKey: context key suppressing oplog writes when applying remote ops
+- WithSyncApplying(ctx): mark ctx as remote-apply (prevents push loop)
+- syncableTable(table): true for sync-eligible tables
 
 ### Project Status Constants
 ProjectStatusIdeating, Planned, Quoted, InProgress, Delayed, Completed, Abandoned
@@ -116,7 +125,8 @@ SeasonSpring, SeasonSummer, SeasonFall, SeasonWinter
 
 ### Generated Constants (meta_generated.go)
 Table* (e.g., TableVendors = "vendors")
-Col* (e.g., ColID = "id", ColName = "name", ColDeletedAt = "deleted_at")
+Col* (e.g., ColID = "id", ColName = "name", ColDeletedAt = "deleted_at",
+       ColOpType, ColPayload, ColAppliedAt, ColSyncedAt, ColTableName, ColRowID, ColDeviceID, ColCreatedAt)
 
 ## Config Types (internal/config/)
 
@@ -129,6 +139,7 @@ Col* (e.g., ColID = "id", ColName = "name", ColDeletedAt = "deleted_at")
     - OCRTSV (Enable *bool, ConfidenceThreshold *int)
 - Documents (MaxFileSize ByteSize, CacheTTL Duration)
 - Locale (Currency string)
+- Sync (Enable *bool, RelayURL, etc.)
 Each pipeline section is self-contained; no cross-section inheritance.
 
 ### Defaults
@@ -140,15 +151,20 @@ Each pipeline section is self-contained; no cross-section inheritance.
 ## LLM Types (internal/llm/)
 
 ### Interfaces (provider.go)
-- Base: shared model management (Model, SetModel, Ping, ListModels, Timeout, etc.)
-- ChatProvider: Base + ChatStream(ctx, messages) -- chat pipeline
-- ExtractionProvider: Base + ExtractStream(ctx, messages, schema) -- extraction pipeline
+- Base: shared model management (Model, SetModel, Ping, ListModels, Timeout, ...)
+- ChatProvider: Base + ChatStream(ctx, messages)
+- ExtractionProvider: Base + ExtractStream(ctx, messages, schema)
+
+### Provider Constants (client.go)
+providerOllama, providerLlamacpp, providerLlamafile, providerAnthropic,
+providerOpenAI, providerOpenRouter, providerDeepseek, providerGemini,
+providerGroq, providerMistral
 
 ### Client (client.go)
 - Wraps any-llm-go provider, satisfies both ChatProvider and ExtractionProvider
 - ChatStream: streaming text responses (NL->SQL, summaries)
 - ExtractStream: streaming JSON schema-constrained responses
-- SetThinking(level), Model(), ProviderName(), BaseURL()
+- SetEffort(level), Model(), ProviderName(), BaseURL(), IsLocalServer()
 
 ### claudecli.Client (internal/claudecli/)
 - Implements ExtractionProvider by shelling out to claude CLI binary
@@ -156,9 +172,122 @@ Each pipeline section is self-contained; no cross-section inheritance.
 - Uses cmdFactory DI for testability (TestHelperProcess re-exec pattern)
 - Flags: --tools "" --disable-slash-commands --no-chrome --setting-sources local
 
-### Extract Types (internal/extract/)
-- Extractor interface: Extract(ctx, data, mime) ([]TextSource, error)
-- Pipeline: orchestrates extractors + optional LLM
+## Extract Types (internal/extract/)
+
+### Extractor (extractor.go)
+- Interface: Matches(mime), Extract(ctx, data, mime) ([]TextSource, error)
+- Implementations: PDFTextExtractor (pdftotext), PDFOCRExtractor (tesseract)
+- Tool name constants: toolPDFToCairo, toolTesseract (ocr_progress.go)
+
+### Pipeline (pipeline.go)
+- Orchestrates extractors + optional LLM
 - TextSource: Tool, Desc, Text, Data
 - Operation: entity operation (INSERT/UPDATE/DELETE)
 - Result: Sources, Operations, LLMRaw, LLMUsed, Err
+
+### Schema Context (sqlcontext.go)
+- ExtractionTableDefs: single source of truth for extraction table metadata
+- Columns derived from generated meta via columnsFromMeta
+- Actions, Required, Enum, Omit, synthetic columns: hand-maintained
+
+### Constants
+MIMEApplicationPDF = "application/pdf"
+
+## Sync Types (internal/sync/)
+
+### Envelope (types.go)
+Encrypted payload moved between client and relay. Fields: HouseholdID,
+DeviceID, OpID, TableName, RowID, OpType, Ciphertext, Nonce, Seq?, CreatedAt.
+
+### PushRequest / PushResponse / PushConfirmation
+Push: client -> relay; relay assigns sequence numbers, returns confirmations.
+
+### PullResponse
+relay -> client; encrypted envelopes plus a more-pages flag.
+
+### Household (types.go)
+ID, OwnerDeviceID, CreatedAt, StripeCustomerID?, StripeSubscriptionID?, StripeStatus?
+
+### BlobStorage (types.go)
+Used and quota counters for a household.
+
+### Client (client.go)
+HTTP client against the relay (Push, Pull, etc.). NewClient(baseURL, token, key);
+NewManagementClient for admin-only flows.
+
+### Engine (engine.go)
+Engine.Sync(ctx) orchestrates pushAll + pullAll + uploadPendingBlobs + fetchPendingBlobs.
+Returns SyncResult (pushed/pulled/conflicts/blobs).
+
+### OpPayload (client.go)
+Decrypted-side view of a sync op: ID, TableName, RowID, OpType, Payload, DeviceID, CreatedAt.
+
+### DecryptedOp (client.go)
+Pull-side: Envelope + decoded OpPayload.
+
+### Apply (apply.go)
+ApplyOps(ctx, db, ops): applies decrypted ops with LWW conflict resolution.
+- applyInsert / applyUpdate / applyDelete / applyRestore
+- lwwLocalWins: compare CreatedAt; ties broken by DeviceID lex order
+- recordAppliedOp / recordUnappliedOp: write sync_oplog_entries row
+
+## Relay Types (internal/relay/)
+
+### Store interface (store.go) - 24 methods
+- Push / Pull (encrypted ops)
+- CreateHousehold / RegisterDevice / AuthenticateDevice
+- CreateInvite / StartJoin / GetPendingExchanges / CompleteKeyExchange / GetKeyExchangeResult
+- ListDevices / RevokeDevice
+- GetHousehold / UpdateSubscription / HouseholdBySubscription / UpdateCustomerID / HouseholdByCustomer
+- OpsCount / PutBlob / GetBlob / HasBlob / BlobUsage
+- SetEncryptionKey / Close
+
+### Implementations
+- PgStore (pgstore.go): Postgres via GORM + rlsdb.DB.Tx for row-level security
+- MemStore (memstore.go): in-memory for tests
+
+### Constants
+- maxInviteAttempts = 5, maxActiveInvites = 3
+- inviteExpiry = 4h, keyExchangeExpiry = 15m
+- lockForUpdate = "UPDATE" (GORM clause.Locking.Strength)
+
+### Handler (handler.go)
+HTTP handlers wiring Store to bearer-token-auth routes. ServeHTTP delegates
+to internal http.ServeMux.
+
+### rlsdb (rlsdb/) - row-level security wrapper
+- DB struct, DB.Tx(ctx, householdID, fn): runs fn within a transaction with
+  Postgres session settings that enforce RLS on the household's data
+- Unexported *gorm.DB structurally prevents bypass from relay package
+
+## Crypto Types (internal/crypto/)
+
+### HouseholdKey [KeySize]byte
+Symmetric key for AEAD. String() returns "[REDACTED]" to prevent leaks.
+- GenerateHouseholdKey(), SaveHouseholdKey, LoadHouseholdKey
+
+### DeviceKeyPair
+Curve25519 public/private pair for box encryption (key exchange).
+- GenerateDeviceKeyPair(), SaveDeviceKeyPair, LoadDeviceKeyPair
+
+### Encrypt / Decrypt (encrypt.go)
+NaCl secretbox with random 24-byte nonces.
+
+### BoxSeal / BoxOpen (box.go)
+NaCl box (authenticated public-key) for key exchange.
+
+### SecretsDir(), SaveDeviceToken / LoadDeviceToken (token.go)
+Bearer token persistence with restrictive file perms.
+
+## MCP Types (internal/mcp/)
+
+### Server (server.go)
+- Server struct wrapping *data.Store
+- Serve(ctx, stdin, stdout): stdio JSON-RPC loop, MCP protocol
+
+### Tools (tools.go)
+- query: arbitrary SELECT against the local DB (ReadOnlyQuery enforced)
+- get_schema: table list + columns
+- search_documents: filter by entity, date range, MIME, full-text
+- get_maintenance_schedule: due/overdue items
+- get_house_profile: structured house metadata

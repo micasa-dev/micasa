@@ -1,6 +1,6 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-<!-- verified: 2026-04-16 -->
+<!-- verified: 2026-05-21 -->
 
 # Code Patterns & Conventions
 
@@ -48,6 +48,11 @@ tea.Msg -> Update(msg)
 
 ## CRUD Patterns (internal/data/)
 
+### Per-Entity Files
+CRUD lives in `store_<entity>.go` files (vendor, appliance, project,
+quote, maintenance, incident, document, house, servicelog). store.go
+holds shared open/close/migrate logic only.
+
 ### Generic Helpers
 - listQuery[T](store, includeDeleted, prepare) - generic list with optional soft-delete scope
 - getByID[T](store, id, prepare) - generic single fetch
@@ -72,6 +77,27 @@ tea.Msg -> Update(msg)
 
 ### Parent Alive Validation
 - requireParentAlive(model, id): checks if FK parent is alive/deleted/gone
+
+## Sync & Oplog Patterns
+
+### Local Oplog
+- GORM hooks on insert/update/delete write SyncOplogEntry rows
+- syncableTable() gates which tables produce oplog entries
+- isSyncApplying(tx) skips logging when applying remote ops (prevents push loop)
+- WithSyncApplying(ctx) wraps a context to set that flag
+
+### Sync Engine (internal/sync/engine.go)
+- Engine.Sync(ctx): push local ops, pull remote ops, transfer blobs
+- Ops are encrypted client-side; relay never sees plaintext
+- Per-op ULID prevents reordering ambiguity
+- Conflict resolution: last-writer-wins on CreatedAt, DeviceID lex tiebreaker
+
+### Relay Store Access (rlsdb)
+- ALL PgStore methods use s.rls.Tx(ctx, householdID, fn) for RLS scoping
+- WithoutHousehold is reserved for the small set of non-RLS endpoints
+  (AutoMigrate, AuthenticateDevice, GetKeyExchangeResult, StartJoin,
+  HouseholdBySubscription, HouseholdByCustomer)
+- Each WithoutHousehold call site requires a `// SAFETY:` comment
 
 ## Form Lifecycle
 ```
@@ -124,6 +150,17 @@ User edits (keyboard, calendar picker)
 ### Zone IDs for Mouse
 - tab-N, row-N, col-N, hint-ID, dash-N
 - house-header, breadcrumb-back, overlay
+
+## Error Handling
+
+### errorlint Strict
+- Project enables errorlint with errorf + errorf-multi + comparison + asserts
+- Wrap with `%w` (never `%v`) — 700+ fmt.Errorf calls, all use `%w`
+- Sentinel comparisons use errors.Is, type-narrowing uses errors.As
+
+### Loops
+- Use `slices.Backward` for reverse iteration (Go 1.23+)
+- Use `reflect.Pointer` (not the deprecated `reflect.Ptr`)
 
 ## Config Resolution
 1. Defaults (constants in config.go)
