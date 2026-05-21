@@ -17,10 +17,12 @@
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to content</a>
+
 <!-- Hero -->
 <header class="hero">
   <div class="container">
-    <div class="hero-house-scene" id="house-scene">
+    <div class="hero-house-scene" id="house-scene" role="button" tabindex="0" aria-label="Demolish the house (then click again to rebuild it)">
       <div class="hero-house" id="hero-house" aria-hidden="true">&nbsp;&nbsp;&nbsp;&nbsp;&#x2584;&#x2593;&#x2584;<span class="chimney-anchor chimney">&#x2588;<span class="smoke-bed" id="smoke-bed" aria-hidden="true"></span></span>&nbsp;&nbsp;&nbsp;<br>&#x2584;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2584;<br>&#x2584;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2584;<br>&#x2588;&#x2588; &#x2591;&#x2591; &#x2591;&#x2591; &#x2588;&#x2588;<br>&#x2588;&#x2588; &nbsp;&#x2588;&#x2588;&#x2588;&#x2588; &#x2588;&#x2588;<br>&#x2588;&#x2588; &nbsp;&#x2588;&nbsp;&nbsp;&#x2588; &#x2588;&#x2588;<br>&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;</div>
       <div class="crumble-caption" id="crumble-caption">should've used micasa.</div>
     </div>
@@ -28,7 +30,7 @@
     <p class="tagline">
       Home maintenance, from the terminal.
     </p>
-    <nav class="hero-nav">
+    <nav class="hero-nav" aria-label="Primary">
       <a href="#install" class="hero-nav__primary">Install</a>
       <span class="hero-nav__sep" aria-hidden="true">&middot;</span>
       <a href="{{ "docs/" | relURL }}">Docs</a>
@@ -40,9 +42,11 @@
   </div>
 </header>
 
+<main id="main">
+
 <!-- Demo -->
 <div class="container demo-container">
-  <video src="{{ "videos/demo.webm" | relURL }}" class="demo-video" autoplay loop muted playsinline></video>
+  <video src="{{ "videos/demo.webm" | relURL }}" class="demo-video" autoplay loop muted playsinline aria-label="Screen recording: opening micasa, browsing the Projects and Maintenance tabs, sorting columns, and inspecting a service log entry"></video>
 </div>
 
 <hr class="section-rule section-rule--demo">
@@ -118,10 +122,12 @@ micasa              <span class="install-comment"># your house</span></code></pr
   </div>
 </section>
 
+</main>
+
 <!-- Footer -->
 <footer>
   <div class="container">
-    <nav class="footer-nav">
+    <nav class="footer-nav" aria-label="Footer">
       <a href="{{ "docs/" | relURL }}">Docs</a>
       <span class="footer-sep" aria-hidden="true">&middot;</span>
       <a href="{{ "blog/" | relURL }}">Blog</a>

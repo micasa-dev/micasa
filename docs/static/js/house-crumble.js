@@ -280,13 +280,11 @@
     rubbleSmokeParticles = [];
   }
 
-  function destroyHouse(evt) {
+  function destroyHouse(clickX, clickY) {
     animating = true;
 
     const sceneRect = scene.getBoundingClientRect();
     const houseRect = house.getBoundingClientRect();
-    const clickX = evt.clientX - sceneRect.left;
-    const clickY = evt.clientY - sceneRect.top;
 
     const scattered = scatterSmoke(document.getElementById('smoke-bed'), sceneRect, clickX, clickY);
     const measured = measureAndHide(sceneRect);
@@ -393,6 +391,17 @@
 
   scene.addEventListener('click', (evt) => {
     if (animating) return;
-    if (destroyed) rebuildHouse(); else destroyHouse(evt);
+    if (destroyed) { rebuildHouse(); return; }
+    const sceneRect = scene.getBoundingClientRect();
+    destroyHouse(evt.clientX - sceneRect.left, evt.clientY - sceneRect.top);
+  });
+
+  scene.addEventListener('keydown', (evt) => {
+    if (evt.key !== 'Enter' && evt.key !== ' ') return;
+    evt.preventDefault();
+    if (animating) return;
+    if (destroyed) { rebuildHouse(); return; }
+    const sceneRect = scene.getBoundingClientRect();
+    destroyHouse(sceneRect.width / 2, sceneRect.height / 2);
   });
 })();

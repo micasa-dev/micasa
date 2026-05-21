@@ -21,10 +21,12 @@
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to content</a>
+
 <header class="blog-header">
   <div class="blog-header-inner">
     <a class="blog-brand" href="{{ site.Home.RelPermalink }}">micasa<span class="dot">.</span></a>
-    <nav class="blog-nav">
+    <nav class="blog-nav" aria-label="Site">
       <a href="{{ "blog/" | relURL }}">Blog</a>
       <a href="{{ "docs/" | relURL }}">Docs</a>
       {{ partial "github-link.html" (dict "class" "github-link") }}
@@ -32,7 +34,7 @@
   </div>
 </header>
 
-<main class="blog-main">
+<main id="main" class="blog-main">
   {{ block "main" . }}{{ end }}
 </main>
 

@@ -12,8 +12,14 @@
   padding: 0;
 }
 
+.hero-house-scene:focus-visible {
+  outline: 2px solid var(--terracotta-dark);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
 html {
-  font-size: 18px;
+  font-size: 112.5%;
   scroll-behavior: smooth;
 }
 
@@ -65,7 +71,8 @@ h2 .accent-alt {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .typewriter::after {
+  .typewriter::after,
+  .cursor::after {
     animation: none;
   }
 }
@@ -535,7 +542,7 @@ footer {
 /* --- Responsive --- */
 @media (max-width: 600px) {
   html {
-    font-size: 16px;
+    font-size: 100%;
   }
 
   .hero h1 {

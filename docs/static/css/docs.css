@@ -15,7 +15,7 @@
 }
 
 html {
-  font-size: 18px;
+  font-size: 112.5%;
   scroll-behavior: smooth;
 }
 
@@ -973,7 +973,7 @@ h2:hover .badge-experimental .badge-label {
 
 @media (max-width: 800px) {
   html {
-    font-size: 16px;
+    font-size: 100%;
   }
 
   .docs-topbar {

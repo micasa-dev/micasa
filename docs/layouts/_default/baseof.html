@@ -27,20 +27,22 @@
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to content</a>
+
 <div class="docs-topbar">
-  <button class="menu-toggle" onclick="document.querySelector('.docs-sidebar').classList.toggle('open')" aria-label="Toggle menu">&#9776;</button>
+  <button id="menu-toggle" class="menu-toggle" type="button" aria-label="Toggle menu" aria-controls="docs-sidebar" aria-expanded="false">&#9776;</button>
   <a href="{{ site.Home.RelPermalink }}">micasa</a>
-  <nav class="docs-topbar-nav">
+  <nav class="docs-topbar-nav" aria-label="Site">
     <a href="{{ "blog/" | relURL }}">Blog</a>
     {{ partial "github-link.html" (dict "class" "github-link") }}
   </nav>
 </div>
 
-<button class="search-hint" onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'/'}))">
+<button id="search-hint" class="search-hint" type="button" aria-label="Open search" aria-controls="search-overlay" aria-expanded="false">
   <kbd>/</kbd> search
 </button>
 
-<div class="search-overlay" id="search-overlay">
+<div class="search-overlay" id="search-overlay" role="dialog" aria-modal="true" aria-label="Search documentation">
   <div class="search-modal" id="search-modal">
     <div id="search"></div>
   </div>
@@ -49,7 +51,7 @@
 <div class="docs-layout">
   {{ partial "sidebar.html" . }}
 
-  <main class="docs-main">
+  <main id="main" class="docs-main">
     {{ block "main" . }}{{ end }}
 
     {{ partial "pager.html" . }}
@@ -60,195 +62,11 @@
   </aside>
 </div>
 
-<script>
-// Close sidebar when clicking outside on mobile
-document.addEventListener('click', function(e) {
-  var sidebar = document.querySelector('.docs-sidebar');
-  var toggle = document.querySelector('.menu-toggle');
-  if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
-    sidebar.classList.remove('open');
-  }
-});
-</script>
-
+<script src="{{ "js/menu-toggle.js" | relURL }}"></script>
 <script src="/pagefind/pagefind-ui.js"></script>
-<script>
-(function() {
-  var overlay = document.getElementById('search-overlay');
-  var modal = document.getElementById('search-modal');
-  var initialized = false;
-
-  function open() {
-    if (!initialized) {
-      new PagefindUI({ element: '#search', showSubResults: true, showImages: false });
-      initialized = true;
-    }
-    overlay.classList.remove('closing');
-    overlay.classList.add('open');
-    var el = document.querySelector('.pagefind-ui__search-input');
-    if (el) el.focus();
-  }
-
-  function close() {
-    overlay.classList.add('closing');
-    modal.addEventListener('animationend', function handler() {
-      modal.removeEventListener('animationend', handler);
-      overlay.classList.remove('open', 'closing');
-    });
-  }
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === '/' && !overlay.classList.contains('open')) {
-      var tag = (e.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
-      e.preventDefault();
-      open();
-    }
-    if (e.key === 'Escape' && overlay.classList.contains('open')) {
-      close();
-    }
-  });
-
-  overlay.addEventListener('click', function(e) {
-    if (!modal.contains(e.target)) close();
-  });
-})();
-</script>
-
-<script>
-(function() {
-  var toc = document.querySelector('.toc');
-  if (!toc) return;
-  var links = toc.querySelectorAll('a[href^="#"]');
-  if (!links.length) return;
-
-  var ids = [];
-  links.forEach(function(a) { ids.push(a.getAttribute('href').slice(1)); });
-
-  var visible = new Set();
-
-  function highlight() {
-    var active = null;
-    for (var i = 0; i < ids.length; i++) {
-      if (visible.has(ids[i])) { active = ids[i]; break; }
-    }
-    links.forEach(function(a) {
-      a.classList.toggle('active', a.getAttribute('href') === '#' + active);
-    });
-  }
-
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        visible.add(entry.target.id);
-      } else {
-        visible.delete(entry.target.id);
-      }
-    });
-    highlight();
-  }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
-
-  ids.forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) observer.observe(el);
-  });
-
-  links.forEach(function(a) {
-    a.addEventListener('click', function() {
-      var id = a.getAttribute('href').slice(1);
-      visible.clear();
-      visible.add(id);
-      highlight();
-    });
-  });
-})();
-</script>
-
-<script type="module">
-import mermaid from "mermaid";
-
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "base",
-  themeVariables: {
-    fontFamily: '"Source Serif 4", Georgia, serif',
-    fontSize: "14px",
-    background: "transparent"
-  },
-  sequence: {
-    noteMargin: 14
-  }
-});
-await mermaid.run();
-
-// Yield one frame so the browser commits rendered SVGs to the DOM
-// before we walk their text nodes.
-await new Promise(function(resolve) { requestAnimationFrame(resolve); });
-
-// Post-process rendered SVGs once — CSS custom properties in docs.css
-// handle all color changes on theme toggle without re-rendering.
-document.querySelectorAll(".mermaid svg").forEach(function(svg) {
-  // Replace backtick-delimited text with monospace tspans
-  var walker = document.createTreeWalker(svg, NodeFilter.SHOW_TEXT, null);
-  var nodes = [];
-  var node;
-  while ((node = walker.nextNode())) {
-    if (node.textContent.includes("`")) {
-      nodes.push(node);
-    }
-  }
-  var mono = '"JetBrains Mono", "Fira Code", "Consolas", monospace';
-  nodes.forEach(function(textNode) {
-    var parts = textNode.textContent.split(/`([^`]+)`/g);
-    if (parts.length <= 1) {
-      return;
-    }
-    var parent = textNode.parentNode;
-    var frag = document.createDocumentFragment();
-    for (var i = 0; i < parts.length; i++) {
-      if (parts[i] === "") {
-        continue;
-      }
-      if (i % 2 === 0) {
-        frag.appendChild(document.createTextNode(parts[i]));
-      } else {
-        var tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        tspan.style.fontFamily = mono;
-        tspan.textContent = parts[i];
-        frag.appendChild(tspan);
-      }
-    }
-    parent.replaceChild(frag, textNode);
-  });
-
-  // Widen note rects when monospace text overflows the original box.
-  svg.querySelectorAll(".note").forEach(function(noteRect) {
-    var g = noteRect.closest("g");
-    if (!g) return;
-    var text = g.querySelector(".noteText");
-    if (!text) return;
-    var textWidth = text.getBBox().width;
-    var rectWidth = parseFloat(noteRect.getAttribute("width") || 0);
-    var pad = 16;
-    if (textWidth + pad > rectWidth) {
-      var diff = textWidth + pad - rectWidth;
-      noteRect.setAttribute("width", textWidth + pad);
-      var x = parseFloat(noteRect.getAttribute("x") || 0);
-      noteRect.setAttribute("x", x - diff / 2);
-    }
-  });
-
-  // Replace hardcoded rect group fills with a CSS variable so they
-  // adapt to theme toggles without re-rendering.
-  svg.querySelectorAll("rect").forEach(function(rect) {
-    var fill = (rect.getAttribute("fill") || "").replace(/\s/g, "");
-    if (fill === "rgb(240,235,228)") {
-      rect.removeAttribute("fill");
-      rect.style.fill = "var(--rect-fill)";
-    }
-  });
-});
-</script>
+<script src="{{ "js/search.js" | relURL }}"></script>
+<script src="{{ "js/toc-scrollspy.js" | relURL }}"></script>
+<script type="module" src="{{ "js/mermaid-init.js" | relURL }}"></script>
 
 {{ partial "theme-toggle.html" . }}
 

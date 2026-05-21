@@ -47,6 +47,31 @@
   --rect-fill: rgba(212, 118, 78, 0.10);
 }
 
+/* --- Skip link (shared across all pages) --- */
+
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--charcoal);
+  color: var(--cream);
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.85rem;
+  text-decoration: none;
+  border-radius: 0 0 6px 0;
+  transform: translateY(-100%);
+  transition: transform 0.15s ease-out;
+  z-index: 500;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  color: var(--cream);
+  outline: 2px solid var(--terracotta);
+  outline-offset: 2px;
+}
+
 /* --- Theme toggle (shared across all pages) --- */
 
 .theme-toggle {
