@@ -312,66 +312,6 @@ section + section {
   box-shadow: 0 4px 24px var(--shadow-color);
 }
 
-.demo-transcript {
-  max-width: 740px;
-  margin: 1.25rem auto 0;
-  padding: 0 1.5rem;
-  color: var(--charcoal-soft);
-  font-size: 0.95rem;
-}
-
-.demo-transcript summary {
-  cursor: pointer;
-  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-  font-size: 0.8rem;
-  color: var(--warm-gray);
-  padding: 0.4rem 0;
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.demo-transcript summary::-webkit-details-marker {
-  display: none;
-}
-
-.demo-transcript summary::before {
-  content: "\25B8";
-  display: inline-block;
-  color: var(--terracotta-dark);
-  transition: transform 0.2s ease-out;
-}
-
-.demo-transcript[open] summary::before {
-  transform: rotate(90deg);
-}
-
-.demo-transcript summary:hover {
-  color: var(--charcoal-soft);
-}
-
-.demo-transcript ol {
-  margin: 0.4rem 0 0;
-  padding-left: 1.6rem;
-  line-height: 1.6;
-}
-
-.demo-transcript li {
-  padding: 0.1rem 0;
-}
-
-.demo-transcript em {
-  font-style: italic;
-  color: var(--terracotta-dark);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .demo-transcript summary::before {
-    transition: none;
-  }
-}
-
 /* --- Pitch --- */
 .brand {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
