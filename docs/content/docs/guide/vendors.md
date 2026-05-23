@@ -27,7 +27,7 @@ Everyone you've hired or gotten quotes from, in one place.
 Vendors can be created in two ways:
 
 1. **Directly** on the Vendors tab: enter Edit mode (<kbd>i</kbd>), press <kbd>a</kbd>
-2. **Implicitly** when adding a quote or service log entry -- type a vendor
+2. **Implicitly** when adding a quote or service log entry; type a vendor
    name and micasa finds or creates the record
 
 ## Editing a vendor
@@ -64,5 +64,5 @@ particular issue.
 ## Deletion
 
 Vendors with active quotes, service log entries, or incidents cannot be
-deleted -- remove the referencing records first. Once a vendor has no active
+deleted; remove the referencing records first. Once a vendor has no active
 references, it can be soft-deleted like any other entity.

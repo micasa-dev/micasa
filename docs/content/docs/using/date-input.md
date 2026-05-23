@@ -36,7 +36,7 @@ default to the past.
 | `december 25th` | December 25 (past direction) |
 
 Expressions are case-insensitive and ignore surrounding whitespace. Only the
-date portion is kept -- time components are discarded.
+date portion is kept; time components are discarded.
 
 ## Calendar picker
 

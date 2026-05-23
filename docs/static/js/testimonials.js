@@ -96,7 +96,7 @@
     const p = document.createElement('p');
     p.textContent = pick[k].text;
     const cite = document.createElement('cite');
-    cite.textContent = `\u2014 ${pick[k].cite}`;
+    cite.textContent = pick[k].cite;
     bq.appendChild(p);
     bq.appendChild(cite);
     grid.appendChild(bq);

@@ -14,7 +14,7 @@ welcome. I'm sorry.
 micasa includes a built-in chat interface that lets you ask questions about
 your home data. A local LLM translates your question into
 SQL, runs it against your database, and summarizes the results. Everything
-runs locally -- your data never leaves your machine.
+runs locally; your data never leaves your machine.
 
 <video src="/videos/llm-chat.webm" class="demo-video" autoplay loop muted playsinline></video>
 
@@ -43,7 +43,7 @@ URL, model, or backend.
 Press <kbd>@</kbd> from Nav or Edit mode to open the chat overlay. A text input
 appears at the bottom of a centered panel. Type a question and press <kbd>enter</kbd>.
 
-Press <kbd>esc</kbd> to dismiss the overlay. Your conversation is preserved -- press
+Press <kbd>esc</kbd> to dismiss the overlay. Your conversation is preserved; press
 <kbd>@</kbd> again to pick up where you left off.
 
 ## Asking questions
@@ -58,8 +58,8 @@ Type a natural language question about your home data:
 
 micasa translates your question through a two-stage pipeline:
 
-1. **SQL generation** -- the LLM writes a SQL query against your schema
-2. **Result interpretation** -- the query runs, and the LLM summarizes the
+1. **SQL generation**; the LLM writes a SQL query against your schema
+2. **Result interpretation**; the query runs, and the LLM summarizes the
    results
 
 The model has access to your full database schema, including table
@@ -86,7 +86,7 @@ useful for verifying what the model is actually querying, or learning how your
 data is structured.
 
 SQL is pretty-printed with uppercased keywords, indented clauses, and
-one-column-per-line SELECT lists. The toggle is retroactive -- it
+one-column-per-line SELECT lists. The toggle is retroactive; it
 shows or hides SQL for the entire conversation, not just new messages.
 
 SQL streams in real-time as the model generates it, so you can see the query
@@ -116,7 +116,7 @@ The chat input supports a few slash commands:
 
 ### Switching models
 
-Type `/model ` (with a trailing space) to activate the model picker -- an
+Type `/model ` (with a trailing space) to activate the model picker; an
 inline autocomplete list showing both locally downloaded models and popular
 models available for download. Use <kbd>up</kbd>/<kbd>down</kbd> to navigate and <kbd>enter</kbd> to
 select.
@@ -126,7 +126,7 @@ A progress bar shows download progress. Press <kbd>ctrl+c</kbd> to cancel a pull
 
 ## Mag mode
 
-Press <kbd>ctrl+o</kbd> to toggle [mag mode](https://magworld.pw) -- an easter egg that
+Press <kbd>ctrl+o</kbd> to toggle [mag mode](https://magworld.pw), an easter egg that
 replaces money values with their order of magnitude (`$1,250` becomes `$ 🠡3`).
 Works with any configured currency. Applies everywhere including LLM responses.
 Live toggle, instant update.
@@ -134,7 +134,7 @@ Live toggle, instant update.
 ## Output quality
 
 Look, it's a small language model running on your laptop, not an oracle.
-It will confidently produce nonsense sometimes -- that's the deal. Quality
+It will confidently produce nonsense sometimes; that's the deal. Quality
 depends heavily on which model you're running, and which model you can run
 depends on how much GPU you're packing. A few things to keep in mind:
 
@@ -164,7 +164,7 @@ when you expected some, the model may have used a case-sensitive or
 literal match.
 
 **Not a replacement for looking at the data.** The chat is best for quick
-lookups and ad-hoc questions -- "when is X due?", "how much did Y cost?",
+lookups and ad-hoc questions; "when is X due?", "how much did Y cost?",
 "show me Z." For anything you'd act on financially or contractually, verify
 the answer against the actual tables.
 
@@ -177,18 +177,18 @@ here is exactly what gets sent to the LLM endpoint.
 
 The two-stage pipeline sends different data at each step:
 
-1. **SQL generation** (stage 1) -- the model receives your database **schema**
+1. **SQL generation** (stage 1): the model receives your database **schema**
    (table names, column names, types) plus a sample of **distinct values** from
    key columns (project types, statuses, vendor names, etc.). It does **not**
    see full row data at this stage.
-2. **Result interpretation** (stage 2) -- the model receives the SQL query
+2. **Result interpretation** (stage 2): the model receives the SQL query
    results (just the rows matching your question) and summarizes them.
 
 If the model fails to produce valid SQL, micasa falls back to a single-stage
 mode that sends a **full dump of all non-deleted rows** from every user table.
 Internal columns (`id`, `created_at`, `updated_at`, `deleted_at`) and document
-file contents are excluded, but everything else -- addresses, costs, vendor
-contacts, appliance details, notes -- is included.
+file contents are excluded, but everything else; addresses, costs, vendor
+contacts, appliance details, notes; is included.
 
 In both modes, the model also receives your **conversation history** from the
 current session and any **extra context** you configured.
@@ -196,7 +196,7 @@ current session and any **extra context** you configured.
 ### Local by default
 
 The default endpoint is `http://localhost:11434/v1` (Ollama running on your
-machine). With this setup, all data stays on your computer -- nothing is sent
+machine). With this setup, all data stays on your computer; nothing is sent
 over the network.
 
 ### Remote endpoints
@@ -206,9 +206,9 @@ a LAN machine, etc.), your home data travels over the network to that server.
 micasa connects over plain HTTP by default. Consider:
 
 - **Use HTTPS** if the endpoint supports it (`https://…`)
-- **Trust the server** -- the operator of a remote LLM endpoint can see
+- **Trust the server**; the operator of a remote LLM endpoint can see
   everything micasa sends, including the full data dump in fallback mode
-- **Network exposure** -- anyone who can intercept traffic between you and a
+- **Network exposure**; anyone who can intercept traffic between you and a
   remote HTTP endpoint can read your home data
 
 The LLM feature is entirely optional. If you never configure a `[chat.llm]`

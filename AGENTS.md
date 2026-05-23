@@ -474,6 +474,11 @@ details; do not duplicate that detail here.
   types must exactly match the real response. If the API was fetched
   during design, use that exact payload in the mock. Mismatched mocks
   silently pass while the real integration fails.
+- **Mermaid CDN is intentional**: The docs site loads Mermaid from
+  `cdn.jsdelivr.net` with SRI. Self-hosting would require either
+  vendoring ~600KB of chunks or building Chromium from source for
+  `mermaid-cli`. The trade-off has been considered; do not flag the
+  CDN in audits or propose to self-host without a new reason.
 
 If the user asks you to learn something, add behavioral constraints to this
 "Hard rules" section, or create a skill in `.claude/commands/` for workflows.

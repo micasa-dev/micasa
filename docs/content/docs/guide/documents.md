@@ -5,7 +5,7 @@ description = "Attach files to projects, appliances, and other records."
 linkTitle = "Documents"
 +++
 
-Attach files to your home records -- warranties, manuals, invoices, photos.
+Attach files to your home records; warranties, manuals, invoices, photos.
 
 ![Documents table](/images/documents.webp)
 
@@ -25,7 +25,7 @@ picks a file and immediately runs the [extraction pipeline](#extraction-pipeline
 fastest way to import a document when you want OCR and LLM hints. The file
 picker hides dotfiles by default; press <kbd>H</kbd> to toggle their visibility.
 
-You can also add documents from within a project or appliance detail view --
+You can also add documents from within a project or appliance detail view:
 drill into the `Docs` column and press <kbd>a</kbd>. Documents added this way are
 automatically linked to that record.
 
@@ -46,7 +46,7 @@ automatically linked to that record.
 ## File handling
 
 - **Storage**: files are stored as BLOBs inside the SQLite database, so
-  `micasa backup backup.db` backs up everything -- no sidecar files
+  `micasa backup backup.db` backs up everything; no sidecar files
 - **Size limit**: 50 MB per file
 - **MIME detection**: automatic from file contents and extension
 - **Checksum**: SHA-256 hash stored for integrity
@@ -91,7 +91,7 @@ drill into a scoped document list for that record.
 
 In Edit mode, press <kbd>R</kbd> on a document row to re-run the extraction
 pipeline. When the document already has extracted text from a previous run, OCR
-is skipped and the pipeline jumps straight to the LLM step -- this is much
+is skipped and the pipeline jumps straight to the LLM step; this is much
 faster for re-extraction with a different model or after updating extraction
 settings.
 
@@ -102,7 +102,7 @@ restores it.
 
 When you save a document with file data, micasa runs a three-layer extraction
 pipeline to pull structured information out of the file. **This pipeline is
-under active development** -- results vary by document type, quality, and
+under active development**; results vary by document type, quality, and
 available tools. Each layer is independent and degrades gracefully when its
 tools are unavailable.
 
@@ -121,9 +121,9 @@ tools are missing, OCR is silently skipped.
 
 For PDFs, micasa tries three image acquisition strategies in order:
 
-1. **`pdfimages`** -- extracts embedded image blobs directly (fastest, best quality for scanned PDFs)
-2. **`pdftohtml`** -- renders pages to PNG (catches vector-drawn content that `pdfimages` misses)
-3. **`pdftoppm`** -- full 300 DPI rasterization (slowest, always works)
+1. **`pdfimages`**; extracts embedded image blobs directly (fastest, best quality for scanned PDFs)
+2. **`pdftohtml`**; renders pages to PNG (catches vector-drawn content that `pdfimages` misses)
+3. **`pdftoppm`**; full 300 DPI rasterization (slowest, always works)
 
 Each fallback only runs if the previous tool is missing or produced no usable
 images (filtered by a 10 KB minimum size). The overlay shows which tool was
@@ -147,7 +147,7 @@ best; complex multi-page documents or poor OCR output often produce incomplete
 or incorrect operations. Always review the proposed changes in the preview
 before accepting.
 
-The results appear as a **tabbed table preview** below the pipeline steps --
+The results appear as a **tabbed table preview** below the pipeline steps:
 one tab per affected table, using the same column layout as the main UI. The
 user reviews proposed changes and explicitly accepts before anything touches
 the database. The LLM never writes directly. Press <kbd>r</kbd> to rerun the LLM step
@@ -191,7 +191,7 @@ reference.
 
 ### Requirements
 
-Each pipeline layer depends on external tools. All are optional -- the
+Each pipeline layer depends on external tools. All are optional; the
 document always saves regardless of which tools are installed.
 
 | Pipeline step | File types | Tools needed | Without it |

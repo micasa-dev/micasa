@@ -1,9 +1,20 @@
 # Copyright 2026 Phillip Cloud
 # Licensed under the Apache License, Version 2.0
 
-baseURL = "/"
+baseURL = "https://micasa.dev/"
 title = "micasa"
 languageCode = "en-us"
+enableRobotsTXT = true
+
+# Drop the site-wide RSS feed; only the blog section gets one (configured
+# per-section in docs/content/blog/_index.md). The home RSS was pulling
+# in every docs page (most without dates), giving subscribers a feed
+# full of "Mon, 01 Jan 0001" entries.
+[outputs]
+home = ["HTML"]
+section = ["HTML"]
+taxonomy = ["HTML"]
+term = ["HTML"]
 
 [markup.goldmark.renderer]
 unsafe = true

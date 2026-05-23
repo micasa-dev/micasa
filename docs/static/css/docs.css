@@ -3,8 +3,8 @@
 
 /* micasa docs -- same palette, fonts, and feel as the main website */
 
-@import url("variables.css");
-@import url("fonts.css");
+/* variables.css and fonts.css are loaded as separate <link> tags in
+   HTML for parallel fetching. */
 
 *,
 *::before,
@@ -15,7 +15,7 @@
 }
 
 html {
-  font-size: 18px;
+  font-size: 112.5%;
   scroll-behavior: smooth;
 }
 
@@ -259,7 +259,7 @@ body {
 
 .search-modal .pagefind-ui__button {
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   background: var(--linen);
   border: 1px solid var(--rule);
   border-radius: 4px;
@@ -278,7 +278,7 @@ body {
 .sidebar-section {
   padding: 0.4rem 1rem 0.2rem;
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--warm-gray);
@@ -306,11 +306,11 @@ body {
 }
 
 .sidebar-nav a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .sidebar-nav a.active {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
   font-weight: 600;
 }
 
@@ -327,13 +327,13 @@ body {
 
 .sidebar-external a {
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--warm-gray);
   text-decoration: none;
 }
 
 .sidebar-external a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 /* ── Main content ──────────────────────────────────────────── */
@@ -364,7 +364,7 @@ body {
 }
 
 .docs-topbar a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .docs-topbar-nav {
@@ -375,12 +375,12 @@ body {
 
 .docs-topbar-nav a {
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--warm-gray);
 }
 
 .docs-topbar-nav a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .menu-toggle {
@@ -424,7 +424,7 @@ body {
 }
 
 .heading-anchor:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .docs-main h1 {
@@ -458,16 +458,20 @@ body {
   padding: 2.25rem 1rem 2rem 0;
 }
 
+.toc-rail:empty {
+  display: none;
+}
+
 .toc {
   position: sticky;
   top: 1.75rem;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   line-height: 1.5;
 }
 
 .toc-label {
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--warm-gray);
@@ -483,13 +487,6 @@ body {
 .toc li {
   margin: 0;
   padding: 0.2rem 0;
-  padding-left: 0.75rem;
-  border-left: 2px solid transparent;
-  transition: border-color 0.15s;
-}
-
-.toc li:has(> a.active) {
-  border-left-color: var(--terracotta);
 }
 
 .toc a {
@@ -503,7 +500,8 @@ body {
 }
 
 .toc a.active {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
+  font-weight: 600;
 }
 
 .docs-main p {
@@ -532,13 +530,13 @@ body {
 /* ── Links ─────────────────────────────────────────────────── */
 
 .docs-main a {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 .docs-main a:hover {
-  color: var(--terracotta-dark);
+  color: var(--terracotta-darker);
 }
 
 /* ── Code ──────────────────────────────────────────────────── */
@@ -558,7 +556,7 @@ pre {
 .docs-main kbd {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 0.85em;
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
   background: var(--linen);
   border: 1px solid var(--rule);
   border-bottom-width: 2px;
@@ -588,12 +586,25 @@ pre {
 /* ── Blockquotes ───────────────────────────────────────────── */
 
 .docs-main blockquote {
-  border-left: 3px solid var(--terracotta);
+  position: relative;
   background: var(--linen);
-  border-radius: 0 6px 6px 0;
-  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  padding: 1rem 1.25rem 1rem 2.5rem;
   margin: 1.25rem 0;
   color: var(--charcoal-soft);
+  font-style: italic;
+}
+
+.docs-main blockquote::before {
+  content: "\201C";
+  position: absolute;
+  left: 0.6rem;
+  top: 0.2rem;
+  font-family: "DM Serif Display", "Georgia", serif;
+  font-style: normal;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--terracotta-dark);
 }
 
 .docs-main blockquote p {
@@ -663,7 +674,7 @@ pre {
 
 .docs-main td code,
 .docs-main td kbd {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
   background: rgba(192, 94, 60, 0.06);
 }
 
@@ -683,8 +694,7 @@ pre {
   display: inline-flex;
   align-items: center;
   gap: 0.2em;
-  color: var(--terracotta);
-  opacity: 0.7;
+  color: var(--terracotta-dark);
   vertical-align: baseline;
   cursor: default;
   white-space: nowrap;
@@ -692,7 +702,7 @@ pre {
 
 .badge-experimental .badge-label {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-  font-size: 0.4em;
+  font-size: 0.7rem;
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -757,7 +767,7 @@ h2:hover .badge-experimental .badge-label {
   font-size: 0.9em;
 }
 
-/* Sequence diagram colors — CSS custom properties auto-update on theme
+/* Sequence diagram colors. CSS custom properties auto-update on theme
    toggle, eliminating the need to re-render Mermaid diagrams. */
 
 .docs-main pre.mermaid .actor {
@@ -902,22 +912,21 @@ h2:hover .badge-experimental .badge-label {
 
 .docs-pager__card {
   display: block;
-  padding: 0.2rem 0 0.2rem 0.9rem;
-  border-left: 2px solid transparent;
+  padding: 0.2rem 0;
   text-decoration: none;
   color: var(--charcoal-soft);
-  transition: border-color 0.15s, color 0.15s;
+  transition: color 0.15s, transform 0.15s ease-out;
 }
 
 .docs-pager__card:hover {
-  border-color: var(--terracotta);
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
+  transform: translateX(-4px);
 }
 
 .docs-pager__eyebrow {
   display: block;
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--warm-gray);
@@ -932,9 +941,10 @@ h2:hover .badge-experimental .badge-label {
 
 .docs-pager__card--next {
   text-align: right;
-  padding: 0.2rem 0.9rem 0.2rem 0;
-  border-left: none;
-  border-right: 2px solid transparent;
+}
+
+.docs-pager__card--next:hover {
+  transform: translateX(4px);
 }
 
 .docs-pager__ghost {
@@ -952,7 +962,7 @@ h2:hover .badge-experimental .badge-label {
 .tab-pill {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 0.85em;
-  background: var(--terracotta);
+  background: var(--terracotta-dark);
   color: var(--cream);
   padding: 0.1em 0.45em;
   border-radius: 4px;
@@ -966,15 +976,113 @@ h2:hover .badge-experimental .badge-label {
 }
 
 .docs-main a.tab-pill:hover {
-  background: var(--terracotta-dark);
+  background: var(--terracotta-darker);
   color: var(--cream);
+}
+
+/* ── Print ─────────────────────────────────────────────────── */
+
+@media print {
+  .docs-topbar,
+  .docs-sidebar,
+  .toc-rail,
+  .search-hint,
+  .search-overlay,
+  .docs-pager,
+  .heading-anchor {
+    display: none !important;
+  }
+
+  .docs-layout {
+    display: block;
+  }
+
+  .docs-main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .docs-main pre {
+    /* The dark code-block treatment doesn't print well; switch to a
+       light background with a thin border. */
+    background: #f5f5f5;
+    color: #1a1a1a;
+    border: 1px solid #cccccc;
+    page-break-inside: avoid;
+  }
+
+  .docs-main pre code {
+    color: inherit;
+  }
+
+  .docs-main h2,
+  .docs-main h3,
+  .docs-main h4 {
+    page-break-after: avoid;
+  }
+
+  .docs-main img,
+  .docs-main video,
+  .docs-main blockquote,
+  .docs-main pre.mermaid {
+    page-break-inside: avoid;
+  }
+}
+
+/* ── Touch targets ────────────────────────────────────────── */
+
+@media (pointer: coarse), (hover: none) {
+  .menu-toggle {
+    padding: 0.55rem 0.7rem;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .search-hint {
+    padding: 0.55rem 0.85rem;
+    min-height: 44px;
+  }
+
+  .sidebar-nav a {
+    padding: 0.6rem 1rem;
+  }
+
+  .sidebar-section {
+    padding-top: 0.6rem;
+  }
+
+  .docs-topbar-nav {
+    gap: 0.4rem;
+  }
+
+  .docs-topbar-nav a {
+    padding: 0.55rem 0.4rem;
+  }
+
+  .sidebar-external {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .sidebar-external a {
+    padding: 0.55rem 0.5rem;
+  }
+
+  .toc li {
+    padding: 0.05rem 0;
+  }
+
+  .toc a {
+    display: inline-block;
+    padding: 0.4rem 0.5rem 0.4rem 0;
+  }
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
 
 @media (max-width: 800px) {
   html {
-    font-size: 16px;
+    font-size: 100%;
   }
 
   .docs-topbar {
@@ -1009,9 +1117,10 @@ h2:hover .badge-experimental .badge-label {
 
   .docs-pager__card--next {
     text-align: left;
-    padding: 0.2rem 0 0.2rem 0.9rem;
-    border-right: none;
-    border-left: 2px solid transparent;
+  }
+
+  .docs-pager__card--next:hover {
+    transform: translateX(-4px);
   }
 
   .docs-pager__ghost {

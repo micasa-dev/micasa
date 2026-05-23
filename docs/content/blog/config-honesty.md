@@ -41,7 +41,7 @@ No inheritance. No cascading. Changing `chat.llm.model` affects chat.
 Changing `extraction.llm.model` affects extraction. Nothing else happens.
 
 If you had a `[llm]` section in your config, it's ignored now. The migration
-is manual -- copy the values into the right subsections. I deleted over a
+is manual; copy the values into the right subsections. I deleted over a
 hundred lines of compatibility shims and deprecated-key migration code, and
 the config tests got shorter by a thousand lines. That's usually a sign
 you're removing the right thing.
@@ -69,7 +69,7 @@ micasa config get '.extraction.llm'
 
 Scalars print bare, objects encode as TOML, arrays as JSON. API keys are
 stripped so you can pipe the output somewhere without accidentally leaking
-secrets. The jq integration uses `gojq`, so it's compiled in -- no runtime
+secrets. The jq integration uses `gojq`, so it's compiled in; no runtime
 dependency.
 
 ## Validation without the boilerplate
@@ -97,7 +97,7 @@ Homeowners think in seasons. "What do I need to do this spring" is a more
 natural question than "show me all maintenance items with an interval between
 60 and 120 days."
 
-Maintenance items now have an optional season tag -- spring, summer, fall,
+Maintenance items now have an optional season tag; spring, summer, fall,
 winter ([#733](https://github.com/micasa-dev/micasa/pull/733)). The dashboard
 picks up the current season and shows a section for items tagged with it. Pin
 the season column to filter the table. Inline-edit it with <kbd>e</kbd>.
@@ -111,7 +111,7 @@ on the page. Lines with low OCR confidence get flagged with a confidence
 score.
 
 This matters for invoices and forms where spatial relationships carry
-meaning -- the number next to "Total" is more useful than the number next to
+meaning; the number next to "Total" is more useful than the number next to
 "Page." Token overhead is roughly 2x, which is a reasonable trade for not
 having the model confuse your invoice total with a date. Toggle it off with
 <kbd>t</kbd> in the extraction overlay if you're feeding it clean text
@@ -119,16 +119,16 @@ documents.
 
 ## Other things since last week
 
-- **Code-generated columns** -- column constants are now generated from
+- **Code-generated columns**; column constants are now generated from
   declarative definitions in `coldefs.go`
   ([#760](https://github.com/micasa-dev/micasa/pull/760)). Adding a column is
   a one-line edit followed by `go generate`. No more hand-syncing iota blocks
   with column specs.
-- **Weekly releases** -- micasa stopped releasing on every push to main
+- **Weekly releases**; micasa stopped releasing on every push to main
   ([#756](https://github.com/micasa-dev/micasa/pull/756)). Releases now run on
   a weekly schedule with grouped release notes. Fewer notifications, better
   changelogs.
-- **Docs audit** -- config reference, keybindings page, README, and website
+- **Docs audit**; config reference, keybindings page, README, and website
   all got a pass for accuracy
   ([#743](https://github.com/micasa-dev/micasa/pull/743)).
 

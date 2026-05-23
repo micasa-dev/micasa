@@ -31,16 +31,16 @@ micasa [database-path] [flags]
 
 ### Subcommands
 
-- [`micasa backup`](#micasa-backup) -- Back up the database to a file
-- [`micasa config`](#micasa-config) -- Manage application configuration
-- [`micasa db`](#micasa-db) -- Read and write entity data
-- [`micasa demo`](#micasa-demo) -- Launch with sample data in an in-memory database
-- [`micasa eval`](#micasa-eval) -- Run chat-quality benchmarks against a fixture or user DB
-- [`micasa mcp`](#micasa-mcp) -- Run MCP server for LLM client access
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
-- [`micasa query`](#micasa-query) -- Run a read-only SQL query
-- [`micasa show`](#micasa-show) -- Display data as text or JSON
-- [`micasa status`](#micasa-status) -- Show overdue items, open incidents, and active projects
+- [`micasa backup`](#micasa-backup): Back up the database to a file
+- [`micasa config`](#micasa-config): Manage application configuration
+- [`micasa db`](#micasa-db): Read and write entity data
+- [`micasa demo`](#micasa-demo): Launch with sample data in an in-memory database
+- [`micasa eval`](#micasa-eval): Run chat-quality benchmarks against a fixture or user DB
+- [`micasa mcp`](#micasa-mcp): Run MCP server for LLM client access
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
+- [`micasa query`](#micasa-query): Run a read-only SQL query
+- [`micasa show`](#micasa-show): Display data as text or JSON
+- [`micasa status`](#micasa-status): Show overdue items, open incidents, and active projects
 
 ## micasa backup
 
@@ -61,7 +61,7 @@ micasa backup [destination] [flags]
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa config
 
@@ -81,12 +81,12 @@ micasa config [filter] [flags]
 
 ### Subcommands
 
-- [`micasa config edit`](#micasa-config-edit) -- Open the config file in an editor
-- [`micasa config get`](#micasa-config-get) -- Query config values with a jq filter (default: identity)
+- [`micasa config edit`](#micasa-config-edit): Open the config file in an editor
+- [`micasa config get`](#micasa-config-get): Query config values with a jq filter (default: identity)
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa config edit
 
@@ -106,7 +106,7 @@ micasa config edit [flags]
 
 ### See also
 
-- [`micasa config`](#micasa-config) -- Manage application configuration
+- [`micasa config`](#micasa-config): Manage application configuration
 
 ## micasa config get
 
@@ -126,7 +126,7 @@ micasa config get [filter] [flags]
 
 ### See also
 
-- [`micasa config`](#micasa-config) -- Manage application configuration
+- [`micasa config`](#micasa-config): Manage application configuration
 
 ## micasa db
 
@@ -140,23 +140,23 @@ Read and write entity data.
 
 ### Subcommands
 
-- [`micasa db appliance`](#micasa-db-appliance) -- Manage appliances
-- [`micasa db chat`](#micasa-db-chat) -- View and manage chat history
-- [`micasa db deletion`](#micasa-db-deletion) -- View deletion audit records
-- [`micasa db document`](#micasa-db-document) -- Manage documents
-- [`micasa db house`](#micasa-db-house) -- Manage house profile
-- [`micasa db incident`](#micasa-db-incident) -- Manage incidents
-- [`micasa db maintenance`](#micasa-db-maintenance) -- Manage maintenance items
-- [`micasa db maintenance-category`](#micasa-db-maintenance-category) -- Manage maintenance categorys
-- [`micasa db project`](#micasa-db-project) -- Manage projects
-- [`micasa db project-type`](#micasa-db-project-type) -- Manage project types
-- [`micasa db quote`](#micasa-db-quote) -- Manage quotes
-- [`micasa db service-log`](#micasa-db-service-log) -- Manage service log entrys
-- [`micasa db vendor`](#micasa-db-vendor) -- Manage vendors
+- [`micasa db appliance`](#micasa-db-appliance): Manage appliances
+- [`micasa db chat`](#micasa-db-chat): View and manage chat history
+- [`micasa db deletion`](#micasa-db-deletion): View deletion audit records
+- [`micasa db document`](#micasa-db-document): Manage documents
+- [`micasa db house`](#micasa-db-house): Manage house profile
+- [`micasa db incident`](#micasa-db-incident): Manage incidents
+- [`micasa db maintenance`](#micasa-db-maintenance): Manage maintenance items
+- [`micasa db maintenance-category`](#micasa-db-maintenance-category): Manage maintenance categorys
+- [`micasa db project`](#micasa-db-project): Manage projects
+- [`micasa db project-type`](#micasa-db-project-type): Manage project types
+- [`micasa db quote`](#micasa-db-quote): Manage quotes
+- [`micasa db service-log`](#micasa-db-service-log): Manage service log entrys
+- [`micasa db vendor`](#micasa-db-vendor): Manage vendors
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa db appliance
 
@@ -170,16 +170,16 @@ Manage appliances.
 
 ### Subcommands
 
-- [`micasa db appliance add`](#micasa-db-appliance-add) -- Add a appliance
-- [`micasa db appliance delete`](#micasa-db-appliance-delete) -- Delete a appliance
-- [`micasa db appliance edit`](#micasa-db-appliance-edit) -- Edit a appliance
-- [`micasa db appliance get`](#micasa-db-appliance-get) -- Get a appliance by ID
-- [`micasa db appliance list`](#micasa-db-appliance-list) -- List appliances
-- [`micasa db appliance restore`](#micasa-db-appliance-restore) -- Restore a deleted appliance
+- [`micasa db appliance add`](#micasa-db-appliance-add): Add a appliance
+- [`micasa db appliance delete`](#micasa-db-appliance-delete): Delete a appliance
+- [`micasa db appliance edit`](#micasa-db-appliance-edit): Edit a appliance
+- [`micasa db appliance get`](#micasa-db-appliance-get): Get a appliance by ID
+- [`micasa db appliance list`](#micasa-db-appliance-list): List appliances
+- [`micasa db appliance restore`](#micasa-db-appliance-restore): Restore a deleted appliance
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db appliance add
 
@@ -201,7 +201,7 @@ micasa db appliance add [database-path] [flags]
 
 ### See also
 
-- [`micasa db appliance`](#micasa-db-appliance) -- Manage appliances
+- [`micasa db appliance`](#micasa-db-appliance): Manage appliances
 
 ## micasa db appliance delete
 
@@ -221,7 +221,7 @@ micasa db appliance delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db appliance`](#micasa-db-appliance) -- Manage appliances
+- [`micasa db appliance`](#micasa-db-appliance): Manage appliances
 
 ## micasa db appliance edit
 
@@ -243,7 +243,7 @@ micasa db appliance edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db appliance`](#micasa-db-appliance) -- Manage appliances
+- [`micasa db appliance`](#micasa-db-appliance): Manage appliances
 
 ## micasa db appliance get
 
@@ -264,7 +264,7 @@ micasa db appliance get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db appliance`](#micasa-db-appliance) -- Manage appliances
+- [`micasa db appliance`](#micasa-db-appliance): Manage appliances
 
 ## micasa db appliance list
 
@@ -286,7 +286,7 @@ micasa db appliance list [database-path] [flags]
 
 ### See also
 
-- [`micasa db appliance`](#micasa-db-appliance) -- Manage appliances
+- [`micasa db appliance`](#micasa-db-appliance): Manage appliances
 
 ## micasa db appliance restore
 
@@ -306,7 +306,7 @@ micasa db appliance restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db appliance`](#micasa-db-appliance) -- Manage appliances
+- [`micasa db appliance`](#micasa-db-appliance): Manage appliances
 
 ## micasa db chat
 
@@ -320,12 +320,12 @@ View and manage chat history.
 
 ### Subcommands
 
-- [`micasa db chat delete`](#micasa-db-chat-delete) -- Delete a chat history entry
-- [`micasa db chat list`](#micasa-db-chat-list) -- List chat history
+- [`micasa db chat delete`](#micasa-db-chat-delete): Delete a chat history entry
+- [`micasa db chat list`](#micasa-db-chat-list): List chat history
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db chat delete
 
@@ -345,7 +345,7 @@ micasa db chat delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db chat`](#micasa-db-chat) -- View and manage chat history
+- [`micasa db chat`](#micasa-db-chat): View and manage chat history
 
 ## micasa db chat list
 
@@ -366,7 +366,7 @@ micasa db chat list [database-path] [flags]
 
 ### See also
 
-- [`micasa db chat`](#micasa-db-chat) -- View and manage chat history
+- [`micasa db chat`](#micasa-db-chat): View and manage chat history
 
 ## micasa db deletion
 
@@ -380,11 +380,11 @@ View deletion audit records.
 
 ### Subcommands
 
-- [`micasa db deletion list`](#micasa-db-deletion-list) -- List deletion records
+- [`micasa db deletion list`](#micasa-db-deletion-list): List deletion records
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db deletion list
 
@@ -405,7 +405,7 @@ micasa db deletion list [database-path] [flags]
 
 ### See also
 
-- [`micasa db deletion`](#micasa-db-deletion) -- View deletion audit records
+- [`micasa db deletion`](#micasa-db-deletion): View deletion audit records
 
 ## micasa db document
 
@@ -419,16 +419,16 @@ Manage documents.
 
 ### Subcommands
 
-- [`micasa db document add`](#micasa-db-document-add) -- Add a document
-- [`micasa db document delete`](#micasa-db-document-delete) -- Delete a document
-- [`micasa db document edit`](#micasa-db-document-edit) -- Edit a document
-- [`micasa db document get`](#micasa-db-document-get) -- Get a document by ID
-- [`micasa db document list`](#micasa-db-document-list) -- List documents
-- [`micasa db document restore`](#micasa-db-document-restore) -- Restore a deleted document
+- [`micasa db document add`](#micasa-db-document-add): Add a document
+- [`micasa db document delete`](#micasa-db-document-delete): Delete a document
+- [`micasa db document edit`](#micasa-db-document-edit): Edit a document
+- [`micasa db document get`](#micasa-db-document-get): Get a document by ID
+- [`micasa db document list`](#micasa-db-document-list): List documents
+- [`micasa db document restore`](#micasa-db-document-restore): Restore a deleted document
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db document add
 
@@ -451,7 +451,7 @@ micasa db document add [database-path] [flags]
 
 ### See also
 
-- [`micasa db document`](#micasa-db-document) -- Manage documents
+- [`micasa db document`](#micasa-db-document): Manage documents
 
 ## micasa db document delete
 
@@ -471,7 +471,7 @@ micasa db document delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db document`](#micasa-db-document) -- Manage documents
+- [`micasa db document`](#micasa-db-document): Manage documents
 
 ## micasa db document edit
 
@@ -493,7 +493,7 @@ micasa db document edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db document`](#micasa-db-document) -- Manage documents
+- [`micasa db document`](#micasa-db-document): Manage documents
 
 ## micasa db document get
 
@@ -514,7 +514,7 @@ micasa db document get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db document`](#micasa-db-document) -- Manage documents
+- [`micasa db document`](#micasa-db-document): Manage documents
 
 ## micasa db document list
 
@@ -536,7 +536,7 @@ micasa db document list [database-path] [flags]
 
 ### See also
 
-- [`micasa db document`](#micasa-db-document) -- Manage documents
+- [`micasa db document`](#micasa-db-document): Manage documents
 
 ## micasa db document restore
 
@@ -556,7 +556,7 @@ micasa db document restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db document`](#micasa-db-document) -- Manage documents
+- [`micasa db document`](#micasa-db-document): Manage documents
 
 ## micasa db house
 
@@ -570,13 +570,13 @@ Manage house profile.
 
 ### Subcommands
 
-- [`micasa db house add`](#micasa-db-house-add) -- Add house profile
-- [`micasa db house edit`](#micasa-db-house-edit) -- Edit house profile
-- [`micasa db house get`](#micasa-db-house-get) -- Get house profile
+- [`micasa db house add`](#micasa-db-house-add): Add house profile
+- [`micasa db house edit`](#micasa-db-house-edit): Edit house profile
+- [`micasa db house get`](#micasa-db-house-get): Get house profile
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db house add
 
@@ -598,7 +598,7 @@ micasa db house add [database-path] [flags]
 
 ### See also
 
-- [`micasa db house`](#micasa-db-house) -- Manage house profile
+- [`micasa db house`](#micasa-db-house): Manage house profile
 
 ## micasa db house edit
 
@@ -620,7 +620,7 @@ micasa db house edit [database-path] [flags]
 
 ### See also
 
-- [`micasa db house`](#micasa-db-house) -- Manage house profile
+- [`micasa db house`](#micasa-db-house): Manage house profile
 
 ## micasa db house get
 
@@ -640,7 +640,7 @@ micasa db house get [database-path] [flags]
 
 ### See also
 
-- [`micasa db house`](#micasa-db-house) -- Manage house profile
+- [`micasa db house`](#micasa-db-house): Manage house profile
 
 ## micasa db incident
 
@@ -654,16 +654,16 @@ Manage incidents.
 
 ### Subcommands
 
-- [`micasa db incident add`](#micasa-db-incident-add) -- Add a incident
-- [`micasa db incident delete`](#micasa-db-incident-delete) -- Delete a incident
-- [`micasa db incident edit`](#micasa-db-incident-edit) -- Edit a incident
-- [`micasa db incident get`](#micasa-db-incident-get) -- Get a incident by ID
-- [`micasa db incident list`](#micasa-db-incident-list) -- List incidents
-- [`micasa db incident restore`](#micasa-db-incident-restore) -- Restore a deleted incident
+- [`micasa db incident add`](#micasa-db-incident-add): Add a incident
+- [`micasa db incident delete`](#micasa-db-incident-delete): Delete a incident
+- [`micasa db incident edit`](#micasa-db-incident-edit): Edit a incident
+- [`micasa db incident get`](#micasa-db-incident-get): Get a incident by ID
+- [`micasa db incident list`](#micasa-db-incident-list): List incidents
+- [`micasa db incident restore`](#micasa-db-incident-restore): Restore a deleted incident
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db incident add
 
@@ -685,7 +685,7 @@ micasa db incident add [database-path] [flags]
 
 ### See also
 
-- [`micasa db incident`](#micasa-db-incident) -- Manage incidents
+- [`micasa db incident`](#micasa-db-incident): Manage incidents
 
 ## micasa db incident delete
 
@@ -705,7 +705,7 @@ micasa db incident delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db incident`](#micasa-db-incident) -- Manage incidents
+- [`micasa db incident`](#micasa-db-incident): Manage incidents
 
 ## micasa db incident edit
 
@@ -727,7 +727,7 @@ micasa db incident edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db incident`](#micasa-db-incident) -- Manage incidents
+- [`micasa db incident`](#micasa-db-incident): Manage incidents
 
 ## micasa db incident get
 
@@ -748,7 +748,7 @@ micasa db incident get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db incident`](#micasa-db-incident) -- Manage incidents
+- [`micasa db incident`](#micasa-db-incident): Manage incidents
 
 ## micasa db incident list
 
@@ -770,7 +770,7 @@ micasa db incident list [database-path] [flags]
 
 ### See also
 
-- [`micasa db incident`](#micasa-db-incident) -- Manage incidents
+- [`micasa db incident`](#micasa-db-incident): Manage incidents
 
 ## micasa db incident restore
 
@@ -790,7 +790,7 @@ micasa db incident restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db incident`](#micasa-db-incident) -- Manage incidents
+- [`micasa db incident`](#micasa-db-incident): Manage incidents
 
 ## micasa db maintenance
 
@@ -804,16 +804,16 @@ Manage maintenance items.
 
 ### Subcommands
 
-- [`micasa db maintenance add`](#micasa-db-maintenance-add) -- Add a maintenance item
-- [`micasa db maintenance delete`](#micasa-db-maintenance-delete) -- Delete a maintenance item
-- [`micasa db maintenance edit`](#micasa-db-maintenance-edit) -- Edit a maintenance item
-- [`micasa db maintenance get`](#micasa-db-maintenance-get) -- Get a maintenance item by ID
-- [`micasa db maintenance list`](#micasa-db-maintenance-list) -- List maintenance items
-- [`micasa db maintenance restore`](#micasa-db-maintenance-restore) -- Restore a deleted maintenance item
+- [`micasa db maintenance add`](#micasa-db-maintenance-add): Add a maintenance item
+- [`micasa db maintenance delete`](#micasa-db-maintenance-delete): Delete a maintenance item
+- [`micasa db maintenance edit`](#micasa-db-maintenance-edit): Edit a maintenance item
+- [`micasa db maintenance get`](#micasa-db-maintenance-get): Get a maintenance item by ID
+- [`micasa db maintenance list`](#micasa-db-maintenance-list): List maintenance items
+- [`micasa db maintenance restore`](#micasa-db-maintenance-restore): Restore a deleted maintenance item
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db maintenance add
 
@@ -835,7 +835,7 @@ micasa db maintenance add [database-path] [flags]
 
 ### See also
 
-- [`micasa db maintenance`](#micasa-db-maintenance) -- Manage maintenance items
+- [`micasa db maintenance`](#micasa-db-maintenance): Manage maintenance items
 
 ## micasa db maintenance delete
 
@@ -855,7 +855,7 @@ micasa db maintenance delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db maintenance`](#micasa-db-maintenance) -- Manage maintenance items
+- [`micasa db maintenance`](#micasa-db-maintenance): Manage maintenance items
 
 ## micasa db maintenance edit
 
@@ -877,7 +877,7 @@ micasa db maintenance edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db maintenance`](#micasa-db-maintenance) -- Manage maintenance items
+- [`micasa db maintenance`](#micasa-db-maintenance): Manage maintenance items
 
 ## micasa db maintenance get
 
@@ -898,7 +898,7 @@ micasa db maintenance get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db maintenance`](#micasa-db-maintenance) -- Manage maintenance items
+- [`micasa db maintenance`](#micasa-db-maintenance): Manage maintenance items
 
 ## micasa db maintenance list
 
@@ -920,7 +920,7 @@ micasa db maintenance list [database-path] [flags]
 
 ### See also
 
-- [`micasa db maintenance`](#micasa-db-maintenance) -- Manage maintenance items
+- [`micasa db maintenance`](#micasa-db-maintenance): Manage maintenance items
 
 ## micasa db maintenance restore
 
@@ -940,7 +940,7 @@ micasa db maintenance restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db maintenance`](#micasa-db-maintenance) -- Manage maintenance items
+- [`micasa db maintenance`](#micasa-db-maintenance): Manage maintenance items
 
 ## micasa db maintenance-category
 
@@ -954,11 +954,11 @@ Manage maintenance categorys.
 
 ### Subcommands
 
-- [`micasa db maintenance-category list`](#micasa-db-maintenance-category-list) -- List maintenance categorys
+- [`micasa db maintenance-category list`](#micasa-db-maintenance-category-list): List maintenance categorys
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db maintenance-category list
 
@@ -980,7 +980,7 @@ micasa db maintenance-category list [database-path] [flags]
 
 ### See also
 
-- [`micasa db maintenance-category`](#micasa-db-maintenance-category) -- Manage maintenance categorys
+- [`micasa db maintenance-category`](#micasa-db-maintenance-category): Manage maintenance categorys
 
 ## micasa db project
 
@@ -994,16 +994,16 @@ Manage projects.
 
 ### Subcommands
 
-- [`micasa db project add`](#micasa-db-project-add) -- Add a project
-- [`micasa db project delete`](#micasa-db-project-delete) -- Delete a project
-- [`micasa db project edit`](#micasa-db-project-edit) -- Edit a project
-- [`micasa db project get`](#micasa-db-project-get) -- Get a project by ID
-- [`micasa db project list`](#micasa-db-project-list) -- List projects
-- [`micasa db project restore`](#micasa-db-project-restore) -- Restore a deleted project
+- [`micasa db project add`](#micasa-db-project-add): Add a project
+- [`micasa db project delete`](#micasa-db-project-delete): Delete a project
+- [`micasa db project edit`](#micasa-db-project-edit): Edit a project
+- [`micasa db project get`](#micasa-db-project-get): Get a project by ID
+- [`micasa db project list`](#micasa-db-project-list): List projects
+- [`micasa db project restore`](#micasa-db-project-restore): Restore a deleted project
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db project add
 
@@ -1025,7 +1025,7 @@ micasa db project add [database-path] [flags]
 
 ### See also
 
-- [`micasa db project`](#micasa-db-project) -- Manage projects
+- [`micasa db project`](#micasa-db-project): Manage projects
 
 ## micasa db project delete
 
@@ -1045,7 +1045,7 @@ micasa db project delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db project`](#micasa-db-project) -- Manage projects
+- [`micasa db project`](#micasa-db-project): Manage projects
 
 ## micasa db project edit
 
@@ -1067,7 +1067,7 @@ micasa db project edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db project`](#micasa-db-project) -- Manage projects
+- [`micasa db project`](#micasa-db-project): Manage projects
 
 ## micasa db project get
 
@@ -1088,7 +1088,7 @@ micasa db project get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db project`](#micasa-db-project) -- Manage projects
+- [`micasa db project`](#micasa-db-project): Manage projects
 
 ## micasa db project list
 
@@ -1110,7 +1110,7 @@ micasa db project list [database-path] [flags]
 
 ### See also
 
-- [`micasa db project`](#micasa-db-project) -- Manage projects
+- [`micasa db project`](#micasa-db-project): Manage projects
 
 ## micasa db project restore
 
@@ -1130,7 +1130,7 @@ micasa db project restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db project`](#micasa-db-project) -- Manage projects
+- [`micasa db project`](#micasa-db-project): Manage projects
 
 ## micasa db project-type
 
@@ -1144,11 +1144,11 @@ Manage project types.
 
 ### Subcommands
 
-- [`micasa db project-type list`](#micasa-db-project-type-list) -- List project types
+- [`micasa db project-type list`](#micasa-db-project-type-list): List project types
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db project-type list
 
@@ -1170,7 +1170,7 @@ micasa db project-type list [database-path] [flags]
 
 ### See also
 
-- [`micasa db project-type`](#micasa-db-project-type) -- Manage project types
+- [`micasa db project-type`](#micasa-db-project-type): Manage project types
 
 ## micasa db quote
 
@@ -1184,16 +1184,16 @@ Manage quotes.
 
 ### Subcommands
 
-- [`micasa db quote add`](#micasa-db-quote-add) -- Add a quote
-- [`micasa db quote delete`](#micasa-db-quote-delete) -- Delete a quote
-- [`micasa db quote edit`](#micasa-db-quote-edit) -- Edit a quote
-- [`micasa db quote get`](#micasa-db-quote-get) -- Get a quote by ID
-- [`micasa db quote list`](#micasa-db-quote-list) -- List quotes
-- [`micasa db quote restore`](#micasa-db-quote-restore) -- Restore a deleted quote
+- [`micasa db quote add`](#micasa-db-quote-add): Add a quote
+- [`micasa db quote delete`](#micasa-db-quote-delete): Delete a quote
+- [`micasa db quote edit`](#micasa-db-quote-edit): Edit a quote
+- [`micasa db quote get`](#micasa-db-quote-get): Get a quote by ID
+- [`micasa db quote list`](#micasa-db-quote-list): List quotes
+- [`micasa db quote restore`](#micasa-db-quote-restore): Restore a deleted quote
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db quote add
 
@@ -1215,7 +1215,7 @@ micasa db quote add [database-path] [flags]
 
 ### See also
 
-- [`micasa db quote`](#micasa-db-quote) -- Manage quotes
+- [`micasa db quote`](#micasa-db-quote): Manage quotes
 
 ## micasa db quote delete
 
@@ -1235,7 +1235,7 @@ micasa db quote delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db quote`](#micasa-db-quote) -- Manage quotes
+- [`micasa db quote`](#micasa-db-quote): Manage quotes
 
 ## micasa db quote edit
 
@@ -1257,7 +1257,7 @@ micasa db quote edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db quote`](#micasa-db-quote) -- Manage quotes
+- [`micasa db quote`](#micasa-db-quote): Manage quotes
 
 ## micasa db quote get
 
@@ -1278,7 +1278,7 @@ micasa db quote get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db quote`](#micasa-db-quote) -- Manage quotes
+- [`micasa db quote`](#micasa-db-quote): Manage quotes
 
 ## micasa db quote list
 
@@ -1300,7 +1300,7 @@ micasa db quote list [database-path] [flags]
 
 ### See also
 
-- [`micasa db quote`](#micasa-db-quote) -- Manage quotes
+- [`micasa db quote`](#micasa-db-quote): Manage quotes
 
 ## micasa db quote restore
 
@@ -1320,7 +1320,7 @@ micasa db quote restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db quote`](#micasa-db-quote) -- Manage quotes
+- [`micasa db quote`](#micasa-db-quote): Manage quotes
 
 ## micasa db service-log
 
@@ -1334,16 +1334,16 @@ Manage service log entrys.
 
 ### Subcommands
 
-- [`micasa db service-log add`](#micasa-db-service-log-add) -- Add a service log entry
-- [`micasa db service-log delete`](#micasa-db-service-log-delete) -- Delete a service log entry
-- [`micasa db service-log edit`](#micasa-db-service-log-edit) -- Edit a service log entry
-- [`micasa db service-log get`](#micasa-db-service-log-get) -- Get a service log entry by ID
-- [`micasa db service-log list`](#micasa-db-service-log-list) -- List service log entrys
-- [`micasa db service-log restore`](#micasa-db-service-log-restore) -- Restore a deleted service log entry
+- [`micasa db service-log add`](#micasa-db-service-log-add): Add a service log entry
+- [`micasa db service-log delete`](#micasa-db-service-log-delete): Delete a service log entry
+- [`micasa db service-log edit`](#micasa-db-service-log-edit): Edit a service log entry
+- [`micasa db service-log get`](#micasa-db-service-log-get): Get a service log entry by ID
+- [`micasa db service-log list`](#micasa-db-service-log-list): List service log entrys
+- [`micasa db service-log restore`](#micasa-db-service-log-restore): Restore a deleted service log entry
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db service-log add
 
@@ -1365,7 +1365,7 @@ micasa db service-log add [database-path] [flags]
 
 ### See also
 
-- [`micasa db service-log`](#micasa-db-service-log) -- Manage service log entrys
+- [`micasa db service-log`](#micasa-db-service-log): Manage service log entrys
 
 ## micasa db service-log delete
 
@@ -1385,7 +1385,7 @@ micasa db service-log delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db service-log`](#micasa-db-service-log) -- Manage service log entrys
+- [`micasa db service-log`](#micasa-db-service-log): Manage service log entrys
 
 ## micasa db service-log edit
 
@@ -1407,7 +1407,7 @@ micasa db service-log edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db service-log`](#micasa-db-service-log) -- Manage service log entrys
+- [`micasa db service-log`](#micasa-db-service-log): Manage service log entrys
 
 ## micasa db service-log get
 
@@ -1428,7 +1428,7 @@ micasa db service-log get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db service-log`](#micasa-db-service-log) -- Manage service log entrys
+- [`micasa db service-log`](#micasa-db-service-log): Manage service log entrys
 
 ## micasa db service-log list
 
@@ -1450,7 +1450,7 @@ micasa db service-log list [database-path] [flags]
 
 ### See also
 
-- [`micasa db service-log`](#micasa-db-service-log) -- Manage service log entrys
+- [`micasa db service-log`](#micasa-db-service-log): Manage service log entrys
 
 ## micasa db service-log restore
 
@@ -1470,7 +1470,7 @@ micasa db service-log restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db service-log`](#micasa-db-service-log) -- Manage service log entrys
+- [`micasa db service-log`](#micasa-db-service-log): Manage service log entrys
 
 ## micasa db vendor
 
@@ -1484,16 +1484,16 @@ Manage vendors.
 
 ### Subcommands
 
-- [`micasa db vendor add`](#micasa-db-vendor-add) -- Add a vendor
-- [`micasa db vendor delete`](#micasa-db-vendor-delete) -- Delete a vendor
-- [`micasa db vendor edit`](#micasa-db-vendor-edit) -- Edit a vendor
-- [`micasa db vendor get`](#micasa-db-vendor-get) -- Get a vendor by ID
-- [`micasa db vendor list`](#micasa-db-vendor-list) -- List vendors
-- [`micasa db vendor restore`](#micasa-db-vendor-restore) -- Restore a deleted vendor
+- [`micasa db vendor add`](#micasa-db-vendor-add): Add a vendor
+- [`micasa db vendor delete`](#micasa-db-vendor-delete): Delete a vendor
+- [`micasa db vendor edit`](#micasa-db-vendor-edit): Edit a vendor
+- [`micasa db vendor get`](#micasa-db-vendor-get): Get a vendor by ID
+- [`micasa db vendor list`](#micasa-db-vendor-list): List vendors
+- [`micasa db vendor restore`](#micasa-db-vendor-restore): Restore a deleted vendor
 
 ### See also
 
-- [`micasa db`](#micasa-db) -- Read and write entity data
+- [`micasa db`](#micasa-db): Read and write entity data
 
 ## micasa db vendor add
 
@@ -1515,7 +1515,7 @@ micasa db vendor add [database-path] [flags]
 
 ### See also
 
-- [`micasa db vendor`](#micasa-db-vendor) -- Manage vendors
+- [`micasa db vendor`](#micasa-db-vendor): Manage vendors
 
 ## micasa db vendor delete
 
@@ -1535,7 +1535,7 @@ micasa db vendor delete <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db vendor`](#micasa-db-vendor) -- Manage vendors
+- [`micasa db vendor`](#micasa-db-vendor): Manage vendors
 
 ## micasa db vendor edit
 
@@ -1557,7 +1557,7 @@ micasa db vendor edit <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db vendor`](#micasa-db-vendor) -- Manage vendors
+- [`micasa db vendor`](#micasa-db-vendor): Manage vendors
 
 ## micasa db vendor get
 
@@ -1578,7 +1578,7 @@ micasa db vendor get <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db vendor`](#micasa-db-vendor) -- Manage vendors
+- [`micasa db vendor`](#micasa-db-vendor): Manage vendors
 
 ## micasa db vendor list
 
@@ -1600,7 +1600,7 @@ micasa db vendor list [database-path] [flags]
 
 ### See also
 
-- [`micasa db vendor`](#micasa-db-vendor) -- Manage vendors
+- [`micasa db vendor`](#micasa-db-vendor): Manage vendors
 
 ## micasa db vendor restore
 
@@ -1620,7 +1620,7 @@ micasa db vendor restore <id> [database-path] [flags]
 
 ### See also
 
-- [`micasa db vendor`](#micasa-db-vendor) -- Manage vendors
+- [`micasa db vendor`](#micasa-db-vendor): Manage vendors
 
 ## micasa demo
 
@@ -1642,7 +1642,7 @@ micasa demo [database-path] [flags]
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa eval
 
@@ -1656,11 +1656,11 @@ Parent command for chat-quality evaluations. See subcommands.
 
 ### Subcommands
 
-- [`micasa eval fts`](#micasa-eval-fts) -- Run the FTS context-enrichment chat benchmark
+- [`micasa eval fts`](#micasa-eval-fts): Run the FTS context-enrichment chat benchmark
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa eval fts
 
@@ -1697,7 +1697,7 @@ micasa eval fts [flags]
 
 ### See also
 
-- [`micasa eval`](#micasa-eval) -- Run chat-quality benchmarks against a fixture or user DB
+- [`micasa eval`](#micasa-eval): Run chat-quality benchmarks against a fixture or user DB
 
 ## micasa mcp
 
@@ -1717,7 +1717,7 @@ micasa mcp [database-path] [flags]
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa pro
 
@@ -1747,18 +1747,18 @@ Typical workflow:
 
 ### Subcommands
 
-- [`micasa pro conflicts`](#micasa-pro-conflicts) -- List sync ops that lost LWW conflict resolution
-- [`micasa pro devices`](#micasa-pro-devices) -- List devices
-- [`micasa pro init`](#micasa-pro-init) -- Bootstrap: create household, generate keys, register device
-- [`micasa pro invite`](#micasa-pro-invite) -- Generate invite code, wait for joiner handshake
-- [`micasa pro join`](#micasa-pro-join) -- Join household with invite code
-- [`micasa pro status`](#micasa-pro-status) -- Show sync status
-- [`micasa pro storage`](#micasa-pro-storage) -- Show blob storage usage
-- [`micasa pro sync`](#micasa-pro-sync) -- Force immediate push+pull cycle
+- [`micasa pro conflicts`](#micasa-pro-conflicts): List sync ops that lost LWW conflict resolution
+- [`micasa pro devices`](#micasa-pro-devices): List devices
+- [`micasa pro init`](#micasa-pro-init): Bootstrap: create household, generate keys, register device
+- [`micasa pro invite`](#micasa-pro-invite): Generate invite code, wait for joiner handshake
+- [`micasa pro join`](#micasa-pro-join): Join household with invite code
+- [`micasa pro status`](#micasa-pro-status): Show sync status
+- [`micasa pro storage`](#micasa-pro-storage): Show blob storage usage
+- [`micasa pro sync`](#micasa-pro-sync): Force immediate push+pull cycle
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa pro conflicts
 
@@ -1778,7 +1778,7 @@ micasa pro conflicts [database-path] [flags]
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa pro devices
 
@@ -1798,11 +1798,11 @@ micasa pro devices [database-path] [flags]
 
 ### Subcommands
 
-- [`micasa pro devices revoke`](#micasa-pro-devices-revoke) -- Revoke a device
+- [`micasa pro devices revoke`](#micasa-pro-devices-revoke): Revoke a device
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa pro devices revoke
 
@@ -1822,7 +1822,7 @@ micasa pro devices revoke <device-id> [database-path] [flags]
 
 ### See also
 
-- [`micasa pro devices`](#micasa-pro-devices) -- List devices
+- [`micasa pro devices`](#micasa-pro-devices): List devices
 
 ## micasa pro init
 
@@ -1843,7 +1843,7 @@ micasa pro init [database-path] [flags]
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa pro invite
 
@@ -1863,7 +1863,7 @@ micasa pro invite [database-path] [flags]
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa pro join
 
@@ -1884,7 +1884,7 @@ micasa pro join <code> [database-path] [flags]
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa pro status
 
@@ -1904,7 +1904,7 @@ micasa pro status [database-path] [flags]
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa pro storage
 
@@ -1924,7 +1924,7 @@ micasa pro storage [database-path] [flags]
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa pro sync
 
@@ -1944,7 +1944,7 @@ micasa pro sync [database-path] [flags]
 
 ### See also
 
-- [`micasa pro`](#micasa-pro) -- Manage micasa Pro sync
+- [`micasa pro`](#micasa-pro): Manage micasa Pro sync
 
 ## micasa query
 
@@ -1967,7 +1967,7 @@ micasa query <sql> [database-path] [flags]
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa show
 
@@ -1985,11 +1985,11 @@ appliances, incidents, documents, all.
 
 ### Subcommands
 
-- [`micasa show all`](#micasa-show-all) -- Show all entities
+- [`micasa show all`](#micasa-show-all): Show all entities
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 
 ## micasa show all
 
@@ -2016,7 +2016,7 @@ micasa show all [database-path] [flags]
 
 ### See also
 
-- [`micasa show`](#micasa-show) -- Display data as text or JSON
+- [`micasa show`](#micasa-show): Display data as text or JSON
 
 ## micasa status
 
@@ -2040,5 +2040,5 @@ micasa status [database-path] [flags]
 
 ### See also
 
-- [`micasa`](#micasa) -- A terminal UI for tracking everything about your home
+- [`micasa`](#micasa): A terminal UI for tracking everything about your home
 

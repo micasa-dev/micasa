@@ -27,7 +27,7 @@ them.
 The common thread was disorganized friction. Every tool I tried added a step
 between "I should write this down" and actually writing it down. Open the
 browser, find the tab, wait for it to load, remember which spreadsheet, find
-the right row -- by then the moment has passed and the information goes back to
+the right row; by then the moment has passed and the information goes back to
 living in my head, where it will be wrong about the roof.
 
 … and I *still* can't see how anything is related.
@@ -42,7 +42,7 @@ I hate the mouse. Every time my hands leave [home
 row](https://en.wikipedia.org/wiki/Touch_typing#Home_row) I can feel my brain
 turning into absolute mush, and getting back is like trying to pick up a mound
 of peanut butter on a [jamón](https://en.wikipedia.org/wiki/Jam%C3%B3n) factory
-floor -- "frictionless", yet impossible. I spend most of my
+floor; "frictionless", yet impossible. I spend most of my
 day in a terminal, and I need things to be keyboard-driven or I just won't use
 them.
 
@@ -64,7 +64,7 @@ getting any wider.
 
 Everything lives in a single SQLite database. Your maintenance history, your
 vendor contacts, your warranty dates, the PDF of that invoice you'll need in
-three years when something breaks again -- all of it. One file.
+three years when something breaks again; all of it. One file.
 
 ```sh
 micasa backup backup.db   # that's your entire backup strategy
@@ -93,26 +93,26 @@ Say the dishwasher starts making a noise. You open the
 [appliance](/docs/guide/appliances/) record and there's the model number, the
 serial number, the warranty expiration date you definitely would not have
 remembered. There's also the [maintenance](/docs/guide/maintenance/) schedule
-you set up -- "clean the dishwasher filter every 3 months" -- and the log
+you set up; "clean the dishwasher filter every 3 months"; and the log
 showing the last time you actually did it. Yes, your dishwasher has a filter.
 Yes, you were supposed to be cleaning it.
 
 It turns out the noise is bad enough to call someone. You pull up your
 [vendors](/docs/guide/vendors/) and find the repair company that serviced the
-washing machine last year -- their contact info, the [quote](/docs/guide/quotes/)
+washing machine last year; their contact info, the [quote](/docs/guide/quotes/)
 they gave you, what they charged. You get a new quote for the dishwasher and it
 links back to the same vendor, so next time you don't have to ask your neighbor
 "who was that guy you used?"
 
 Maybe the dishwasher is dying and this becomes a kitchen
-[project](/docs/guide/projects/) -- new dishwasher, maybe redo the countertops
+[project](/docs/guide/projects/); new dishwasher, maybe redo the countertops
 while you're at it. The project tracks the budget, the status, and links to all
 the quotes you're collecting. The contractor's invoice gets attached as a
 [document](/docs/guide/documents/), stored right in the database alongside the
 appliance manual and the warranty PDF.
 
 Or maybe it's not the dishwasher at all. You pull off a piece of trim and
-discover ants -- not a recurring maintenance task, not a multi-month project,
+discover ants; not a recurring maintenance task, not a multi-month project,
 just an urgent thing that needs handling *now*. That's an
 [incident](/docs/guide/incidents/). You log the severity, the date you noticed
 it, and optionally link it to the appliance or vendor involved. When the
@@ -131,7 +131,7 @@ Needless to say, the demo house is not behaving itself.
 
 There's also an optional [LLM chat](/docs/guide/llm-chat/) feature that can
 answer questions about your data, powered by a local model via Ollama or any
-OpenAI-compatible API. It's fun to poke at, but it's not load-bearing -- every
+OpenAI-compatible API. It's fun to poke at, but it's not load-bearing; every
 feature works fully without it. It's also the only part that phones home, and
 only to servers [you configure](/docs/reference/configuration/#llm-section).
 

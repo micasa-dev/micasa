@@ -4,9 +4,9 @@ date = 2026-02-26
 description = "How micasa reads your invoices with OCR and a local LLM, and why the LLM is the least important part."
 +++
 
-Last week I was staring at a plumbing invoice -- $287 for a garbage disposal
+Last week I was staring at a plumbing invoice; $287 for a garbage disposal
 install, which is apparently what it costs to have a man lie under your sink
-for forty minutes -- and I realized I was about to do the thing I built this
+for forty minutes; and I realized I was about to do the thing I built this
 app to avoid: transcribing data by hand.
 
 Open the vendor form, type "Ace Plumbing." Open the quote form, type "$287."
@@ -56,7 +56,7 @@ amount, title) so you don't have to type them yourself.
 It's also a 7-billion-parameter model running on your laptop that will
 propose that your plumber's name is "Invoice" and the amount is
 "Date: 2026-01-15." That's why you review before accepting. If the model
-isn't installed, the pipeline still extracts text and shows it to you -- you
+isn't installed, the pipeline still extracts text and shows it to you; you
 fill in the fields yourself.
 
 Same applies to the [LLM chat](/docs/guide/llm-chat/). Useful for quick
@@ -81,21 +81,21 @@ away. Or `nix develop` in the repo.
 
 Some other things that landed since the [launch post](/blog/launch/):
 
-- **[Relative dates](/docs/using/date-input/#natural-language)** -- type `yesterday`,
+- **[Relative dates](/docs/using/date-input/#natural-language)**; type `yesterday`,
   `2 weeks ago`, or `last friday` instead of `YYYY-MM-DD`. Works in any date
   field.
   ([#528](https://github.com/micasa-dev/micasa/pull/528))
-- **[<kbd>t</kbd> for today](/docs/using/date-input/#calendar-picker)** -- in date
+- **[<kbd>t</kbd> for today](/docs/using/date-input/#calendar-picker)**; in date
   pickers. Typing `2026-02-26` every time was a small daily indignity.
   ([#517](https://github.com/micasa-dev/micasa/pull/517))
-- **[Maintenance](/docs/guide/maintenance/) due dates** -- items can now have
+- **[Maintenance](/docs/guide/maintenance/) due dates**; items can now have
   a fixed date instead of only a recurring interval. "Clean the gutters every
   6 months" and "replace the roof by 2028" are different kinds of tasks.
   ([#525](https://github.com/micasa-dev/micasa/pull/525))
-- **<kbd>E</kbd> for [full edit](/docs/reference/keybindings/#data-operations)** -- opens the edit form
+- **<kbd>E</kbd> for [full edit](/docs/reference/keybindings/#data-operations)**; opens the edit form
   from any column. Previously you had to navigate to the right column first.
   ([#540](https://github.com/micasa-dev/micasa/pull/540))
-- **Scrollable [dashboard](/docs/guide/dashboard/)** -- previously clipped
+- **Scrollable [dashboard](/docs/guide/dashboard/)**; previously clipped
   sections that didn't fit. It scrolls correctly now.
   ([#531](https://github.com/micasa-dev/micasa/pull/531))
 

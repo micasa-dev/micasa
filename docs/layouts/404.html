@@ -5,24 +5,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>404 &mdash; house not found</title>
+  <meta name="color-scheme" content="light dark">
+  <title>404 &middot; house not found</title>
   <link rel="icon" type="image/svg+xml" href="{{ "images/favicon.svg" | relURL }}">
   <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/source-serif-4-latin.woff2" | relURL }}" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/dm-serif-display-latin-400.woff2" | relURL }}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/jetbrains-mono-latin.woff2" | relURL }}" crossorigin>
   <link rel="stylesheet" href="{{ "css/fonts.css" | relURL }}">
+  <link rel="stylesheet" href="{{ "css/variables.css" | relURL }}">
+  <script src="{{ "js/theme.js" | relURL }}"></script>
+  <script src="{{ "js/idle-pause.js" | relURL }}" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --cream: #faf6f1;
-      --linen: #f0ebe4;
-      --charcoal: #2d2a26;
-      --charcoal-soft: #4a4640;
-      --terracotta: #c05e3c;
-      --terracotta-dark: #a04e30;
-      --warm-gray: #9e958a;
-      --rule: #d9d2c9;
-    }
-    html { font-size: 18px; }
+    html { font-size: 112.5%; }
     body {
       font-family: "Source Serif 4", "Georgia", "Times New Roman", serif;
       color: var(--charcoal);
@@ -116,7 +111,7 @@
       opacity: 1;
     }
     @media (max-width: 600px) {
-      html { font-size: 16px; }
+      html { font-size: 100%; }
     }
   </style>
 </head>
@@ -339,7 +334,7 @@
       el.style.position = 'absolute';
       el.style.left = (centerX + rand(-0.6, 0.6) * houseRect.width) + 'px';
       el.style.top = groundY + 'px';
-      el.style.color = '#9e958a';
+      el.style.color = getComputedStyle(document.documentElement).getPropertyValue('--warm-gray').trim();
       el.style.opacity = '0';
       scene.appendChild(el);
       rubbleSmokeParticles.push({
@@ -522,6 +517,8 @@
   }
 })();
 </script>
+
+{{ partial "theme-toggle.html" . }}
 
 </body>
 </html>

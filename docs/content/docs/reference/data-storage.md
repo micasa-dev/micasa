@@ -77,7 +77,7 @@ micasa uses GORM's soft delete feature. When you delete an item, it sets a
 - Deleted items can be restored (press <kbd>d</kbd> on a deleted item in Edit mode)
 - The `deletion_records` table tracks when items were deleted and restored
 - Toggle <kbd>x</kbd> in Edit mode to show/hide deleted items
-- Soft deletions persist across runs -- quit and reopen, and your deleted items
+- Soft deletions persist across runs; quit and reopen, and your deleted items
   are still hidden (but restorable). Nothing is ever permanently lost unless
   you edit the database file directly
 
@@ -120,7 +120,7 @@ supported by this mechanism:
 
 If a future release requires one of these changes, we'll ship a migration
 tool or document the manual steps. Until then, upgrading micasa will never
-lose your data -- the worst case is a column that sticks around after it
+lose your data; the worst case is a column that sticks around after it
 stops being used.
 
 ### What you should do
@@ -138,7 +138,7 @@ until a fix is released.
 
 If a future major version (2.0) requires breaking schema changes, it will
 include a migration tool that handles the upgrade automatically. The goal:
-you upgrade the binary, launch it, and everything just works -- or you get
+you upgrade the binary, launch it, and everything just works; or you get
 a clear error telling you what to do.
 
 ## A note on scale
@@ -158,7 +158,7 @@ confident the answer is "one" and the bottleneck is "the homeowner going to get
 a snack."
 
 SQLite caps out at 281 terabytes. If your maintenance records are approaching
-even a fraction of that, you do not have a database problem -- you have a house
+even a fraction of that, you do not have a database problem; you have a house
 problem. That is less "home maintenance" and more "the Winchester Mystery House
 is my primary residence and I am writing down every nail."
 

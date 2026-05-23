@@ -55,7 +55,7 @@ From the detail view you can add, edit, or delete maintenance items. Press
 <a href="/docs/guide/incidents/" class="tab-pill">Incidents</a> can optionally link to an
 appliance via the `Appliance` column. This lets you track which equipment is
 involved in a household issue. Appliances with active incidents cannot be
-deleted -- resolve or unlink the incidents first.
+deleted; resolve or unlink the incidents first.
 
 ## Notes
 

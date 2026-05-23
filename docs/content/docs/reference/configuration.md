@@ -5,7 +5,7 @@ description = "CLI flags, environment variables, config file, and LLM setup."
 linkTitle = "Configuration"
 +++
 
-micasa has minimal configuration -- it's designed to work out of the box.
+micasa has minimal configuration; it's designed to work out of the box.
 
 ## CLI
 
@@ -77,7 +77,7 @@ micasa reads a TOML config file from your platform's config directory:
 | Windows  | `%APPDATA%\micasa\config.toml` |
 
 The config file is optional. If it doesn't exist, all settings use their
-defaults. Unset fields fall back to defaults -- you only need to specify the
+defaults. Unset fields fall back to defaults; you only need to specify the
 values you want to change.
 
 ### Example config
@@ -152,7 +152,7 @@ default; no values are inherited from other config sections.
 ### `[extraction.llm]` section
 
 LLM connection settings for the document extraction pipeline. Fully
-independent from `[chat.llm]` -- each pipeline has its own provider,
+independent from `[chat.llm]`; each pipeline has its own provider,
 model, and credentials.
 
 | Key | Type | Default | Description |
@@ -209,11 +209,11 @@ fields in the application.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `currency` {{< env "MICASA_LOCALE_CURRENCY" >}} | string | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`, `JPY`). Auto-detected from `LC_MONETARY`/`LANG` if not set, falls back to `USD`. Persisted to the database on first run -- after that the DB value is authoritative. |
+| `currency` {{< env "MICASA_LOCALE_CURRENCY" >}} | string | (auto-detect) | ISO 4217 currency code (e.g. `USD`, `EUR`, `GBP`, `JPY`). Auto-detected from `LC_MONETARY`/`LANG` if not set, falls back to `USD`. Persisted to the database on first run; after that the DB value is authoritative. |
 
 Currency resolution order (highest to lowest):
 
-1. Database value (authoritative once set -- makes the DB file portable)
+1. Database value (authoritative once set; makes the DB file portable)
 2. `MICASA_LOCALE_CURRENCY` environment variable
 3. `[locale] currency` config value
 4. Auto-detect from `LC_MONETARY` or `LANG` locale
@@ -226,7 +226,7 @@ decimal places, etc.
 ### Supported LLM backends
 
 micasa talks to any server that implements the OpenAI chat completions API
-with streaming (SSE). All providers -- including Ollama -- communicate via
+with streaming (SSE). All providers; including Ollama; communicate via
 OpenAI-compatible endpoints; there is no native SDK dependency on any
 provider.
 
@@ -268,7 +268,7 @@ Environment variables override config file values. The full precedence order
 
 Each config key has a corresponding env var shown in gray below the key name:
 `MICASA_` + uppercase config path with dots replaced by underscores.
-`MICASA_DB_PATH` is an exception -- it controls the
+`MICASA_DB_PATH` is an exception; it controls the
 [database path](#database-path-resolution-order) and has no config file
 equivalent.
 
@@ -283,13 +283,13 @@ situation:
 extra_context = """
 My house is a 1920s craftsman bungalow in Portland, OR.
 Property tax is assessed annually in November.
-The HVAC system is a heat pump (Mitsubishi hyper-heat) -- no gas furnace.
+The HVAC system is a heat pump (Mitsubishi hyper-heat); no gas furnace.
 """
 ```
 
 This helps the model give more relevant answers without you repeating context
 in every question. Currency is configured separately via `[locale] currency`
-and is automatically available to the LLM -- no need to mention it in
+and is automatically available to the LLM; no need to mention it in
 `extra_context`.
 
 ## Persistent preferences

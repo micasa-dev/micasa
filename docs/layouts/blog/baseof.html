@@ -5,26 +5,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ .Title }} &mdash; micasa</title>
+  <meta name="color-scheme" content="light dark">
+  <title>{{ .Title }} &middot; micasa</title>
   <meta name="description" content="{{ with .Params.description }}{{ . }}{{ else }}{{ site.Params.description }}{{ end }}">
   <meta property="og:title" content="{{ .Title }}">
   <meta property="og:description" content="{{ with .Params.description }}{{ . }}{{ else }}{{ site.Params.description }}{{ end }}">
   <meta property="og:type" content="{{ if .IsPage }}article{{ else }}website{{ end }}">
   <meta property="og:url" content="{{ .Permalink }}">
-  <meta property="og:image" content="{{ "images/dashboard.webp" | absURL }}">
+  <meta property="og:image" content="{{ (or .Params.image "images/og-card.jpg") | absURL }}">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/svg+xml" href="{{ "images/favicon.svg" | relURL }}">
   <link rel="alternate" type="application/rss+xml" title="micasa blog" href="{{ "blog/index.xml" | relURL }}">
+  <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/source-serif-4-latin.woff2" | relURL }}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/dm-serif-display-latin-400.woff2" | relURL }}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/jetbrains-mono-latin.woff2" | relURL }}" crossorigin>
+  <link rel="stylesheet" href="{{ "css/fonts.css" | relURL }}">
+  <link rel="stylesheet" href="{{ "css/variables.css" | relURL }}">
   <link rel="stylesheet" href="{{ "css/blog.css" | relURL }}">
   <link rel="stylesheet" href="{{ "css/syntax.css" | relURL }}">
   <script src="{{ "js/theme.js" | relURL }}"></script>
+  <script src="{{ "js/idle-pause.js" | relURL }}" defer></script>
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to content</a>
+
 <header class="blog-header">
   <div class="blog-header-inner">
-    <a class="blog-brand" href="{{ site.Home.RelPermalink }}">micasa<span class="dot">.</span></a>
-    <nav class="blog-nav">
+    <a class="blog-brand" href="{{ site.Home.RelPermalink }}">micasa<span class="dot" aria-hidden="true">.</span></a>
+    <nav class="blog-nav" aria-label="Site">
       <a href="{{ "blog/" | relURL }}">Blog</a>
       <a href="{{ "docs/" | relURL }}">Docs</a>
       {{ partial "github-link.html" (dict "class" "github-link") }}
@@ -32,7 +41,7 @@
   </div>
 </header>
 
-<main class="blog-main">
+<main id="main" class="blog-main">
   {{ block "main" . }}{{ end }}
 </main>
 

@@ -54,7 +54,7 @@ setup.
 ## Two pipelines, two models
 
 Extraction reads invoices and proposes database fields. Chat answers
-natural-language questions about your data. These want different things --
+natural-language questions about your data. These want different things:
 extraction wants a small model that's fast and precise with JSON, chat wants
 something that can actually reason about whether your roof maintenance is
 overdue.
@@ -75,7 +75,7 @@ api_key = "sk-…"
 
 Chat runs locally, extraction runs on Anthropic. Or both local. Or both cloud.
 Each pipeline has its own independent `[chat.llm]` and `[extraction.llm]`
-sections -- no inheritance, no cross-contamination.
+sections; no inheritance, no cross-contamination.
 
 ## Picking models at runtime
 
@@ -94,29 +94,29 @@ overlay keeps the loop tight.
 OCR on a multi-page scan takes a while. <kbd>ctrl+b</kbd> now backgrounds a running
 extraction ([#559](https://github.com/micasa-dev/micasa/pull/559)). The status bar
 shows a spinner while jobs run and a count when they finish. <kbd>ctrl+b</kbd> again
-foregrounds the latest result for review. Nothing auto-accepts -- you always
+foregrounds the latest result for review. Nothing auto-accepts; you always
 look before it writes.
 
 ## Other things since last week
 
-- **[Locale-aware currency](/docs/reference/configuration/#locale-section)** --
+- **[Locale-aware currency](/docs/reference/configuration/#locale-section)**:
   EUR gets comma decimals and period grouping (`1.234,56`), GBP gets the pound
   sign, JPY drops decimal places. Auto-detected from your system locale or set
   via `MICASA_LOCALE_CURRENCY`.
   ([#467](https://github.com/micasa-dev/micasa/pull/467))
-- **[Imperial/metric toggle](/docs/guide/house-profile/)** -- <kbd>U</kbd> switches
+- **[Imperial/metric toggle](/docs/guide/house-profile/)**; <kbd>U</kbd> switches
   between square feet and square meters. Defaults to metric unless your locale
   is US, Liberia, or Myanmar.
   ([#555](https://github.com/micasa-dev/micasa/pull/555))
-- **[Resolved incidents](/docs/guide/incidents/)** -- resolving an incident now
+- **[Resolved incidents](/docs/guide/incidents/)**; resolving an incident now
   sets a proper `resolved` status. <kbd>D</kbd> permanently deletes resolved incidents
   with confirmation.
   ([#588](https://github.com/micasa-dev/micasa/pull/588))
-- **`config get`** -- prints fully resolved config as JSON, queryable with jq
+- **`config get`**; prints fully resolved config as JSON, queryable with jq
   filters. API keys are stripped to prevent us from doing dumb things like
   pasting secrets into an AI.
   ([#597](https://github.com/micasa-dev/micasa/pull/597))
-- **Extraction timeout** -- configurable LLM timeout (default 2 minutes) so
+- **Extraction timeout**; configurable LLM timeout (default 2 minutes) so
   a hung model doesn't lock the overlay.
   ([#604](https://github.com/micasa-dev/micasa/pull/604))
 

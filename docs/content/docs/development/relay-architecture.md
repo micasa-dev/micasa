@@ -14,8 +14,8 @@ to read it.
 All relay persistence goes through the `Store` interface. Two
 implementations exist:
 
-- **MemStore** — in-memory, mutex-protected. Used in tests.
-- **PgStore** — PostgreSQL via GORM. Used in production.
+- **MemStore**: in-memory, mutex-protected. Used in tests.
+- **PgStore**: PostgreSQL via GORM. Used in production.
 
 Both implement the same 21 methods covering: push/pull, household
 management, device auth, invites, key exchange, subscriptions,
@@ -33,7 +33,7 @@ Devices authenticate with bearer tokens. The flow:
 4. Returns the `Device` struct to the handler
 
 Tokens are generated as 256-bit random hex strings. Only the
-SHA-256 hash is stored server-side — the raw token lives on the
+SHA-256 hash is stored server-side; the raw token lives on the
 device in the local secrets directory.
 
 ## Encryption layers
@@ -42,7 +42,7 @@ device in the local secrets directory.
 
 All sync data is end-to-end encrypted with a per-household key
 using [NaCl secretbox](https://nacl.cr.yp.to/secretbox.html) ([XSalsa20-Poly1305](https://en.wikipedia.org/wiki/Salsa20#XSalsa20_with_Poly1305)). The relay never sees
-plaintext — it stores and serves ciphertext.
+plaintext; it stores and serves ciphertext.
 
 ```mermaid
 sequenceDiagram
@@ -97,22 +97,22 @@ sequenceDiagram
 ```
 
 Invite codes expire after 4 hours. Key exchanges expire after
-15 minutes. Credentials are single-use — scrubbed after first
+15 minutes. Credentials are single-use; scrubbed after first
 retrieval.
 
 ## Sync engine
 
 The sync engine (`internal/sync/engine.go`) runs on each device:
 
-1. **Push** — read unsynced oplog entries, encrypt each with the
+1. **Push**: read unsynced oplog entries, encrypt each with the
    household key, POST to `/sync/push`
-2. **Pull** — GET `/sync/pull?after=<last_seq>`, decrypt, apply
+2. **Pull**: GET `/sync/pull?after=<last_seq>`, decrypt, apply
    each operation to the local SQLite database
-3. **Blobs** — upload document blobs as encrypted content-addressed
+3. **Blobs**: upload document blobs as encrypted content-addressed
    objects (SHA-256 key, 50 MB max, dedup via 409 Conflict)
 
 Conflict resolution uses last-writer-wins (LWW) by `created_at`
-timestamp. The oplog is append-only — no operation is ever deleted.
+timestamp. The oplog is append-only; no operation is ever deleted.
 
 ## Sequence numbering
 
@@ -164,11 +164,11 @@ The `rlsdb` package (`internal/relay/rlsdb/`) wraps the raw
 structurally impossible from outside the package. All queries go
 through one of two methods:
 
-- **`Tx(ctx, householdID, fn)`** — opens a transaction, calls
+- **`Tx(ctx, householdID, fn)`**: opens a transaction, calls
   `set_config('app.household_id', householdID, true)`, then
   executes `fn`. This is the standard path for all household-scoped
   operations.
-- **`WithoutHousehold(ctx, fn)`** — opens a transaction with
+- **`WithoutHousehold(ctx, fn)`**: opens a transaction with
   `app.household_id` cleared to empty string. RLS treats this as
   NULL, so no `ops` or `blobs` rows are visible. Reserved for
   methods that only touch non-RLS tables (`households`, `devices`,
@@ -176,10 +176,10 @@ through one of two methods:
   yet (e.g. device authentication, join flow).
 
 Construction-time helpers:
-- **`Migrate(models...)`** — runs `AutoMigrate` with a dummy
+- **`Migrate(models...)`**: runs `AutoMigrate` with a dummy
   household ID so GORM's schema introspection works under `FORCE
   ROW LEVEL SECURITY`.
-- **`InitRLS(tables)`** — idempotently enables RLS and creates
+- **`InitRLS(tables)`**: idempotently enables RLS and creates
   isolation policies for the given tables.
 
 ### Protected tables
@@ -188,20 +188,20 @@ Construction-time helpers:
 |-------|---------------|--------------|
 | `ops` | `household_id` | Yes |
 | `blobs` | `household_id` | Yes |
-| `households` | — | No (looked up by ID) |
-| `devices` | — | No (looked up by token hash) |
-| `invites` | — | No (looked up by code) |
-| `key_exchanges` | — | No (short-lived, scrubbed after use) |
+| `households` | (none) | No (looked up by ID) |
+| `devices` | (none) | No (looked up by token hash) |
+| `invites` | (none) | No (looked up by code) |
+| `key_exchanges` | (none) | No (short-lived, scrubbed after use) |
 
 ## Database schema (PostgreSQL)
 
 ```
-households     — id, seq_counter, stripe fields, created_at
-devices        — id, household_id, name, public_key, token_sha
-ops            — seq, household_id, id, device_id, nonce, ciphertext
-invites        — code, household_id, created_by, expires_at, consumed
-key_exchanges  — id, household_id, joiner info, encrypted credentials
-blobs          — household_id, hash, data, size_bytes
+households     : id, seq_counter, stripe fields, created_at
+devices        : id, household_id, name, public_key, token_sha
+ops            : seq, household_id, id, device_id, nonce, ciphertext
+invites        : code, household_id, created_by, expires_at, consumed
+key_exchanges  : id, household_id, joiner info, encrypted credentials
+blobs          : household_id, hash, data, size_bytes
 ```
 
 RLS policies on `ops` and `blobs` enforce household isolation at the

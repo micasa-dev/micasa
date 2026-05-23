@@ -10,8 +10,10 @@
   --charcoal-soft: #4a4640;
   --terracotta: #c05e3c;
   --terracotta-dark: #a04e30;
+  --terracotta-darker: #8a4128;
   --sage: #6b8f71;
-  --warm-gray: #9e958a;
+  --sage-strong: #3e5d44;
+  --warm-gray: #736961;
   --rule: #d9d2c9;
   --code-bg: #2d2a26;
   --code-text: #e8e2da;
@@ -31,8 +33,10 @@
   --charcoal-soft: #a89e91;
   --terracotta: #d4764e;
   --terracotta-dark: #e0835a;
+  --terracotta-darker: #ed9670;
   --sage: #7fa882;
-  --warm-gray: #706760;
+  --sage-strong: #7fa882;
+  --warm-gray: #9a907f;
   --rule: #3d3730;
   --code-bg: #1c1916;
   --code-text: #e8ddd0;
@@ -41,6 +45,47 @@
   --toggle-bg: #342f29;
   --toggle-bg-hover: var(--rule);
   --rect-fill: rgba(212, 118, 78, 0.10);
+}
+
+/* High-contrast overrides for users who request stronger contrast at
+   the OS level. Push tertiary text and links from AA (~5:1) to AAA
+   (>=7:1) without touching the brand identity colors used at heading
+   sizes. */
+@media (prefers-contrast: more) {
+  :root {
+    --warm-gray: #544c45;       /* 7.9:1 on cream */
+    --terracotta-dark: #7a3a23; /* 8.0:1 on cream */
+  }
+
+  [data-theme="dark"] {
+    --warm-gray: #beb09e;                /* 7.6:1 on dark cream */
+    --terracotta-dark: var(--terracotta-darker); /* 7.0:1 */
+  }
+}
+
+/* --- Skip link (shared across all pages) --- */
+
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--charcoal);
+  color: var(--cream);
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.85rem;
+  text-decoration: none;
+  border-radius: 0 0 6px 0;
+  transform: translateY(-100%);
+  transition: transform 0.15s ease-out;
+  z-index: 500;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  color: var(--cream);
+  outline: 2px solid var(--terracotta);
+  outline-offset: 2px;
 }
 
 /* --- Theme toggle (shared across all pages) --- */
@@ -174,4 +219,67 @@
   [data-theme="dark"] .sun-y { opacity: 0; }
   .moon-y { opacity: 0; }
   [data-theme="dark"] .moon-y { opacity: 1; }
+}
+
+/* --- Pause animations while tab is hidden (idle-pause.js syncs this) --- */
+
+.animations-paused .star,
+.animations-paused .cloud-drift,
+.animations-paused .cloud-bob,
+.animations-paused .cursor::after {
+  animation-play-state: paused;
+}
+
+/* --- Touch-target sizing (shared chrome) --- */
+
+@media (pointer: coarse), (hover: none) {
+  .theme-toggle {
+    padding: 10px;
+  }
+}
+
+/* --- Markdown table alignment classes (used by render-table.html) --- */
+
+.ta-left { text-align: left; }
+.ta-center { text-align: center; }
+.ta-right { text-align: right; }
+
+/* --- Print: hide interactive chrome shared across all pages --- */
+
+@media print {
+  .skip-link,
+  .theme-toggle {
+    display: none !important;
+  }
+
+  /* Force readable colors on paper regardless of theme. */
+  :root,
+  [data-theme="dark"] {
+    --cream: #ffffff;
+    --linen: #f5f5f5;
+    --charcoal: #1a1a1a;
+    --charcoal-soft: #333333;
+    --warm-gray: #555555;
+    --rule: #cccccc;
+    --terracotta: #8a4128;
+    --terracotta-dark: #6a3220;
+    --terracotta-darker: #4a2316;
+    --shadow-color: transparent;
+  }
+
+  /* Expand link URLs after the link text for paper readers. */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+    word-break: break-all;
+  }
+
+  /* But not for in-page anchors, footnotes, or links whose text already
+     reads as a URL (the link text is already the URL). */
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after,
+  a.heading-anchor::after {
+    content: "";
+  }
 }

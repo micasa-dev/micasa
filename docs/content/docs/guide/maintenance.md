@@ -43,7 +43,7 @@ Items that are overdue or coming due soon appear on the
 
 ## Service log
 
-Each maintenance item has a service log -- a history of when the work was
+Each maintenance item has a service log; a history of when the work was
 actually performed. The `Log` column shows the entry count.
 
 To view the service log, navigate to the `Log` column in Nav mode and press
@@ -67,7 +67,7 @@ Maintenance table.
 
 The "Performed By" field is a select. The first option is always "Self
 (homeowner)." All existing vendors appear as additional options. To add a new
-vendor, create one via the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> form or <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a> tab first -- vendors are
+vendor, create one via the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> form or <a href="/docs/guide/vendors/" class="tab-pill">Vendors</a> tab first; vendors are
 shared across quotes and service logs.
 
 The `Performed By` column is a foreign key link. When at least one log
@@ -93,5 +93,5 @@ column, or <kbd>e</kbd> on the `ID` column, to open the full form).
 ## Appliance link
 
 When a maintenance item is linked to an appliance, the `Appliance` column shows
-the appliance name. This column is a foreign key link -- in Nav mode, press
+the appliance name. This column is a foreign key link; in Nav mode, press
 <kbd>enter</kbd> on it to jump to that appliance in the <a href="/docs/guide/appliances/" class="tab-pill">Appliances</a> tab.

@@ -60,7 +60,7 @@ Each entity type (projects, quotes, maintenance, appliances, vendors,
 documents) implements this interface as a stateless struct.
 
 This eliminates scattered `switch tab.Kind` dispatch. Adding a new entity type
-means implementing one interface -- no shotgun surgery across the codebase.
+means implementing one interface; no shotgun surgery across the codebase.
 
 Detail views (service log, appliance maintenance) also implement `TabHandler`,
 so they get all the same capabilities (add, edit, delete, sort) for

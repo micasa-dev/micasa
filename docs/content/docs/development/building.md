@@ -52,7 +52,7 @@ From within the dev shell (or with Go installed):
 go build ./cmd/micasa
 
 # Run directly
-go run ./cmd/micasa -- demo
+go run ./cmd/micasa; demo
 
 # Run tests
 go test -shuffle=on -v ./...

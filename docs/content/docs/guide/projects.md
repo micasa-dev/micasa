@@ -37,13 +37,13 @@ The `Title` field is required. Everything else is optional or has a default.
 
 Projects move through these statuses. Each has a distinct color in the table:
 
-- <span class="status-ideating">**ideating**</span> -- just an idea, not committed
-- <span class="status-planned">**planned**</span> -- decided to do it, working out details
-- <span class="status-quoted">**quoted**</span> -- have vendor quotes, comparing options
-- <span class="status-underway">**underway**</span> -- work in progress
-- <span class="status-delayed">**delayed**</span> -- stalled for some reason
-- <span class="status-completed">**completed**</span> -- done
-- <span class="status-abandoned">**abandoned**</span> -- decided not to do it
+- <span class="status-ideating">**ideating**</span>; just an idea, not committed
+- <span class="status-planned">**planned**</span>; decided to do it, working out details
+- <span class="status-quoted">**quoted**</span>; have vendor quotes, comparing options
+- <span class="status-underway">**underway**</span>; work in progress
+- <span class="status-delayed">**delayed**</span>; stalled for some reason
+- <span class="status-completed">**completed**</span>; done
+- <span class="status-abandoned">**abandoned**</span>; decided not to do it
 
 ## Settled filter
 
@@ -69,5 +69,5 @@ straight to the full form.
 The `Quotes` column shows how many quotes are linked to this project. In
 Nav mode, press <kbd>enter</kbd> to drill into a detail view of those quotes.
 
-On the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab, the `Project` column links back -- press <kbd>enter</kbd> to jump
+On the <a href="/docs/guide/quotes/" class="tab-pill">Quotes</a> tab, the `Project` column links back; press <kbd>enter</kbd> to jump
 to the project.

@@ -1,7 +1,7 @@
 /* Copyright 2026 Phillip Cloud */
 /* Licensed under the Apache License, Version 2.0 */
 
-@import url("variables.css");
+/* variables.css is loaded as a separate <link> in HTML for parallel fetching */
 
 /* --- Reset & Base --- */
 *,
@@ -12,8 +12,14 @@
   padding: 0;
 }
 
+.hero-house-scene:focus-visible {
+  outline: 2px solid var(--terracotta-dark);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
 html {
-  font-size: 18px;
+  font-size: 112.5%;
   scroll-behavior: smooth;
 }
 
@@ -56,28 +62,31 @@ h2 .accent-alt {
 .cursor::after {
   content: "\2588";
   margin-left: 7px;
-  opacity: 0.3;
+  display: inline-block;
+  transform-origin: bottom;
+  opacity: 0.6;
   animation: blink 1s step-end infinite;
 }
 
 @keyframes blink {
-  50% { opacity: 0; }
+  50% { transform: scaleY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .typewriter::after {
+  .typewriter::after,
+  .cursor::after {
     animation: none;
   }
 }
 
 a {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 a:hover {
-  color: var(--terracotta-dark);
+  color: var(--terracotta-darker);
 }
 
 code,
@@ -222,7 +231,8 @@ section + section {
   margin-bottom: 0.75rem;
 }
 
-.hero h1 .dot {
+.hero h1::after {
+  content: ".";
   color: var(--terracotta);
 }
 
@@ -249,11 +259,11 @@ section + section {
 }
 
 .hero-nav a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .hero-nav__primary {
-  color: var(--terracotta) !important;
+  color: var(--terracotta-dark) !important;
   font-weight: 600;
 }
 
@@ -271,13 +281,13 @@ section + section {
   display: block;
   margin-top: 1.1rem;
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--warm-gray);
   text-decoration: none;
 }
 
 .hero-repo:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 /* --- Demo video --- */
@@ -344,7 +354,7 @@ section + section {
 
 .feature-q::before {
   content: "Q. ";
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
   font-weight: 700;
 }
 
@@ -355,7 +365,7 @@ section + section {
 
 .feature-a::before {
   content: "A. ";
-  color: var(--sage);
+  color: var(--sage-strong);
   font-weight: 700;
   margin-left: -1.75rem;
 }
@@ -426,12 +436,12 @@ section + section {
 
 /* --- Keybindings --- */
 .mode-normal {
-  background: var(--sage);
+  background: var(--sage-strong);
   color: var(--cream);
 }
 
 .mode-edit {
-  background: var(--terracotta);
+  background: var(--terracotta-dark);
   color: var(--cream);
 }
 
@@ -442,11 +452,22 @@ section + section {
 }
 
 .testimonial {
-  border-left: 3px solid var(--rule);
-  padding-left: 1.25rem;
+  position: relative;
+  padding-left: 2.25rem;
   opacity: 0;
   transform: translateY(1.2rem);
   transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.testimonial::before {
+  content: "\201C";
+  position: absolute;
+  left: 0;
+  top: -0.4rem;
+  font-family: "DM Serif Display", "Georgia", serif;
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--terracotta-dark);
 }
 
 .testimonial.visible {
@@ -470,7 +491,7 @@ section + section {
 
 .testimonial cite {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-style: normal;
   color: var(--warm-gray);
 }
@@ -504,7 +525,7 @@ footer {
   justify-content: center;
   gap: 0.75rem;
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
 }
 
 .footer-nav a {
@@ -513,7 +534,7 @@ footer {
 }
 
 .footer-nav a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .footer-sep {
@@ -528,14 +549,37 @@ footer {
 
 .footer-copy {
   color: var(--warm-gray);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   margin-top: 0.75rem;
+}
+
+/* --- Touch targets --- */
+@media (pointer: coarse), (hover: none) {
+  .hero-nav {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    row-gap: 0.2rem;
+  }
+
+  .hero-nav a {
+    padding: 0.55rem 0.35rem;
+  }
+
+  .footer-nav {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    row-gap: 0.2rem;
+  }
+
+  .footer-nav a {
+    padding: 0.55rem 0.35rem;
+  }
 }
 
 /* --- Responsive --- */
 @media (max-width: 600px) {
   html {
-    font-size: 16px;
+    font-size: 100%;
   }
 
   .hero h1 {

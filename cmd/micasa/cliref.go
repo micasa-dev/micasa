@@ -175,7 +175,7 @@ func renderCommandSection(buf *bytes.Buffer, cmd *cobra.Command) {
 		for _, child := range children {
 			fmt.Fprintf(
 				buf,
-				"- [`%s`](#%s) -- %s\n",
+				"- [`%s`](#%s): %s\n",
 				child.CommandPath(),
 				headingAnchor(child.CommandPath()),
 				escapeMarkdownProse(child.Short),
@@ -189,7 +189,7 @@ func renderCommandSection(buf *bytes.Buffer, cmd *cobra.Command) {
 		fmt.Fprintln(buf)
 		fmt.Fprintf(
 			buf,
-			"- [`%s`](#%s) -- %s\n",
+			"- [`%s`](#%s): %s\n",
 			parent.CommandPath(),
 			headingAnchor(parent.CommandPath()),
 			escapeMarkdownProse(parent.Short),

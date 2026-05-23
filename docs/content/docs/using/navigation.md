@@ -60,7 +60,7 @@ terminals support it, but some need explicit configuration:
 | GNOME Terminal | Supported since 3.46 |
 
 If your terminal doesn't support OSC 52, the keypress is silently
-ignored — nothing breaks, you just don't get clipboard content.
+ignored: nothing breaks, you just don't get clipboard content.
 
 ## Edit mode
 
@@ -103,7 +103,7 @@ them. The active tab is highlighted in the tab bar.
 
 ## Detail views
 
-Some columns are drill columns (marked `↘` in the header) -- pressing <kbd>enter</kbd> on them opens a sub-table.
+Some columns are drill columns (marked `↘` in the header); pressing <kbd>enter</kbd> on them opens a sub-table.
 For example:
 
 - `Log` column on the <a href="/docs/guide/maintenance/" class="tab-pill">Maintenance</a> tab opens the service log for that item

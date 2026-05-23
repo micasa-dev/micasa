@@ -3,7 +3,7 @@ title = "micasa docs"
 description = "Documentation for micasa, a terminal UI for tracking everything about your home."
 +++
 
-Your house is quietly plotting to break while you sleep -- and you're dreaming
+Your house is quietly plotting to break while you sleep; and you're dreaming
 about redoing the kitchen. micasa tracks both from your terminal.
 
 micasa is a keyboard-driven terminal UI for managing everything about your home:
@@ -27,11 +27,11 @@ No cloud. No account. No subscriptions.
   and expiring warranties at a glance
 - **[Vim-style modal navigation]({{< ref "/docs/using/navigation" >}})** with Nav and Edit modes, multi-column
   sorting, column hiding, and cross-tab FK links
-- **[Document attachments]({{< ref "/docs/guide/documents" >}})** -- attach files (manuals, invoices,
+- **[Document attachments]({{< ref "/docs/guide/documents" >}})**; attach files (manuals, invoices,
   photos) to any record, stored as BLOBs in the same SQLite file. When an LLM
   is configured, an [extraction pipeline]({{< ref "/docs/guide/documents#extraction-pipeline" >}})
   (OCR, text extraction, LLM) pre-fills form fields with structured data
-- **[LLM chat]({{< ref "/docs/guide/llm-chat" >}})** -- ask questions about your home data,
+- **[LLM chat]({{< ref "/docs/guide/llm-chat" >}})**; ask questions about your home data,
   powered by a local LLM ([Ollama](https://ollama.com) or any OpenAI-compatible API)
 
 ## What it doesn't do

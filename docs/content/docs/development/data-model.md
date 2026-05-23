@@ -32,7 +32,7 @@ Your home's physical and financial details. One per database.
 
 ### Why this matters
 
-- The profile is the root of the data tree -- everything else hangs off it.
+- The profile is the root of the data tree; everything else hangs off it.
 - Having a single canonical record prevents duplicate-address confusion and
   gives the dashboard a fixed anchor point.
 
@@ -44,7 +44,7 @@ Anything you want done to your house, from "fix the squeaky door" to
 ### Why this matters
 
 - **Pre-seeded types** (Renovation, Repair, Landscaping, …) keep naming
-  consistent -- no "Renovation" vs "renovation" vs "Reno" drift.
+  consistent; no "Renovation" vs "renovation" vs "Reno" drift.
 - **Status lifecycle** (ideating through completed/abandoned) enables the
   settled-project toggle that hides finished work from the default view.
 
@@ -69,7 +69,7 @@ Recurring upkeep tasks with an optional appliance link.
   and sorting clean, same rationale as project types.
 - The optional **appliance link** enables bidirectional navigation: jump from
   a task to its appliance, or drill from an appliance into all its tasks.
-- The **service log** is a drill column -- press <kbd>enter</kbd> to open the full
+- The **service log** is a drill column; press <kbd>enter</kbd> to open the full
   history for a given task.
 
 ## Service Log
@@ -80,7 +80,7 @@ at what cost.
 ### Why this matters
 
 - Entries **live inside a maintenance item** (accessed via drill), so they
-  always have context -- no floating service records.
+  always have context; no floating service records.
 - The optional vendor link distinguishes DIY from hired work and carries
   contact info automatically.
 
@@ -96,7 +96,7 @@ Physical equipment in your home.
 
 ## Incidents
 
-Household issues and repairs -- things that go wrong and need attention.
+Household issues and repairs; things that go wrong and need attention.
 
 ### Why this matters
 
@@ -116,7 +116,7 @@ File attachments stored as BLOBs inside the database.
 ### Why this matters
 
 - Documents use a **polymorphic FK** (`EntityKind` + `EntityID`) to link to
-  any entity type -- projects, incidents, appliances, quotes, maintenance
+  any entity type; projects, incidents, appliances, quotes, maintenance
   items, vendors, or service log entries. This avoids a separate join table
   per entity.
 - File data lives inside SQLite, so `micasa backup backup.db` is a complete
@@ -128,8 +128,8 @@ File attachments stored as BLOBs inside the database.
 
 Documents store extraction results alongside the file data:
 
-- `ExtractedText` -- plain text from the PDF reader or OCR
-- `OCRData` -- raw tesseract TSV output (bounding boxes, confidence scores)
+- `ExtractedText`; plain text from the PDF reader or OCR
+- `OCRData`; raw tesseract TSV output (bounding boxes, confidence scores)
 
 These columns are populated by the extraction pipeline (text -> OCR). The LLM
 layer produces structured operations (create/update) dispatched through the
@@ -144,5 +144,5 @@ incidents.
 
 - Because vendors are shared, updating a phone number **once** updates it
   everywhere.
-- Vendors are created implicitly through forms -- type a name and micasa
+- Vendors are created implicitly through forms; type a name and micasa
   finds or creates the record.

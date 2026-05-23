@@ -32,7 +32,7 @@ When adding a new feature:
 1. Add data-layer tests if you touched Store methods
 2. Add app-layer tests for key handling, state transitions, and view output
 3. Use the existing test helpers (`newTestModel`, `newTestStore`, etc.)
-4. Don't poke into unexported fields -- test through the public interface
+4. Don't poke into unexported fields; test through the public interface
 
 ## CI
 

@@ -6,7 +6,16 @@
   const house = document.getElementById('hero-house');
   const caption = document.getElementById('crumble-caption');
   if (!scene || !house) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // The crumble simulation is purely decorative. With reduced motion
+    // we skip it -- and we strip the interactive role so a keyboard user
+    // doesn't focus a button that does nothing.
+    scene.removeAttribute('role');
+    scene.removeAttribute('tabindex');
+    scene.removeAttribute('aria-label');
+    scene.style.cursor = 'default';
+    return;
+  }
 
   const GRAVITY       = 1400;
   const RESTITUTION   = 0.3;
@@ -280,13 +289,11 @@
     rubbleSmokeParticles = [];
   }
 
-  function destroyHouse(evt) {
+  function destroyHouse(clickX, clickY) {
     animating = true;
 
     const sceneRect = scene.getBoundingClientRect();
     const houseRect = house.getBoundingClientRect();
-    const clickX = evt.clientX - sceneRect.left;
-    const clickY = evt.clientY - sceneRect.top;
 
     const scattered = scatterSmoke(document.getElementById('smoke-bed'), sceneRect, clickX, clickY);
     const measured = measureAndHide(sceneRect);
@@ -393,6 +400,17 @@
 
   scene.addEventListener('click', (evt) => {
     if (animating) return;
-    if (destroyed) rebuildHouse(); else destroyHouse(evt);
+    if (destroyed) { rebuildHouse(); return; }
+    const sceneRect = scene.getBoundingClientRect();
+    destroyHouse(evt.clientX - sceneRect.left, evt.clientY - sceneRect.top);
+  });
+
+  scene.addEventListener('keydown', (evt) => {
+    if (evt.key !== 'Enter' && evt.key !== ' ') return;
+    evt.preventDefault();
+    if (animating) return;
+    if (destroyed) { rebuildHouse(); return; }
+    const sceneRect = scene.getBoundingClientRect();
+    destroyHouse(sceneRect.width / 2, sceneRect.height / 2);
   });
 })();

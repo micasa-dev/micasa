@@ -5,30 +5,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>micasa &mdash; your house, in a terminal</title>
+  <meta name="color-scheme" content="light dark">
+  <title>micasa &middot; your house, in a terminal</title>
   <meta name="description" content="{{ site.Params.description }}">
+  <meta property="og:title" content="micasa &middot; your house, in a terminal">
+  <meta property="og:description" content="{{ site.Params.description }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ .Permalink }}">
+  <meta property="og:image" content="{{ "images/og-card.jpg" | absURL }}">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/svg+xml" href="{{ "images/favicon.svg" | relURL }}">
   <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/source-serif-4-latin.woff2" | relURL }}" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/dm-serif-display-latin-400.woff2" | relURL }}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="{{ "fonts/jetbrains-mono-latin.woff2" | relURL }}" crossorigin>
   <link rel="stylesheet" href="{{ "css/fonts.css" | relURL }}">
+  <link rel="stylesheet" href="{{ "css/variables.css" | relURL }}">
   <link rel="stylesheet" href="{{ "css/website.css" | relURL }}">
-  <link rel="preload" as="video" type="video/webm" href="{{ "videos/demo.webm" | relURL }}">
   <script src="{{ "js/theme.js" | relURL }}"></script>
+  <script src="{{ "js/idle-pause.js" | relURL }}" defer></script>
 </head>
 <body>
 
-<!-- Hero -->
+<a class="skip-link" href="#main">Skip to content</a>
+
 <header class="hero">
   <div class="container">
-    <div class="hero-house-scene" id="house-scene">
+    <div class="hero-house-scene" id="house-scene" role="button" tabindex="0" aria-label="Demolish the house (then click again to rebuild it)">
       <div class="hero-house" id="hero-house" aria-hidden="true">&nbsp;&nbsp;&nbsp;&nbsp;&#x2584;&#x2593;&#x2584;<span class="chimney-anchor chimney">&#x2588;<span class="smoke-bed" id="smoke-bed" aria-hidden="true"></span></span>&nbsp;&nbsp;&nbsp;<br>&#x2584;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2584;<br>&#x2584;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2593;&#x2584;<br>&#x2588;&#x2588; &#x2591;&#x2591; &#x2591;&#x2591; &#x2588;&#x2588;<br>&#x2588;&#x2588; &nbsp;&#x2588;&#x2588;&#x2588;&#x2588; &#x2588;&#x2588;<br>&#x2588;&#x2588; &nbsp;&#x2588;&nbsp;&nbsp;&#x2588; &#x2588;&#x2588;<br>&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;</div>
       <div class="crumble-caption" id="crumble-caption">should've used micasa.</div>
     </div>
-    <h1>micasa<span class="dot">.</span></h1>
+    <h1>micasa</h1>
     <p class="tagline">
       Home maintenance, from the terminal.
     </p>
-    <nav class="hero-nav">
+    <nav class="hero-nav" aria-label="Primary">
       <a href="#install" class="hero-nav__primary">Install</a>
       <span class="hero-nav__sep" aria-hidden="true">&middot;</span>
       <a href="{{ "docs/" | relURL }}">Docs</a>
@@ -40,14 +50,14 @@
   </div>
 </header>
 
-<!-- Demo -->
+<main id="main">
+
 <div class="container demo-container">
-  <video src="{{ "videos/demo.webm" | relURL }}" class="demo-video" autoplay loop muted playsinline></video>
+  <video src="{{ "videos/demo.webm" | relURL }}" poster="{{ "images/dashboard.webp" | relURL }}" class="demo-video" autoplay loop muted playsinline preload="metadata" aria-label="Screen recording: opening micasa, browsing the Projects and Maintenance tabs, sorting columns, and inspecting a service log entry"></video>
 </div>
 
 <hr class="section-rule section-rule--demo">
 
-<!-- Features -->
 <section id="features">
   <div class="container">
     <h2>Frequently <span class="accent cursor">asked</span> questions</h2>
@@ -82,9 +92,6 @@
   </div>
 </section>
 
-<hr class="section-rule">
-
-<!-- Install -->
 <section id="install">
   <div class="container">
     <h2>Get <span class="accent">started</span></h2>
@@ -101,7 +108,6 @@ micasa              <span class="install-comment"># your house</span></code></pr
   </div>
 </section>
 
-<!-- Keybindings -->
 <section id="keys">
   <div class="container">
     <h2>Keyboard <span class="accent">driven</span></h2>
@@ -110,7 +116,6 @@ micasa              <span class="install-comment"># your house</span></code></pr
   </div>
 </section>
 
-<!-- Testimonials -->
 <section id="testimonials">
   <div class="container">
     <h2>What <span class="accent">people</span> are saying</h2>
@@ -118,10 +123,11 @@ micasa              <span class="install-comment"># your house</span></code></pr
   </div>
 </section>
 
-<!-- Footer -->
+</main>
+
 <footer>
   <div class="container">
-    <nav class="footer-nav">
+    <nav class="footer-nav" aria-label="Footer">
       <a href="{{ "docs/" | relURL }}">Docs</a>
       <span class="footer-sep" aria-hidden="true">&middot;</span>
       <a href="{{ "blog/" | relURL }}">Blog</a>

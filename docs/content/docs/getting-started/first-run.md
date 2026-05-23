@@ -15,7 +15,7 @@ The fastest way to explore micasa is demo mode:
 micasa demo
 ```
 
-This launches with sample data in an in-memory database -- projects,
+This launches with sample data in an in-memory database; projects,
 maintenance items, appliances, service log entries, quotes, and a
 pre-filled house profile. Nothing is saved to disk. When you quit, the data
 is gone.
@@ -36,7 +36,7 @@ micasa
 
 On first launch, micasa creates its database in your platform's data directory
 (e.g. `~/.local/share/micasa/micasa.db` on Linux) and presents you with the **house profile
-form**. Fill in your home's details -- nickname is the only required field,
+form**. Fill in your home's details; nickname is the only required field,
 everything else is optional. You can always edit the profile later with <kbd>p</kbd> in
 Edit mode.
 
@@ -57,13 +57,13 @@ A typical workflow to get started:
 4. **Check the dashboard**: press <kbd>D</kbd> to see what needs attention.
 
 Don't worry about entering everything at once. micasa is designed for
-incremental data entry -- add things as you think of them, edit later.
+incremental data entry; add things as you think of them, edit later.
 
 ## LLM chat
 
 If you have a local LLM server running (like [Ollama](https://ollama.com)),
 press <kbd>@</kbd> to open the chat overlay and ask questions about your data in plain
-English -- "How much have I spent on plumbing?" or "When is the HVAC filter
+English; "How much have I spent on plumbing?" or "When is the HVAC filter
 due?"
 
 See [LLM Chat]({{< ref "/docs/guide/llm-chat" >}}) for setup details and

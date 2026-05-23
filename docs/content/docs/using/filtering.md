@@ -13,8 +13,8 @@ micasa lets you filter table rows by pinning cell values, then activating to hid
 
 1. Navigate to a cell whose value you want to filter by (e.g., "Plan" in the
    Status column)
-2. Press <kbd>n</kbd> to pin it -- matching rows stay bright, others dim
-3. Press <kbd>N</kbd> to activate -- non-matching rows disappear
+2. Press <kbd>n</kbd> to pin it; matching rows stay bright, others dim
+3. Press <kbd>N</kbd> to activate; non-matching rows disappear
 4. Press <kbd>N</kbd> again to deactivate (rows return, dimming resumes)
 5. Press <kbd>ctrl+n</kbd> to clear all pins and deactivate the filter at once
 
@@ -49,7 +49,7 @@ active.
 ## Per-tab persistence
 
 Pins and filter state are stored per tab. Switching tabs preserves your filter
-exactly as you left it -- switch away to check another tab and come back
+exactly as you left it; switch away to check another tab and come back
 without losing your selection.
 
 ## Mag mode interaction
@@ -57,7 +57,7 @@ without losing your selection.
 When [mag mode](https://magworld.pw) (<kbd>ctrl+o</kbd>) is active, pins operate on the
 mag value rather than the underlying number. Because mag compresses dollar
 amounts to their order of magnitude, values that look different normally
-(e.g. $1,200 and $1,800) collapse into the same bucket -- pin one and
+(e.g. $1,200 and $1,800) collapse into the same bucket; pin one and
 you effectively filter by price range. Toggling mag mode translates
 existing pins between representations, so your filter stays meaningful
 across display modes without manual re-pinning.

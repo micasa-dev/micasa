@@ -9,7 +9,7 @@ PRs welcome! Here's how to get set up and what to expect.
 
 ## Open an issue first
 
-Bug fixes, new features, refactors -- all welcome, but **please open an issue
+Bug fixes, new features, refactors; all welcome, but **please open an issue
 before writing code.** A quick conversation up front avoids wasted effort on
 both sides. Describe what you want to change and why; we'll hash out the
 approach before you invest time in a PR.
@@ -20,15 +20,15 @@ changes can go straight to a PR.
 ## AI-assisted code
 
 micasa is developed with AI coding agents, so AI-assisted
-contributions are welcome -- with one hard requirement: **you must understand
+contributions are welcome; with one hard requirement: **you must understand
 and stand behind the code you submit.**
 
 What that means in practice:
 
-- **Hand-written code** -- always welcome.
-- **AI-assisted code you've reviewed and curated** -- also welcome. Use
+- **Hand-written code**; always welcome.
+- **AI-assisted code you've reviewed and curated**; also welcome. Use
   whatever tools help you write better code faster.
-- **Bulk AI-generated PRs with no human curation** -- not welcome. If a PR
+- **Bulk AI-generated PRs with no human curation**; not welcome. If a PR
   reads like unedited LLM output (verbose boilerplate, hallucinated APIs,
   changes that don't match the codebase conventions, or a suspiciously large
   diff with no clear purpose), it will be closed.
@@ -39,7 +39,7 @@ real problem, follow the project's patterns, and come with tests?
 ## Code review
 
 PRs will likely get an initial review from an AI agent before a human looks at
-them. This is an experimental workflow -- the project is built with AI tooling
+them. This is an experimental workflow; the project is built with AI tooling
 and reviewed with it too. A human always makes the final call on merging.
 
 ## Scope
@@ -83,7 +83,7 @@ triggering version bumps.
 
 ## Dependencies
 
-micasa is offline by design -- single SQLite file, no cloud, no accounts. PRs
+micasa is offline by design; single SQLite file, no cloud, no accounts. PRs
 that add dependencies requiring network access or external services will almost
 certainly be closed. If you think your case is the exception, make the argument
 in the issue first.
@@ -100,7 +100,7 @@ in the issue first.
 ## Tests
 
 - Write tests for new features
-- Don't test implementation details -- test behavior
+- Don't test implementation details; test behavior
 - Run `go test -shuffle=on -v ./...` to verify
 - All tests must pass on Linux, macOS, and Windows
 

@@ -25,8 +25,8 @@ is linked to a project.
 | Column | Type | Description | Notes |
 |-------:|------|-------------|-------|
 | `ID` | auto | Auto-assigned | Read-only |
-| `Project` | link | Linked project | Shows `→` in header -- press <kbd>enter</kbd> to jump |
-| `Vendor` | link | Vendor name | Required. Shows `→` in header -- press <kbd>enter</kbd> to jump to vendor |
+| `Project` | link | Linked project | Shows `→` in header; press <kbd>enter</kbd> to jump |
+| `Vendor` | link | Vendor name | Required. Shows `→` in header; press <kbd>enter</kbd> to jump to vendor |
 | `Total` | money | Total quote amount | Required |
 | `Labor` | money | Labor portion | Optional |
 | `Mat` | money | Materials portion | Optional |

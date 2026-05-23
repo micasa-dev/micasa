@@ -7,10 +7,6 @@
 # unreachable from micasa.
 
 [[IgnoredVulns]]
-id = "GO-2025-3548"
-reason = "ollama server DoS via crafted GZIP; micasa is an HTTP client, not a server"
-
-[[IgnoredVulns]]
 id = "GO-2025-3557"
 reason = "ollama server resource exhaustion; micasa is an HTTP client, not a server"
 

@@ -178,7 +178,7 @@ func TestGenCLIRef_RendersSubcommandLinks(t *testing.T) {
 		"[`micasa db vendor`](#micasa-db-vendor)",
 	)
 	// Children link back via the See also block.
-	assert.Contains(t, got, "[`micasa`](#micasa) -- A terminal UI")
+	assert.Contains(t, got, "[`micasa`](#micasa): A terminal UI")
 }
 
 // TestGenCLIRef_Deterministic guarantees byte-identical output across

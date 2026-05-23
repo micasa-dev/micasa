@@ -17,7 +17,7 @@ relay. Run your own with [Docker Compose](https://docs.docker.com/compose/).
 The relay runs two containers: PostgreSQL for storage and the relay
 binary for sync traffic. PostgreSQL holds encrypted sync operations,
 encrypted document blobs, device registrations, and invite state.
-All household data is end-to-end encrypted — the relay never sees
+All household data is end-to-end encrypted; the relay never sees
 plaintext. PostgreSQL
 [row-level security]({{< relref "/docs/development/relay-architecture#row-level-security" >}})
 provides an additional isolation layer, ensuring one household's
@@ -102,7 +102,7 @@ docker compose \
 ```
 
 Caddy automatically obtains and renews a Let's Encrypt certificate.
-The relay is no longer exposed on port 8080 — all traffic goes through
+The relay is no longer exposed on port 8080; all traffic goes through
 Caddy on 443.
 
 Connect micasa using the HTTPS URL:
@@ -142,7 +142,7 @@ Everything the relay stores lives in PostgreSQL. Back up with:
 docker compose exec postgres pg_dump -U micasa micasa > backup.sql
 ```
 
-The backup contains encrypted data only — sync operations, blobs, and
+The backup contains encrypted data only: sync operations, blobs, and
 device registrations. Encryption keys live on each device, not on the
 relay, so a database dump is not useful without the devices that
 generated the keys.

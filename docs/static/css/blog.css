@@ -3,8 +3,8 @@
 
 /* micasa blog -- same palette and fonts as the main site, editorial layout */
 
-@import url("variables.css");
-@import url("fonts.css");
+/* variables.css and fonts.css are loaded as separate <link> tags in
+   HTML for parallel fetching. */
 
 *,
 *::before,
@@ -15,7 +15,7 @@
 }
 
 html {
-  font-size: 18px;
+  font-size: 112.5%;
   scroll-behavior: smooth;
 }
 
@@ -72,7 +72,7 @@ body {
 
 .blog-nav a {
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--warm-gray);
@@ -81,7 +81,7 @@ body {
 }
 
 .blog-nav a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 /* -- Main --------------------------------------------------- */
@@ -122,7 +122,7 @@ body {
 
 .blog-index-entry time {
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--warm-gray);
@@ -158,7 +158,7 @@ body {
 
 .blog-post-header time {
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--warm-gray);
@@ -205,17 +205,17 @@ body {
 }
 
 .heading-anchor:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .blog-post-body a {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 .blog-post-body a:hover {
-  color: var(--terracotta-dark);
+  color: var(--terracotta-darker);
 }
 
 .blog-post-body ul,
@@ -300,7 +300,7 @@ kbd {
 }
 
 .blog-post-footer a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 /* -- Site footer -------------------------------------------- */
@@ -326,7 +326,7 @@ kbd {
 }
 
 .blog-footer a:hover {
-  color: var(--terracotta);
+  color: var(--terracotta-dark);
 }
 
 .blog-footer .footer-sep {
@@ -338,7 +338,7 @@ kbd {
 .tab-pill {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 0.85em;
-  background: var(--terracotta);
+  background: var(--terracotta-dark);
   color: var(--cream);
   padding: 0.1em 0.45em;
   border-radius: 4px;
@@ -352,15 +352,49 @@ kbd {
 }
 
 .blog-post-body a.tab-pill:hover {
-  background: var(--terracotta-dark);
+  background: var(--terracotta-darker);
   color: var(--cream);
+}
+
+/* -- Print --------------------------------------------------- */
+
+@media print {
+  .blog-header,
+  .blog-footer,
+  .blog-post-footer {
+    display: none !important;
+  }
+
+  .blog-main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .blog-post-body pre {
+    background: #f5f5f5;
+    color: #1a1a1a;
+    border: 1px solid #cccccc;
+    page-break-inside: avoid;
+  }
+
+  .blog-post-body h2,
+  .blog-post-body h3 {
+    page-break-after: avoid;
+  }
+
+  .blog-post-body img,
+  .blog-post-body video,
+  .blog-post-body blockquote,
+  .blog-post-body pre {
+    page-break-inside: avoid;
+  }
 }
 
 /* -- Responsive --------------------------------------------- */
 
 @media (max-width: 600px) {
   html {
-    font-size: 16px;
+    font-size: 100%;
   }
 
   .blog-main {

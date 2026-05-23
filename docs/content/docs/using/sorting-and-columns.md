@@ -50,14 +50,14 @@ ordering.
 ## Fuzzy column finder
 
 Press <kbd>/</kbd> in Nav mode to open a fuzzy finder overlay. Type to filter
-columns by name -- matched characters are highlighted. Use <kbd>up</kbd>/<kbd>down</kbd> to
+columns by name; matched characters are highlighted. Use <kbd>up</kbd>/<kbd>down</kbd> to
 navigate the list, <kbd>enter</kbd> to jump to the selected column, <kbd>esc</kbd> to cancel.
 
 Jumping to a hidden column automatically unhides it.
 
 ## Column hiding
 
-You can hide columns you don't need to reduce noise. This is session-only --
+You can hide columns you don't need to reduce noise. This is session-only;
 hidden columns come back when you restart.
 
 ### Hiding
@@ -75,7 +75,7 @@ Press <kbd>C</kbd> (capital C) to show all hidden columns at once.
 ## Horizontal scrolling
 
 When the table has more columns than fit on screen, micasa scrolls
-horizontally. The viewport follows your column cursor -- as you move right
+horizontally. The viewport follows your column cursor; as you move right
 past the visible edge, the view scrolls to keep the cursor on screen.
 
 Scroll indicators (`◀` / `▶`) appear in the edge column headers when there are
