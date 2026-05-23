@@ -21,6 +21,7 @@ import (
 	"github.com/micasa-dev/micasa/internal/config"
 	"github.com/micasa-dev/micasa/internal/data"
 	"github.com/micasa-dev/micasa/internal/extract"
+	"github.com/micasa-dev/micasa/internal/termio"
 	"github.com/spf13/cobra"
 )
 
@@ -183,9 +184,13 @@ func launchTUI(dbPath string, seed *seedOpts) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 	if len(cfg.Warnings) > 0 {
-		isDark := lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
+		// HasDarkBackground blocks reading the OSC response from stdin
+		// when it isn't a TTY (pipes, redirects) on Windows under
+		// x/sys 0.45.0. Default to the dark-bg color in that case --
+		// styling a redirected stream doesn't matter anyway.
 		warnColor := "#F0E442" // Wong yellow (dark bg)
-		if !isDark {
+		if termio.IsTerminal(os.Stderr) &&
+			!lipgloss.HasDarkBackground(os.Stdin, os.Stderr) {
 			warnColor = "#B8860B" // Wong yellow (light bg)
 		}
 		warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(warnColor))

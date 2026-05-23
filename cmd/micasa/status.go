@@ -57,9 +57,15 @@ shell prompts, and status bar widgets.`,
 			if err := opts.validate(); err != nil {
 				return err
 			}
-			opts.isDark = lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
 			out := cmd.OutOrStdout()
 			opts.noStyle = !termio.IsTerminal(out)
+			// HasDarkBackground writes an OSC escape to stderr and waits
+			// for the terminal's response on stdin. When stdin is not a
+			// TTY (tests, pipes) the read blocks forever on Windows under
+			// x/sys 0.45.0. Skip the query when we won't use the result.
+			if !opts.noStyle {
+				opts.isDark = lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
+			}
 			store, err := openExisting(dbPathFromEnvOrArg(args))
 			if err != nil {
 				return err
