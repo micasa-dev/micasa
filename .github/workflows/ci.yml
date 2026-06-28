@@ -83,6 +83,7 @@ jobs:
             azure.archive.ubuntu.com:80
             esm.ubuntu.com:443
             github.com:443
+            mirrors.ubuntu.com:80
             packages.microsoft.com:443
             ports.ubuntu.com:80
             proxy.golang.org:443
