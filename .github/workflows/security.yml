@@ -148,8 +148,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: trufflesecurity/trufflehog@17456f8c7d042d8c82c9a8ca9e937231f9f42e26 # v3.95.2
+      - uses: step-security/trufflehog-action@8560b0deaa854dfe432084eaefa1dffbc1647a6b # v3.95.5
         with:
+          version: 3.95.5
           extra_args: --only-verified
 
   codeql:

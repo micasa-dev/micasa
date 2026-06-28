@@ -8,24 +8,26 @@
 
 _final: prev:
 let
-  # Scoped Go 1.26.3 override for micasa and its dev tools only.
+  # Scoped Go 1.26.4 override for micasa and its dev tools only.
   # NOT exported as go/go_1_26/buildGoModule — doing so rebuilds the
   # entire transitive closure from source (VHS → Chromium → PipeWire →
   # ffmpeg/gstreamer) because every Go derivation's input hash changes.
   #
-  # 1.26.3 fixes six stdlib vulnerabilities flagged by govulncheck:
+  # 1.26.4 fixes stdlib vulnerabilities flagged by govulncheck:
   #   GO-2026-4918 (net/http HTTP/2 SETTINGS frame infinite loop)
   #   GO-2026-4971 (net Dial/LookupPort panic on NUL input on Windows)
   #   GO-2026-4977 (net/mail consumePhrase DoS)
   #   GO-2026-4980 (html/template empty <script type=> escape bug)
   #   GO-2026-4982 (html/template <meta> URL escape gap)
   #   GO-2026-4986 (net/mail parsing CPU/memory exhaustion)
-  # Drop this override once nixpkgs picks up Go 1.26.3.
+  #   GO-2026-5037
+  #   GO-2026-5039
+  # Drop this override once nixpkgs picks up Go 1.26.4.
   patchedGo = prev.go_1_26.overrideAttrs (_: rec {
-    version = "1.26.3";
+    version = "1.26.4";
     src = prev.fetchurl {
       url = "https://go.dev/dl/go${version}.src.tar.gz";
-      hash = "sha256-HGRoddCqh5kTMYTtV895/yS97+jIggRwYCqdPW2Rkrg=";
+      hash = "sha256-T2aKMvv8ETLmqIH7lowvHa2mMUkqM5IRc1+7JVpCYC0=";
     };
   });
 in
