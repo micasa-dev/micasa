@@ -90,6 +90,7 @@ jobs:
             security.ubuntu.com:80
             storage.googleapis.com:443
             us-west-2.ec2.archive.ubuntu.com:80
+            us-west-2.ec2.ports.ubuntu.com:80
 
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -98,27 +99,6 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: "1.26"
-
-      - name: Pin apt archive (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          case "$(dpkg --print-architecture)" in
-            amd64)
-              archive_url="http://us-west-2.ec2.archive.ubuntu.com/ubuntu"
-              ;;
-            arm64)
-              archive_url="http://ports.ubuntu.com/ubuntu-ports"
-              ;;
-            *)
-              echo "::error::unsupported apt architecture"
-              exit 1
-              ;;
-          esac
-          sudo sed -i \
-            -e "s|mirror+http://mirrors.ubuntu.com/mirrors.txt|${archive_url}|g" \
-            -e "s|http://[^[:space:]]*archive.ubuntu.com/ubuntu|${archive_url}|g" \
-            -e "s|http://[^[:space:]]*ports.ubuntu.com/ubuntu-ports|${archive_url}|g" \
-            /etc/apt/sources.list.d/ubuntu.sources
 
       - name: Install extraction tools (Linux)
         if: runner.os == 'Linux'
