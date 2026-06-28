@@ -80,6 +80,7 @@ jobs:
           allowed-endpoints: >
             api.github.com:443
             api.zippopotam.us:443
+            archive.ubuntu.com:80
             azure.archive.ubuntu.com:80
             esm.ubuntu.com:443
             github.com:443
