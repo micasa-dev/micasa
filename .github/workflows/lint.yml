@@ -31,7 +31,7 @@ jobs:
             api.github.com:443
             github.com:443
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           sparse-checkout: .github/detect-ci-changes.bash
           sparse-checkout-cone-mode: false
@@ -75,7 +75,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           persist-credentials: false
 
@@ -122,7 +122,7 @@ jobs:
             release-assets.githubusercontent.com:443
             storage.googleapis.com:443
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           persist-credentials: false
 
@@ -156,7 +156,7 @@ jobs:
             releases.nixos.org:443
             storage.googleapis.com:443
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -195,7 +195,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           persist-credentials: false
 
