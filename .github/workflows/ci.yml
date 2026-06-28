@@ -114,7 +114,11 @@ jobs:
               exit 1
               ;;
           esac
-          sudo sed -i "s|mirror+http://mirrors.ubuntu.com/mirrors.txt|${archive_url}|g" /etc/apt/sources.list.d/ubuntu.sources
+          sudo sed -i \
+            -e "s|mirror+http://mirrors.ubuntu.com/mirrors.txt|${archive_url}|g" \
+            -e "s|http://[^[:space:]]*archive.ubuntu.com/ubuntu|${archive_url}|g" \
+            -e "s|http://[^[:space:]]*ports.ubuntu.com/ubuntu-ports|${archive_url}|g" \
+            /etc/apt/sources.list.d/ubuntu.sources
 
       - name: Install extraction tools (Linux)
         if: runner.os == 'Linux'
