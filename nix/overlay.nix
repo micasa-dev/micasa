@@ -13,7 +13,7 @@ let
   # entire transitive closure from source (VHS → Chromium → PipeWire →
   # ffmpeg/gstreamer) because every Go derivation's input hash changes.
   #
-  # 1.26.4 fixes stdlib vulnerabilities flagged by govulncheck:
+  # 1.26.4 fixes stdlib vulnerabilities flagged by govulncheck/osv-scanner:
   #   GO-2026-4918 (net/http HTTP/2 SETTINGS frame infinite loop)
   #   GO-2026-4971 (net Dial/LookupPort panic on NUL input on Windows)
   #   GO-2026-4977 (net/mail consumePhrase DoS)
@@ -21,6 +21,7 @@ let
   #   GO-2026-4982 (html/template <meta> URL escape gap)
   #   GO-2026-4986 (net/mail parsing CPU/memory exhaustion)
   #   GO-2026-5037
+  #   GO-2026-5038
   #   GO-2026-5039
   # Drop this override once nixpkgs picks up Go 1.26.4.
   patchedGo = prev.go_1_26.overrideAttrs (_: rec {

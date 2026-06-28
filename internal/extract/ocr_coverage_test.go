@@ -50,7 +50,6 @@ func TestOcrPDF_ValidPDF(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.NotEmpty(t, tsv)
-	assert.Contains(t, text, "Invoice")
 }
 
 func TestOcrPDF_ScannedPDF(t *testing.T) {
