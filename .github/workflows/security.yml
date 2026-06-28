@@ -150,6 +150,7 @@ jobs:
 
       - uses: step-security/trufflehog-action@8560b0deaa854dfe432084eaefa1dffbc1647a6b # v3.95.5
         with:
+          version: v3.95.5
           extra_args: --only-verified
 
   codeql:
