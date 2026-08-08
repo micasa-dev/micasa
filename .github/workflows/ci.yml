@@ -86,6 +86,7 @@ jobs:
             github.com:443
             mirrors.ubuntu.com:80
             packages.microsoft.com:443
+            pkg-containers.githubusercontent.com:443
             ports.ubuntu.com:80
             proxy.golang.org:443
             release-assets.githubusercontent.com:443
