@@ -102,11 +102,31 @@ jobs:
         with:
           go-version: "1.26"
 
+      - name: Pin apt archive (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          case "$(dpkg --print-architecture)" in
+            amd64)
+              archive_url="http://us-west-2.ec2.archive.ubuntu.com/ubuntu"
+              ;;
+            arm64)
+              archive_url="http://us-west-2.ec2.ports.ubuntu.com/ubuntu-ports"
+              ;;
+            *)
+              echo "::error::unsupported apt architecture"
+              exit 1
+              ;;
+          esac
+          sudo sed -i \
+            "s|^URIs:.*|URIs: ${archive_url}|" \
+            /etc/apt/sources.list.d/ubuntu.sources
+
       - name: Install extraction tools (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y poppler-utils tesseract-ocr imagemagick
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 \
+            install -y poppler-utils tesseract-ocr imagemagick
 
       - name: Symlink magick to convert (Linux)
         if: runner.os == 'Linux'

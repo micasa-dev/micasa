@@ -3,7 +3,7 @@
 
 baseURL = "https://micasa.dev/"
 title = "micasa"
-languageCode = "en-us"
+locale = "en-us"
 enableRobotsTXT = true
 
 # Drop the site-wide RSS feed; only the blog section gets one (configured

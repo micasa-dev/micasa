@@ -1,6 +1,6 @@
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-<!-- verified: 2026-05-21 -->
+<!-- verified: 2026-08-08 -->
 
 # Project Structure
 
@@ -149,6 +149,8 @@ internal/
     fake.go                 HomeFaker (seeded gofakeit)
     words.go                Word lists
 
+  ftseval/                  Full-text-search evaluation harness and reports
+
   ollama/                   Ollama model pull API
     pull.go                 PullModel(), PullScanner (streaming)
 
@@ -166,6 +168,8 @@ internal/
 
   safeconv/                 Safe int64->int narrowing
     narrow.go               Int() with overflow check
+
+  termio/                   Terminal detection helpers
 ```
 
 ## Build & CI
@@ -176,7 +180,7 @@ internal/
 - `.golangci.yml` - Linter config: `default: all` with errorlint strict
   (errorf + errorf-multi + comparison + asserts), goconst/gomodguard
   disabled
-- `go.mod` - Go 1.25.5; deps include bubbletea v2 / lipgloss v2 / huh v2,
+- `go.mod` - Go 1.26.5; deps include bubbletea v2 / lipgloss v2 / huh v2,
   gorm + modernc sqlite, any-llm-go, modelcontextprotocol/go-sdk
 - `docs/` - Hugo site (guides, reference, blog)
 - `plans/` - Design documents (committed to repo)

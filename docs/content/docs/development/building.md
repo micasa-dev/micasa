@@ -7,7 +7,7 @@ linkTitle = "Building"
 
 ## Prerequisites
 
-- **Go 1.25+** (the only hard requirement)
+- **Go 1.26.5+** (the only hard requirement)
 - **Nix** (optional, but provides the full dev environment)
 
 ## Quick build
