@@ -167,7 +167,6 @@ details; do not duplicate that detail here.
 - `/bump-deps` -- bump all project dependencies (Go modules + Nix flake inputs)
 - `/flake-update` -- periodically before committing/PRing
 - `/fix-osv-finding` -- when osv-scanner reports findings (findings are blockers)
-- `/create-issue` -- immediately for every user request, including small asks
 - `/record-demo` -- after any UI/UX feature work; commit the GIF
 - `/capture-ui` -- after TUI feature/bugfix work; capture screenshot or video for PR review
 - `/deprecate-config` -- when renaming or removing a config key
