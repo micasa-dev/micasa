@@ -1,20 +1,20 @@
 {
-  "files": {
-    "includes": [
-      "docs/static/css/*.css",
-      "docs/static/js/*.js",
-      "docs/data/*.json",
-      "*.js",
-      "*.json"
-    ]
-  },
-  "formatter": {
-    "enabled": false
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true
-    }
-  }
+	"files": {
+		"includes": [
+			"docs/static/css/*.css",
+			"docs/static/js/*.js",
+			"docs/data/*.json",
+			"*.js",
+			"*.json"
+		]
+	},
+	"formatter": {
+		"enabled": false
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended"
+		}
+	}
 }
