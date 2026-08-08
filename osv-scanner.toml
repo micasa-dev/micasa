@@ -37,3 +37,11 @@ reason = "ollama server cross-domain token exposure; micasa is an HTTP client, n
 [[IgnoredVulns]]
 id = "GO-2025-4251"
 reason = "ollama server missing auth; micasa is an HTTP client, not a server"
+
+[[IgnoredVulns]]
+id = "GO-2026-5750"
+reason = "path traversal is limited to ollama/x/imagegen/transfer; micasa imports only ollama/api"
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+reason = "micasa uses x/crypto/curve25519 and does not import the unmaintained openpgp packages"

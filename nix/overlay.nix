@@ -6,36 +6,10 @@
 # `pkgs.govulncheck`, `pkgs.deadcode`, etc. include our flags and
 # exclusion logic.
 
-_final: prev:
-let
-  # Scoped Go 1.26.4 override for micasa and its dev tools only.
-  # NOT exported as go/go_1_26/buildGoModule — doing so rebuilds the
-  # entire transitive closure from source (VHS → Chromium → PipeWire →
-  # ffmpeg/gstreamer) because every Go derivation's input hash changes.
-  #
-  # 1.26.4 fixes stdlib vulnerabilities flagged by govulncheck/osv-scanner:
-  #   GO-2026-4918 (net/http HTTP/2 SETTINGS frame infinite loop)
-  #   GO-2026-4971 (net Dial/LookupPort panic on NUL input on Windows)
-  #   GO-2026-4977 (net/mail consumePhrase DoS)
-  #   GO-2026-4980 (html/template empty <script type=> escape bug)
-  #   GO-2026-4982 (html/template <meta> URL escape gap)
-  #   GO-2026-4986 (net/mail parsing CPU/memory exhaustion)
-  #   GO-2026-5037
-  #   GO-2026-5038
-  #   GO-2026-5039
-  # Drop this override once nixpkgs picks up Go 1.26.4.
-  patchedGo = prev.go_1_26.overrideAttrs (_: rec {
-    version = "1.26.4";
-    src = prev.fetchurl {
-      url = "https://go.dev/dl/go${version}.src.tar.gz";
-      hash = "sha256-T2aKMvv8ETLmqIH7lowvHa2mMUkqM5IRc1+7JVpCYC0=";
-    };
-  });
-in
-{
+_final: prev: {
   # Expose scoped overrides for flake.nix to use explicitly.
-  micasaGo = patchedGo;
-  micasaBuildGoModule = prev.buildGo126Module.override { go = patchedGo; };
+  micasaGo = prev.go_1_26;
+  micasaBuildGoModule = prev.buildGo126Module;
 
   deadcode =
     let
@@ -57,7 +31,7 @@ in
       name = "deadcode";
       runtimeInputs = [
         unwrapped
-        patchedGo
+        prev.go_1_26
       ];
       runtimeEnv.CGO_ENABLED = "0";
       text = builtins.readFile ./scripts/deadcode.bash;
@@ -83,7 +57,7 @@ in
       name = "nilaway";
       runtimeInputs = [
         unwrapped
-        patchedGo
+        prev.go_1_26
       ];
       runtimeEnv.CGO_ENABLED = "0";
       text = builtins.readFile ./scripts/nilaway.bash;
@@ -93,7 +67,7 @@ in
     name = "golangci-lint";
     runtimeInputs = [
       prev.golangci-lint
-      patchedGo
+      prev.go_1_26
     ];
     runtimeEnv.CGO_ENABLED = "0";
     text = builtins.readFile ./scripts/golangci-lint.bash;
@@ -103,7 +77,7 @@ in
     name = "govulncheck";
     runtimeInputs = [
       prev.govulncheck
-      patchedGo
+      prev.go_1_26
       prev.jq
       prev.ripgrep
     ];
