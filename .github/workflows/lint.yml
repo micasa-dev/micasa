@@ -154,6 +154,7 @@ jobs:
             github.com:443
             proxy.golang.org:443
             releases.nixos.org:443
+            static.crates.io:443
             storage.googleapis.com:443
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
