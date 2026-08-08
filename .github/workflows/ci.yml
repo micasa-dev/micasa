@@ -118,16 +118,15 @@ jobs:
               ;;
           esac
           sudo sed -i \
-            -e "s|mirror+http://mirrors.ubuntu.com/mirrors.txt|${archive_url}|g" \
-            -e "s|http://[^[:space:]]*archive.ubuntu.com/ubuntu|${archive_url}|g" \
-            -e "s|http://[^[:space:]]*ports.ubuntu.com/ubuntu-ports|${archive_url}|g" \
+            "s|^URIs:.*|URIs: ${archive_url}|" \
             /etc/apt/sources.list.d/ubuntu.sources
 
       - name: Install extraction tools (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y poppler-utils tesseract-ocr imagemagick
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 \
+            install -y poppler-utils tesseract-ocr imagemagick
 
       - name: Symlink magick to convert (Linux)
         if: runner.os == 'Linux'
