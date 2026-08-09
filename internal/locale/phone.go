@@ -6,7 +6,7 @@ package locale
 import (
 	"strings"
 
-	"github.com/nyaruka/phonenumbers"
+	"github.com/nyaruka/phonenumbers/v2"
 )
 
 // FormatPhoneNumber formats a phone number string for display.
