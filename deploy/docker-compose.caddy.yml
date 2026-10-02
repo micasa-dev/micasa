@@ -3,7 +3,7 @@
 
 services:
   caddy:
-    image: caddy@sha256:844f60b64e4724a5aa8245e019dace0d3f199f7433ce6c57676cb30a920dbad9 # 2-alpine
+    image: caddy@sha256:13b7fbadd017b042956fddbceedeeea12bb1e560534f9b3df281269dbcc61813 # 2-alpine
     environment:
       DOMAIN: ${DOMAIN}
     ports:
