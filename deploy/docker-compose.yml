@@ -3,7 +3,7 @@
 
 services:
   postgres:
-    image: postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636 # 17-alpine
+    image: postgres@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336 # 17-alpine
     environment:
       POSTGRES_USER: micasa
       POSTGRES_DB: micasa
