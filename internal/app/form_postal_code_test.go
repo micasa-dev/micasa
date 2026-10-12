@@ -6,6 +6,8 @@ package app
 import (
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"runtime"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -36,10 +38,21 @@ func TestHouseFormPostalCodeIsSecondField(t *testing.T) {
 		"address line 1 should still be empty")
 }
 
+// cursorBlinkCmdName is the symbol of the closure that bubbles' cursor
+// returns from Blink. The closure sleeps for the blink interval (530ms)
+// before yielding a message that only toggles cursor visibility. Running
+// it synchronously in a test stalls every keystroke; a real user's next
+// keystroke cancels the pending blink instead.
+const cursorBlinkCmdName = "charm.land/bubbles/v2/cursor.(*Model).Blink.func1"
+
+func isCursorBlinkCmd(cmd tea.Cmd) bool {
+	return runtime.FuncForPC(reflect.ValueOf(cmd).Pointer()).Name() == cursorBlinkCmdName
+}
+
 // drainBatchCmds executes a tea.Cmd (which may be a tea.Batch) and
 // collects all resulting messages.
 func drainBatchCmds(cmd tea.Cmd) []tea.Msg {
-	if cmd == nil {
+	if cmd == nil || isCursorBlinkCmd(cmd) {
 		return nil
 	}
 	msg := cmd()

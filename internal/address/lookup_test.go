@@ -50,8 +50,9 @@ func TestLookupUnknownPostalCode(t *testing.T) {
 
 func TestLookupTimeout(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		time.Sleep(2 * time.Second)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Hold the response until the client gives up and drops the connection.
+		<-r.Context().Done()
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
