@@ -363,7 +363,7 @@ func TestChatStreamCancellation(t *testing.T) {
 	assert.Equal(t, "start", chunk.Content)
 
 	cancel()
-	for range ch { //nolint:revive // drain channel
+	for range ch { // drain channel
 	}
 	<-handlerDone
 }
@@ -793,7 +793,7 @@ func TestChatStreamContextCancelledBeforeSend(t *testing.T) {
 		return // provider may reject immediately
 	}
 	// Drain -- should complete quickly without hanging.
-	for range ch { //nolint:revive // drain channel
+	for range ch { // drain channel
 	}
 }
 

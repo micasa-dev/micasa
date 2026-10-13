@@ -63,8 +63,7 @@ func (c *Config) Query(ctx context.Context, w io.Writer, filter string) error {
 			break
 		}
 		if err, ok := v.(error); ok {
-			var haltErr *gojq.HaltError
-			if errors.As(err, &haltErr) {
+			if haltErr, ok := errors.AsType[*gojq.HaltError](err); ok {
 				if haltErr.ExitCode() == 0 {
 					return nil
 				}

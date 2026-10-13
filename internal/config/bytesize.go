@@ -13,7 +13,7 @@ import (
 
 // ByteSize represents a size in bytes, parseable from unitized strings
 // like "50 MiB" or bare integers (interpreted as bytes).
-type ByteSize uint64 //nolint:recvcheck // value receiver needed for encoding.TextMarshaler on non-pointer fields
+type ByteSize uint64
 
 // Bytes returns the size as uint64.
 func (b ByteSize) Bytes() uint64 { return uint64(b) }

@@ -409,8 +409,7 @@ func (c *Client) wrapError(err error) error {
 		)
 	}
 
-	var providerErr *anyllmerrors.ProviderError
-	if errors.As(err, &providerErr) {
+	if providerErr, ok := errors.AsType[*anyllmerrors.ProviderError](err); ok {
 		if isNetworkError(err) {
 			if c.providerName == ProviderOllama {
 				return errors.New(
@@ -431,8 +430,7 @@ func (c *Client) wrapError(err error) error {
 		return fmt.Errorf("%s: %w", c.providerName, providerErr.Err)
 	}
 
-	var modelErr *anyllmerrors.ModelNotFoundError
-	if errors.As(err, &modelErr) {
+	if _, ok := errors.AsType[*anyllmerrors.ModelNotFoundError](err); ok {
 		if c.providerName == ProviderOllama {
 			return fmt.Errorf(
 				"model %q not found -- pull it with `ollama pull %s`",
@@ -445,16 +443,14 @@ func (c *Client) wrapError(err error) error {
 		)
 	}
 
-	var authErr *anyllmerrors.AuthenticationError
-	if errors.As(err, &authErr) {
+	if _, ok := errors.AsType[*anyllmerrors.AuthenticationError](err); ok {
 		return fmt.Errorf(
 			"authentication failed for %s -- check your api_key",
 			c.providerName,
 		)
 	}
 
-	var rateLimitErr *anyllmerrors.RateLimitError
-	if errors.As(err, &rateLimitErr) {
+	if _, ok := errors.AsType[*anyllmerrors.RateLimitError](err); ok {
 		return fmt.Errorf(
 			"rate limited by %s -- try again shortly",
 			c.providerName,

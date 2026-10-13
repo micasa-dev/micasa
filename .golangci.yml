@@ -41,6 +41,7 @@ linters:
     - funcorder        # forces exported-before-unexported ordering; too noisy
     - containedctx     # flags context in structs; TUI models legitimately store context
     - wsl_v5           # whitespace style v5; too opinionated
+    - exhaustruct_v5   # exhaustruct v5; disabled for the same reason as exhaustruct
 
     # Deprecated linter names; we use the v2 replacement instead
     - gomodguard       # superseded by gomodguard_v2 in golangci-lint v2.12.x
@@ -87,6 +88,11 @@ linters:
 
     interfacebloat:
       max: 25  # relay Store has 24 methods; default 10 is too low
+
+    recvcheck:
+      exclusions:
+        # Like the built-in Unmarshal* excludes: decoding must mutate the receiver
+        - "*.UnmarshalTOML"
 
     gocritic:
       enable-all: true

@@ -145,8 +145,7 @@ func wrapOpenerError(err error, openerName string) error {
 	// The opener command exists but exited non-zero. On headless/remote
 	// machines (no display server) this is the typical failure mode.
 	// Detect it and surface an actionable message.
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		if openerName == cmdXdgOpen && !hasDisplay() {
 			return fmt.Errorf(
 				"%s failed -- no display server (DISPLAY/WAYLAND_DISPLAY not set); "+

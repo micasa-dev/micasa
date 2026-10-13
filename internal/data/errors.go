@@ -33,8 +33,7 @@ func WithHint(err error, hint string) error {
 // Hint extracts the user-facing hint from an error chain.
 // Returns "" if no hint is found.
 func Hint(err error) string {
-	var h *hintError
-	if errors.As(err, &h) {
+	if h, ok := errors.AsType[*hintError](err); ok {
 		return h.hint
 	}
 	return ""
