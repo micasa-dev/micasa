@@ -1,8 +1,8 @@
 # Copyright 2026 Phillip Cloud
 # Licensed under the Apache License, Version 2.0
 
-# golang 1.26-alpine
-FROM golang@sha256:2005724102f45917a63e9d092fc0e4ea56ea575048ce147caad5f5f61502c365 AS build
+# golang 1.27-alpine
+FROM golang@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
 ARG BUILD_TAGS
 WORKDIR /src
 COPY go.mod go.sum ./

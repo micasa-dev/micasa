@@ -222,11 +222,11 @@ func (dialector Dialector) DefaultValueOf(field *schema.Field) clause.Expression
 }
 
 func (dialector Dialector) Migrator(db *gorm.DB) gorm.Migrator {
-	return Migrator{migrator.Migrator{Config: migrator.Config{
+	return Migrator{migrator.Migrator{
 		DB:                          db,
 		Dialector:                   dialector,
 		CreateIndexAfterCreateTable: true,
-	}}}
+	}}
 }
 
 func (dialector Dialector) BindVarTo(
@@ -324,8 +324,7 @@ func (dialector Dialector) RollbackTo(tx *gorm.DB, name string) error {
 // Uses modernc.org/sqlite's Error type directly instead of
 // the unmaintained glebarez/go-sqlite wrapper.
 func (dialector Dialector) Translate(err error) error {
-	var terr *sqlite.Error
-	if errors.As(err, &terr) {
+	if terr, ok := errors.AsType[*sqlite.Error](err); ok {
 		switch terr.Code() {
 		case sqlite3.SQLITE_CONSTRAINT_UNIQUE,
 			sqlite3.SQLITE_CONSTRAINT_PRIMARYKEY:

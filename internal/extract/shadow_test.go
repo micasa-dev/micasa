@@ -5,23 +5,19 @@ package extract
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"testing"
 
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func newTestStore(t *testing.T) *data.Store {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "test.db")
-	store, err := data.Open(path)
+	image, err := datatest.Template()
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = store.Close() })
-	require.NoError(t, store.AutoMigrate())
-	require.NoError(t, store.SeedDefaults())
-	return store
+	return datatest.OpenMemory(t, image)
 }
 
 func TestShadowDB_NewAndClose(t *testing.T) {

@@ -4,6 +4,8 @@
 package data
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -54,6 +56,47 @@ func createTemplateBytes() error {
 		return fmt.Errorf("read template bytes: %w", err)
 	}
 	return nil
+}
+
+// openMemoryStore returns a store backed by a private in-memory copy of
+// image. It mirrors datatest.OpenMemory, which this package's own tests
+// cannot import without an import cycle.
+func openMemoryStore(ctx context.Context, image []byte) (*Store, error) {
+	store, err := Open(":memory:") //nolint:contextcheck // Open takes no context
+	if err != nil {
+		return nil, err
+	}
+	sqlDB, err := store.db.DB()
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("get sql.DB: %w", err)
+	}
+	// Every SQLite connection to ":memory:" has its own empty database, so
+	// the pool must hold exactly the one connection that gets the image.
+	sqlDB.SetMaxOpenConns(1)
+
+	conn, err := sqlDB.Conn(ctx)
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("get connection: %w", err)
+	}
+	err = conn.Raw(func(driverConn any) error {
+		d, ok := driverConn.(interface{ Deserialize(image []byte) error })
+		if !ok {
+			return fmt.Errorf("driver connection %T cannot deserialize", driverConn)
+		}
+		// An in-memory database cannot use WAL. Header bytes 18 and 19
+		// are the file format versions: 2 is WAL, 1 is rollback journal.
+		img := append([]byte(nil), image...)
+		img[18], img[19] = 1, 1
+		return d.Deserialize(img)
+	})
+	err = errors.Join(err, conn.Close())
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("load image: %w", err)
+	}
+	return store, nil
 }
 
 func TestMain(m *testing.M) {

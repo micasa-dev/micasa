@@ -1789,6 +1789,17 @@ func TestUpdateDocumentClearNotes(t *testing.T) {
 
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
+	store, err := openMemoryStore(t.Context(), templateBytes)
+	require.NoError(t, err)
+	require.NoError(t, store.SetMaxDocumentSize(50<<20))
+	t.Cleanup(func() { _ = store.Close() })
+	return store
+}
+
+// newTestFileStore is newTestStore backed by a database file in WAL mode,
+// for tests of behavior that an in-memory database does not have.
+func newTestFileStore(t *testing.T) *Store {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "test.db")
 	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
 	store, err := Open(path)
@@ -2512,7 +2523,7 @@ func TestEvictStaleCacheNonexistentDir(t *testing.T) {
 
 func TestPragmasSurvivePoolRecycling(t *testing.T) {
 	t.Parallel()
-	store := newTestStore(t)
+	store := newTestFileStore(t)
 	sqlDB, err := store.db.DB()
 	require.NoError(t, err)
 

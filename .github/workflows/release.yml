@@ -45,7 +45,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26"
+          go-version: "1.27"
 
       # QEMU is not needed: the Dockerfile is FROM scratch with only a COPY
       # of pre-built CGO_ENABLED=0 binaries. Buildx assembles the multi-arch

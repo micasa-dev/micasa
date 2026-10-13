@@ -275,7 +275,13 @@ func NewModel(store *data.Store, options Options) (*Model, error) {
 			model = persisted
 		} else if chatCfg.Provider == llm.ProviderOllama {
 			// No persisted model -- try auto-detecting if the server has exactly one.
-			tempClient, err := llm.NewClient(chatCfg.Provider, chatCfg.BaseURL, model, chatCfg.APIKey, chatCfg.Timeout)
+			tempClient, err := llm.NewClient(
+				chatCfg.Provider,
+				chatCfg.BaseURL,
+				model,
+				chatCfg.APIKey,
+				chatCfg.Timeout,
+			)
 			if err == nil {
 				if detected := autoDetectModel(appCtx, tempClient); detected != "" {
 					model = detected
@@ -1165,7 +1171,7 @@ func cloneFormData(d formData) formData {
 	if v.Kind() == reflect.Pointer && !v.IsNil() {
 		cp := reflect.New(v.Elem().Type())
 		cp.Elem().Set(v.Elem())
-		cloned, ok := cp.Interface().(formData)
+		cloned, ok := reflect.TypeAssert[formData](cp)
 		if !ok {
 			return d
 		}

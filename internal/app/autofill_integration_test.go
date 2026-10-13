@@ -92,7 +92,7 @@ func processCmd(t *testing.T, m *Model, cmd tea.Cmd) {
 
 func processWithDepth(t *testing.T, m *Model, cmd tea.Cmd, depth int) {
 	t.Helper()
-	if cmd == nil || depth <= 0 {
+	if cmd == nil || depth <= 0 || isCursorBlinkCmd(cmd) {
 		return
 	}
 	msg := cmd()

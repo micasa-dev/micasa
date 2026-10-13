@@ -8,9 +8,19 @@ import (
 	"time"
 
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// openMigratedStore returns an in-memory store with the schema migrated and
+// no rows.
+func openMigratedStore(t *testing.T) *data.Store {
+	t.Helper()
+	image, err := datatest.Migrated()
+	require.NoError(t, err)
+	return datatest.OpenMemory(t, image)
+}
 
 func TestLWWLocalWinsLaterTimestamp(t *testing.T) {
 	t.Parallel()
@@ -110,11 +120,7 @@ func TestApplyOpsSortsBySeqBeforeApplying(t *testing.T) {
 	t.Parallel()
 
 	// Open a real SQLite DB so ApplyOps can run GORM transactions.
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	now := time.Now()
@@ -166,11 +172,7 @@ func TestApplyOneRemoteWinsLWWClearsLocalAppliedAt(t *testing.T) {
 	// Verifies the remote-wins LWW path: when a newer remote op conflicts
 	// with an older local unsynced op, the remote op is applied and the
 	// local op's applied_at is cleared (all within one transaction).
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -211,7 +213,7 @@ func TestApplyOneRemoteWinsLWWClearsLocalAppliedAt(t *testing.T) {
 	}
 
 	// applyOne should succeed: remote wins, local op's applied_at is cleared.
-	err = applyOne(db, remoteOp)
+	err := applyOne(db, remoteOp)
 	require.NoError(t, err)
 
 	// Verify the remote update was applied.
@@ -237,11 +239,7 @@ func TestApplyOneRemoteWinsLWWClearsAllLocalOps(t *testing.T) {
 	// conflicts with multiple older local unsynced ops for the same row,
 	// ALL local ops' applied_at values are cleared — not just the latest.
 	// This covers the code comment at apply.go:116-119.
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -295,7 +293,7 @@ func TestApplyOneRemoteWinsLWWClearsAllLocalOps(t *testing.T) {
 		},
 	}
 
-	err = applyOne(db, remoteOp)
+	err := applyOne(db, remoteOp)
 	require.NoError(t, err)
 
 	// The vendor row should be soft-deleted.
@@ -342,11 +340,7 @@ func TestRecordUnappliedOpReturnsDBError(t *testing.T) {
 	t.Parallel()
 
 	// Open a real SQLite DB so we can operate on sync_oplog_entries.
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	now := time.Now()
@@ -363,7 +357,7 @@ func TestRecordUnappliedOpReturnsDBError(t *testing.T) {
 	}
 
 	// First call succeeds (returns errConflictLoss).
-	err = recordUnappliedOp(db, op)
+	err := recordUnappliedOp(db, op)
 	require.Error(t, err)
 	assert.True(t, isConflictLoss(err), "first call should return errConflictLoss")
 
@@ -378,11 +372,7 @@ func TestRecordUnappliedOpReturnsDBError(t *testing.T) {
 func TestApplyDeleteMissingRowReturnsError(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -392,7 +382,7 @@ func TestApplyDeleteMissingRowReturnsError(t *testing.T) {
 		RowID:     "nonexistent-vendor",
 		OpType:    "delete",
 	}
-	err = applyDelete(db, op)
+	err := applyDelete(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "row not found")
 }
@@ -400,11 +390,7 @@ func TestApplyDeleteMissingRowReturnsError(t *testing.T) {
 func TestApplyRestoreMissingRowReturnsError(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -414,7 +400,7 @@ func TestApplyRestoreMissingRowReturnsError(t *testing.T) {
 		RowID:     "nonexistent-vendor",
 		OpType:    "restore",
 	}
-	err = applyRestore(db, op)
+	err := applyRestore(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "row not found")
 }
@@ -422,11 +408,7 @@ func TestApplyRestoreMissingRowReturnsError(t *testing.T) {
 func TestApplyUpdateStripsCreatedAt(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -465,11 +447,7 @@ func TestApplyUpdateStripsCreatedAt(t *testing.T) {
 func TestApplyUpdateMissingRowReturnsError(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -480,7 +458,7 @@ func TestApplyUpdateMissingRowReturnsError(t *testing.T) {
 		OpType:    "update",
 		Payload:   `{"name":"Ghost"}`,
 	}
-	err = applyUpdate(db, op)
+	err := applyUpdate(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "row not found")
 }
@@ -489,11 +467,7 @@ func TestApplyOpsDeleteBeforeInsertSortedBySeq(t *testing.T) {
 	t.Parallel()
 
 	// Open a real SQLite DB so ApplyOps can run GORM transactions.
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	now := time.Now()
@@ -636,11 +610,7 @@ func TestAllowedSyncTableAllAllowedTables(t *testing.T) {
 func TestApplyOpsEmptyOps(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 
@@ -658,11 +628,7 @@ func TestApplyOpsEmptyOps(t *testing.T) {
 func TestApplyOpsMultipleOpsAcrossTables(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	now := time.Now()
@@ -728,11 +694,7 @@ func TestApplyOpsMultipleOpsAcrossTables(t *testing.T) {
 func TestApplyOpsCountsErrorsAndConflicts(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	now := time.Now()
@@ -813,11 +775,7 @@ func TestApplyOpsCountsErrorsAndConflicts(t *testing.T) {
 func TestApplyOneUnknownTable(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -834,7 +792,7 @@ func TestApplyOneUnknownTable(t *testing.T) {
 			CreatedAt: time.Now(),
 		},
 	}
-	err = applyOne(db, dop)
+	err := applyOne(db, dop)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a valid sync target")
 }
@@ -842,11 +800,7 @@ func TestApplyOneUnknownTable(t *testing.T) {
 func TestApplyOneInternalTableRejected(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -864,7 +818,7 @@ func TestApplyOneInternalTableRejected(t *testing.T) {
 			CreatedAt: time.Now(),
 		},
 	}
-	err = applyOne(db, dop)
+	err := applyOne(db, dop)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a valid sync target")
 }
@@ -872,11 +826,7 @@ func TestApplyOneInternalTableRejected(t *testing.T) {
 func TestApplyOneDuplicateInsert(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -902,7 +852,7 @@ func TestApplyOneDuplicateInsert(t *testing.T) {
 			CreatedAt: now,
 		},
 	}
-	err = applyOne(db, dop)
+	err := applyOne(db, dop)
 	require.Error(t, err, "duplicate insert should fail")
 	assert.Contains(t, err.Error(), "UNIQUE constraint failed")
 }
@@ -910,11 +860,7 @@ func TestApplyOneDuplicateInsert(t *testing.T) {
 func TestApplyOpToTableDisallowedTable(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -927,7 +873,7 @@ func TestApplyOpToTableDisallowedTable(t *testing.T) {
 		RowID:     "row-1",
 		OpType:    "drop_table",
 	}
-	err = applyOpToTable(db, op)
+	err := applyOpToTable(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown op type")
 }
@@ -935,11 +881,7 @@ func TestApplyOpToTableDisallowedTable(t *testing.T) {
 func TestApplyInsertDuplicatePrimaryKey(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -958,7 +900,7 @@ func TestApplyInsertDuplicatePrimaryKey(t *testing.T) {
 		OpType:    "insert",
 		Payload:   `{"id":"` + vendorID + `","name":"Second"}`,
 	}
-	err = applyInsert(db, op)
+	err := applyInsert(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "UNIQUE constraint failed")
 }
@@ -966,11 +908,7 @@ func TestApplyInsertDuplicatePrimaryKey(t *testing.T) {
 func TestApplyInsertInvalidJSON(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -981,7 +919,7 @@ func TestApplyInsertInvalidJSON(t *testing.T) {
 		OpType:    "insert",
 		Payload:   `{not valid json`,
 	}
-	err = applyInsert(db, op)
+	err := applyInsert(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unmarshal insert payload")
 }
@@ -989,11 +927,7 @@ func TestApplyInsertInvalidJSON(t *testing.T) {
 func TestApplyInsertMismatchedID(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -1004,7 +938,7 @@ func TestApplyInsertMismatchedID(t *testing.T) {
 		OpType:    "insert",
 		Payload:   `{"id":"vendor-wrong-id","name":"Sneaky"}`,
 	}
-	err = applyInsert(db, op)
+	err := applyInsert(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match")
 }
@@ -1012,11 +946,7 @@ func TestApplyInsertMismatchedID(t *testing.T) {
 func TestApplyRestoreNonExistentRow(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -1026,7 +956,7 @@ func TestApplyRestoreNonExistentRow(t *testing.T) {
 		RowID:     "vendor-ghost",
 		OpType:    "restore",
 	}
-	err = applyRestore(db, op)
+	err := applyRestore(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "restore vendors/vendor-ghost: row not found")
 }
@@ -1034,11 +964,7 @@ func TestApplyRestoreNonExistentRow(t *testing.T) {
 func TestApplyRestoreSuccessful(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -1075,11 +1001,7 @@ func TestApplyRestoreSuccessful(t *testing.T) {
 func TestApplyUpdateInvalidJSON(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -1090,7 +1012,7 @@ func TestApplyUpdateInvalidJSON(t *testing.T) {
 		OpType:    "update",
 		Payload:   `{broken`,
 	}
-	err = applyUpdate(db, op)
+	err := applyUpdate(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unmarshal update payload")
 }
@@ -1098,11 +1020,7 @@ func TestApplyUpdateInvalidJSON(t *testing.T) {
 func TestApplyOpToTableUnknownOpType(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	db = db.WithContext(data.WithSyncApplying(db.Statement.Context))
@@ -1112,7 +1030,7 @@ func TestApplyOpToTableUnknownOpType(t *testing.T) {
 		RowID:     "vendor-1",
 		OpType:    "truncate",
 	}
-	err = applyOpToTable(db, op)
+	err := applyOpToTable(db, op)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown op type: truncate")
 }
@@ -1120,11 +1038,7 @@ func TestApplyOpToTableUnknownOpType(t *testing.T) {
 func TestApplyOpsDoesNotMutateCallerSlice(t *testing.T) {
 	t.Parallel()
 
-	dbPath := t.TempDir() + "/test.db"
-	store, err := data.Open(dbPath)
-	require.NoError(t, err)
-	defer func() { _ = store.Close() }()
-	require.NoError(t, store.AutoMigrate())
+	store := openMigratedStore(t)
 
 	db := store.GormDB()
 	now := time.Now()

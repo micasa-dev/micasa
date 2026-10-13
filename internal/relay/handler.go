@@ -455,8 +455,7 @@ func (h *Handler) handlePutBlob(
 	r.Body = http.MaxBytesReader(w, r.Body, maxBlobSize)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		var maxErr *http.MaxBytesError
-		if errors.As(err, &maxErr) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			writeError(w, http.StatusRequestEntityTooLarge, "blob exceeds maximum size (50 MB)")
 		} else {
 			writeError(w, http.StatusBadRequest, "read body failed")
@@ -595,8 +594,7 @@ func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		var maxErr *http.MaxBytesError
-		if errors.As(err, &maxErr) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			writeError(w, http.StatusRequestEntityTooLarge, "webhook body exceeds maximum size")
 		} else {
 			writeError(w, http.StatusBadRequest, "read body failed")

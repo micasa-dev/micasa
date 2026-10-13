@@ -52,6 +52,7 @@ func (m *Model) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 
 // handleMouseWheel dispatches wheel events to scroll handlers.
 func (m *Model) handleMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
+	//exhaustive:ignore // third-party enum (charmbracelet/x/ansi); only vertical scroll is handled
 	switch msg.Button {
 	case tea.MouseWheelUp:
 		return m.handleScroll(-1)
@@ -73,7 +74,12 @@ func (m *Model) handleMouseMotion(msg tea.MouseMotionMsg) {
 			m.inTmux,
 		)
 	} else {
-		m.lastPointerShape = setPointerShape(m.pointerWriter, pointerShapeDefault, m.lastPointerShape, m.inTmux)
+		m.lastPointerShape = setPointerShape(
+			m.pointerWriter,
+			pointerShapeDefault,
+			m.lastPointerShape,
+			m.inTmux,
+		)
 	}
 }
 

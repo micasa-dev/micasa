@@ -645,9 +645,9 @@ func collectKeys(t reflect.Type, prefix string) []string {
 		if ft.Kind() == reflect.Struct && ft.PkgPath() != "" {
 			// Nested config section -- but only recurse into our own types,
 			// not stdlib types like time.Duration.
-			if _, isBytes := reflect.New(ft).Interface().(*ByteSize); isBytes {
+			if _, isBytes := reflect.TypeAssert[*ByteSize](reflect.New(ft)); isBytes {
 				keys = append(keys, full)
-			} else if _, isDur := reflect.New(ft).Interface().(*Duration); isDur {
+			} else if _, isDur := reflect.TypeAssert[*Duration](reflect.New(ft)); isDur {
 				keys = append(keys, full)
 			} else if ft.NumField() > 0 && tomlTagName(ft.Field(0)) != "" {
 				keys = append(keys, collectKeys(ft, full)...)

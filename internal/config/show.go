@@ -275,7 +275,7 @@ func FormatDuration(d time.Duration) string {
 
 // formatTOMLValue formats a reflected value as a TOML value string.
 func formatTOMLValue(v reflect.Value) (string, bool) {
-	if tm, ok := v.Interface().(encoding.TextMarshaler); ok {
+	if tm, ok := reflect.TypeAssert[encoding.TextMarshaler](v); ok {
 		text, err := tm.MarshalText()
 		if err != nil {
 			return "", false

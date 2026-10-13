@@ -97,8 +97,7 @@ func (e exitError) Error() string { return "" }
 // extractExitCode returns the exit code from an exitError, or 1 for
 // any other error.
 func extractExitCode(err error) int {
-	var ee exitError
-	if errors.As(err, &ee) {
+	if ee, ok := errors.AsType[exitError](err); ok {
 		return ee.code
 	}
 	return 1
@@ -113,8 +112,7 @@ func main() {
 		fang.WithColorSchemeFunc(wongColorScheme),
 		fang.WithNotifySignal(os.Interrupt),
 		fang.WithErrorHandler(func(w io.Writer, _ fang.Styles, err error) {
-			var ee exitError
-			if errors.As(err, &ee) {
+			if _, ok := errors.AsType[exitError](err); ok {
 				return
 			}
 			_, _ = fmt.Fprintln(w, err)

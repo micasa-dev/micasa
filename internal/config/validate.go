@@ -37,7 +37,7 @@ func newConfigValidator() *validator.Validate {
 	// Extract Duration's underlying nanosecond count so numeric
 	// validators (min=0, nonneg_duration) compare against an int64.
 	v.RegisterCustomTypeFunc(func(field reflect.Value) any {
-		if d, ok := field.Interface().(Duration); ok {
+		if d, ok := reflect.TypeAssert[Duration](field); ok {
 			return d.Nanoseconds()
 		}
 		return nil
