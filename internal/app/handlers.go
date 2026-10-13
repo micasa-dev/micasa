@@ -431,19 +431,17 @@ type serviceLogHandler struct {
 
 func newServiceLogHandler(maintenanceItemID string) serviceLogHandler {
 	return serviceLogHandler{
-		baseHandler: baseHandler{
-			kind:      formServiceLog,
-			deleteFn:  (*data.Store).DeleteServiceLog,
-			restoreFn: (*data.Store).RestoreServiceLog,
-			startAddFn: func(m *Model) error {
-				return m.startServiceLogForm(maintenanceItemID)
-			},
-			startEditFn: (*Model).startEditServiceLogForm,
-			inlineEditFn: func(m *Model, id string, col int) error {
-				return m.inlineEditServiceLog(id, serviceLogCol(col))
-			},
-			submitFormFn: (*Model).submitServiceLogForm,
+		kind:      formServiceLog,
+		deleteFn:  (*data.Store).DeleteServiceLog,
+		restoreFn: (*data.Store).RestoreServiceLog,
+		startAddFn: func(m *Model) error {
+			return m.startServiceLogForm(maintenanceItemID)
 		},
+		startEditFn: (*Model).startEditServiceLogForm,
+		inlineEditFn: func(m *Model, id string, col int) error {
+			return m.inlineEditServiceLog(id, serviceLogCol(col))
+		},
+		submitFormFn:      (*Model).submitServiceLogForm,
 		maintenanceItemID: maintenanceItemID,
 	}
 }

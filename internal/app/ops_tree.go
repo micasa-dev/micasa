@@ -153,14 +153,20 @@ func buildNode(path, key string, v any, depth int, guides []bool, isLast bool) *
 		keys := slices.SortedFunc(maps.Keys(val), opsKeyCmp)
 		for i, k := range keys {
 			childPath := path + "." + k
-			node.children = append(node.children, buildNode(childPath, k, val[k], depth+1, childGuides, i == len(keys)-1))
+			node.children = append(
+				node.children,
+				buildNode(childPath, k, val[k], depth+1, childGuides, i == len(keys)-1),
+			)
 		}
 	case []any:
 		node.isArray = true
 		for i, elem := range val {
 			childPath := fmt.Sprintf("%s.%d", path, i)
 			childKey := fmt.Sprintf("[%d]", i)
-			node.children = append(node.children, buildNode(childPath, childKey, elem, depth+1, childGuides, i == len(val)-1))
+			node.children = append(
+				node.children,
+				buildNode(childPath, childKey, elem, depth+1, childGuides, i == len(val)-1),
+			)
 		}
 	default:
 		node.value, node.valueKind = classifyValue(val)
@@ -233,11 +239,11 @@ func autoExpand(nodes []*jsonTreeNode, expanded map[string]bool, maxDepth int) {
 
 // parentPath returns the path of the parent node by trimming the last segment.
 func parentPath(p string) string {
-	i := strings.LastIndex(p, ".")
-	if i < 0 {
+	before, _, ok := strings.CutLast(p, ".")
+	if !ok {
 		return ""
 	}
-	return p[:i]
+	return before
 }
 
 // collapsedPreview builds a one-line summary for a collapsed container node.

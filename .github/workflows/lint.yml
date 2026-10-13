@@ -81,10 +81,10 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26"
+          go-version: "1.27"
 
       - name: Install deadcode
-        run: go install golang.org/x/tools/cmd/deadcode@v0.43.0
+        run: go install golang.org/x/tools/cmd/deadcode@v0.52.0
 
       - name: Run deadcode
         run: |
@@ -128,7 +128,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26"
+          go-version: "1.27"
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
@@ -202,10 +202,10 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26"
+          go-version: "1.27"
 
       - name: Run nilaway
-        run: go run go.uber.org/nilaway/cmd/nilaway@v0.0.0-20260318203545-ad240b12fb4c -include-pkgs "github.com/micasa-dev/micasa" -exclude-test-files ./...
+        run: go run go.uber.org/nilaway/cmd/nilaway@v0.0.0-20260918162853-acb8859b9031 -include-pkgs "github.com/micasa-dev/micasa" -exclude-test-files ./...
 
   result:
     name: Lint Result

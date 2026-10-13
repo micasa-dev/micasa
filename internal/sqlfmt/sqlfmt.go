@@ -269,9 +269,10 @@ func buildClauseTokens(tokens []sqlToken) []clauseToken {
 				if matchesWordSequence(tokens, i, parts) {
 					// Consume the tokens that form this multi-word keyword.
 					ct := clauseToken{
-						sqlToken: sqlToken{Kind: tokWord, Text: mw},
-						Keyword:  mw,
-						Level:    clauseLevel(mw),
+						Kind:    tokWord,
+						Text:    mw,
+						Keyword: mw,
+						Level:   clauseLevel(mw),
 					}
 					result = append(result, ct)
 					// Advance past the matched tokens + intervening spaces.
