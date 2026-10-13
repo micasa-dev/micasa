@@ -5,6 +5,7 @@ package uid
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -30,13 +31,16 @@ func TestNewIsUnique(t *testing.T) {
 
 func TestNewIsTimeSorted(t *testing.T) {
 	t.Parallel()
-	prev := New()
-	for range 100 {
-		time.Sleep(time.Millisecond)
-		cur := New()
-		assert.LessOrEqual(t, prev, cur, "ULIDs should be lexicographically non-decreasing")
-		prev = cur
-	}
+	// The bubble's fake clock makes each Sleep advance exactly 1ms at once.
+	synctest.Test(t, func(t *testing.T) {
+		prev := New()
+		for range 100 {
+			time.Sleep(time.Millisecond)
+			cur := New()
+			assert.LessOrEqual(t, prev, cur, "ULIDs should be lexicographically non-decreasing")
+			prev = cur
+		}
+	})
 }
 
 func TestIsValid(t *testing.T) {

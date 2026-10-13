@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -77,10 +78,13 @@ func TestPingModelNotFound(t *testing.T) {
 
 func TestPingServerDown(t *testing.T) {
 	t.Parallel()
-	client := newTestClient(t, "http://127.0.0.1:1/v1", "qwen3")
-	err := client.Ping(t.Context())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot reach")
+	dialErr := refusedDialErr()
+	synctest.Test(t, func(t *testing.T) {
+		client := unreachableClient(t, "http://127.0.0.1:1/v1", dialErr)
+		err := client.Ping(t.Context())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot reach")
+	})
 }
 
 // TestPingAnthropicNoOp verifies that Ping is a no-op for providers that
@@ -218,10 +222,13 @@ func TestListModelsSuccess(t *testing.T) {
 
 func TestListModelsServerDown(t *testing.T) {
 	t.Parallel()
-	client := newTestClient(t, "http://127.0.0.1:1/v1", "qwen3")
-	_, err := client.ListModels(t.Context())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot reach")
+	dialErr := refusedDialErr()
+	synctest.Test(t, func(t *testing.T) {
+		client := unreachableClient(t, "http://127.0.0.1:1/v1", dialErr)
+		_, err := client.ListModels(t.Context())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot reach")
+	})
 }
 
 func TestListModelsEmpty(t *testing.T) {
@@ -363,29 +370,33 @@ func TestChatStreamCancellation(t *testing.T) {
 
 func TestChatStreamServerError(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = fmt.Fprint(w, `{"error":{"message":"model crashed","type":"server_error"}}`)
-	}))
-	defer srv.Close()
-
-	client := newTestClient(t, srv.URL+"/v1", "test-model")
-	ch, err := client.ChatStream(t.Context(), []Message{
-		{Role: "user", Content: "hi"},
-	})
-	if err != nil {
-		assert.Error(t, err)
-		return
-	}
-	var gotErr bool
-	for chunk := range ch {
-		if chunk.Err != nil {
-			gotErr = true
-			break
+	// The client retries a 500 with backoff; the bubble's fake clock skips
+	// the waits.
+	synctest.Test(t, func(t *testing.T) {
+		client := pipeServerClient(
+			t,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = fmt.Fprint(w, `{"error":{"message":"model crashed","type":"server_error"}}`)
+			}),
+		)
+		ch, err := client.ChatStream(t.Context(), []Message{
+			{Role: "user", Content: "hi"},
+		})
+		if err != nil {
+			assert.Error(t, err)
+			return
 		}
-	}
-	assert.True(t, gotErr, "should receive an error from the stream")
+		var gotErr bool
+		for chunk := range ch {
+			if chunk.Err != nil {
+				gotErr = true
+				break
+			}
+		}
+		assert.True(t, gotErr, "should receive an error from the stream")
+	})
 }
 
 func TestPingModelNotFoundCloud(t *testing.T) {
@@ -945,6 +956,99 @@ func pipeClient(
 	p, err := createProvider("llamacpp", opts)
 	require.NoError(t, err)
 	return &Client{provider: p, providerName: "llamacpp", model: "m"}
+}
+
+// refusedDialErr is the error from a real dial to a local port with no
+// listener. Tests replay it from a fake dialer inside a synctest bubble, so
+// the client's retry backoff runs on the fake clock instead of real time.
+var refusedDialErr = sync.OnceValue(func() error {
+	conn, err := net.Dial("tcp", "127.0.0.1:1")
+	if err == nil {
+		_ = conn.Close()
+		return errors.New("expected nothing to listen on 127.0.0.1:1")
+	}
+	return err //nolint:wrapcheck // replayed verbatim, as the transport would see it
+})
+
+// unreachableClient returns a llamacpp client for baseURL whose every dial
+// fails with dialErr.
+func unreachableClient(t *testing.T, baseURL string, dialErr error) *Client {
+	t.Helper()
+	return transportClient(t, baseURL, &http.Transport{
+		DialContext: func(context.Context, string, string) (net.Conn, error) {
+			return nil, dialErr
+		},
+	})
+}
+
+// transportClient returns a llamacpp client for baseURL that sends its
+// requests through transport.
+func transportClient(t *testing.T, baseURL string, transport *http.Transport) *Client {
+	t.Helper()
+	t.Cleanup(transport.CloseIdleConnections)
+	opts := []anyllm.Option{
+		anyllm.WithHTTPClient(&http.Client{Timeout: testTimeout, Transport: transport}),
+		anyllm.WithBaseURL(baseURL),
+	}
+	p, err := createProvider(ProviderLlamaCPP, opts)
+	require.NoError(t, err)
+	return &Client{provider: p, providerName: ProviderLlamaCPP, baseURL: baseURL, model: "m"}
+}
+
+// pipeListener is an in-memory net.Listener for a synctest bubble. Each
+// dial makes a net.Pipe and hands the server end to Accept, so an
+// http.Server and http.Client talk without touching the network.
+type pipeListener struct {
+	conns  chan net.Conn
+	closed chan struct{}
+	once   sync.Once
+}
+
+func newPipeListener() *pipeListener {
+	return &pipeListener{conns: make(chan net.Conn), closed: make(chan struct{})}
+}
+
+func (l *pipeListener) Accept() (net.Conn, error) {
+	select {
+	case conn := <-l.conns:
+		return conn, nil
+	case <-l.closed:
+		return nil, net.ErrClosed
+	}
+}
+
+func (l *pipeListener) Close() error {
+	l.once.Do(func() { close(l.closed) })
+	return nil
+}
+
+func (l *pipeListener) Addr() net.Addr {
+	return &net.UnixAddr{Name: "pipe", Net: "pipe"}
+}
+
+func (l *pipeListener) DialContext(ctx context.Context, _, _ string) (net.Conn, error) {
+	client, server := net.Pipe()
+	select {
+	case l.conns <- server:
+		return client, nil
+	case <-l.closed:
+	case <-ctx.Done():
+	}
+	_ = client.Close()
+	_ = server.Close()
+	return nil, errors.Join(net.ErrClosed, ctx.Err())
+}
+
+// pipeServerClient serves handler over a pipeListener and returns a
+// llamacpp client connected to it. Call it inside a synctest bubble; the
+// server shuts down when the test ends.
+func pipeServerClient(t *testing.T, handler http.Handler) *Client {
+	t.Helper()
+	ln := newPipeListener()
+	srv := &http.Server{Handler: handler, ReadHeaderTimeout: testTimeout}
+	go func() { _ = srv.Serve(ln) }()
+	t.Cleanup(func() { assert.NoError(t, srv.Close()) })
+	return transportClient(t, "http://pipe/v1", &http.Transport{DialContext: ln.DialContext})
 }
 
 // sseChunk formats a single SSE data line.
