@@ -4,11 +4,9 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"
@@ -36,17 +34,14 @@ type testModelOpts struct {
 func newTestModelWith(t *testing.T, opts testModelOpts) *Model {
 	t.Helper()
 
-	dbBytes := templateBytes
+	// Demo models start from seeded demo data; others start with only a
+	// house profile.
+	dbBytes, err := houseTemplateBytes()
 	if opts.withDemo {
-		var err error
 		dbBytes, err = demoTemplateBytes(opts.seed)
-		require.NoError(t, err)
 	}
-	path := filepath.Join(t.TempDir(), "test.db")
-	require.NoError(t, os.WriteFile(path, dbBytes, 0o600))
-	store, err := data.Open(path)
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = store.Close() })
+	store := datatest.OpenMemory(t, dbBytes)
 
 	// Currency setup.
 	if opts.currency != "" {
@@ -60,14 +55,7 @@ func newTestModelWith(t *testing.T, opts testModelOpts) *Model {
 		require.NoError(t, store.SetMaxDocumentSize(50<<20))
 	}
 
-	// Demo data was seeded into dbBytes; other models get a house profile.
-	if !opts.withDemo {
-		require.NoError(t, store.CreateHouseProfile(data.HouseProfile{
-			Nickname: "Test House",
-		}))
-	}
-
-	m, err := NewModel(store, Options{DBPath: path})
+	m, err := NewModel(store, Options{DBPath: testDBPath})
 	require.NoError(t, err)
 	m.width = 120
 	m.height = 40

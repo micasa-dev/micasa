@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/micasa-dev/micasa/internal/fake"
 )
 
@@ -20,67 +21,25 @@ import (
 // Set via MICASA_TEST_SEED env var, or generated randomly if unset.
 var testSeed uint64
 
-// templateBytes holds a pre-migrated, pre-seeded SQLite database snapshot.
-// Every test constructor writes these bytes to a fresh temp file instead of
-// running AutoMigrate + SeedDefaults per test (~150ms -> ~1ms).
+// templateBytes holds a pre-migrated, pre-seeded SQLite database image.
+// Every test constructor loads these bytes instead of running AutoMigrate +
+// SeedDefaults per test (~150ms -> ~1ms).
 var templateBytes []byte
 
-// snapshotDB opens a scratch database initialised from base (empty when
-// nil), runs populate on it, and returns the checkpointed file contents.
-func snapshotDB(base []byte, populate func(*data.Store) error) ([]byte, error) {
-	dir, err := os.MkdirTemp("", "micasa-template-*")
-	if err != nil {
-		return nil, fmt.Errorf("create temp dir: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(dir) }()
+// testDBPath is the database path shown in the UI of models whose store is
+// in memory. Nothing opens it; it keeps the header the same as for a
+// file-backed database.
+var testDBPath = filepath.Join(os.TempDir(), "micasa-test", "test.db")
 
-	path := filepath.Join(dir, "template.db")
-	if base != nil {
-		if err := os.WriteFile(path, base, 0o600); err != nil {
-			return nil, fmt.Errorf("write base db: %w", err)
-		}
-	}
-	store, err := data.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("open template db: %w", err)
-	}
-	if err := populate(store); err != nil {
-		_ = store.Close()
-		return nil, err
-	}
-	if err := store.WalCheckpoint(); err != nil {
-		_ = store.Close()
-		return nil, fmt.Errorf("wal checkpoint: %w", err)
-	}
-	if err := store.Close(); err != nil {
-		return nil, fmt.Errorf("close template db: %w", err)
-	}
-
-	b, err := os.ReadFile(path) //nolint:gosec // path is constructed locally
-	if err != nil {
-		return nil, fmt.Errorf("read template bytes: %w", err)
-	}
-	return b, nil
-}
-
-func createTemplateBytes() error {
-	b, err := snapshotDB(nil, func(store *data.Store) error {
-		if err := store.AutoMigrate(); err != nil {
-			return fmt.Errorf("auto migrate: %w", err)
-		}
-		if err := store.SeedDefaults(); err != nil {
-			return fmt.Errorf("seed defaults: %w", err)
-		}
-		return nil
+// houseTemplateBytes returns templateBytes plus the house profile that
+// non-demo test models need, so each test does not write it again.
+var houseTemplateBytes = sync.OnceValues(func() ([]byte, error) {
+	return datatest.Snapshot(templateBytes, func(store *data.Store) error {
+		return store.CreateHouseProfile(data.HouseProfile{Nickname: "Test House"})
 	})
-	if err != nil {
-		return err
-	}
-	templateBytes = b
-	return nil
-}
+})
 
-// demoTemplates memoizes, per faker seed, a snapshot of templateBytes with
+// demoTemplates memoizes, per faker seed, an image of templateBytes with
 // demo data seeded. Seeding issues hundreds of single-row commits, and most
 // demo-data tests share a seed, so each seed is seeded once per process and
 // later tests copy the resulting bytes.
@@ -94,7 +53,7 @@ func demoTemplateBytes(seed uint64) ([]byte, error) {
 	snapshot, ok := demoTemplates[seed]
 	if !ok {
 		snapshot = sync.OnceValues(func() ([]byte, error) {
-			return snapshotDB(templateBytes, func(store *data.Store) error {
+			return datatest.Snapshot(templateBytes, func(store *data.Store) error {
 				if err := store.SetMaxDocumentSize(50 << 20); err != nil {
 					return err
 				}
@@ -123,7 +82,8 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Fprintf(os.Stderr, "MICASA_TEST_SEED=%d\n", testSeed)
 
-	if err := createTemplateBytes(); err != nil {
+	var err error
+	if templateBytes, err = datatest.Template(); err != nil {
 		fmt.Fprintf(os.Stderr, "create template db: %v\n", err)
 		os.Exit(2)
 	}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/micasa-dev/micasa/internal/crypto"
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/micasa-dev/micasa/internal/relay"
 	"github.com/micasa-dev/micasa/internal/sync"
 	"github.com/micasa-dev/micasa/internal/uid"
@@ -51,10 +52,9 @@ func setupEngineRelay(
 func openTestStore(t *testing.T, relayURL, householdID, deviceID string) *data.Store {
 	t.Helper()
 
-	store, err := data.Open(":memory:")
+	image, err := datatest.Migrated()
 	require.NoError(t, err)
-	require.NoError(t, store.AutoMigrate())
-	t.Cleanup(func() { _ = store.Close() })
+	store := datatest.OpenMemory(t, image)
 
 	// Seed the SyncDevice row directly — UpdateSyncDevice only updates
 	// existing rows, so we must create it first before setting fields.

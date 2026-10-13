@@ -4,8 +4,6 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 
@@ -13,7 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/micasa-dev/micasa/internal/locale"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,12 +21,7 @@ import (
 func newTestModel(t *testing.T) *Model {
 	t.Helper()
 
-	path := filepath.Join(t.TempDir(), "test.db")
-	require.NoError(t, os.WriteFile(path, templateBytes, 0o600))
-
-	store, err := data.Open(path)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = store.Close() })
+	store := datatest.OpenMemory(t, templateBytes)
 
 	store.SetCurrency(locale.DefaultCurrency())
 	m := &Model{

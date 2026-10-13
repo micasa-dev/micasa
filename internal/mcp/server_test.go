@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -17,18 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/micasa-dev/micasa/internal/mcp"
 )
 
 func newTestServer(t *testing.T) (*mcp.Server, *data.Store) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	store, err := data.Open(dbPath)
+	image, err := datatest.Migrated()
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = store.Close() })
-
-	err = store.AutoMigrate()
-	require.NoError(t, err)
+	store := datatest.OpenMemory(t, image)
 
 	srv := mcp.NewServer(store)
 	return srv, store

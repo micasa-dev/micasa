@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,12 +71,9 @@ func runShow(w io.Writer, store *data.Store, entity string, asJSON, includeDelet
 
 func newTestStoreWithMigration(t *testing.T) *data.Store {
 	t.Helper()
-	store, err := data.Open(":memory:")
+	image, err := datatest.Template()
 	require.NoError(t, err)
-	require.NoError(t, store.AutoMigrate())
-	require.NoError(t, store.SeedDefaults())
-	t.Cleanup(func() { _ = store.Close() })
-	return store
+	return datatest.OpenMemory(t, image)
 }
 
 func TestShowHouseText(t *testing.T) {
@@ -141,9 +139,17 @@ func TestFormatAddress(t *testing.T) {
 		{"full", data.HouseProfile{
 			AddressLine1: "123 Main St", City: "Springfield", State: "IL", PostalCode: "62701",
 		}, "123 Main St, Springfield, IL 62701"},
-		{"with line2", data.HouseProfile{
-			AddressLine1: "123 Main", AddressLine2: "Apt 4", City: "NYC", State: "NY", PostalCode: "10001",
-		}, "123 Main, Apt 4, NYC, NY 10001"},
+		{
+			"with line2",
+			data.HouseProfile{
+				AddressLine1: "123 Main",
+				AddressLine2: "Apt 4",
+				City:         "NYC",
+				State:        "NY",
+				PostalCode:   "10001",
+			},
+			"123 Main, Apt 4, NYC, NY 10001",
+		},
 		{"city only", data.HouseProfile{City: "Denver"}, "Denver"},
 		{"state only", data.HouseProfile{State: "CO"}, "CO"},
 		{"postal only", data.HouseProfile{PostalCode: "80202"}, "80202"},

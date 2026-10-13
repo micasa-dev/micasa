@@ -20,6 +20,7 @@ import (
 
 	"charm.land/fang/v2"
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -268,12 +269,10 @@ func TestCompletionCmd(t *testing.T) {
 // its path. The file lives in a test-scoped temp directory.
 func createTestDB(t *testing.T) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "source.db")
-	store, err := data.Open(path)
+	image, err := datatest.Template()
 	require.NoError(t, err)
-	require.NoError(t, store.AutoMigrate())
-	require.NoError(t, store.SeedDefaults())
-	require.NoError(t, store.Close())
+	path := filepath.Join(t.TempDir(), "source.db")
+	require.NoError(t, os.WriteFile(path, image, 0o600))
 	return path
 }
 

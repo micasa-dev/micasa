@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"log/slog"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/micasa-dev/micasa/internal/crypto"
 	"github.com/micasa-dev/micasa/internal/data"
+	"github.com/micasa-dev/micasa/internal/data/datatest"
 	"github.com/micasa-dev/micasa/internal/relay"
 	"github.com/micasa-dev/micasa/internal/sync"
 	"github.com/stretchr/testify/assert"
@@ -106,10 +108,12 @@ func TestSyncRoundTrip(t *testing.T) {
 func openRoundTripStore(t *testing.T, relayURL, householdID, deviceID string) *data.Store {
 	t.Helper()
 
+	image, err := datatest.Migrated()
+	require.NoError(t, err)
 	dbPath := filepath.Join(t.TempDir(), "micasa.db")
+	require.NoError(t, os.WriteFile(dbPath, image, 0o600))
 	store, err := data.Open(dbPath)
 	require.NoError(t, err)
-	require.NoError(t, store.AutoMigrate())
 	t.Cleanup(func() { _ = store.Close() })
 
 	err = store.GormDB().Create(&data.SyncDevice{

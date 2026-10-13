@@ -86,6 +86,7 @@ internal/
       sqlite.go             Dialect, PRAGMA connector, type mapping
       ddlmod.go             DDL parsing & manipulation
       migrator.go           GORM Migrator override
+    datatest/               Test-only: database images + in-memory Stores
     cmd/genmeta/            Code generator for meta_generated.go
 
   config/                   TOML config with env var overrides
