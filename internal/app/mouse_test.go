@@ -37,12 +37,32 @@ func sendClick(m *Model, x, y int) {
 }
 
 // requireZone renders the view and returns the zone info, skipping if not found.
+// zoneWaitTimeout bounds how long renderedZone waits for a zone to appear.
+const zoneWaitTimeout = 2 * time.Second
+
+// renderedZone renders the model and returns the zone for id, or nil if it
+// does not appear within zoneWaitTimeout. bubblezone records zones on a
+// background goroutine after View returns, so a zone read right after
+// rendering can be missing even though the view contains it.
+func renderedZone(m *Model, id string) *zone.ZoneInfo {
+	m.View()
+	m.View()
+	deadline := time.Now().Add(zoneWaitTimeout)
+	for {
+		if z := m.zones.Get(id); z != nil && !z.IsZero() {
+			return z
+		}
+		if time.Now().After(deadline) {
+			return nil
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func requireZone(t *testing.T, m *Model, id string) *zone.ZoneInfo {
 	t.Helper()
-	m.View()
-	m.View()
-	z := m.zones.Get(id)
-	if z == nil || z.IsZero() {
+	z := renderedZone(m, id)
+	if z == nil {
 		t.Skipf("zone %q not rendered", id)
 	}
 	return z
@@ -59,8 +79,7 @@ func drilldownColX(t *testing.T, m *Model, tab *Tab) int {
 	vp := computeTableViewport(tab, width, normalSep, m.cur.Symbol())
 	for vi, fi := range vp.VisToFull {
 		if fi < len(tab.Specs) && tab.Specs[fi].Kind == cellDrilldown {
-			z := m.zones.Get(fmt.Sprintf("%s%d", zoneCol, vi))
-			if z != nil && !z.IsZero() {
+			if z := renderedZone(m, fmt.Sprintf("%s%d", zoneCol, vi)); z != nil {
 				return z.StartX
 			}
 		}
@@ -629,10 +648,7 @@ func TestDashboardRowClickSelects(t *testing.T) {
 	require.Greater(t, len(m.dash.nav), 1, "need multiple dashboard nav items")
 
 	m.dash.cursor = 0
-	// Render once to populate all zones including overlay.
-	m.View()
-	oz := m.zones.Get(zoneOverlay)
-	if oz == nil || oz.IsZero() {
+	if renderedZone(m, zoneOverlay) == nil {
 		t.Skip("overlay zone not rendered")
 	}
 	z := requireZone(t, m, "dash-1")
@@ -667,10 +683,7 @@ func TestDashboardDoubleClickJumps(t *testing.T) {
 	}
 
 	m.dash.cursor = 0
-	// Render once to populate all zones including overlay.
-	m.View()
-	oz := m.zones.Get(zoneOverlay)
-	if oz == nil || oz.IsZero() {
+	if renderedZone(m, zoneOverlay) == nil {
 		t.Skip("overlay zone not rendered")
 	}
 	z := requireZone(t, m, fmt.Sprintf("dash-%d", jumpIdx))
@@ -752,10 +765,8 @@ func newExploreModel(t *testing.T, ops []extract.Operation) *Model {
 // batch), then returns the zone info. Skips if not found.
 func requireExtractionZone(t *testing.T, m *Model, id string) *zone.ZoneInfo {
 	t.Helper()
-	m.View()
-	m.View()
-	z := m.zones.Get(id)
-	if z == nil || z.IsZero() {
+	z := renderedZone(m, id)
+	if z == nil {
 		t.Skipf("zone %q not rendered", id)
 	}
 	return z
@@ -793,8 +804,7 @@ func TestExtractionColClickSelectsCol(t *testing.T) {
 	ex := m.ex.extraction
 	require.Equal(t, 0, ex.previewCol)
 
-	m.View()
-	m.View()
+	renderedZone(m, fmt.Sprintf("%s%d", zoneExtCol, 1))
 
 	// Find a column zone beyond the first.
 	found := false
@@ -831,12 +841,9 @@ func TestExtractionRowClickSelectsColumn(t *testing.T) {
 	ex := m.ex.extraction
 	ex.previewCol = 0
 
-	m.View()
-	m.View()
-
 	// Find a secondary column zone for its X range.
-	colZ := m.zones.Get(fmt.Sprintf("%s%d", zoneExtCol, 1))
-	if colZ == nil || colZ.IsZero() {
+	colZ := renderedZone(m, fmt.Sprintf("%s%d", zoneExtCol, 1))
+	if colZ == nil {
 		t.Skip("no secondary extraction column zone rendered")
 	}
 

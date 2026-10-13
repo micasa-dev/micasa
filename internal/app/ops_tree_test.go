@@ -223,9 +223,7 @@ func TestOpsTreeMouseClickToggle(t *testing.T) {
 	require.NotNil(t, m.opsTree)
 
 	// Render to populate zones including the overlay wrapper.
-	m.View()
-	oz := m.zones.Get(zoneOverlay)
-	if oz == nil || oz.IsZero() {
+	if renderedZone(m, zoneOverlay) == nil {
 		t.Skip("overlay zone not rendered")
 	}
 
