@@ -904,6 +904,56 @@ func (m *mockModelLister) ListModels(
 	return m.listModelsFunc(ctx)
 }
 
+// mockStreamProvider is a provider whose CompletionStream is supplied by
+// the test.
+type mockStreamProvider struct {
+	mockModelLister
+
+	completionStreamFunc func() (<-chan anyllm.ChatCompletionChunk, <-chan error)
+}
+
+func (m *mockStreamProvider) CompletionStream(
+	_ context.Context,
+	_ anyllm.CompletionParams,
+) (<-chan anyllm.ChatCompletionChunk, <-chan error) {
+	return m.completionStreamFunc()
+}
+
+// TestChatStreamErrorAfterChunksClose verifies that an error a provider
+// reports after it closes its chunk channel still reaches the caller.
+// The provider sends its error a second after the chunk channel closes. In
+// a synctest bubble that second passes only once ChatStream is blocked, so
+// ChatStream always sees the closed chunk channel first.
+func TestChatStreamErrorAfterChunksClose(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		streamErr := errors.New("stream broke")
+		mock := &mockStreamProvider{
+			completionStreamFunc: func() (<-chan anyllm.ChatCompletionChunk, <-chan error) {
+				chunks := make(chan anyllm.ChatCompletionChunk)
+				errs := make(chan error)
+				close(chunks)
+				go func() {
+					defer close(errs)
+					time.Sleep(time.Second)
+					errs <- streamErr
+				}()
+				return chunks, errs
+			},
+		}
+		client := &Client{provider: mock, providerName: "mock", model: "m"}
+
+		ch, err := client.ChatStream(t.Context(), []Message{{Role: "user", Content: "hi"}})
+		require.NoError(t, err)
+		var got []StreamChunk
+		for chunk := range ch {
+			got = append(got, chunk)
+		}
+		require.Len(t, got, 1)
+		assert.ErrorIs(t, got[0].Err, streamErr)
+	})
+}
+
 // TestPingTimesOutAtQuickOpTimeout verifies that Ping enforces the 30s
 // QuickOpTimeout via context deadline when the server never responds.
 // Uses synctest with a mock provider (no real I/O) so the fake clock advances.
