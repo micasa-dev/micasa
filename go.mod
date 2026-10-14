@@ -24,6 +24,7 @@ require (
 	github.com/itchyny/gojq v0.12.19
 	github.com/lrstanley/bubblezone/v2 v2.0.0
 	github.com/mark3labs/mcp-go v1.2.1
+	github.com/mark3labs/mcp-go/v2 v2.0.0
 	github.com/mozilla-ai/any-llm-go v0.9.0
 	github.com/nyaruka/phonenumbers/v2 v2.0.14
 	github.com/oklog/ulid/v2 v2.1.2
