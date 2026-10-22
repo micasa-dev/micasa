@@ -10,14 +10,3 @@ GO-2025-3689
 GO-2025-3695
 GO-2025-3824
 GO-2025-4251
-
-# Go stdlib vulns with no fix in Go 1.25.x yet (fixed in 1.25.8 / 1.26.1).
-# Re-evaluate after nixpkgs picks up Go 1.25.8+.
-# os.FileInfo Root escape; micasa never uses os.Root
-GO-2026-4602
-# net/url IPv6 parsing; micasa only connects to localhost ollama
-GO-2026-4601
-# crypto/x509 malformed cert panic; micasa does not verify x509 certs
-GO-2026-4600
-# crypto/x509 email constraint enforcement; same as above
-GO-2026-4599
