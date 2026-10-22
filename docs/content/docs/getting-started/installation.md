@@ -18,7 +18,7 @@ brew install micasa
 
 ## Go install
 
-Requires Go 1.26.5+:
+Requires Go 1.27.3+:
 
 ```sh
 go install github.com/micasa-dev/micasa/cmd/micasa@latest
