@@ -26,9 +26,11 @@ system the flake supports with the Nix that CI and contributors run.
 
 ## Decision
 
-Keep all three builds on `buildGoModule`. Do not add go2nix as a flake input.
-Nothing in `vendorHash`, the `vendor-hash-check` hook, the
-`update-vendor-hash` workflow, or `/update-vendor-hash` changes.
+Keep micasa on `buildGoModule`. Do not add go2nix as a flake input.
+Nothing in micasa's `vendorHash`, the `vendor-hash-check` hook, the
+`update-vendor-hash` workflow, or `/update-vendor-hash` changes. Stop
+building `deadcode` and `nilaway` with Nix at all (see
+[The analysis tools](#the-analysis-tools)).
 
 go2nix does make rebuilds faster (see [Measurements](#measurements)), but
 adopting it for the package the flake exports would break evaluation for
@@ -80,11 +82,38 @@ poisoning bug. The reasons, in order of weight:
    capture and record apps rebuild micasa after every source edit, and that
    is the one place a contributor would notice the speed-up.
 
-`deadcode` and `nilaway` stay on `buildGoModule` for a simpler reason: they
-are third-party tools pinned to one upstream revision, built once and then
-served from the store. Per-package rebuilds only pay off when the source
-changes, and theirs changes only on a version bump, when every package
-changes anyway.
+### The analysis tools
+
+go2nix would give `deadcode` and `nilaway` nothing: they are third-party
+tools pinned to one upstream revision, and their source changes only on a
+version bump, when every package changes anyway. The better question is why
+Nix builds them at all. Every Go or nixpkgs bump rebuilt both, including on
+the first `nix develop` afterwards, while CI's lint jobs never used the Nix
+builds: they run `go install` and `go run` with a pinned version.
+
+The two obvious ways to skip the build do not work:
+
+- nixpkgs packages both, but builds them with its default Go (1.26.10).
+  These tools read code with the `go/types` of the Go that built them, and
+  the Go 1.26 `deadcode` from `gotools` 0.44.0 fails on Go 1.27's own
+  standard library (`math/rand/v2/rand.go:213:17: method must have no type
+  parameters`). nixpkgs' `nilaway` is from March 2025 and rejects
+  `-exclude-test-files`.
+- golangci-lint, which already runs with `default: all`, covers neither.
+  Its v2 `unused` linter dropped `exported-is-used`, so it does not report
+  an unused exported function or what only that function calls; deadcode
+  does. nilaway is not built in and only loads as a module plugin, which
+  means building a custom golangci-lint binary.
+
+So the Nix wrappers now `go run <package>@<version>`, as CI does. Go
+compiles the tool into its build cache, verifies the module through the
+checksum database, and Nix builds only the wrapper script. Each version is
+pinned in two places, the wrapper script and `lint.yml`, next to a
+`# renovate: datasource=go depName=<module>` comment. A Renovate regex
+custom manager matches those comments, so one Renovate PR per tool updates
+both places. Renovate follows nilaway's pseudo-versions too, because the Go
+proxy reports the newest commit as the only release of a module with no
+tags.
 
 ## Measurements
 
