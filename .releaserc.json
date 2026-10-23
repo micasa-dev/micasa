@@ -13,10 +13,10 @@
           {"type": "perf", "section": "Performance"},
           {"type": "refactor", "section": "Refactors"},
           {"type": "docs", "section": "Documentation"},
-          {"type": "chore", "effect": "hidden"},
-          {"type": "ci", "effect": "hidden"},
-          {"type": "style", "effect": "hidden"},
-          {"type": "test", "effect": "hidden"}
+          {"type": "chore", "hidden": true},
+          {"type": "ci", "hidden": true},
+          {"type": "style", "hidden": true},
+          {"type": "test", "hidden": true}
         ]
       }
     }],
