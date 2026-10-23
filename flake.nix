@@ -195,6 +195,11 @@
           fontDirectories = [ "${pkgs.nerd-fonts.hack}/share/fonts/truetype" ];
         };
 
+        # Font file for ImageMagick text in the generated OCR test fixtures.
+        # A file path bypasses fontconfig, which has no config in the dev
+        # shell, and renders the same glyphs on every platform.
+        fixtureFont = "${pkgs.nerd-fonts.hack}/share/fonts/truetype/NerdFonts/Hack/HackNerdFont-Regular.ttf";
+
         goModTidyCheck = pkgs.writeShellApplication {
           name = "go-mod-tidy-check";
           runtimeInputs = [
@@ -290,6 +295,7 @@
             '';
             CGO_ENABLED = "0";
             GOFLAGS = "-trimpath";
+            MICASA_FIXTURE_FONT = fixtureFont;
             packages = [
               pkgs.micasaGo
               pkgs.osv-scanner
@@ -421,6 +427,7 @@
           gen-invoice-png = pkgs.writeShellApplication {
             name = "gen-invoice-png";
             runtimeInputs = [ pkgs.imagemagick ];
+            runtimeEnv.MICASA_FIXTURE_FONT = fixtureFont;
             text = ''
               bash internal/extract/gen-invoice-png.bash
             '';
@@ -428,6 +435,7 @@
           gen-sample-text-png = pkgs.writeShellApplication {
             name = "gen-sample-text-png";
             runtimeInputs = [ pkgs.imagemagick ];
+            runtimeEnv.MICASA_FIXTURE_FONT = fixtureFont;
             text = ''
               bash internal/extract/gen-sample-text-png.bash
             '';
