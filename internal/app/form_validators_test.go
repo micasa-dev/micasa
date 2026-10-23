@@ -403,7 +403,8 @@ func TestFormDataStructsHaveNoReferenceFields(t *testing.T) {
 		rt := reflect.TypeOf(s)
 		t.Run(rt.Name(), func(t *testing.T) {
 			for f := range rt.Fields() {
-				//exhaustive:ignore // only reference kinds matter here
+				// only reference kinds matter here
+				//exhaustive:ignore
 				switch f.Type.Kind() {
 				case reflect.Pointer, reflect.Slice, reflect.Map,
 					reflect.Chan, reflect.Func, reflect.Interface:

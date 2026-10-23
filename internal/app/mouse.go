@@ -52,7 +52,8 @@ func (m *Model) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 
 // handleMouseWheel dispatches wheel events to scroll handlers.
 func (m *Model) handleMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
-	//exhaustive:ignore // third-party enum (charmbracelet/x/ansi); only vertical scroll is handled
+	// third-party enum (charmbracelet/x/ansi); only vertical scroll is handled
+	//exhaustive:ignore
 	switch msg.Button {
 	case tea.MouseWheelUp:
 		return m.handleScroll(-1)
