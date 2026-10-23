@@ -55,7 +55,8 @@ func newConfigValidator() *validator.Validate {
 
 	mustRegister(v, "nonneg_duration", func(fl validator.FieldLevel) bool {
 		field := fl.Field()
-		//exhaustive:ignore // only numeric kinds relevant
+		// only numeric kinds relevant
+		//exhaustive:ignore
 		switch field.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return field.Int() >= 0

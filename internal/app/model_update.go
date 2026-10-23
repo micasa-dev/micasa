@@ -369,7 +369,8 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	//exhaustive:ignore // third-party enum (charmbracelet/huh)
+	// third-party enum (charmbracelet/huh)
+	//exhaustive:ignore
 	switch m.fs.form.State {
 	case huh.StateCompleted:
 		return m, m.saveForm()

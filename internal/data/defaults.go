@@ -94,7 +94,8 @@ func StructDefault[T any](fieldName string) string {
 }
 
 func setFieldDefault(field reflect.Value, tag string) {
-	//exhaustive:ignore // only handle types used in model/config defaults
+	// only handle types used in model/config defaults
+	//exhaustive:ignore
 	switch field.Kind() {
 	case reflect.String:
 		if tag == defaultTagToday {

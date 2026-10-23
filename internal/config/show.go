@@ -283,7 +283,8 @@ func formatTOMLValue(v reflect.Value) (string, bool) {
 		return strconv.Quote(string(text)), true
 	}
 
-	//exhaustive:ignore // only config-relevant kinds
+	// only config-relevant kinds
+	//exhaustive:ignore
 	switch v.Kind() {
 	case reflect.String:
 		return strconv.Quote(v.String()), true
@@ -326,7 +327,8 @@ func isEmptyValue(v reflect.Value) bool {
 		return v.IsNil()
 	}
 
-	//exhaustive:ignore // only config-relevant kinds
+	// only config-relevant kinds
+	//exhaustive:ignore
 	switch v.Kind() {
 	case reflect.String:
 		return v.String() == ""

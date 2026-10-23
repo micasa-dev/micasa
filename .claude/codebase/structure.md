@@ -181,7 +181,7 @@ internal/
 - `.golangci.yml` - Linter config: `default: all` with errorlint strict
   (errorf + errorf-multi + comparison + asserts), goconst/gomodguard
   disabled
-- `go.mod` - Go 1.27.2; deps include bubbletea v2 / lipgloss v2 / huh v2,
+- `go.mod` - Go 1.27.3; deps include bubbletea v2 / lipgloss v2 / huh v2,
   gorm + modernc sqlite, any-llm-go, modelcontextprotocol/go-sdk
 - `docs/` - Hugo site (guides, reference, blog)
 - `plans/` - Design documents (committed to repo)
