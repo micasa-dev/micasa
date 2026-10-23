@@ -257,7 +257,7 @@ details; do not duplicate that detail here.
   `refactor:` → `refactor`. Add scope-specific labels too when applicable
   (e.g. `data`, `ux`, `llm`, `nix`, `finance`, `documents`, `website`).
 - **No mass-history-cleanup logs**: Don't log git history rewrites.
-- **CLAUDE.md changes go on the working branch**: Never edit CLAUDE.md as
+- **AGENTS.md changes go on the working branch**: Never edit AGENTS.md as
   uncommitted changes in the main checkout.
 - **Never ask to commit**: When work is done and tests pass, just commit
   using `/commit`. No "would you like me to commit?", no waiting for
