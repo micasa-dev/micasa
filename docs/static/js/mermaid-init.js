@@ -11,6 +11,10 @@ if (document.querySelector(".mermaid")) {
 
   mermaid.initialize({
     startOnLoad: false,
+    // Mermaid 12 defaults to a new layout and look; docs.css targets the
+    // classic SVG structure.
+    layout: "dagre",
+    look: "classic",
     theme: "base",
     themeVariables: {
       fontFamily: '"Source Serif 4", Georgia, serif',
