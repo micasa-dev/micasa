@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 # golang 1.27-alpine
-FROM golang@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS build
+FROM golang@sha256:f20d83a83e18dbd2a4714b8ffd4b30b287b6243962dd75608e86abcc63ba4efc AS build
 ARG BUILD_TAGS
 WORKDIR /src
 COPY go.mod go.sum ./
