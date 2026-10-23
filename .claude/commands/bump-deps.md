@@ -20,18 +20,20 @@ the fix is non-trivial and unrelated to the current work.
 1. `go get -u ./...`
 2. `go mod tidy`
 
-### 3. Go tools in flake.nix
+### 3. Go analysis tools
 
-The `deadcode` package in `flake.nix` is built from a pinned
-`golang/tools` release. Check for a newer version:
+`deadcode` and `nilaway` are not built by Nix. `nix/scripts/deadcode.bash`,
+`nix/scripts/nilaway.bash`, and `.github/workflows/lint.yml` run them with
+`go run`/`go install` at a version pinned under a
+`# renovate: datasource=go depName=<module>` comment, and Renovate updates
+those pins. To bump by hand, find the latest versions:
 
 ```
-gh api repos/golang/tools/releases/latest --jq .tag_name
+go list -m -json golang.org/x/tools@latest | jq -r .Version
+go list -m -json go.uber.org/nilaway@latest | jq -r .Version
 ```
 
-If newer, update the `version`, `rev`, `hash`, and `vendorHash` fields
-in the `deadcode` derivation in `flake.nix`. Use `pkgs.lib.fakeHash` to
-obtain corrected hashes (see `/update-vendor-hash`).
+Update every line pinned under the matching `# renovate:` comment.
 
 ### 4. GitHub Actions
 

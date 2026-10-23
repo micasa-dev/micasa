@@ -84,7 +84,10 @@ jobs:
           go-version: "1.27"
 
       - name: Install deadcode
-        run: go install golang.org/x/tools/cmd/deadcode@v0.52.0
+        env:
+          # renovate: datasource=go depName=golang.org/x/tools
+          DEADCODE_VERSION: v0.52.0
+        run: go install "golang.org/x/tools/cmd/deadcode@${DEADCODE_VERSION}"
 
       - name: Run deadcode
         run: |
@@ -205,7 +208,10 @@ jobs:
           go-version: "1.27"
 
       - name: Run nilaway
-        run: go run go.uber.org/nilaway/cmd/nilaway@v0.0.0-20260918162853-acb8859b9031 -include-pkgs "github.com/micasa-dev/micasa" -exclude-test-files ./...
+        env:
+          # renovate: datasource=go depName=go.uber.org/nilaway
+          NILAWAY_VERSION: v0.0.0-20260918162853-acb8859b9031
+        run: go run "go.uber.org/nilaway/cmd/nilaway@${NILAWAY_VERSION}" -include-pkgs "github.com/micasa-dev/micasa" -exclude-test-files ./...
 
   result:
     name: Lint Result

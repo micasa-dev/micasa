@@ -11,57 +11,24 @@ _final: prev: {
   micasaGo = prev.go_1_27;
   micasaBuildGoModule = prev.buildGo127Module;
 
-  deadcode =
-    let
-      unwrapped = prev.buildGo127Module {
-        pname = "deadcode";
-        version = "0.52.0";
-        src = prev.fetchFromGitHub {
-          owner = "golang";
-          repo = "tools";
-          rev = "v0.52.0";
-          hash = "sha256-invRApL81q9uIUCbBUhWGyS+14OKK6HZYdONzhHGKP4=";
-        };
-        subPackages = [ "cmd/deadcode" ];
-        vendorHash = "sha256-+1/eKOwN4yUvLCgGRJbW6MTleIEodfcIoEHCBRHd2MQ=";
-        doCheck = false;
-      };
-    in
-    prev.writeShellApplication {
-      name = "deadcode";
-      runtimeInputs = [
-        unwrapped
-        prev.go_1_27
-      ];
-      runtimeEnv.CGO_ENABLED = "0";
-      text = builtins.readFile ./scripts/deadcode.bash;
-    };
+  # deadcode and nilaway read code with the go/types of the Go that built
+  # them, so they must be built with Go 1.27, and nixpkgs builds them with
+  # an older Go. The scripts `go run` a pinned version, which Go compiles
+  # into its build cache, so Nix never builds them. Renovate updates the
+  # pins through the `# renovate:` comments in the scripts.
+  deadcode = prev.writeShellApplication {
+    name = "deadcode";
+    runtimeInputs = [ prev.go_1_27 ];
+    runtimeEnv.CGO_ENABLED = "0";
+    text = builtins.readFile ./scripts/deadcode.bash;
+  };
 
-  nilaway =
-    let
-      unwrapped = prev.buildGo127Module {
-        pname = "nilaway";
-        version = "0.0.0-20260918162853-acb8859b9031";
-        src = prev.fetchFromGitHub {
-          owner = "uber-go";
-          repo = "nilaway";
-          rev = "acb8859b9031bb9496be97e027df5573f9fb5340";
-          hash = "sha256-GvDZ5tlvOrTI93tYcIcLd45ZHdqwFopVtoBffD/kbuM=";
-        };
-        subPackages = [ "cmd/nilaway" ];
-        vendorHash = "sha256-qVmvDneq6V/q5UHZ/Cjjqd5/XPPNfvVGoxwg9nz4/Ds=";
-        doCheck = false;
-      };
-    in
-    prev.writeShellApplication {
-      name = "nilaway";
-      runtimeInputs = [
-        unwrapped
-        prev.go_1_27
-      ];
-      runtimeEnv.CGO_ENABLED = "0";
-      text = builtins.readFile ./scripts/nilaway.bash;
-    };
+  nilaway = prev.writeShellApplication {
+    name = "nilaway";
+    runtimeInputs = [ prev.go_1_27 ];
+    runtimeEnv.CGO_ENABLED = "0";
+    text = builtins.readFile ./scripts/nilaway.bash;
+  };
 
   golangci-lint = prev.writeShellApplication {
     name = "golangci-lint";

@@ -11,6 +11,19 @@
   "nix": {
     "enabled": true
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Go tools pinned with a `# renovate:` comment on the line above the version (deadcode, nilaway)",
+      "managerFilePatterns": [
+        "/^nix/scripts/.+\\.bash$/",
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+[A-Za-z_][A-Za-z0-9_]*[=:] *(?<currentValue>\\S+)"
+      ]
+    }
+  ],
   "packageRules": [
     {
       "description": "Pin digests for GitHub Actions",
