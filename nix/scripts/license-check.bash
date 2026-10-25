@@ -37,16 +37,22 @@ for f in "$@"; do
 
   first=$(head -n1 "$f")
 
-  # Shebang-aware: if first line is #!, check lines 2-3 instead
+  # The header goes after a shebang or YAML front matter, which must stay
+  # on line 1. insert_line is the last line before the header (0 = none).
   if echo "$first" | grep -q '^#!'; then
-    check1=$(sed -n '2p' "$f")
-    check2=$(sed -n '3p' "$f")
-    insert_line=1  # insert after line 1 (the shebang)
+    insert_line=1
+  elif [ "$pfx" = "md" ] && [ "$first" = "---" ]; then
+    insert_line=$(sed -n '2,${/^---$/{=;q}}' "$f")
+    if [ -z "$insert_line" ]; then
+      echo "unterminated front matter in $f: add a closing --- line" >&2
+      status=1
+      continue
+    fi
   else
-    check1="$first"
-    check2=$(sed -n '2p' "$f")
-    insert_line=0  # insert before line 1
+    insert_line=0
   fi
+  check1=$(sed -n "$((insert_line + 1))p" "$f")
+  check2=$(sed -n "$((insert_line + 2))p" "$f")
 
   # Already correct
   if [ "$check1" = "$line1" ] && [ "$check2" = "$line2" ]; then
@@ -65,7 +71,7 @@ for f in "$@"; do
   if [ "$insert_line" -eq 0 ]; then
     sed -i "1i\\$line1\n$line2\n" "$f"
   else
-    sed -i "1a\\$line1\n$line2" "$f"
+    sed -i "${insert_line}a\\$line1\n$line2" "$f"
   fi
   echo "added license header to $f"
   status=1
