@@ -1,3 +1,6 @@
+---
+description: "Use for every commit in this repo. Covers the conventional commit types that drive releases and the CI trigger phrases to avoid."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
@@ -5,8 +8,7 @@ Create a commit following this repo's conventions.
 
 ## Before committing
 
-Do not run pre-commit hooks manually -- they run automatically on
-`git commit`. Just make sure the code compiles and tests pass.
+Run `/pre-commit-check`. The git hooks then run on `git commit`.
 
 ## Commit message format
 
@@ -22,9 +24,14 @@ Use conventional commits with scopes:
 
 ## Type rules
 
-- `feat:` -- new user-facing feature (triggers minor version bump)
-- `fix:` -- user-facing bug fix only (triggers patch bump). Never use
+semantic-release reads the type to decide the next version
+(`.releaserc.json`).
+
+- `feat:` -- new user-facing feature (triggers a minor version bump)
+- `fix:` -- user-facing bug fix only (triggers a patch bump). Never use
   `fix:` or `fix(test):` for commits that only fix a broken test
+- `perf:` -- user-visible speed-up (triggers a patch bump)
+- `refactor:` -- code change with no behavior change
 - `test:` or `chore(test):` -- test-only changes
 - `ci:` -- CI workflow changes (not `fix:`)
 - `docs:` -- documentation changes
@@ -32,7 +39,7 @@ Use conventional commits with scopes:
   triggering version bumps)
 - `chore:` -- maintenance, deps, tooling
 
-## Scope conventions
+## Other rules
 
 - Reference the issue number: `closes #42`, `fixes #42`
 - Do not amend unless explicitly requested

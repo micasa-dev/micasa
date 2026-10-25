@@ -1,3 +1,6 @@
+---
+description: "Use when renaming or removing a config key, so the old key fails with a clear error and the docs name the replacement."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 

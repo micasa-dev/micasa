@@ -1,3 +1,6 @@
+---
+description: "Use when writing or editing a blog post for the Hugo site in docs/content/blog/."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 

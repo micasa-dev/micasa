@@ -1,3 +1,6 @@
+---
+description: "Use when TUI output renders wrong in VHS or live (stray ANSI codes, garbled or missing text) and reading the code doesn't show why."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 

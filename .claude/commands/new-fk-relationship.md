@@ -1,3 +1,6 @@
+---
+description: "Use when adding a foreign key between soft-deletable entities. Covers the delete and restore guards and the tests they need."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 

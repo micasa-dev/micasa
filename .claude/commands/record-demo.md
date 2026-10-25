@@ -1,22 +1,27 @@
+---
+description: "Use after UI or UX changes to re-record the README demo video and the docs screenshots."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
-Re-record the demo GIF and/or screenshot tapes after UI/UX changes.
+Re-record the demo and/or the screenshot tapes after UI/UX changes.
 
-## Demo GIF
+## Demo
 
-Run `nix run '.#record-demo'` to update `videos/demo.webm` (used in README).
-Commit the GIF with the feature.
+`nix run '.#record-demo'` records `docs/tapes/demo.tape` to
+`videos/demo.webm` and converts it to `images/demo.webp`, which the README
+shows. Commit both files with the feature.
 
 ## Screenshots
 
-Screenshots live in `docs/tapes/`. When iterating on themes or capture
-settings:
+Screenshot tapes live in `docs/tapes/`; `capture-screenshots` writes WebP
+files to `docs/static/images/`. Each tape takes about 2 minutes, so when
+iterating on themes or capture settings:
 
-1. Modify the `capture-screenshots` script to only run a single capture
-   (e.g. just `dashboard`) and inspect the result first
-2. Only after confirming the result looks right, run the full capture
-   (`nix run '.#capture-screenshots'`) -- each of the 9 screenshots takes
-   ~2 min
+1. Capture one tape first and inspect it:
+   `nix run '.#capture-screenshots' -- dashboard`
+2. Once it looks right, capture them all: `nix run '.#capture-screenshots'`
 
-Do not re-run all 9 screenshots just to check a theme change.
+With no arguments it captures every tape except `demo` and the animated
+ones (`using-*`, `extraction`). Re-record those with
+`nix run '.#record-animated'`.

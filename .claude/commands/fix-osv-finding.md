@@ -1,3 +1,6 @@
+---
+description: "Use when osv-scanner reports a vulnerability. Findings block commits until the dependency is fixed or the finding is shown to be unreachable."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 

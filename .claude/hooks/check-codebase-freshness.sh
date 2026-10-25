@@ -7,21 +7,21 @@
 # the agent to audit and update them before starting other work.
 set -euo pipefail
 
-today=$(date +%s)
 stale=()
 
 for f in "$CLAUDE_PROJECT_DIR"/.claude/codebase/*.md; do
   [ -f "$f" ] || continue
   name=$(basename "$f")
-  date_str=$(grep -oP '(?<=<!-- verified: )\d{4}-\d{2}-\d{2}' "$f" || true)
+  # sed and jq instead of grep -P and date -d, which BSD (macOS) lacks.
+  date_str=$(sed -n 's/^<!-- verified: \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\) -->$/\1/p' "$f")
 
   if [ -z "$date_str" ]; then
     stale+=("$name: missing verified date")
     continue
   fi
 
-  file_epoch=$(date -d "$date_str" +%s)
-  age_days=$(( (today - file_epoch) / 86400 ))
+  age_days=$(jq -n --arg d "$date_str" \
+    '(now - ($d | strptime("%Y-%m-%d") | mktime)) / 86400 | floor')
 
   if [ "$age_days" -gt 30 ]; then
     stale+=("$name: last verified $date_str ($age_days days ago)")
