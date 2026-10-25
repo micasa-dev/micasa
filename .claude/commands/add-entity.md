@@ -1,3 +1,6 @@
+---
+description: "Use when adding a new entity model (a database table plus its TUI tab). Lists every file to wire up, from the GORM model to tests and docs."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
@@ -30,13 +33,16 @@ Follow every step; missing one leaves the entity partially wired.
 - Create `xxxHandler` struct implementing `TabHandler`:
   - `FormKind()`, `Load()`, `Delete()`, `Restore()`
   - `StartAddForm()`, `StartEditForm()`, `InlineEdit()`
-  - `SubmitForm()`, `Snapshot()`, `SyncFixedValues()`
+  - `SubmitForm()`, `SyncFixedValues()`
 - Use an existing handler (e.g. `applianceHandler`) as a template
 
-## 4. Table definition (`internal/app/tables.go`)
+## 4. Columns and tab (`internal/app/coldefs.go`, `internal/app/tables.go`)
 
-- Add column specs (`[]columnSpec`) for the new tab
-- Register the tab in the `tabs` slice with its `TabKind`, name, and handler
+- Add an `xxxColumnDefs` slice and an `xxxColumnSpecs()` function to
+  `coldefs.go`, then run `go generate ./internal/app/` to regenerate the
+  column constants in `columns_generated.go` (never edit that file by hand)
+- Register the tab in `NewTabs()` in `tables.go` with its `TabKind`, name,
+  handler, and specs
 
 ## 5. Form definition (`internal/app/forms.go`)
 
@@ -56,13 +62,7 @@ Follow every step; missing one leaves the entity partially wired.
   `/new-fk-relationship`)
 - Mouse click tests in `mouse_test.go`
 
-## 8. Generated code and docs
+## 8. Docs
 
-- `go generate ./internal/data/...` for meta constants
 - Run `/audit-docs` to update Hugo docs, README, website
 - Update `.claude/codebase/*.md` if the entity changes project structure
-
-## 9. LLM context
-
-- Add the entity to `entity_context.go` so the chat overlay can query it
-- Add to `entity_rows.go` for FK resolution in extraction pipeline

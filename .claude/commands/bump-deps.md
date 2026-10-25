@@ -1,9 +1,12 @@
+---
+description: "Use to bump every project dependency (Nix flake inputs, Go modules, Go analysis tools, GitHub Actions) and verify the build, tests, and scans."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
 Bump all project dependencies to their latest versions and verify the
 build, tests, and security scans still pass. This covers Nix flake inputs,
-Go modules, Go tools vendored in `flake.nix`, and GitHub Actions.
+Go modules, the pinned Go analysis tools, and GitHub Actions.
 
 Fix forward: if an update breaks the build or tests, fix the breakage
 rather than pinning to the old version. Only pin as a last resort when
@@ -40,11 +43,11 @@ Update every line pinned under the matching `# renovate:` comment.
 For each `uses:` line pinned to a SHA in `.github/workflows/*.yml`:
 
 1. Look up the latest release:
-   `gh api repos/<owner>/<repo>/releases/latest --jq '.tag_name'`
-2. Get the SHA for that tag:
-   `gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq '.object.sha'`
-   (if the object type is `tag`, dereference:
-   `gh api repos/<owner>/<repo>/git/tags/<sha> --jq '.object.sha'`)
+   `gh release view --repo <owner>/<repo> --json tagName --jq .tagName`
+2. Get the commit SHA for that tag:
+   `git ls-remote https://github.com/<owner>/<repo> 'refs/tags/<tag>' 'refs/tags/<tag>^{}'`
+   An annotated tag prints two lines; use the SHA on the `^{}` line, which
+   is the commit.
 3. Update both the SHA and the version comment, preserving the
    `owner/repo@<sha> # <tag>` format.
 

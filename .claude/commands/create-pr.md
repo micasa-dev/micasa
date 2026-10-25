@@ -1,53 +1,43 @@
+---
+description: "Use when opening or updating a pull request in this repo. Adds micasa's merge, label, and issue-closing rules to the general pull request workflow."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
-Create a pull request for the current branch.
+micasa's rules for pull requests. Write the title and body with your
+general pull request workflow, then apply these.
 
 ## Before creating
 
-1. Ensure all commits are pushed (`git push -u origin HEAD`)
+1. Push the branch: `git push -u origin HEAD`
 2. Run `/pre-commit-check` if you haven't already
 
-## PR conventions
+## Rules
 
-- **Use a HEREDOC for the body**: Pass the PR body via a HEREDOC to
-  avoid shell-quoting issues. Do not write temporary files to `/tmp`.
-  Example: `gh pr create --title "..." --body "$(cat <<'EOF'` ...
-  `EOF` `)"`
-- **Rebase merges only**: This repo uses `gh pr merge --rebase`. No merge
+- **Rebase merges only**: merge with `gh pr merge --rebase`. No merge
   commits, no squash merges.
-- **No "Test plan" section**: CI covers tests, lint, vet, and build.
-  Only include a test plan for genuinely manual-only verification steps
-  (e.g. visual UI/UX checks).
-- **Keep descriptions in sync**: After pushing additional commits, re-read
-  the PR title and body (`gh pr view`) and update them if they no longer
-  match the actual changes.
-- **Don't mention AGENTS.md**: When AGENTS.md changes accompany other work,
-  omit them from the summary. Only mention AGENTS.md if the PR is solely
-  about agent rules.
-- **Avoid CI trigger phrases**: Never put `[skip ci]`, `[ci skip]`, etc.
-  in the PR title or body.
+- **Labels**: add the type and scope labels that AGENTS.md lists.
+- **No "Test plan" section**: CI runs the tests, lint, vet, and build.
+  Add one only for checks that can't be automated, such as a visual check
+  of the TUI.
+- **Reproduction steps**: a bug-fix PR lists numbered steps to reproduce
+  the bug.
+- **Keep the description current**: after pushing more commits, re-read
+  the title and body (`gh pr view`) and update them to match the branch.
+- **Leave AGENTS.md out**: when AGENTS.md changes ride along with other
+  work, don't mention them. Mention them only in a PR about agent rules
+  alone.
+- **No CI trigger phrases**: never put `[skip ci]`, `[ci skip]`, or
+  similar tokens in the title or body.
 
 ## Closing issues
 
-Before creating the PR, search for open issues that would be closed by it:
+Before creating the PR, search for open issues it resolves:
 
 ```
 gh issue list --repo micasa-dev/micasa --search "<relevant keywords>" --state open
 ```
 
-Add `closes #<number>` lines to the PR body for each matching issue so
-GitHub auto-closes them on merge. Use the commit message `closes` syntax
-too when applicable.
-
-## PR body format
-
-```markdown
-## Summary
-
-- Concise bullet points describing what changed and why
-
-closes #<issue>
-```
-
-Keep it short. The diff tells the story.
+Add a `closes #<number>` line to the body for each one, so GitHub closes
+the issue on merge. Use the same `closes` syntax in commit messages when it
+applies.

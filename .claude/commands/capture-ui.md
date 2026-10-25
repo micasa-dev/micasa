@@ -1,3 +1,6 @@
+---
+description: "Use after TUI feature or bug-fix work to capture a screenshot or short video for PR review, from the working tree or a PR number."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 
@@ -18,7 +21,7 @@ against the current working tree.
 
 ## Procedure
 
-### 0. PR mode setup (skip if no PR number)
+### 1. PR mode setup (skip if no PR number)
 
 When a PR number is provided:
 
@@ -35,9 +38,9 @@ CGO_ENABLED=0 go build -trimpath -o "$worktree_dir/micasa" -C "$worktree_dir" ./
 ```
 
 All remaining steps use `$worktree_dir/micasa` instead of `micasa` on
-PATH. The tape preamble changes accordingly (see step 3).
+PATH. The tape preamble changes accordingly (see step 4).
 
-### 1. Understand what changed
+### 2. Understand what changed
 
 Before writing any tape, understand what the PR or recent work actually
 changed in the UI. Random screenshots of unrelated screens are useless.
@@ -54,7 +57,7 @@ Read the PR description and changed files. Identify:
 - What user interaction triggers the change
 - Whether the change is even visually demonstrable (some changes like
   error handling require specific failure conditions that demo mode can't
-  produce — in that case, tell the user and skip the capture)
+  produce -- in that case, tell the user and skip the capture)
 
 **Normal mode:** You already know what changed because you just wrote it.
 Still pause and identify the specific screen state that demonstrates it.
@@ -62,7 +65,7 @@ Still pause and identify the specific screen state that demonstrates it.
 If the change is not visually demonstrable in demo mode, say so and abort.
 Do not capture random unrelated screens.
 
-### 2. Decide capture mode (screenshot vs video)
+### 3. Decide capture mode (screenshot vs video)
 
 - **Screenshot** (default): single PNG of the final relevant state. Use for
   layout changes, new columns, style tweaks, form additions.
@@ -70,7 +73,7 @@ Do not capture random unrelated screens.
   filtering, sorting, navigation, overlays, animations -- anything where
   the change is in the *transition*, not just the end state.
 
-### 2. Write an ad-hoc VHS tape
+### 4. Write an ad-hoc VHS tape
 
 Get the current short commit hash for the filename:
 ```sh
@@ -78,9 +81,9 @@ git rev-parse --short HEAD                          # normal mode
 git -C "$worktree_dir" rev-parse --short HEAD       # PR mode
 ```
 
-Create `.claude/captures/<short-sha>-<descriptive-name>.tape`.
-
-**Standard preamble (no PR number):**
+Create the capture directory (`mkdir -p .claude/captures`), then write
+`.claude/captures/<short-sha>-<descriptive-name>.tape` starting with this
+preamble:
 
 ```tape
 Require micasa
@@ -109,32 +112,8 @@ Enter
 Sleep 5s
 ```
 
-**PR mode preamble** (uses the locally built binary, no `Require`):
-
-```tape
-Output .claude/captures/<short-sha>-<descriptive-name>.webm
-
-Set Shell bash
-Set FontFamily "Hack Nerd Font"
-Set FontSize 32
-Set Width 2400
-Set Height 1200
-Set Padding 20
-Set Theme "Dracula"
-Set CursorBlink false
-Set TypingSpeed 0
-
-Env NO_COLOR ""
-Env TERM "xterm-256color"
-Env COLORTERM "truecolor"
-Env COLORFGBG "15;0"
-Env PS1 ""
-
-Hide
-Type "exec <absolute-path-to-worktree>/micasa demo"
-Enter
-Sleep 5s
-```
+In PR mode, drop the `Require micasa` line and launch the locally built
+binary: `Type "exec <absolute-path-to-worktree>/micasa demo"`.
 
 After the preamble, add keystrokes to navigate to the target state.
 Reference existing tapes in `docs/tapes/` for navigation patterns:
@@ -144,7 +123,7 @@ Reference existing tapes in `docs/tapes/` for navigation patterns:
 - `Type "j"` / `Type "k"` -- navigate rows
 - `Type "l"` / `Type "h"` -- navigate columns
 - `Type "s"` -- sort by current column
-- `Enter` -- drilldown / open
+- `Enter` -- drill / open
 - `Escape` -- close overlay / go back
 - Tab / Shift+Tab -- toggle house profile
 
@@ -175,13 +154,7 @@ Sleep 1s
 Keep tapes short -- 5-10 seconds visible for screenshots, 10-20 seconds
 for videos.
 
-### 3. Create the capture directory
-
-```sh
-mkdir -p .claude/captures
-```
-
-### 4. Record
+### 5. Record
 
 Both modes use `capture-adhoc` (bundles vhs, fonts, ffmpeg). In PR mode
 the tape drops `Require micasa` and uses the absolute path instead, so
@@ -204,9 +177,9 @@ If VHS fails, check:
 - That the binary exists and runs (normal: `which micasa`, PR: `<path>/micasa --help`)
 - That `Sleep` after app launch is long enough (5s minimum)
 
-### 5. Present to user and ask about upload
+### 6. Present to user and ask about upload
 
-Do NOT clean up the PR worktree yet — the user may want additional
+Do NOT clean up the PR worktree yet -- the user may want additional
 captures from the same PR.
 
 Show the user:
@@ -214,20 +187,19 @@ Show the user:
 - The file path
 - Which PR it targets (if PR mode)
 
-Then ask: **"Upload this to the PR via `gh image`?"**
+Then ask: **"Upload this to the PR?"**
 
 Do NOT upload without explicit approval.
 
-### 6. Upload if approved
+### 7. Upload if approved
+
+Attach the file to a PR comment, or to the PR body when creating the PR,
+with `--attach '<file>#<alt text>'`:
 
 ```sh
-gh image .claude/captures/<name>.png   # screenshot
-gh image .claude/captures/<name>.webp  # video
+gh pr comment <N> --body "<what the capture shows>" --attach '.claude/captures/<name>.png#<alt text>'
+gh pr create ... --attach '.claude/captures/<name>.webp#<alt text>'
 ```
-
-Output is a markdown image reference. Include it in:
-- A PR comment: `gh pr comment <N> --body "<markdown-ref>"`
-- The PR body (if creating a PR next)
 
 ## Notes
 

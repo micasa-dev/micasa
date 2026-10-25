@@ -1,3 +1,6 @@
+---
+description: "Use at the start of a session to pick up context from earlier agents: git history, open PRs and issues, uncommitted work, and worktrees."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
 

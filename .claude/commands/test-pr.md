@@ -1,10 +1,8 @@
+---
+description: "Use to build a PR branch and launch it in tmux for hands-on testing, an A/B comparison against another branch, or an automated smoke test."
+---
 <!-- Copyright 2026 Phillip Cloud -->
 <!-- Licensed under the Apache License, Version 2.0 -->
-
----
-name: test-pr
-description: Build and launch a PR branch in tmux for interactive testing. Supports single-branch, A/B comparison, and smoke test modes.
----
 
 # Test PR
 
@@ -32,7 +30,7 @@ Resolve the input to a worktree path:
 To find a worktree matching a branch name, run:
 
 ```sh
-git worktree list --porcelain | grep -B2 "branch refs/heads/<branch>" | head -1 | sed 's/worktree //'
+git worktree list --porcelain | rg -B2 '^branch refs/heads/<branch>$' | rg -o '^worktree (.+)' -r '$1'
 ```
 
 If no worktree exists, create a temporary one:
@@ -52,7 +50,7 @@ Used when neither `--ab` nor `--smoke` is passed.
 Build the binary from the resolved worktree:
 
 ```sh
-direnv exec <worktree> bash -c 'cd <worktree> && go build -o /tmp/micasa-pr-<id> ./cmd/micasa'
+direnv exec <worktree> go build -C <worktree> -o /tmp/micasa-pr-<id> ./cmd/micasa
 ```
 
 Where `<id>` is the PR number, worktree name, or branch name
@@ -119,8 +117,8 @@ Builds and launches two branches side by side in a split tmux session.
 ### Build both binaries
 
 ```sh
-direnv exec <worktree-left> bash -c 'cd <worktree-left> && go build -o /tmp/micasa-ab-left ./cmd/micasa'
-direnv exec <worktree-right> bash -c 'cd <worktree-right> && go build -o /tmp/micasa-ab-right ./cmd/micasa'
+direnv exec <worktree-left> go build -C <worktree-left> -o /tmp/micasa-ab-left ./cmd/micasa
+direnv exec <worktree-right> go build -C <worktree-right> -o /tmp/micasa-ab-right ./cmd/micasa
 ```
 
 Build these in parallel (two Bash tool calls). Report errors and
