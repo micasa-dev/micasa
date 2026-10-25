@@ -102,7 +102,7 @@ require (
 	github.com/muesli/mango-pflag v0.2.0 // indirect
 	github.com/muesli/roff v0.1.0 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
-	github.com/ollama/ollama v0.40.9 // indirect
+	github.com/ollama/ollama v0.40.10 // indirect
 	github.com/openai/openai-go v1.12.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
