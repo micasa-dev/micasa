@@ -116,8 +116,6 @@ github.com/creack/pty v1.1.24/go.mod h1:08sCNb52WyoAwi2QDyzUCTgcvVFhUzewun7wtTfv
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dlclark/regexp2 v1.12.0 h1:0j4c5qQmnC6XOWNjP3PIXURXN2gWx76rd3KvgdPkCz8=
 github.com/dlclark/regexp2 v1.12.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
-github.com/dlclark/regexp2/v2 v2.9.1 h1:q6bZW/NN9VodqMjYXpuic2lZxdHPfFTzGS+MJxIJmKQ=
-github.com/dlclark/regexp2/v2 v2.9.1/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
 github.com/dlclark/regexp2/v2 v2.10.0 h1:zSNli+yyb7Rg4VzzLiZuJ3eZup/OObARXm/qs1a2//c=
 github.com/dlclark/regexp2/v2 v2.10.0/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
 github.com/dnaeon/go-vcr v1.2.0 h1:zHCHvJYTMh1N7xnV7zf1m1GPBF9Ad0Jk/whtQ1663qI=
@@ -235,8 +233,6 @@ github.com/nyaruka/phonenumbers/v2 v2.0.15 h1:mfqqZU6M9UYXZj81/z+uAm7EOISVqBOSKe
 github.com/nyaruka/phonenumbers/v2 v2.0.15/go.mod h1:ch3CB5vKpdcQXyRLWm+ELlEdiUwagKR6pYvXgVXRiN0=
 github.com/oklog/ulid/v2 v2.1.2 h1:IEclFb9JNvzYA6MW2SCxbLzcHTVsfqm3PrqGQJH5zec=
 github.com/oklog/ulid/v2 v2.1.2/go.mod h1:rcEKHmBBKfef9DhnvX7y1HZBYxjXb0cP5ExxNsTT1QQ=
-github.com/ollama/ollama v0.40.10 h1:xfcpgdCSO8Z8qDVfvXS9s36VnkhE8EZFtYV8vkQojYc=
-github.com/ollama/ollama v0.40.10/go.mod h1:WMGnOs9eS1uRY+N2my6tZB3pIQN1qyMA/uq9jTcQ3Rk=
 github.com/ollama/ollama v0.40.11 h1:GUkxzLCXBp8Q91knrkHOUE0JtVBI0pkadCk2A2PuFUc=
 github.com/ollama/ollama v0.40.11/go.mod h1:VB1qenaqFHAY/oJ9tMYSg9cJjehUpa9gL45FzN4/rsg=
 github.com/openai/openai-go v1.12.0 h1:NBQCnXzqOTv5wsgNC36PrFEiskGfO5wccfCWDo9S1U0=
