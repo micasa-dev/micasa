@@ -511,8 +511,9 @@ func TestDoubleClickRowDrillsDown(t *testing.T) {
 	sendClick(m, colX, z.StartY)
 	assert.False(t, m.inDetail(), "single click should not trigger drilldown")
 
-	// Second click within threshold triggers drilldown.
-	z = requireZone(t, m, "row-0")
+	// Second click within threshold triggers drilldown. Reuse the zone from
+	// before the first click: rendering again in between takes longer than
+	// doubleClickThreshold under -race on a loaded runner.
 	sendClick(m, colX, z.StartY)
 	assert.True(t, m.inDetail(), "double-click should trigger drilldown")
 }
@@ -693,8 +694,9 @@ func TestDashboardDoubleClickJumps(t *testing.T) {
 	require.True(t, m.dashboardVisible(), "single click should keep dashboard open")
 	require.Equal(t, jumpIdx, m.dash.cursor)
 
-	// Second click within threshold jumps.
-	z = requireZone(t, m, fmt.Sprintf("dash-%d", jumpIdx))
+	// Second click within threshold jumps. Reuse the zone from before the
+	// first click: rendering again in between takes longer than
+	// doubleClickThreshold under -race on a loaded runner.
 	sendClick(m, z.StartX, z.StartY)
 	assert.False(t, m.dashboardVisible(), "double-click should close dashboard and jump")
 }
