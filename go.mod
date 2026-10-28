@@ -25,7 +25,7 @@ require (
 	github.com/lrstanley/bubblezone/v2 v2.0.0
 	github.com/mark3labs/mcp-go v1.4.0
 	github.com/mozilla-ai/any-llm-go v0.9.0
-	github.com/nyaruka/phonenumbers/v2 v2.0.15
+	github.com/nyaruka/phonenumbers/v2 v2.0.16
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/rivo/uniseg v0.4.7
 	github.com/spf13/cobra v1.10.2
