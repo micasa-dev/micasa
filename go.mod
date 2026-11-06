@@ -5,6 +5,13 @@ module github.com/micasa-dev/micasa
 
 go 1.27.3
 
+// Pre-v2.4.0 versions declared module path github.com/cpcloud/micasa
+// which conflicts with the current github.com/micasa-dev/micasa path.
+// The v2.x tags also used the old path without a /v2 suffix, so Go
+// treats them as a different module entirely; only v1.x is retractable
+// from this module.
+retract [v1.0.0, v1.80.0]
+
 require (
 	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.1.0
