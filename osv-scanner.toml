@@ -45,3 +45,7 @@ reason = "path traversal is limited to ollama/x/imagegen/transfer; micasa import
 [[IgnoredVulns]]
 id = "GO-2026-5932"
 reason = "micasa uses x/crypto/curve25519 and does not import the unmaintained openpgp packages"
+
+[[IgnoredVulns]]
+id = "GO-2026-6911"
+reason = "redirect SSRF is in mcp-go client/transport NewStreamableHTTP; micasa is an MCP server (mcp, server packages) and never links the client, and the test-only mcptest uses the in-memory IO transport"
