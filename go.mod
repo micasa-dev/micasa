@@ -21,7 +21,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.5
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/iancoleman/strcase v0.3.0
-	github.com/itchyny/gojq v0.12.19
+	github.com/itchyny/gojq v0.12.20
 	github.com/lrstanley/bubblezone/v2 v2.0.0
 	github.com/mark3labs/mcp-go v1.4.0
 	github.com/mozilla-ai/any-llm-go v0.9.0
