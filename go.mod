@@ -29,7 +29,7 @@ require (
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/rivo/uniseg v0.4.7
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tj/go-naturaldate v1.3.0
 	golang.org/x/crypto v0.58.0
