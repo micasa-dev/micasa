@@ -18,7 +18,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/dustin/go-humanize v1.1.0
-	github.com/go-playground/validator/v10 v10.30.5
+	github.com/go-playground/validator/v10 v10.30.6
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/iancoleman/strcase v0.3.0
 	github.com/itchyny/gojq v0.12.20
