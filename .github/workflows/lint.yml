@@ -210,7 +210,7 @@ jobs:
       - name: Run nilaway
         env:
           # renovate: datasource=go depName=go.uber.org/nilaway
-          NILAWAY_VERSION: v0.0.0-20260918162853-acb8859b9031
+          NILAWAY_VERSION: v0.0.0-20261112030514-ccd005690d1e
         run: go run "go.uber.org/nilaway/cmd/nilaway@${NILAWAY_VERSION}" -include-pkgs "github.com/micasa-dev/micasa" -exclude-test-files ./...
 
   result:
