@@ -6,10 +6,20 @@
 # `pkgs.govulncheck`, `pkgs.deadcode`, etc. include our flags and
 # exclusion logic.
 
-_final: prev: {
+final: prev: {
+  # Go 1.27.4 fixes GO-2026-6859 (net/http MaxBytesReader header race).
+  # nixpkgs still ships 1.27.3; drop this override once it catches up.
+  go_1_27 = prev.go_1_27.overrideAttrs (_: rec {
+    version = "1.27.4";
+    src = prev.fetchurl {
+      url = "https://go.dev/dl/go${version}.src.tar.gz";
+      hash = "sha256-c8+4VxrsDAEXdofbhxY9Rqog6XeWcncokaoXZU2aYJk=";
+    };
+  });
+
   # Expose scoped overrides for flake.nix to use explicitly.
-  micasaGo = prev.go_1_27;
-  micasaBuildGoModule = prev.buildGo127Module;
+  micasaGo = final.go_1_27;
+  micasaBuildGoModule = final.buildGo127Module;
 
   # deadcode and nilaway read code with the go/types of the Go that built
   # them, so they must be built with Go 1.27, and nixpkgs builds them with
@@ -18,14 +28,14 @@ _final: prev: {
   # pins through the `# renovate:` comments in the scripts.
   deadcode = prev.writeShellApplication {
     name = "deadcode";
-    runtimeInputs = [ prev.go_1_27 ];
+    runtimeInputs = [ final.go_1_27 ];
     runtimeEnv.CGO_ENABLED = "0";
     text = builtins.readFile ./scripts/deadcode.bash;
   };
 
   nilaway = prev.writeShellApplication {
     name = "nilaway";
-    runtimeInputs = [ prev.go_1_27 ];
+    runtimeInputs = [ final.go_1_27 ];
     runtimeEnv.CGO_ENABLED = "0";
     text = builtins.readFile ./scripts/nilaway.bash;
   };
@@ -34,7 +44,7 @@ _final: prev: {
     name = "golangci-lint";
     runtimeInputs = [
       prev.golangci-lint
-      prev.go_1_27
+      final.go_1_27
     ];
     runtimeEnv.CGO_ENABLED = "0";
     text = builtins.readFile ./scripts/golangci-lint.bash;
@@ -44,7 +54,7 @@ _final: prev: {
     name = "govulncheck";
     runtimeInputs = [
       prev.govulncheck
-      prev.go_1_27
+      final.go_1_27
       prev.jq
       prev.ripgrep
     ];
