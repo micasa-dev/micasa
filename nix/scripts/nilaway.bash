@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # renovate: datasource=go depName=go.uber.org/nilaway
-nilaway_version=v0.0.0-20260918162853-acb8859b9031
+nilaway_version=v0.0.0-20261112030514-ccd005690d1e
 
 exec go run "go.uber.org/nilaway/cmd/nilaway@${nilaway_version}" \
   -include-pkgs "github.com/micasa-dev/micasa" \
