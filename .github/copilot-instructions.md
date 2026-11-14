@@ -9,7 +9,7 @@
 maintenance schedules, appliances, vendors, incidents, and expenses. It uses a
 single SQLite database file with no cloud dependencies.
 
-- **Language**: Go 1.27.3
+- **Language**: Go 1.27.4
 - **TUI framework**: Charmbracelet Bubble Tea + lipgloss + huh forms
 - **ORM**: GORM with pure-Go SQLite (`modernc.org/sqlite`)
 - **LLM**: Optional integration via `any-llm-go` (Ollama, OpenAI-compatible)
